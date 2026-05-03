@@ -1,0 +1,16 @@
+2026-05-02 19:58:57 [docentes_listar] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'd.observacion' in 'field list' en C:\Users\USER\Desktop\MESAS_EXAMEN_ENA\backend\modules\docentes\docentes_controller.php:194
+2026-05-02 19:58:57 [docentes_listar] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'd.observacion' in 'field list' en C:\Users\USER\Desktop\MESAS_EXAMEN_ENA\backend\modules\docentes\docentes_controller.php:194
+2026-05-02 19:58:59 [docentes_listar] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'd.observacion' in 'field list' en C:\Users\USER\Desktop\MESAS_EXAMEN_ENA\backend\modules\docentes\docentes_controller.php:194
+2026-05-02 19:58:59 [docentes_listar] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'd.observacion' in 'field list' en C:\Users\USER\Desktop\MESAS_EXAMEN_ENA\backend\modules\docentes\docentes_controller.php:194
+2026-05-02 20:07:20 [docentes_listar] SQLSTATE[HY093]: Invalid parameter number en C:\Users\USER\Desktop\MESAS_EXAMEN_ENA\backend\modules\docentes\docentes_controller.php:318
+2026-05-02 20:07:20 [docentes_listar] SQLSTATE[HY093]: Invalid parameter number en C:\Users\USER\Desktop\MESAS_EXAMEN_ENA\backend\modules\docentes\docentes_controller.php:318
+2026-05-02 20:07:20 [docentes_listar] SQLSTATE[HY093]: Invalid parameter number en C:\Users\USER\Desktop\MESAS_EXAMEN_ENA\backend\modules\docentes\docentes_controller.php:318
+2026-05-02 20:07:20 [docentes_listar] SQLSTATE[HY093]: Invalid parameter number en C:\Users\USER\Desktop\MESAS_EXAMEN_ENA\backend\modules\docentes\docentes_controller.php:318
+2026-05-02 20:07:20 [docentes_listar] SQLSTATE[HY093]: Invalid parameter number en C:\Users\USER\Desktop\MESAS_EXAMEN_ENA\backend\modules\docentes\docentes_controller.php:318
+2026-05-02 20:07:21 [docentes_listar] SQLSTATE[HY093]: Invalid parameter number en C:\Users\USER\Desktop\MESAS_EXAMEN_ENA\backend\modules\docentes\docentes_controller.php:318
+2026-05-02 20:07:21 [docentes_listar] SQLSTATE[HY093]: Invalid parameter number en C:\Users\USER\Desktop\MESAS_EXAMEN_ENA\backend\modules\docentes\docentes_controller.php:318
+2026-05-02 20:07:21 [docentes_listar] SQLSTATE[HY093]: Invalid parameter number en C:\Users\USER\Desktop\MESAS_EXAMEN_ENA\backend\modules\docentes\docentes_controller.php:318
+2026-05-02 20:07:23 [docentes_listar] SQLSTATE[HY093]: Invalid parameter number en C:\Users\USER\Desktop\MESAS_EXAMEN_ENA\backend\modules\docentes\docentes_controller.php:318
+2026-05-02 20:07:23 [docentes_listar] SQLSTATE[HY093]: Invalid parameter number en C:\Users\USER\Desktop\MESAS_EXAMEN_ENA\backend\modules\docentes\docentes_controller.php:318
+2026-05-02 20:07:23 [docentes_listar] SQLSTATE[HY093]: Invalid parameter number en C:\Users\USER\Desktop\MESAS_EXAMEN_ENA\backend\modules\docentes\docentes_controller.php:318
+2026-05-02 20:07:23 [docentes_listar] SQLSTATE[HY093]: Invalid parameter number en C:\Users\USER\Desktop\MESAS_EXAMEN_ENA\backend\modules\docentes\docentes_controller.php:318

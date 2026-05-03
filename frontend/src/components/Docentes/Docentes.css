@@ -1,0 +1,697 @@
+.docentes-page {
+  min-height: 100vh;
+  padding: 28px;
+  background: linear-gradient(135deg, #eef4ff 0%, #f8fafc 45%, #ffffff 100%);
+  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+  color: #0f172a;
+}
+
+.docentes-card {
+  width: min(1220px, 100%);
+  margin: 0 auto;
+  background: rgba(255, 255, 255, .96);
+  border: 1px solid #dbe5f2;
+  border-radius: 22px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, .12);
+  padding: 24px;
+}
+
+.docentes-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 18px;
+}
+
+.docentes-header h1 {
+  margin: 8px 0 6px;
+  font-size: 30px;
+  color: #102e6a;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.docentes-header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  max-width: 720px;
+}
+
+.docentes-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.docentes-back {
+  border: none;
+  background: transparent;
+  color: #1d428a;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.docentes-btn,
+.docentes-tab,
+.docentes-icon-btn,
+.docentes-modal-close {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .2s ease;
+}
+
+.docentes-btn {
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.docentes-btn-primary {
+  color: #ffffff;
+  background: linear-gradient(135deg, #1d428a, #0b5ed7);
+  box-shadow: 0 10px 22px rgba(29, 66, 138, .22);
+}
+
+.docentes-btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(29, 66, 138, .28);
+}
+
+.docentes-btn-light {
+  color: #1d428a;
+  background: #eef4ff;
+  border: 1px solid #cfe0ff;
+}
+
+.docentes-btn-danger {
+  color: #ffffff;
+  background: #dc2626;
+  box-shadow: 0 10px 20px rgba(220, 38, 38, .18);
+}
+
+.docentes-btn:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.docentes-tabs {
+  display: flex;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #f8fafc;
+  margin: 14px 0;
+  width: fit-content;
+}
+
+.docentes-tab {
+  background: transparent;
+  color: #64748b;
+  font-weight: 800;
+  border-radius: 12px;
+  padding: 10px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.docentes-tab.active {
+  color: #ffffff;
+  background: #1d428a;
+  box-shadow: 0 8px 18px rgba(29, 66, 138, .2);
+}
+
+.docentes-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.docentes-search {
+  flex: 1;
+  background: #ffffff;
+  border: 1px solid #dbe5f2;
+  border-radius: 14px;
+  padding: 0 12px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #64748b;
+}
+
+.docentes-search input {
+  flex: 1;
+  border: none;
+  outline: none;
+  height: 100%;
+  font-size: 14px;
+  color: #0f172a;
+  background: transparent;
+}
+
+.docentes-alerta {
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin: 12px 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.docentes-alerta-success {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #bbf7d0;
+}
+
+.docentes-alerta-error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.docentes-alerta-info {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.docentes-table-wrap {
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  overflow: auto;
+  max-height: calc(100vh - 340px);
+  background: #ffffff;
+}
+
+.docentes-table,
+.docentes-info-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 860px;
+}
+
+.docentes-table th,
+.docentes-info-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  text-align: left;
+  padding: 13px 14px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.docentes-table td,
+.docentes-info-table td {
+  padding: 13px 14px;
+  border-bottom: 1px solid #edf2f7;
+  vertical-align: middle;
+  font-size: 14px;
+}
+
+.docentes-table tbody tr:hover {
+  background: #f8fbff;
+}
+
+.docentes-th-actions {
+  width: 190px;
+  text-align: center !important;
+}
+
+.docentes-name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.docentes-name-cell strong {
+  color: #0f172a;
+}
+
+.docentes-name-cell small {
+  color: #1d428a;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.docentes-observacion {
+  max-width: 260px;
+  color: #64748b;
+}
+
+.docentes-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.docentes-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: #eef4ff;
+  color: #1d428a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #dbeafe;
+}
+
+.docentes-icon-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, .1);
+}
+
+.docentes-icon-warning {
+  color: #b45309;
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.docentes-icon-success {
+  color: #047857;
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+}
+
+.docentes-icon-danger {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.docentes-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  border-radius: 999px;
+  background: #eaf2ff;
+  color: #1d428a;
+  font-weight: 900;
+  padding: 5px 9px;
+  font-size: 12px;
+}
+
+.docentes-badge-soft {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.docentes-empty,
+.docentes-empty-small {
+  text-align: center;
+  color: #64748b;
+  padding: 22px;
+  font-weight: 700;
+}
+
+.docentes-empty-small {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.docentes-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  padding-top: 16px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.docentes-pagination {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.docentes-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: rgba(15, 23, 42, .56);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(5px);
+}
+
+.docentes-modal {
+  width: min(760px, 100%);
+  max-height: 92vh;
+  overflow: auto;
+  background: #ffffff;
+  border-radius: 22px;
+  border: 1px solid #dbe5f2;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, .28);
+  padding: 22px;
+}
+
+.docentes-modal-sm {
+  width: min(480px, 100%);
+}
+
+.docentes-modal-lg {
+  width: min(860px, 100%);
+}
+
+.docentes-modal-xl {
+  width: min(1040px, 100%);
+}
+
+.docentes-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.docentes-modal-header h2 {
+  margin: 0 0 5px;
+  font-size: 22px;
+  color: #102e6a;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.docentes-modal-header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.docentes-modal-close {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.docentes-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.docentes-label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.docentes-label-full {
+  grid-column: 1 / -1;
+}
+
+.docentes-label input,
+.docentes-label select,
+.docentes-label textarea,
+.docentes-bloque-row input,
+.docentes-bloque-row select {
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 11px 12px;
+  font: inherit;
+  color: #0f172a;
+  outline: none;
+  background: #ffffff;
+}
+
+.docentes-label input:focus,
+.docentes-label select:focus,
+.docentes-label textarea:focus,
+.docentes-bloque-row input:focus,
+.docentes-bloque-row select:focus {
+  border-color: #1d428a;
+  box-shadow: 0 0 0 3px rgba(29, 66, 138, .12);
+}
+
+.docentes-bloques-box {
+  margin-top: 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 16px;
+  background: #fbfdff;
+}
+
+.docentes-bloques-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.docentes-bloques-header h3,
+.docentes-info-section h3 {
+  margin: 0 0 4px;
+  color: #102e6a;
+  font-size: 17px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.docentes-bloques-header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.docentes-bloque-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 10px;
+  align-items: end;
+  padding: 10px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 10px;
+}
+
+.docentes-bloque-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #475569;
+}
+
+.docentes-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.docentes-info-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #dbeafe;
+  background: #f8fbff;
+  border-radius: 18px;
+  margin-bottom: 14px;
+}
+
+.docentes-info-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 18px;
+  background: #1d428a;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.docentes-info-head h3 {
+  margin: 0 0 3px;
+  color: #0f172a;
+}
+
+.docentes-info-head p,
+.docentes-info-head small {
+  margin: 0;
+  color: #64748b;
+}
+
+.docentes-info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.docentes-info-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 14px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.docentes-info-card span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.docentes-info-card strong {
+  color: #102e6a;
+  font-size: 24px;
+}
+
+.docentes-info-section {
+  margin-top: 16px;
+}
+
+.docentes-info-table-wrap {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  overflow: auto;
+  max-height: 300px;
+  background: #ffffff;
+}
+
+.docentes-info-table {
+  min-width: 650px;
+}
+
+.docentes-bloques-lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.docentes-bloque-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 999px;
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+  padding: 8px 12px;
+}
+
+.docentes-bloque-chip span {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.docentes-confirm-box {
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.docentes-confirm-box strong {
+  color: #0f172a;
+}
+
+.docentes-confirm-box span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .docentes-page {
+    padding: 14px;
+  }
+
+  .docentes-card {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .docentes-header,
+  .docentes-footer,
+  .docentes-bloques-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .docentes-header-actions,
+  .docentes-pagination {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .docentes-header-actions .docentes-btn,
+  .docentes-pagination .docentes-btn {
+    flex: 1;
+  }
+
+  .docentes-tabs {
+    width: 100%;
+  }
+
+  .docentes-tab {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .docentes-form-grid,
+  .docentes-info-grid,
+  .docentes-bloque-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Fix: docentes sin paginación y búsqueda 100% frontend */
+.docentes-footer-simple {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.docentes-footer-note {
+  color: #94a3b8;
+  font-size: 13px;
+}

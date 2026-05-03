@@ -1,0 +1,831 @@
+/* src/components/Mesas_examen/Mesas_examen.css */
+
+.mesas-page {
+  min-height: 100vh;
+  max-height: 100vh;
+  background: #fdeeee;
+  font-family: "Segoe UI", Arial, sans-serif;
+  color: #0b2349;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* =========================================================
+   HEADER AZUL
+========================================================= */
+
+.mesas-topbar {
+  min-height: 112px;
+  background: linear-gradient(90deg, #183f86 0%, #173f86 45%, #133774 100%);
+  display: grid;
+  grid-template-columns: 1fr minmax(360px, 545px) auto;
+  align-items: center;
+  gap: 26px;
+  padding: 0 38px;
+  box-shadow: 0 8px 22px rgba(9, 30, 70, 0.18);
+  flex-shrink: 0;
+}
+
+.mesas-title-wrap h1 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 31px;
+  font-weight: 850;
+  letter-spacing: -0.4px;
+}
+
+.mesas-search {
+  position: relative;
+  width: 100%;
+}
+
+.mesas-search input {
+  width: 100%;
+  height: 54px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  outline: none;
+  padding: 0 52px 0 20px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.mesas-search input::placeholder {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.mesas-search-icon {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #ffffff;
+  font-size: 19px;
+  opacity: 0.92;
+}
+
+.mesas-filter-btn {
+  height: 54px;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.17);
+  color: #ffffff;
+  padding: 0 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 0.18s ease;
+  white-space: nowrap;
+}
+
+.mesas-filter-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* =========================================================
+   CONTENIDO GENERAL
+========================================================= */
+
+.mesas-content {
+  flex: 1;
+  min-height: 0;
+  padding: 42px 32px 18px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mesas-tabs {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 18px 4px;
+  flex-shrink: 0;
+}
+
+.mesas-tab {
+  min-height: 46px;
+  border-radius: 10px;
+  border: 2px solid #17478f;
+  background: #ffffff;
+  color: #123b7d;
+  padding: 0 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  font-weight: 850;
+  font-size: 15px;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+.mesas-tab:hover {
+  transform: translateY(-1px);
+}
+
+.mesas-tab.active {
+  background: #17478f;
+  color: #ffffff;
+  box-shadow: 0 9px 18px rgba(23, 71, 143, 0.22);
+}
+
+.mesas-tab-link {
+  border-color: transparent;
+  background: transparent;
+}
+
+.mesas-tab-link.active {
+  border-color: #17478f;
+}
+
+/* =========================================================
+   TARJETA DE MESAS
+========================================================= */
+
+.mesas-card {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 14px;
+  border: 1px solid #e4eaf4;
+  box-shadow: 0 16px 40px rgba(16, 43, 91, 0.11);
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mesas-card-header {
+  min-height: 72px;
+  border: 1px solid #e2e7f2;
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  padding: 16px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-shrink: 0;
+}
+
+.mesas-card-brand {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.mesas-card-brand img {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+}
+
+.mesas-card-brand h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1;
+  color: #071a38;
+  font-weight: 950;
+  letter-spacing: 0.3px;
+}
+
+.mesas-card-brand p {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: #6d7583;
+}
+
+.mesas-card-meta {
+  text-align: right;
+  font-size: 13px;
+  color: #112b5c;
+}
+
+.mesas-card-meta p {
+  margin: 0 0 8px;
+}
+
+.mesas-card-meta strong {
+  font-size: 13px;
+}
+
+/* =========================================================
+   TABLA
+========================================================= */
+
+.mesas-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid #e2e7f2;
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+}
+
+.mesas-table {
+  width: 100%;
+  min-width: 1100px;
+  border-collapse: collapse;
+  color: #071f4a;
+}
+
+.mesas-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #e8e9fb;
+  color: #082667;
+  text-align: left;
+  padding: 15px 12px;
+  font-size: 16px;
+  font-weight: 900;
+  border-bottom: 1px solid #d8ddf5;
+}
+
+.mesas-table tbody td {
+  padding: 14px 12px;
+  vertical-align: middle;
+  border-bottom: 1px dashed #edf0f6;
+  font-size: 16px;
+}
+
+.mesas-table tbody tr:nth-child(even) {
+  background: #fffafa;
+}
+
+.mesas-table tbody tr:hover {
+  background: #f5f8ff;
+}
+
+.col-hora {
+  width: 150px;
+}
+
+.hora-cell {
+  width: 150px;
+  text-align: center;
+  border-right: 1px solid #e7edf7;
+}
+
+.hora-box {
+  font-weight: 950;
+  color: #061b3e;
+  line-height: 1.42;
+  font-size: 18px;
+}
+
+.materia-cell {
+  min-width: 270px;
+  color: #062b75;
+  font-weight: 900;
+}
+
+.docente-cell {
+  min-width: 260px;
+  color: #071f4a;
+  font-weight: 900;
+}
+
+.nota-select {
+  min-width: 104px;
+  height: 38px;
+  border: 1px solid #d9dfe9;
+  border-radius: 9px;
+  background: #ffffff;
+  padding: 0 10px;
+  font-weight: 800;
+  color: #000000;
+  outline: none;
+}
+
+.nota-select:focus {
+  border-color: #17478f;
+  box-shadow: 0 0 0 3px rgba(23, 71, 143, 0.12);
+}
+
+.mesas-empty {
+  text-align: center;
+  padding: 55px 20px !important;
+  color: #7d8799;
+  font-weight: 800;
+  font-size: 17px;
+}
+
+/* =========================================================
+   BOTONES INFERIORES
+========================================================= */
+
+.mesas-bottom-actions {
+  min-height: 76px;
+  max-height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 0;
+  gap: 18px;
+  flex-shrink: 0;
+}
+
+.mesas-right-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.btn-action {
+  height: 50px;
+  border-radius: 11px;
+  border: none;
+  padding: 0 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  font-size: 15px;
+  font-weight: 900;
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 7px 14px rgba(11, 32, 70, 0.15);
+  transition: 0.18s ease;
+  white-space: nowrap;
+}
+
+.btn-action:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.03);
+}
+
+.btn-back {
+  background: #17478f;
+}
+
+.btn-create {
+  background: #a6b2d1;
+}
+
+.btn-excel {
+  background: #10bf7a;
+}
+
+.btn-pdf {
+  background: #25292c;
+}
+
+.btn-delete {
+  background: #0d67e8;
+}
+
+/* =========================================================
+   SCROLL
+========================================================= */
+
+.mesas-table-wrap::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.mesas-table-wrap::-webkit-scrollbar-track {
+  background: #f1f3f7;
+  border-radius: 999px;
+}
+
+.mesas-table-wrap::-webkit-scrollbar-thumb {
+  background: #aeb7c8;
+  border-radius: 999px;
+}
+
+.mesas-table-wrap::-webkit-scrollbar-thumb:hover {
+  background: #8793a8;
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 1100px) {
+  .mesas-page {
+    max-height: none;
+    overflow: auto;
+  }
+
+  .mesas-topbar {
+    grid-template-columns: 1fr;
+    padding: 22px;
+    gap: 16px;
+  }
+
+  .mesas-title-wrap h1 {
+    text-align: center;
+  }
+
+  .mesas-filter-btn {
+    justify-content: center;
+  }
+
+  .mesas-content {
+    padding: 24px 16px;
+    overflow: visible;
+  }
+
+  .mesas-card {
+    min-height: 520px;
+  }
+
+  .mesas-bottom-actions {
+    max-height: none;
+    height: auto;
+    padding: 22px 0 0;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mesas-right-actions {
+    justify-content: stretch;
+  }
+
+  .btn-action {
+    width: 100%;
+  }
+}
+
+@media (max-width: 700px) {
+  .mesas-tabs {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mesas-tab {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .mesas-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .mesas-card-meta {
+    text-align: left;
+  }
+
+  .mesas-card-brand h2 {
+    font-size: 18px;
+  }
+}
+/* ============================= */
+/* MODAL CREAR MESAS */
+/* ============================= */
+
+.mesas-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.58);
+  backdrop-filter: blur(5px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.mesas-modal {
+  width: min(680px, 100%);
+  background: #ffffff;
+  border-radius: 22px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+  overflow: hidden;
+  animation: mesasModalIn 0.18s ease-out;
+}
+
+@keyframes mesasModalIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.mesas-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 26px;
+  background: linear-gradient(135deg, #111827, #1f2937);
+  color: #ffffff;
+}
+
+.mesas-modal-header h3 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.mesas-modal-header p {
+  margin: 6px 0 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 14px;
+}
+
+.mesas-modal-close {
+  border: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  transition: 0.2s ease;
+}
+
+.mesas-modal-close:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.mesas-modal-body {
+  padding: 24px 26px 26px;
+}
+
+.mesas-modal-alert {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px solid #fed7aa;
+  font-size: 14px;
+  margin-bottom: 18px;
+}
+
+.mesas-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.mesas-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mesas-field span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #334155;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.mesas-field input {
+  height: 44px;
+  border-radius: 13px;
+  border: 1px solid #cbd5e1;
+  padding: 0 12px;
+  font-size: 15px;
+  outline: none;
+}
+
+.mesas-field input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.mesas-modal-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 18px 0;
+}
+
+.mesas-modal-info > div {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mesas-modal-info strong {
+  font-size: 24px;
+  color: #0f172a;
+}
+
+.mesas-modal-info span {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.mesas-turnos-preview {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 16px;
+}
+
+.mesas-turnos-title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-weight: 800;
+  color: #334155;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.mesas-turnos-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mesas-turno-pill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mesas-modal-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.mesas-modal-options label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #334155;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.mesas-modal-options input {
+  width: 16px;
+  height: 16px;
+}
+
+.mesas-modal-error {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  font-weight: 700;
+  font-size: 14px;
+  margin-top: 14px;
+}
+
+.mesas-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.btn-modal-cancel,
+.btn-modal-confirm {
+  border: none;
+  border-radius: 14px;
+  padding: 12px 18px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-modal-cancel {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.btn-modal-confirm {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.btn-modal-cancel:disabled,
+.btn-modal-confirm:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* ============================= */
+/* ALERTAS Y ESTADOS */
+/* ============================= */
+
+.mesas-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.mesas-alert span {
+  display: block;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.mesas-alert-error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.mesas-alert-ok {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.fila-observada {
+  background: #fff7ed;
+}
+
+.observacion-mesa {
+  display: block;
+  margin-top: 6px;
+  color: #c2410c;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tipo-mesa {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.tipo-simple {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.tipo-taller {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.tipo-correlativa {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+@media (max-width: 720px) {
+  .mesas-modal-grid,
+  .mesas-modal-info {
+    grid-template-columns: 1fr;
+  }
+
+  .mesas-modal {
+    max-height: 92vh;
+    overflow-y: auto;
+  }
+
+  .mesas-modal-actions {
+    flex-direction: column;
+  }
+
+  .btn-modal-cancel,
+  .btn-modal-confirm {
+    width: 100%;
+  }
+}
