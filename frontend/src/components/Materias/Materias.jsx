@@ -1,5 +1,5 @@
 // src/components/Materias/Materias.jsx
-import React from "react";
+import React, { useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -27,9 +27,11 @@ import SeccionCorrelativas from "./secciones/SeccionCorrelativas";
 import SeccionTalleres from "./secciones/SeccionTalleres";
 import SeccionAreas from "./secciones/SeccionAreas";
 import { useMaterias } from "./hooks/useMaterias";
+import Principal, { MesasShellContext } from "../Principal/Principal";
 
 const Materias = () => {
   const navigate = useNavigate();
+  const dentroDeShell = useContext(MesasShellContext);
 
   const state = useMaterias();
 
@@ -268,7 +270,7 @@ const Materias = () => {
     );
   };
 
-  return (
+  const contenido = (
     <div className="materias-page">
       <header className="materias-topbar">
         <div className="materias-title-wrap">
@@ -352,6 +354,8 @@ const Materias = () => {
       )}
     </div>
   );
+
+  return dentroDeShell ? contenido : <Principal>{contenido}</Principal>;
 };
 
 export default Materias;

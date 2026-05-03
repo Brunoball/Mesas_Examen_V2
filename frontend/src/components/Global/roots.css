@@ -37,3 +37,98 @@
   --blue-inst-shadow-lg: 0 16px 36px -10px rgba(0,0,0,.20);
   --blue-inst-shadow-xl: 0 28px 64px -24px rgba(0,0,0,.28);
 }
+/* =========================================================
+   ESTÉTICA SISTEMA GLOBAL / BALTO
+   Solo tokens visuales. No modifica funcionamiento.
+   ========================================================= */
+:root{
+  --blue-midnight:#0A2540;
+  --blue-action:#0055BB;
+
+  --balto-midnight:#0A2540;
+  --balto-action:#0055BB;
+  --balto-action-hover:#004AA3;
+  --balto-bg:#F6F9FC;
+  --balto-text:#425466;
+  --balto-white:#FFFFFF;
+  --balto-success:#22AD5C;
+  --balto-danger:#E13D45;
+  --balto-warning:#F59E0B;
+
+  --balto-border:rgba(10,37,64,.14);
+  --balto-muted:rgba(66,84,102,.72);
+  --balto-focus:rgba(0,85,187,.18);
+  --balto-hover:rgba(0,85,187,.06);
+  --balto-soft:#EEF4FC;
+
+  --balto-radius-md:14px;
+  --balto-radius-lg:18px;
+  --balto-shadow-sm:0 1px 3px rgba(10,37,64,.08);
+  --balto-shadow-md:0 10px 22px rgba(10,37,64,.10);
+  --balto-shadow-lg:0 18px 40px rgba(10,37,64,.14);
+  --balto-shadow-xl:0 28px 64px -24px rgba(10,37,64,.28);
+  --balto-transition:180ms ease;
+
+  /* Alias que ya usan los componentes de Mesas */
+  --blue-inst-primary:#0A2540;
+  --blue-inst-primary-light:#0055BB;
+  --blue-inst-primary-dark:#0A2540;
+  --blue-inst-secondary:#0055BB;
+  --blue-inst-accent:#0055BB;
+  --blue-inst-success:#22AD5C;
+  --blue-inst-warning:#F59E0B;
+  --blue-inst-danger:#E13D45;
+  --blue-inst-light:#F6F9FC;
+  --blue-inst-dark:#0A2540;
+  --blue-inst-gray-100:#F6F8FB;
+  --blue-inst-gray-200:#D9E2EF;
+  --blue-inst-gray-300:#C9D6E6;
+  --blue-inst-gray-400:#8A99AC;
+  --blue-inst-gray-500:#64748B;
+  --blue-inst-gray-600:#516173;
+  --blue-inst-gray-700:#425466;
+  --blue-inst-gray-800:#0A2540;
+  --blue-inst-gray-900:#071B2F;
+  --blue-inst-radius:12px;
+  --blue-inst-radius-lg:18px;
+  --blue-inst-radius-xl:22px;
+  --blue-inst-transition:180ms ease;
+  --blue-inst-shadow-sm:var(--balto-shadow-sm);
+  --blue-inst-shadow-md:var(--balto-shadow-md);
+  --blue-inst-shadow-lg:var(--balto-shadow-lg);
+  --blue-inst-shadow-xl:var(--balto-shadow-xl);
+}
+
+html[data-theme="oscuro"]{
+  --balto-bg:#0B1220;
+  --balto-white:#0F172A;
+  --balto-text:rgba(226,232,240,.86);
+  --balto-action:#3B82F6;
+  --balto-action-hover:#2563EB;
+  --balto-border:rgba(148,163,184,.14);
+  --balto-muted:rgba(226,232,240,.62);
+  --balto-focus:rgba(59,130,246,.22);
+  --balto-hover:rgba(59,130,246,.08);
+  --balto-soft:rgba(59,130,246,.10);
+  --balto-shadow-sm:0 1px 3px rgba(0,0,0,.32);
+  --balto-shadow-md:0 12px 26px rgba(0,0,0,.42);
+  --balto-shadow-lg:0 22px 46px rgba(0,0,0,.55);
+  --balto-shadow-xl:0 28px 70px -24px rgba(0,0,0,.70);
+
+  --blue-inst-primary:#3B82F6;
+  --blue-inst-primary-light:#60A5FA;
+  --blue-inst-primary-dark:#0A2540;
+  --blue-inst-secondary:#3B82F6;
+  --blue-inst-accent:#3B82F6;
+  --blue-inst-light:#0B1220;
+  --blue-inst-dark:rgba(226,232,240,.92);
+  --blue-inst-gray-100:rgba(255,255,255,.06);
+  --blue-inst-gray-200:rgba(148,163,184,.14);
+  --blue-inst-gray-300:rgba(148,163,184,.22);
+  --blue-inst-gray-400:rgba(226,232,240,.48);
+  --blue-inst-gray-500:rgba(226,232,240,.62);
+  --blue-inst-gray-600:rgba(226,232,240,.72);
+  --blue-inst-gray-700:rgba(226,232,240,.82);
+  --blue-inst-gray-800:rgba(226,232,240,.90);
+  --blue-inst-gray-900:rgba(226,232,240,.95);
+}

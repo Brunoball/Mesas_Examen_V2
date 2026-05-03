@@ -931,3 +931,434 @@
     grid-template-columns: 1fr;
   }
 }
+/* =========================================================
+   ESTÉTICA SISTEMA GLOBAL / BALTO — SECCIONES MESAS
+   Solo CSS: no altera datos, hooks, filtros ni eventos.
+   ========================================================= */
+:root{
+  --balto-midnight:#0A2540;
+  --balto-action:#0055BB;
+  --balto-action-hover:#004AA3;
+  --balto-bg:#F6F9FC;
+  --balto-text:#425466;
+  --balto-white:#FFFFFF;
+  --balto-success:#22AD5C;
+  --balto-danger:#E13D45;
+  --balto-warning:#F59E0B;
+  --balto-border:rgba(10,37,64,.14);
+  --balto-muted:rgba(66,84,102,.72);
+  --balto-focus:rgba(0,85,187,.18);
+  --balto-hover:rgba(0,85,187,.06);
+  --balto-soft:#EEF4FC;
+  --balto-shadow-sm:0 1px 3px rgba(10,37,64,.08);
+  --balto-shadow-md:0 10px 22px rgba(10,37,64,.10);
+  --balto-shadow-lg:0 18px 40px rgba(10,37,64,.14);
+  --balto-shadow-xl:0 28px 64px -24px rgba(10,37,64,.28);
+}
+
+.mesas-page,
+.materias-page,
+.catedras-page,
+.docentes-page{
+  background:
+    radial-gradient(900px 360px at 50% 6%, rgba(0,85,187,.08), transparent 56%),
+    radial-gradient(900px 340px at 50% 96%, rgba(10,37,64,.05), transparent 58%),
+    #F6F9FC !important;
+  color:#0A2540 !important;
+  font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif !important;
+}
+
+.mesas-topbar,
+.materias-topbar{
+  background:#fff !important;
+  border:1px solid rgba(10,37,64,.12) !important;
+  border-radius:18px !important;
+  box-shadow:0 10px 22px rgba(10,37,64,.10) !important;
+  padding:18px !important;
+}
+
+.mesas-title-wrap h1,
+.materias-title-wrap h1,
+.catedras-header h1,
+.docentes-header h1,
+.mesas-card-brand h2,
+.materias-card-header h2{
+  color:#0A2540 !important;
+  font-weight:650 !important;
+  letter-spacing:-.02em !important;
+}
+
+.mesas-title-wrap p,
+.materias-title-wrap p,
+.catedras-header p,
+.docentes-header p,
+.materias-card-header p,
+.mesas-card-brand p,
+.mesas-card-meta p,
+.muted,
+.mini-text{
+  color:rgba(66,84,102,.72) !important;
+  font-weight:400 !important;
+}
+
+.mesas-search,
+.materias-search,
+.catedras-search,
+.catedras-modal-search,
+.docentes-search{
+  background:#fff !important;
+  border:1px solid #D9E2EF !important;
+  border-radius:14px !important;
+  box-shadow:0 1px 3px rgba(10,37,64,.06) !important;
+  color:#516173 !important;
+}
+
+.mesas-search input,
+.materias-search input,
+.catedras-search input,
+.catedras-modal-search input,
+.docentes-search input,
+.form-label input,
+.form-label select,
+.add-row input,
+.add-row select,
+.catedras-filtros select,
+.catedras-select,
+.docentes-form input,
+.docentes-form select,
+.docentes-form textarea,
+.mesas-field input,
+.nota-select,
+.taller-search-wrap input,
+.modal-corr-field input,
+.modal-corr-field select{
+  background:#fff !important;
+  border-color:#D9E2EF !important;
+  color:#0A2540 !important;
+  border-radius:12px !important;
+}
+
+.mesas-search input:focus,
+.materias-search input:focus,
+.catedras-search input:focus,
+.catedras-modal-search input:focus,
+.docentes-search input:focus,
+.form-label input:focus,
+.form-label select:focus,
+.add-row input:focus,
+.add-row select:focus,
+.catedras-filtros select:focus,
+.catedras-select:focus,
+.docentes-form input:focus,
+.docentes-form select:focus,
+.docentes-form textarea:focus,
+.mesas-field input:focus,
+.nota-select:focus,
+.taller-search-wrap input:focus,
+.modal-corr-field input:focus,
+.modal-corr-field select:focus{
+  border-color:#0055BB !important;
+  box-shadow:0 0 0 4px rgba(0,85,187,.12) !important;
+  outline:none !important;
+}
+
+.mesas-card,
+.materias-card,
+.catedras-card,
+.docentes-card,
+.subsection-card,
+.taller-box,
+.catedras-docente-actual,
+.docentes-confirm-box,
+.docentes-info-card,
+.docentes-info-section,
+.modal-corr-section,
+.modal-corr-relacion,
+.modal-corr-auto-preview,
+.modal-corr-example{
+  background:#fff !important;
+  border:1px solid rgba(10,37,64,.12) !important;
+  border-radius:18px !important;
+  box-shadow:0 10px 22px rgba(10,37,64,.10) !important;
+}
+
+.mesas-card-header,
+.materias-card-header,
+.catedras-header,
+.docentes-header,
+.catedras-modal-header,
+.docentes-modal-header,
+.materias-modal-header,
+.mesas-modal-header,
+.modal-corr-header{
+  border-color:rgba(10,37,64,.10) !important;
+}
+
+.mesas-table-wrap,
+.materias-table-wrap,
+.catedras-table-wrap,
+.docentes-table-wrap,
+.docentes-info-table-wrap{
+  background:#fff !important;
+  border:1px solid rgba(10,37,64,.12) !important;
+  border-radius:16px !important;
+  box-shadow:0 1px 3px rgba(10,37,64,.08) !important;
+  overflow:auto !important;
+}
+
+.mesas-table,
+.materias-table,
+.catedras-table,
+.docentes-table,
+.docentes-info-table{
+  color:#0A2540 !important;
+}
+
+.mesas-table thead th,
+.materias-table thead th,
+.catedras-table thead th,
+.docentes-table thead th,
+.docentes-info-table thead th{
+  background:#F6F8FB !important;
+  color:#0A2540 !important;
+  border-bottom:1px solid rgba(10,37,64,.12) !important;
+  font-weight:650 !important;
+}
+
+.mesas-table tbody td,
+.materias-table tbody td,
+.catedras-table tbody td,
+.docentes-table tbody td,
+.docentes-info-table tbody td{
+  border-bottom-color:rgba(10,37,64,.08) !important;
+  color:#425466 !important;
+}
+
+.mesas-table tbody tr:nth-child(even),
+.materias-table tbody tr:nth-child(even){
+  background:#FAFBFD !important;
+}
+
+.mesas-table tbody tr:hover,
+.materias-table tbody tr:hover,
+.catedras-table tbody tr:hover,
+.docentes-table tbody tr:hover,
+.docentes-info-table tbody tr:hover{
+  background:rgba(0,85,187,.055) !important;
+}
+
+.mesas-tabs,
+.materias-tabs,
+.docentes-tabs,
+.modal-corr-mode-tabs,
+.materias-subsections-bar{
+  background:#fff !important;
+  border:1px solid rgba(10,37,64,.12) !important;
+  border-radius:16px !important;
+  box-shadow:0 1px 3px rgba(10,37,64,.06) !important;
+}
+
+.mesas-tab,
+.materias-tab,
+.docentes-tab,
+.materias-section-btn,
+.modal-corr-mode-tabs button{
+  color:#425466 !important;
+  border-radius:12px !important;
+}
+
+.mesas-tab.active,
+.materias-tab.active,
+.docentes-tab.active,
+.materias-section-btn:hover,
+.modal-corr-mode-tabs button.active{
+  background:#0A2540 !important;
+  color:#fff !important;
+  box-shadow:0 10px 22px rgba(10,37,64,.18) !important;
+}
+
+.mesas-filter-btn,
+.materias-filter-btn,
+.materias-btn,
+.catedras-btn,
+.catedras-action-btn,
+.catedras-btn-icon,
+.docentes-btn,
+.docentes-icon-btn,
+.icon-btn,
+.btn-action,
+.btn-modal-cancel,
+.btn-modal-confirm,
+.btn-corr,
+.modal-corr-add,
+.modal-corr-remove,
+.modal-close,
+.mesas-modal-close,
+.docentes-modal-close{
+  border-radius:12px !important;
+  font-weight:600 !important;
+  transition:background 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease, transform 160ms ease !important;
+}
+
+.mesas-filter-btn,
+.materias-filter-btn,
+.materias-btn.ghost,
+.catedras-btn-light,
+.catedras-btn-secondary,
+.docentes-btn-light,
+.btn-back,
+.btn-modal-cancel,
+.btn-corr.ghost,
+.icon-btn,
+.docentes-icon-btn,
+.catedras-action-btn,
+.catedras-btn-icon,
+.modal-close,
+.mesas-modal-close,
+.docentes-modal-close{
+  background:#fff !important;
+  border:1px solid #D9E2EF !important;
+  color:#0A2540 !important;
+  box-shadow:0 1px 3px rgba(10,37,64,.06) !important;
+}
+
+.materias-btn.primary,
+.catedras-btn-primary,
+.docentes-btn-primary,
+.btn-create,
+.btn-modal-confirm,
+.btn-corr.primary,
+.modal-corr-add,
+.mesas-tab-link.active{
+  background:#0055BB !important;
+  border-color:#0055BB !important;
+  color:#fff !important;
+  box-shadow:0 10px 22px rgba(0,85,187,.20) !important;
+}
+
+.btn-excel{
+  background:#22AD5C !important;
+  border-color:#22AD5C !important;
+  color:#fff !important;
+}
+
+.btn-pdf{
+  background:#0A2540 !important;
+  border-color:#0A2540 !important;
+  color:#fff !important;
+}
+
+.btn-delete,
+.materias-btn.back,
+.icon-btn.danger,
+.docentes-btn-danger,
+.docentes-icon-danger,
+.btn-action.btn-delete,
+.modal-corr-remove{
+  background:#E13D45 !important;
+  border-color:#E13D45 !important;
+  color:#fff !important;
+  box-shadow:0 10px 22px rgba(225,61,69,.18) !important;
+}
+
+.mesas-filter-btn:hover,
+.materias-filter-btn:hover,
+.materias-btn:hover,
+.catedras-btn:hover,
+.catedras-action-btn:hover,
+.docentes-btn:hover,
+.docentes-icon-btn:hover,
+.icon-btn:hover,
+.btn-action:hover,
+.btn-modal-cancel:hover,
+.btn-modal-confirm:hover,
+.btn-corr:hover,
+.modal-corr-add:hover,
+.modal-corr-remove:hover{
+  transform:translateY(-1px) !important;
+  filter:brightness(1.02) !important;
+  box-shadow:0 14px 28px rgba(10,37,64,.14) !important;
+}
+
+.badge,
+.catedras-badge,
+.docentes-badge,
+.tipo-mesa,
+.chip,
+.mesas-turno-pill{
+  border-radius:999px !important;
+  font-weight:600 !important;
+  border:1px solid rgba(10,37,64,.10) !important;
+}
+
+.badge.ok,
+.mesas-alert-ok{
+  background:rgba(34,173,92,.10) !important;
+  color:#127A41 !important;
+  border-color:rgba(34,173,92,.22) !important;
+}
+
+.badge.off,
+.mesas-alert-error,
+.catedras-alerta-error,
+.docentes-alerta-error,
+.mesas-modal-error,
+.modal-corr-error,
+.modal-inline-error{
+  background:rgba(225,61,69,.10) !important;
+  color:#B4232B !important;
+  border-color:rgba(225,61,69,.22) !important;
+}
+
+.badge.info,
+.catedras-badge,
+.docentes-badge,
+.tipo-simple,
+.tipo-taller,
+.tipo-correlativa,
+.chip,
+.mesas-turno-pill{
+  background:rgba(0,85,187,.08) !important;
+  color:#0055BB !important;
+  border-color:rgba(0,85,187,.18) !important;
+}
+
+.mesas-modal-overlay,
+.materias-modal-overlay,
+.catedras-modal-overlay,
+.docentes-modal-overlay,
+.modal-corr-overlay{
+  background:rgba(10,37,64,.55) !important;
+  backdrop-filter:blur(6px) !important;
+}
+
+.mesas-modal,
+.materias-modal,
+.catedras-modal,
+.docentes-modal,
+.modal-corr{
+  background:#fff !important;
+  border:1px solid rgba(10,37,64,.12) !important;
+  border-radius:18px !important;
+  box-shadow:0 28px 64px -24px rgba(10,37,64,.32) !important;
+  color:#0A2540 !important;
+}
+
+.materias-modal-icon,
+.docentes-info-icon,
+.mesas-modal-header svg,
+.catedras-header h1 svg,
+.docentes-header h1 svg,
+.materias-title-wrap h1 svg,
+.mesas-title-wrap h1 svg{
+  color:#0055BB !important;
+}
+
+.empty,
+.mesas-empty,
+.catedras-empty,
+.docentes-empty,
+.docentes-empty-small,
+.asignar-empty{
+  color:rgba(66,84,102,.72) !important;
+}

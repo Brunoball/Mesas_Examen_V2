@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -18,9 +18,11 @@ import ModalDocente from './modales/ModalDocente.jsx';
 import ModalInfoDocente from './modales/ModalInfoDocente.jsx';
 import ModalConfirmarDocente from './modales/ModalConfirmarDocente.jsx';
 import './Docentes.css';
+import Principal, { MesasShellContext } from '../Principal/Principal';
 
 export default function Docentes() {
   const navigate = useNavigate();
+  const dentroDeShell = useContext(MesasShellContext);
   const {
     docentes,
     catalogos,
@@ -76,7 +78,7 @@ export default function Docentes() {
     return { ok: false, mensaje: 'Operación inválida.' };
   }
 
-  return (
+  const contenido = (
     <div className="docentes-page">
       <div className="docentes-card">
         <div className="docentes-header">
@@ -259,4 +261,6 @@ export default function Docentes() {
       )}
     </div>
   );
+
+  return dentroDeShell ? contenido : <Principal>{contenido}</Principal>;
 }

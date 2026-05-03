@@ -324,3 +324,108 @@ html, body {
   .ini_footer { flex-direction: column; }
   .ini_footer .ini_boton { flex: 1 1 100%; }
 }
+/* =========================================================
+   ESTÉTICA SISTEMA GLOBAL / BALTO — LOGIN / REGISTRO
+   Solo CSS: mantiene validaciones y envío intactos.
+   ========================================================= */
+:root{
+  --blue-inst-primary:#0A2540;
+  --blue-inst-primary-light:#0055BB;
+  --blue-inst-primary-dark:#0A2540;
+  --blue-inst-secondary:#0055BB;
+  --blue-inst-accent:#0055BB;
+  --blue-inst-success:#22AD5C;
+  --blue-inst-warning:#F59E0B;
+  --blue-inst-danger:#E13D45;
+  --blue-inst-light:#F6F9FC;
+  --blue-inst-dark:#0A2540;
+  --blue-inst-gray-100:#F6F8FB;
+  --blue-inst-gray-200:#D9E2EF;
+  --blue-inst-gray-300:#C9D6E6;
+  --blue-inst-gray-400:#8A99AC;
+  --blue-inst-gray-500:#64748B;
+  --blue-inst-gray-600:#516173;
+  --blue-inst-gray-700:#425466;
+  --blue-inst-gray-800:#0A2540;
+  --blue-inst-gray-900:#071B2F;
+  --blue-inst-radius:12px;
+  --blue-inst-radius-lg:18px;
+  --blue-inst-radius-xl:22px;
+  --blue-inst-shadow-xl:0 28px 64px -24px rgba(10,37,64,.32);
+}
+
+.ini_contenedor-principal,
+.reg_global-container{
+  background:
+    linear-gradient(rgba(10,37,64,.48), rgba(10,37,64,.54)),
+    url('../../imagenes/img_fondo.png') center center / cover no-repeat fixed !important;
+  font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif !important;
+}
+
+.ini_contenedor,
+.reg_contenedor{
+  background:rgba(255,255,255,.96) !important;
+  border:1px solid rgba(255,255,255,.34) !important;
+  border-radius:22px !important;
+  box-shadow:0 28px 64px -24px rgba(10,37,64,.42) !important;
+}
+
+.ini_contenedor::before,
+.reg_contenedor::before{
+  background:#0055BB !important;
+}
+
+.ini_logo,
+.reg_logo{
+  border-color:#0A2540 !important;
+  box-shadow:0 8px 18px rgba(10,37,64,.14) !important;
+}
+
+.ini_titulo,
+.reg_titulo{
+  color:#0A2540 !important;
+  font-weight:650 !important;
+}
+
+.ini_subtitulo,
+.reg_subtitulo,
+.ini_footer,
+.reg_footer{
+  color:rgba(66,84,102,.72) !important;
+}
+
+.ini_input,
+.reg_input{
+  background:#fff !important;
+  border:1px solid #D9E2EF !important;
+  color:#0A2540 !important;
+  border-radius:12px !important;
+}
+
+.ini_input:focus,
+.reg_input:focus{
+  border-color:#0055BB !important;
+  box-shadow:0 0 0 4px rgba(0,85,187,.12) !important;
+}
+
+.ini_boton,
+.reg_boton{
+  background:#0055BB !important;
+  border-color:#0055BB !important;
+  color:#fff !important;
+  border-radius:12px !important;
+  box-shadow:0 10px 22px rgba(0,85,187,.20) !important;
+  font-weight:600 !important;
+}
+
+.reg_boton-secundario{
+  background:#fff !important;
+  color:#0A2540 !important;
+  border:1px solid #D9E2EF !important;
+  box-shadow:0 1px 3px rgba(10,37,64,.08) !important;
+}
+
+.ini_toggle-password,
+.reg_toggle-password{
+  color:#0055BB !important;
+}

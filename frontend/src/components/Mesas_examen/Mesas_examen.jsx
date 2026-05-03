@@ -1,5 +1,5 @@
 // src/components/Mesas_examen/Mesas_examen.jsx
-import React from "react";
+import React, { useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -20,12 +20,14 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 import "./Mesas_examen.css";
+import Principal, { MesasShellContext } from "../Principal/Principal";
 import { useMesasExamen } from "./hooks/useMesasExamen";
 import ModalCrearMesa from "./modales/ModalCrearMesa";
 import logo from "../../imagenes/Escudo.png";
 
 const MesasExamen = () => {
   const navigate = useNavigate();
+  const dentroDeShell = useContext(MesasShellContext);
 
   const {
     busqueda,
@@ -59,7 +61,7 @@ const MesasExamen = () => {
     navigate("/panel");
   };
 
-  return (
+  const contenido = (
     <div className="mesas-page">
       <header className="mesas-topbar">
         <div className="mesas-title-wrap">
@@ -288,6 +290,8 @@ const MesasExamen = () => {
       />
     </div>
   );
+
+  return dentroDeShell ? contenido : <Principal>{contenido}</Principal>;
 };
 
 export default MesasExamen;

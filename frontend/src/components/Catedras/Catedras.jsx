@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -12,9 +12,11 @@ import {
 import { useCatedras } from './hooks/useCatedras';
 import ModalAsignarDocente from './modales/ModalAsignarDocente';
 import './Catedras.css';
+import Principal, { MesasShellContext } from '../Principal/Principal';
 
 export default function Catedras() {
   const navigate = useNavigate();
+  const dentroDeShell = useContext(MesasShellContext);
   const {
     catedras,
     catalogos,
@@ -47,7 +49,7 @@ export default function Catedras() {
     return res;
   }
 
-  return (
+  const contenido = (
     <div className="catedras-page">
       <div className="catedras-card">
         <div className="catedras-header">
@@ -212,4 +214,6 @@ export default function Catedras() {
       )}
     </div>
   );
+
+  return dentroDeShell ? contenido : <Principal>{contenido}</Principal>;
 }
