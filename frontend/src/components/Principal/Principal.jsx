@@ -94,6 +94,14 @@ const NAV_ITEMS = [
     description: "Crear, consultar, agrupar y exportar mesas.",
   },
   {
+    key: "previas",
+    label: "Previas",
+    icon: faGraduationCap,
+    bottomIcon: faGraduationCap,
+    ruta: "/previas",
+    description: "Cargar, editar, dar de baja y administrar previas.",
+  },
+  {
     key: "materias",
     label: "Materias",
     icon: faBookOpen,

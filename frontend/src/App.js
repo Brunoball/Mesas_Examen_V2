@@ -10,6 +10,7 @@ import MesasExamen from "./components/Mesas_examen/Mesas_examen";
 import Materias from "./components/Materias/Materias";
 import Catedras from "./components/Catedras/Catedras";
 import Docentes from "./components/Docentes/Docentes";
+import Previas from "./components/Previas/Previas.jsx";
 
 function isAuthenticated() {
   try {
@@ -85,6 +86,15 @@ export default function App() {
           element={
             <RutaProtegida>
               <Docentes />
+            </RutaProtegida>
+          }
+        />
+
+        <Route
+          path="/previas"
+          element={
+            <RutaProtegida>
+              <Previas />
             </RutaProtegida>
           }
         />

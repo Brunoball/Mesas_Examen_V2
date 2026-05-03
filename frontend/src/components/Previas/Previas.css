@@ -1,0 +1,778 @@
+/* src/components/Previas/Previas.css */
+.previas-page {
+  min-height: 100%;
+  padding: 22px;
+  color: var(--blue-inst-gray-900, #0f172a);
+}
+
+.previas-card {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(217, 226, 239, 0.9);
+  border-radius: 24px;
+  box-shadow: 0 24px 60px -30px rgba(10, 37, 64, 0.35);
+  overflow: hidden;
+}
+
+.previas-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+  padding: 30px 34px;
+  background: linear-gradient(135deg, #1d428a 0%, #102e6a 100%);
+  color: #fff;
+}
+
+.previas-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 40px;
+  padding: 0 16px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: 180ms ease;
+}
+
+.previas-back:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+}
+
+.previas-header h1 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-size: clamp(30px, 3vw, 44px);
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+
+.previas-header p {
+  margin: 12px 0 0;
+  max-width: 720px;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.previas-header-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.previas-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 180ms ease;
+  white-space: nowrap;
+}
+
+.previas-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.previas-btn-primary {
+  background: #1d428a;
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(29, 66, 138, 0.24);
+}
+
+.previas-btn-primary:hover:not(:disabled) {
+  background: #102e6a;
+  transform: translateY(-1px);
+}
+
+.previas-btn-light {
+  background: #fff;
+  color: #1d428a;
+  border-color: rgba(29, 66, 138, 0.18);
+}
+
+.previas-btn-light:hover:not(:disabled) {
+  background: #f5f8ff;
+  transform: translateY(-1px);
+}
+
+.previas-btn-danger {
+  background: #e13d45;
+  color: #fff;
+}
+
+.previas-btn-warning {
+  background: #f59e0b;
+  color: #fff;
+}
+
+.previas-btn-success {
+  background: #22ad5c;
+  color: #fff;
+}
+
+.previas-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 18px 22px 0;
+  background: #fff;
+  border-bottom: 1px solid rgba(217, 226, 239, 0.95);
+}
+
+.previas-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 18px;
+  border: 1px solid rgba(217, 226, 239, 0.95);
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  background: #f3f6fb;
+  color: #0f172a;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 180ms ease;
+}
+
+.previas-tab.active {
+  background: #fff;
+  color: #0055bb;
+  box-shadow: inset 0 -3px 0 #0055bb;
+}
+
+.previas-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  background: #fff;
+}
+
+.previas-search {
+  position: relative;
+  flex: 1;
+  max-width: 620px;
+}
+
+.previas-search svg {
+  position: absolute;
+  top: 50%;
+  left: 16px;
+  transform: translateY(-50%);
+  color: #64748b;
+}
+
+.previas-search input {
+  width: 100%;
+  height: 48px;
+  padding: 0 16px 0 46px;
+  border: 1px solid rgba(217, 226, 239, 0.95);
+  border-radius: 14px;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 15px;
+  outline: none;
+  transition: 180ms ease;
+}
+
+.previas-search input:focus {
+  border-color: rgba(0, 85, 187, 0.42);
+  box-shadow: 0 0 0 4px rgba(0, 85, 187, 0.12);
+  background: #fff;
+}
+
+.previas-alerta {
+  margin: 0 22px 16px;
+  padding: 13px 16px;
+  border-radius: 14px;
+  font-weight: 700;
+}
+
+.previas-alerta-success {
+  background: rgba(34, 173, 92, 0.1);
+  color: #0b7a3a;
+  border: 1px solid rgba(34, 173, 92, 0.22);
+}
+
+.previas-alerta-error {
+  background: rgba(225, 61, 69, 0.1);
+  color: #b4232b;
+  border: 1px solid rgba(225, 61, 69, 0.22);
+}
+
+.previas-table-wrap {
+  margin: 0 22px;
+  border: 1px solid rgba(217, 226, 239, 0.95);
+  border-radius: 18px;
+  overflow: auto;
+  background: #fff;
+}
+
+.previas-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+}
+
+.previas-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 15px 16px;
+  background: #f6f9fc;
+  color: #334155;
+  text-align: left;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid rgba(217, 226, 239, 0.95);
+}
+
+.previas-table tbody td {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(217, 226, 239, 0.65);
+  vertical-align: middle;
+  color: #0f172a;
+}
+
+.previas-table tbody tr:hover td {
+  background: rgba(0, 85, 187, 0.035);
+}
+
+.previas-name-cell,
+.previas-materia-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.previas-name-cell strong,
+.previas-materia-cell strong {
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.previas-name-cell small,
+.previas-materia-cell small {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.previas-dni-cell {
+  font-weight: 800;
+  color: #1d428a !important;
+}
+
+.previas-badge,
+.previas-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(29, 66, 138, 0.1);
+  color: #1d428a;
+  font-weight: 900;
+  font-size: 12px;
+}
+
+.previas-badge-soft,
+.previas-pill-muted {
+  background: #eef4fc;
+  color: #425466;
+}
+
+.previas-pill-ok {
+  background: rgba(34, 173, 92, 0.12);
+  color: #0b7a3a;
+}
+
+.previas-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 150px;
+}
+
+.previas-th-actions {
+  text-align: right !important;
+}
+
+.previas-icon-btn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(29, 66, 138, 0.16);
+  border-radius: 11px;
+  background: #fff;
+  color: #1d428a;
+  cursor: pointer;
+  transition: 180ms ease;
+}
+
+.previas-icon-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(10, 37, 64, 0.12);
+}
+
+.previas-icon-warning {
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.22);
+}
+
+.previas-icon-success {
+  color: #22ad5c;
+  border-color: rgba(34, 173, 92, 0.22);
+}
+
+.previas-icon-danger {
+  color: #e13d45;
+  border-color: rgba(225, 61, 69, 0.22);
+}
+
+.previas-empty {
+  padding: 36px !important;
+  text-align: center;
+  color: #64748b !important;
+  font-weight: 800;
+}
+
+.previas-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: center;
+  padding: 18px 22px 24px;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.previas-footer-note {
+  margin-left: auto;
+  color: #425466;
+}
+
+/* MODALES / FORMULARIO */
+.previas-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(7, 27, 47, 0.58);
+  backdrop-filter: blur(8px);
+}
+
+.previas-modal-overlay-full {
+  align-items: flex-start;
+  overflow: auto;
+}
+
+.previas-form-shell {
+  width: min(1376px, calc(100vw - 44px));
+  margin: 0 auto;
+  border-radius: 24px;
+  background: #fff;
+  overflow: hidden;
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.5);
+}
+
+.previas-form-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+  min-height: 140px;
+  padding: 32px 40px;
+  background: linear-gradient(135deg, #1d428a 0%, #102e6a 100%);
+  color: #fff;
+}
+
+.previas-form-title {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.previas-form-title > svg {
+  font-size: 32px;
+}
+
+.previas-form-title h2 {
+  margin: 0;
+  font-size: clamp(32px, 3vw, 42px);
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: -0.03em;
+}
+
+.previas-form-title p {
+  margin: 12px 0 0;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.previas-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  height: 44px;
+  padding: 0 22px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 180ms ease;
+}
+
+.previas-back-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.previas-form-body {
+  padding: 20px 22px 28px;
+}
+
+.previas-form-tabs,
+.previas-materia-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid #d9e2ef;
+  margin-bottom: 14px;
+}
+
+.previas-form-tab,
+.previas-materia-tab {
+  min-height: 44px;
+  padding: 0 20px;
+  border: 1px solid #d9e2ef;
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  background: #f3f6fb;
+  color: #0055bb;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.previas-form-tab.active,
+.previas-materia-tab.active {
+  background: #fff;
+  color: #0f172a;
+}
+
+.previas-materia-tab-add {
+  color: #0055bb;
+  border-color: #0055bb;
+  background: #fff;
+}
+
+.previas-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.previas-form-grid-two {
+  grid-template-columns: 1fr 1fr;
+}
+
+.previas-form-grid-edit {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.previas-form-card {
+  min-height: 255px;
+  padding: 20px 18px;
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.previas-form-card h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 950;
+}
+
+.previas-section-line {
+  width: 70px;
+  height: 3px;
+  margin: 9px 0 22px;
+  border-radius: 99px;
+  background: #1d428a;
+}
+
+.previas-two-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.previas-field {
+  position: relative;
+  display: block;
+  margin-bottom: 22px;
+}
+
+.previas-field span {
+  position: absolute;
+  top: -9px;
+  left: 22px;
+  z-index: 1;
+  padding: 0 7px;
+  background: #fff;
+  color: #13243d;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.previas-field input,
+.previas-field select,
+.previas-confirm-label textarea {
+  width: 100%;
+  min-height: 62px;
+  border: 1px solid #d9e2ef;
+  border-radius: 16px;
+  background: #fff;
+  color: #0f172a;
+  font-size: 18px;
+  padding: 0 20px;
+  outline: none;
+  transition: 180ms ease;
+}
+
+.previas-field input::placeholder {
+  color: #7a8797;
+}
+
+.previas-field select:disabled,
+.previas-field input:disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.previas-field input:focus,
+.previas-field select:focus,
+.previas-confirm-label textarea:focus {
+  border-color: rgba(0, 85, 187, 0.44);
+  box-shadow: 0 0 0 4px rgba(0, 85, 187, 0.12);
+}
+
+.previas-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.previas-mini-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(225, 61, 69, 0.22);
+  background: rgba(225, 61, 69, 0.08);
+  color: #e13d45;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.previas-form-error {
+  margin: 18px 0 0;
+}
+
+.previas-form-footer {
+  display: flex;
+  flex-direction: row-reverse;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-start;
+  margin-top: 26px;
+  padding-top: 24px;
+  border-top: 1px solid #d9e2ef;
+}
+
+.previas-modal,
+.previas-confirm {
+  width: min(520px, 94vw);
+  position: relative;
+  padding: 28px;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.45);
+}
+
+.previas-modal-sm {
+  width: min(420px, 94vw);
+}
+
+.previas-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid #d9e2ef;
+  background: #fff;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.previas-confirm-icon {
+  width: 58px;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  background: #eef4fc;
+  color: #1d428a;
+  font-size: 24px;
+}
+
+.previas-confirm h3 {
+  margin: 18px 0 8px;
+  color: #0f172a;
+  font-size: 24px;
+  font-weight: 950;
+}
+
+.previas-confirm p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.45;
+  font-weight: 650;
+}
+
+.previas-confirm-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 18px 0;
+  padding: 14px;
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.previas-confirm-item strong {
+  color: #0f172a;
+}
+
+.previas-confirm-item span {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.previas-confirm-label {
+  display: block;
+  margin-top: 16px;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.previas-confirm-label span {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.previas-confirm-label textarea {
+  min-height: 100px;
+  resize: vertical;
+  margin-top: 8px;
+  padding: 14px;
+  font-size: 15px;
+}
+
+.previas-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+@media (max-width: 1100px) {
+  .previas-form-grid,
+  .previas-form-grid-edit,
+  .previas-form-grid-two {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .previas-page {
+    padding: 12px;
+  }
+
+  .previas-header,
+  .previas-form-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 24px;
+  }
+
+  .previas-header-actions,
+  .previas-form-footer,
+  .previas-confirm-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .previas-btn,
+  .previas-header-actions .previas-btn,
+  .previas-form-footer .previas-btn,
+  .previas-confirm-actions .previas-btn {
+    width: 100%;
+  }
+
+  .previas-toolbar,
+  .previas-tabs,
+  .previas-form-tabs,
+  .previas-materia-tabs {
+    overflow-x: auto;
+  }
+
+  .previas-two-cols {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .previas-form-shell {
+    width: 100%;
+  }
+}

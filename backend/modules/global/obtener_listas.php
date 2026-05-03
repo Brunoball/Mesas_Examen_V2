@@ -10,23 +10,77 @@ function global_obtener_listas(): void
     try {
         $pdo = db();
 
-        $stmt = $pdo->query("\n            SELECT\n                id_especialidad AS id,\n                especialidad AS nombre,\n                cupo\n            FROM especialidad\n            ORDER BY nombre ASC\n        ");
+        $cursos = $pdo->query("
+            SELECT
+                id_curso,
+                nombre_curso
+            FROM curso
+            WHERE activo = 1
+            ORDER BY id_curso ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        $divisiones = $pdo->query("
+            SELECT
+                id_division,
+                nombre_division
+            FROM division
+            WHERE activo = 1
+            ORDER BY nombre_division ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        $condiciones = $pdo->query("
+            SELECT
+                id_condicion,
+                condicion
+            FROM condicion
+            WHERE activo = 1
+            ORDER BY id_condicion ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
 
         $especialidad = [];
-        foreach ($stmt->fetchAll() as $row) {
-            $especialidad[] = [
-                'id' => (int)$row['id'],
-                'nombre' => (string)$row['nombre'],
-                'cupo' => $row['cupo'] === null ? null : (int)$row['cupo'],
-            ];
+        try {
+            $stmtEspecialidad = $pdo->query("
+                SELECT
+                    id_especialidad AS id,
+                    especialidad AS nombre,
+                    cupo
+                FROM especialidad
+                WHERE activo = 1
+                ORDER BY especialidad ASC
+            ");
+
+            foreach ($stmtEspecialidad->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $especialidad[] = [
+                    'id' => (int)$row['id'],
+                    'nombre' => (string)$row['nombre'],
+                    'cupo' => $row['cupo'] === null ? null : (int)$row['cupo'],
+                ];
+            }
+        } catch (Throwable $e) {
+            // Especialidad no debe romper los catálogos globales básicos.
+            log_error($e, 'global_obtener_listas:especialidad');
         }
+
+        $payload = [
+            'cursos' => $cursos,
+            'divisiones' => $divisiones,
+            'condiciones' => $condiciones,
+            'especialidad' => $especialidad,
+            'especialidades' => $especialidad,
+        ];
 
         json_response([
             'exito' => true,
-            'especialidad' => $especialidad,
+            'mensaje' => 'Listas globales obtenidas correctamente.',
+            'data' => $payload,
+            ...$payload,
         ]);
     } catch (Throwable $e) {
         log_error($e, 'global_obtener_listas');
-        json_response(['exito' => false, 'mensaje' => 'Error al obtener listas.'], 500);
+
+        json_response([
+            'exito' => false,
+            'mensaje' => 'Error al obtener listas globales.',
+        ], 500);
     }
 }
