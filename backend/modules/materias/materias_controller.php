@@ -83,15 +83,30 @@ function materias_catalogos(): void
 
         $areas = $pdo->query("SELECT id_area, area, activo FROM areas ORDER BY area ASC")->fetchAll(PDO::FETCH_ASSOC);
         $cursos = $pdo->query("SELECT id_curso, nombre_curso, activo FROM curso ORDER BY id_curso ASC")->fetchAll(PDO::FETCH_ASSOC);
+        $divisiones = $pdo->query("SELECT id_division, nombre_division, activo FROM division ORDER BY id_division ASC")->fetchAll(PDO::FETCH_ASSOC);
 
         $materias = $pdo->query("\n            SELECT\n                m.id_materia,\n                m.materia,\n                m.activo,\n                COALESCE(GROUP_CONCAT(DISTINCT am.id_area ORDER BY am.id_area ASC SEPARATOR ','), '') AS ids_areas,\n                COALESCE(GROUP_CONCAT(DISTINCT a.area ORDER BY a.area ASC SEPARATOR ', '), '') AS areas,\n                COALESCE(GROUP_CONCAT(DISTINCT cu.id_curso ORDER BY cu.id_curso ASC SEPARATOR ','), '') AS ids_cursos,\n                COALESCE(GROUP_CONCAT(DISTINCT cu.nombre_curso ORDER BY cu.id_curso ASC SEPARATOR ', '), '') AS cursos\n            FROM materias m\n            LEFT JOIN areas_materias am ON am.id_materia = m.id_materia AND am.activo = 1\n            LEFT JOIN areas a ON a.id_area = am.id_area AND a.activo = 1\n            LEFT JOIN catedras ca ON ca.id_materia = m.id_materia AND ca.activo = 1\n            LEFT JOIN curso cu ON cu.id_curso = ca.id_curso AND cu.activo = 1\n            GROUP BY m.id_materia, m.materia, m.activo\n            ORDER BY m.materia ASC\n        ")->fetchAll(PDO::FETCH_ASSOC);
 
-        $talleres = $pdo->query("\n            SELECT\n                t.id_taller,\n                t.id_curso,\n                cu.nombre_curso AS curso,\n                t.taller,\n                t.activo\n            FROM talleres t\n            LEFT JOIN curso cu ON cu.id_curso = t.id_curso\n            ORDER BY t.id_curso ASC, t.taller ASC\n        ")->fetchAll(PDO::FETCH_ASSOC);
+        $talleres = $pdo->query("
+            SELECT
+                t.id_taller,
+                t.id_curso,
+                t.id_division,
+                cu.nombre_curso AS curso,
+                d.nombre_division AS division,
+                t.taller,
+                t.activo
+            FROM talleres t
+            LEFT JOIN curso cu ON cu.id_curso = t.id_curso
+            LEFT JOIN division d ON d.id_division = t.id_division
+            ORDER BY t.id_curso ASC, t.id_division ASC, t.taller ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
 
         json_response([
             'exito' => true,
             'areas' => $areas,
             'cursos' => $cursos,
+            'divisiones' => $divisiones,
             'materias' => $materias,
             'talleres' => $talleres,
         ]);
@@ -114,7 +129,7 @@ function materias_listar(): void
             talleres_asegurar_esquema($pdo);
         }
 
-        $stmt = $pdo->query("\n            SELECT\n                m.id_materia,\n                m.materia,\n                m.activo,\n                m.creado_en,\n                MIN(CASE WHEN am.activo = 1 THEN am.id_area END) AS id_area,\n                COALESCE(GROUP_CONCAT(DISTINCT CASE WHEN am.activo = 1 THEN am.id_area END ORDER BY am.id_area ASC SEPARATOR ','), '') AS ids_areas,\n                COALESCE(GROUP_CONCAT(DISTINCT a.area ORDER BY a.area ASC SEPARATOR ', '), '') AS areas,\n                COALESCE(GROUP_CONCAT(DISTINCT cu.nombre_curso ORDER BY cu.id_curso ASC SEPARATOR ', '), '') AS cursos,\n                COALESCE(GROUP_CONCAT(DISTINCT t.taller ORDER BY t.taller ASC SEPARATOR ', '), '') AS talleres,\n                (\n                    SELECT COUNT(*)\n                    FROM materias_correlativas mc\n                    WHERE mc.activo = 1\n                      AND (mc.id_materia = m.id_materia OR mc.id_materia_relacionada = m.id_materia)\n                ) AS cantidad_correlativas\n            FROM materias m\n            LEFT JOIN areas_materias am ON am.id_materia = m.id_materia AND am.activo = 1\n            LEFT JOIN areas a ON a.id_area = am.id_area AND a.activo = 1\n            LEFT JOIN catedras ca ON ca.id_materia = m.id_materia AND ca.activo = 1\n            LEFT JOIN curso cu ON cu.id_curso = ca.id_curso AND cu.activo = 1\n            LEFT JOIN talleres_materias tm ON tm.id_materia = m.id_materia AND tm.activo = 1\n            LEFT JOIN talleres t ON t.id_taller = tm.id_taller AND t.activo = 1\n            GROUP BY m.id_materia, m.materia, m.activo, m.creado_en\n            ORDER BY m.materia ASC\n        ");
+        $stmt = $pdo->query("\n            SELECT\n                m.id_materia,\n                m.materia,\n                m.activo,\n                m.creado_en,\n                MIN(CASE WHEN am.activo = 1 THEN am.id_area END) AS id_area,\n                COALESCE(GROUP_CONCAT(DISTINCT CASE WHEN am.activo = 1 THEN am.id_area END ORDER BY am.id_area ASC SEPARATOR ','), '') AS ids_areas,\n                COALESCE(GROUP_CONCAT(DISTINCT a.area ORDER BY a.area ASC SEPARATOR ', '), '') AS areas,\n                COALESCE(GROUP_CONCAT(DISTINCT cu.nombre_curso ORDER BY cu.id_curso ASC SEPARATOR ', '), '') AS cursos,\n                COALESCE(GROUP_CONCAT(DISTINCT CONCAT(t.taller, ' (', cu_t.nombre_curso, ' ', d_t.nombre_division, ')') ORDER BY t.taller ASC SEPARATOR ', '), '') AS talleres,\n                (\n                    SELECT COUNT(*)\n                    FROM materias_correlativas mc\n                    WHERE mc.activo = 1\n                      AND (mc.id_materia = m.id_materia OR mc.id_materia_relacionada = m.id_materia)\n                ) AS cantidad_correlativas\n            FROM materias m\n            LEFT JOIN areas_materias am ON am.id_materia = m.id_materia AND am.activo = 1\n            LEFT JOIN areas a ON a.id_area = am.id_area AND a.activo = 1\n            LEFT JOIN catedras ca ON ca.id_materia = m.id_materia AND ca.activo = 1\n            LEFT JOIN curso cu ON cu.id_curso = ca.id_curso AND cu.activo = 1\n            LEFT JOIN catedras ca_t\n                ON ca_t.id_materia = m.id_materia\n               AND ca_t.activo = 1\n            LEFT JOIN talleres_materias tm\n                ON tm.id_catedra = ca_t.id_catedra\n               AND tm.activo = 1\n            LEFT JOIN talleres t\n                ON t.id_taller = tm.id_taller\n               AND t.activo = 1\n            LEFT JOIN curso cu_t ON cu_t.id_curso = ca_t.id_curso\n            LEFT JOIN division d_t ON d_t.id_division = ca_t.id_division\n            GROUP BY m.id_materia, m.materia, m.activo, m.creado_en\n            ORDER BY m.materia ASC\n        ");
 
         json_response([
             'exito' => true,
@@ -237,7 +252,13 @@ function materias_eliminar(): void
 
         $pdo->beginTransaction();
         $pdo->prepare("DELETE FROM areas_materias WHERE id_materia = :id_materia")->execute([':id_materia' => $idMateria]);
-        $pdo->prepare("DELETE FROM talleres_materias WHERE id_materia = :id_materia")->execute([':id_materia' => $idMateria]);
+        $stmtDeleteTalleres = $pdo->prepare("
+            DELETE tm
+            FROM talleres_materias tm
+            INNER JOIN catedras ca ON ca.id_catedra = tm.id_catedra
+            WHERE ca.id_materia = :id_materia
+        ");
+        $stmtDeleteTalleres->execute([':id_materia' => $idMateria]);
         $pdo->prepare("DELETE FROM materias_correlativas WHERE id_materia = :id_materia OR id_materia_relacionada = :id_materia_rel")
             ->execute([':id_materia' => $idMateria, ':id_materia_rel' => $idMateria]);
         $pdo->prepare("DELETE FROM materias WHERE id_materia = :id_materia")->execute([':id_materia' => $idMateria]);

@@ -1362,3 +1362,47 @@
 .asignar-empty{
   color:rgba(66,84,102,.72) !important;
 }
+
+.form-grid.three {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  .form-grid.three {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Talleres por cátedra */
+.divisiones-check-grid {
+  margin-top: 10px;
+}
+
+.compact-actions {
+  margin: 0;
+  justify-content: flex-end;
+}
+
+.taller-catedras-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.taller-catedras-group {
+  border: 1px solid var(--materias-border, rgba(148, 163, 184, 0.24));
+  border-radius: 16px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.taller-group-title {
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--materias-text, #334155);
+  margin-bottom: 10px;
+}

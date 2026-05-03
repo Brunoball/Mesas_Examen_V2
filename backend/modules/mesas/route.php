@@ -16,10 +16,12 @@ function route_mesas(string $action): bool
             return true;
 
         /*
-         * Fase 1 actual: genera el borrador base en la tabla mesas.
-         * Mantengo el action original para no romper el frontend.
+         * Acción principal del botón/modal.
+         * Ahora crea el borrador y deja numero_mesa cargado.
+         * No asigna fecha_mesa ni id_turno en esta etapa.
          */
         case 'mesas_armado_crear':
+        case 'mesas_armado_crear_numerado':
         case 'mesas_armado_fase_1_generar_borrador':
             mesas_armado_crear();
             return true;
@@ -28,10 +30,6 @@ function route_mesas(string $action): bool
             mesas_armado_eliminar_borrador();
             return true;
 
-        /*
-         * Acciones preparadas para las fases siguientes.
-         * Por ahora responden pendiente de implementación.
-         */
         case 'mesas_armado_fase_2_talleres':
         case 'mesas_armado_fase_2_agrupar_talleres':
             mesas_armado_fase_2_agrupar_talleres();
@@ -42,8 +40,15 @@ function route_mesas(string $action): bool
             mesas_armado_fase_3_agrupar_correlativas();
             return true;
 
+        /*
+         * Acción para corregir/numerar lo que ya exista en la tabla mesas.
+         */
         case 'mesas_armado_fase_4_simples':
         case 'mesas_armado_fase_4_agrupar_simples':
+        case 'mesas_armado_numerar':
+        case 'mesas_armado_asignar_numeros':
+        case 'mesas_armado_numerar_docente_materia':
+        case 'mesas_armado_reparar_numeros':
             mesas_armado_fase_4_agrupar_simples();
             return true;
 

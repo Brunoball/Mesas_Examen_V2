@@ -10,6 +10,42 @@ import {
   faTriangleExclamation,
 } from "@fortawesome/free-solid-svg-icons";
 
+const esFechaValida = (fecha) => /^\d{4}-\d{2}-\d{2}$/.test(String(fecha || ""));
+
+const crearFechaLocal = (fecha) => {
+  if (!esFechaValida(fecha)) return null;
+
+  const [anio, mes, dia] = fecha.split("-").map(Number);
+  return new Date(anio, mes - 1, dia);
+};
+
+const formatearFechaLocal = (date) => {
+  const anio = date.getFullYear();
+  const mes = String(date.getMonth() + 1).padStart(2, "0");
+  const dia = String(date.getDate()).padStart(2, "0");
+
+  return `${anio}-${mes}-${dia}`;
+};
+
+const esFinDeSemana = (fecha) => {
+  const date = crearFechaLocal(fecha);
+  if (!date) return false;
+
+  const diaSemana = date.getDay();
+  return diaSemana === 0 || diaSemana === 6;
+};
+
+const ajustarADiaHabil = (fecha) => {
+  const date = crearFechaLocal(fecha);
+  if (!date) return "";
+
+  while (date.getDay() === 0 || date.getDay() === 6) {
+    date.setDate(date.getDate() + 1);
+  }
+
+  return formatearFechaLocal(date);
+};
+
 const ModalCrearMesa = ({
   abierto,
   parametros,
@@ -20,15 +56,16 @@ const ModalCrearMesa = ({
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
   const [limpiarBorrador, setLimpiarBorrador] = useState(true);
-  const [excluirFinesSemana, setExcluirFinesSemana] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (abierto && parametros) {
-      setFechaInicio(parametros.fecha_inicio_sugerida || "");
-      setFechaFin(parametros.fecha_fin_sugerida || "");
+      const inicioSugerido = ajustarADiaHabil(parametros.fecha_inicio_sugerida || "");
+      const finSugerido = ajustarADiaHabil(parametros.fecha_fin_sugerida || "");
+
+      setFechaInicio(inicioSugerido);
+      setFechaFin(finSugerido && finSugerido >= inicioSugerido ? finSugerido : inicioSugerido);
       setLimpiarBorrador(true);
-      setExcluirFinesSemana(true);
       setError("");
     }
   }, [abierto, parametros]);
@@ -39,6 +76,35 @@ const ModalCrearMesa = ({
 
   const totalPrevias = parametros?.total_previas_para_armar || 0;
   const turnos = parametros?.turnos || [];
+
+  const handleFechaInicioChange = (e) => {
+    const nuevaFecha = e.target.value;
+
+    if (esFinDeSemana(nuevaFecha)) {
+      setError("No se puede elegir sábado ni domingo como fecha de inicio. Seleccioná un día hábil.");
+      return;
+    }
+
+    setFechaInicio(nuevaFecha);
+
+    if (fechaFin && nuevaFecha && fechaFin < nuevaFecha) {
+      setFechaFin(nuevaFecha);
+    }
+
+    setError("");
+  };
+
+  const handleFechaFinChange = (e) => {
+    const nuevaFecha = e.target.value;
+
+    if (esFinDeSemana(nuevaFecha)) {
+      setError("No se puede elegir sábado ni domingo como fecha de finalización. Seleccioná un día hábil.");
+      return;
+    }
+
+    setFechaFin(nuevaFecha);
+    setError("");
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -53,6 +119,16 @@ const ModalCrearMesa = ({
       return;
     }
 
+    if (esFinDeSemana(fechaInicio)) {
+      setError("La fecha de inicio no puede ser sábado ni domingo.");
+      return;
+    }
+
+    if (esFinDeSemana(fechaFin)) {
+      setError("La fecha de finalización no puede ser sábado ni domingo.");
+      return;
+    }
+
     if (fechaFin < fechaInicio) {
       setError("La fecha de finalización no puede ser menor que la fecha de inicio.");
       return;
@@ -64,7 +140,7 @@ const ModalCrearMesa = ({
       fecha_inicio: fechaInicio,
       fecha_fin: fechaFin,
       limpiar_borrador: limpiarBorrador,
-      excluir_fines_semana: excluirFinesSemana,
+      excluir_fines_semana: true,
     });
   };
 
@@ -74,7 +150,7 @@ const ModalCrearMesa = ({
         <div className="mesas-modal-header">
           <div>
             <h3>Crear mesas de examen</h3>
-            <p>Primera fase: cruzar previas inscriptas con cátedras y docentes.</p>
+            <p>Cruza previas inscriptas con cátedras/docentes y genera los números de mesa.</p>
           </div>
 
           <button
@@ -91,8 +167,7 @@ const ModalCrearMesa = ({
           <div className="mesas-modal-alert">
             <FontAwesomeIcon icon={faTriangleExclamation} />
             <span>
-              Esta acción inserta/actualiza registros base en la tabla <strong>mesas</strong>.
-              Todavía no genera el número final de mesa.
+              Esta acción inserta/actualiza registros en la tabla <strong>mesas</strong> y deja el armado agrupado por número de mesa.
             </span>
           </div>
 
@@ -105,7 +180,7 @@ const ModalCrearMesa = ({
               <input
                 type="date"
                 value={fechaInicio}
-                onChange={(e) => setFechaInicio(e.target.value)}
+                onChange={handleFechaInicioChange}
                 disabled={cargando}
               />
             </label>
@@ -118,10 +193,19 @@ const ModalCrearMesa = ({
               <input
                 type="date"
                 value={fechaFin}
-                onChange={(e) => setFechaFin(e.target.value)}
+                min={fechaInicio || undefined}
+                onChange={handleFechaFinChange}
                 disabled={cargando}
               />
             </label>
+          </div>
+
+          <div className="mesas-modal-alert">
+            <FontAwesomeIcon icon={faCalendarDays} />
+            <span>
+              El armado usa únicamente días hábiles. Si el rango incluye sábado o domingo,
+              el sistema los descarta automáticamente y continúa con el siguiente día hábil.
+            </span>
           </div>
 
           <div className="mesas-modal-info">
@@ -162,16 +246,6 @@ const ModalCrearMesa = ({
                 disabled={cargando}
               />
               Eliminar borradores anteriores antes de armar
-            </label>
-
-            <label>
-              <input
-                type="checkbox"
-                checked={excluirFinesSemana}
-                onChange={(e) => setExcluirFinesSemana(e.target.checked)}
-                disabled={cargando}
-              />
-              Excluir sábados y domingos
             </label>
           </div>
 

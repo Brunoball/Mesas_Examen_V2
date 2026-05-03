@@ -19,7 +19,7 @@ const SeccionTalleres = ({
           <h2>
             <FontAwesomeIcon icon={faFlask} /> Talleres
           </h2>
-          <p>Cada taller pertenece a un curso/año y contiene únicamente materias de ese curso según cátedras.</p>
+          <p>Cada taller se arma desde cátedras reales. Podés cargarlo para una o varias divisiones sin guardar materia/curso/división en talleres_materias.</p>
         </div>
 
         <div className="materias-header-actions">
@@ -51,8 +51,9 @@ const SeccionTalleres = ({
             <tr>
               <th>Taller</th>
               <th>Curso</th>
-              <th>Cantidad materias</th>
-              <th>Materias incluidas</th>
+              <th>División</th>
+              <th>Cantidad cátedras</th>
+              <th>Cátedras incluidas</th>
               <th>Estado</th>
               <th className="acciones">Acciones</th>
             </tr>
@@ -61,7 +62,7 @@ const SeccionTalleres = ({
           <tbody>
             {talleresFiltrados.length === 0 ? (
               <tr>
-                <td colSpan="6" className="empty">
+                <td colSpan="7" className="empty">
                   {cargando ? "Cargando..." : "No hay talleres cargados."}
                 </td>
               </tr>
@@ -70,6 +71,7 @@ const SeccionTalleres = ({
                 <tr key={t.id_taller}>
                   <td><strong>{t.taller}</strong></td>
                   <td>{t.curso || "-"}</td>
+                  <td>{t.division || "-"}</td>
                   <td>{t.cantidad_materias || 0}</td>
                   <td>{t.materias || "-"}</td>
                   <td>

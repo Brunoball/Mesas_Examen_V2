@@ -72,6 +72,7 @@ const Materias = () => {
     agregarMateriaTaller,
     quitarMateriaTaller,
     obtenerMateriasPorCurso,
+    obtenerCatedrasTaller,
     precargarMateriasDeCursos,
     guardarArea,
     eliminarArea,
@@ -335,8 +336,10 @@ const Materias = () => {
         <ModalTaller
           item={modalTaller.item}
           cursos={catalogos.cursos}
+          divisiones={catalogos.divisiones}
           areas={catalogos.areas}
           onObtenerMateriasPorCurso={obtenerMateriasPorCurso}
+          onObtenerCatedrasTaller={obtenerCatedrasTaller}
           onClose={() => setModalTaller({ abierto: false, item: null })}
           onSave={guardarTaller}
           onAddMateria={agregarMateriaTaller}

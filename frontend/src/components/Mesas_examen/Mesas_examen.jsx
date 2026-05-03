@@ -1,11 +1,9 @@
 // src/components/Mesas_examen/Mesas_examen.jsx
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowLeft,
-  faFileExcel,
-  faFilePdf,
   faLayerGroup,
   faMagnifyingGlass,
   faTrash,
@@ -13,6 +11,7 @@ import {
   faUserPlus,
   faLinkSlash,
   faChevronDown,
+  faChevronRight,
   faSpinner,
   faRotateRight,
   faTriangleExclamation,
@@ -25,9 +24,15 @@ import { useMesasExamen } from "./hooks/useMesasExamen";
 import ModalCrearMesa from "./modales/ModalCrearMesa";
 import logo from "../../imagenes/Escudo.png";
 
+const textoCorto = (valor, fallback = "-") => {
+  const texto = String(valor || "").trim();
+  return texto || fallback;
+};
+
 const MesasExamen = () => {
   const navigate = useNavigate();
   const dentroDeShell = useContext(MesasShellContext);
+  const [mesasAbiertas, setMesasAbiertas] = useState({});
 
   const {
     busqueda,
@@ -40,6 +45,7 @@ const MesasExamen = () => {
 
     totalObservadas,
     totalArmadas,
+    totalAlumnos,
 
     parametrosArmado,
     resumenArmado,
@@ -61,6 +67,13 @@ const MesasExamen = () => {
     navigate("/panel");
   };
 
+  const toggleMesa = (mesaId) => {
+    setMesasAbiertas((actual) => ({
+      ...actual,
+      [mesaId]: !actual[mesaId],
+    }));
+  };
+
   const contenido = (
     <div className="mesas-page">
       <header className="mesas-topbar">
@@ -73,20 +86,46 @@ const MesasExamen = () => {
             type="text"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar por materia, turno, fecha, número, docente o alumno"
+            placeholder="Buscar por mesa, docente, alumno, DNI, materia, turno o fecha"
           />
           <FontAwesomeIcon icon={faMagnifyingGlass} className="mesas-search-icon" />
         </div>
 
-        <button className="mesas-filter-btn" type="button" onClick={cargarMesas}>
-          {cargando ? (
-            <FontAwesomeIcon icon={faSpinner} spin />
-          ) : (
-            <FontAwesomeIcon icon={faRotateRight} />
-          )}
-          Recargar
-          <FontAwesomeIcon icon={faChevronDown} />
-        </button>
+        <div className="mesas-top-actions">
+          <button
+            className="btn-action btn-create"
+            type="button"
+            onClick={abrirModalCrear}
+            disabled={armando}
+          >
+            {armando ? (
+              <FontAwesomeIcon icon={faSpinner} spin />
+            ) : (
+              <FontAwesomeIcon icon={faUserPlus} />
+            )}
+            Crear Mesas
+          </button>
+
+          <button
+            className="btn-action btn-delete"
+            type="button"
+            onClick={eliminarBorrador}
+            disabled={armando || mesas.length === 0}
+          >
+            <FontAwesomeIcon icon={faTrash} />
+            Eliminar Borrador
+          </button>
+
+          <button className="btn-action btn-reload" type="button" onClick={cargarMesas}>
+            {cargando ? (
+              <FontAwesomeIcon icon={faSpinner} spin />
+            ) : (
+              <FontAwesomeIcon icon={faRotateRight} />
+            )}
+            Recargar
+            <FontAwesomeIcon icon={faChevronDown} />
+          </button>
+        </div>
       </header>
 
       <main className="mesas-content">
@@ -118,7 +157,7 @@ const MesasExamen = () => {
             type="button"
             onClick={() => setTab("contador")}
           >
-            Registros: {mesas.length}
+            Mesas: {mesas.length}
             <FontAwesomeIcon icon={faUsers} />
           </button>
 
@@ -157,24 +196,24 @@ const MesasExamen = () => {
                 {cargando
                   ? "Cargando datos..."
                   : mesas.length > 0
-                    ? `${mesas.length} registros cargados`
+                    ? `${mesas.length} mesas cargadas · ${totalAlumnos} alumnos/previas`
                     : "Sin datos cargados"}
               </p>
-              <strong>N° de mesa: pendiente</strong>
+              <strong>Vista agrupada por número de mesa</strong>
             </div>
           </div>
 
           <div className="mesas-table-wrap">
-            <table className="mesas-table">
+            <table className="mesas-table mesas-table-grupos">
               <thead>
                 <tr>
+                  <th className="col-numero-mesa">N° Mesa</th>
                   <th className="col-hora">Fecha / Turno</th>
                   <th>Espacio Curricular</th>
-                  <th>Estudiante</th>
-                  <th>DNI</th>
-                  <th>Curso</th>
+                  <th>Alumnos</th>
                   <th>Tipo</th>
-                  <th>Docentes</th>
+                  <th>Docente/s</th>
+                  <th className="col-acciones">Detalle</th>
                 </tr>
               </thead>
 
@@ -192,92 +231,144 @@ const MesasExamen = () => {
                     </td>
                   </tr>
                 ) : (
-                  mesasFiltradas.map((item) => (
-                    <tr
-                      key={item.id_mesa || item.id}
-                      className={item.estado === "observada" ? "fila-observada" : ""}
-                    >
-                      <td className="hora-cell">
-                        <div className="hora-box">
-                          {item.fecha || "-"}
-                          <br />
-                          {item.turno || "-"}
-                          <br />
-                          {item.estado || "-"}
-                        </div>
-                      </td>
+                  mesasFiltradas.map((item) => {
+                    const mesaAbierta = !!mesasAbiertas[item.id];
+                    const alumnos = Array.isArray(item.alumnos) ? item.alumnos : [];
+                    const materias = Array.isArray(item.materias) ? item.materias : [];
 
-                      <td className="materia-cell">
-                        <strong>{item.materia || "-"}</strong>
-                        {item.observacion && (
-                          <small className="observacion-mesa">
-                            {item.observacion}
-                          </small>
+                    return (
+                      <React.Fragment key={item.id}>
+                        <tr className={item.estado === "observada" ? "fila-observada" : ""}>
+                          <td className="numero-mesa-cell">
+                            <span className="numero-mesa-badge">
+                              {item.numero_mesa ?? "S/N"}
+                            </span>
+                            <small>{item.estado || "borrador"}</small>
+                          </td>
+
+                          <td className="hora-cell">
+                            <div className="hora-box mesa-hora-box">
+                              {textoCorto(item.fecha)}
+                              <br />
+                              {textoCorto(item.turno)}
+                            </div>
+                          </td>
+
+                          <td className="materia-cell">
+                            <strong>
+                              {materias.length > 1
+                                ? `${materias.length} espacios curriculares`
+                                : textoCorto(item.materia)}
+                            </strong>
+
+                            {materias.length > 1 && (
+                              <div className="materias-pills">
+                                {materias.map((materia) => (
+                                  <span key={`${item.id}-mat-${materia.id || materia.nombre}`}>
+                                    {materia.nombre}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {item.observacion && (
+                              <small className="observacion-mesa">{item.observacion}</small>
+                            )}
+                          </td>
+
+                          <td>
+                            <div className="mesa-alumnos-resumen">
+                              <strong>{item.cantidad_alumnos || alumnos.length}</strong>
+                              <span>alumnos/previas</span>
+                              {Number(item.cantidad_alumnos_distintos || 0) > 0 && (
+                                <small>{item.cantidad_alumnos_distintos} DNI distintos</small>
+                              )}
+                            </div>
+                          </td>
+
+                          <td>
+                            <span className={`tipo-mesa tipo-${item.tipo_mesa || "simple"}`}>
+                              {item.tipo_mesa || "simple"}
+                            </span>
+                          </td>
+
+                          <td className="docente-cell">
+                            <strong>{textoCorto(item.docente)}</strong>
+                          </td>
+
+                          <td className="acciones-cell">
+                            <button
+                              type="button"
+                              className="btn-ver-alumnos"
+                              onClick={() => toggleMesa(item.id)}
+                            >
+                              <FontAwesomeIcon icon={mesaAbierta ? faChevronDown : faChevronRight} />
+                              {mesaAbierta ? "Ocultar" : "Ver alumnos"}
+                            </button>
+                          </td>
+                        </tr>
+
+                        {mesaAbierta && (
+                          <tr className="fila-detalle-alumnos">
+                            <td colSpan="7">
+                              <div className="alumnos-panel">
+                                <div className="alumnos-panel-header">
+                                  <strong>{item.numero_mesa_texto || `Mesa N° ${item.numero_mesa}`}</strong>
+                                  <span>{alumnos.length} registros dentro de esta mesa</span>
+                                </div>
+
+                                <div className="alumnos-grid">
+                                  {alumnos.map((alumno) => (
+                                    <article
+                                      className={`alumno-card ${
+                                        alumno.estado === "observada" ? "alumno-card-observada" : ""
+                                      }`}
+                                      key={`${item.id}-${alumno.id_mesa}`}
+                                    >
+                                      <div className="alumno-card-top">
+                                        <strong>{textoCorto(alumno.estudiante)}</strong>
+                                        <span>DNI: {textoCorto(alumno.dni)}</span>
+                                      </div>
+
+                                      <div className="alumno-card-data">
+                                        <span>
+                                          <b>Materia:</b> {textoCorto(alumno.materia)}
+                                        </span>
+                                        <span>
+                                          <b>Curso:</b> {textoCorto(alumno.curso)}
+                                        </span>
+                                        <span>
+                                          <b>Condición:</b> {textoCorto(alumno.condicion)}
+                                        </span>
+                                        <span>
+                                          <b>Docente:</b> {textoCorto(alumno.docente)}
+                                        </span>
+                                      </div>
+
+                                      {alumno.observacion && (
+                                        <p className="alumno-observacion">{alumno.observacion}</p>
+                                      )}
+                                    </article>
+                                  ))}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
                         )}
-                      </td>
-
-                      <td>{item.estudiante || "-"}</td>
-                      <td>{item.dni || "-"}</td>
-                      <td>{item.curso || "-"}</td>
-
-                      <td>
-                        <span className={`tipo-mesa tipo-${item.tipo_mesa || "simple"}`}>
-                          {item.tipo_mesa || "simple"}
-                        </span>
-                      </td>
-
-                      <td className="docente-cell">
-                        <strong>{item.docente || "-"}</strong>
-                      </td>
-                    </tr>
-                  ))
+                      </React.Fragment>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
         </section>
 
-        <div className="mesas-bottom-actions">
+        <div className="mesas-footer-actions">
           <button className="btn-action btn-back" type="button" onClick={volver}>
             <FontAwesomeIcon icon={faArrowLeft} />
             Volver Atrás
           </button>
-
-          <div className="mesas-right-actions">
-            <button
-              className="btn-action btn-create"
-              type="button"
-              onClick={abrirModalCrear}
-              disabled={armando}
-            >
-              {armando ? (
-                <FontAwesomeIcon icon={faSpinner} spin />
-              ) : (
-                <FontAwesomeIcon icon={faUserPlus} />
-              )}
-              Crear Mesas
-            </button>
-
-            <button className="btn-action btn-excel" type="button" disabled>
-              <FontAwesomeIcon icon={faFileExcel} />
-              Exportar Excel
-            </button>
-
-            <button className="btn-action btn-pdf" type="button" disabled>
-              <FontAwesomeIcon icon={faFilePdf} />
-              Exportar PDF
-            </button>
-
-            <button
-              className="btn-action btn-delete"
-              type="button"
-              onClick={eliminarBorrador}
-              disabled={armando || mesas.length === 0}
-            >
-              <FontAwesomeIcon icon={faTrash} />
-              Eliminar Borrador
-            </button>
-          </div>
         </div>
       </main>
 
