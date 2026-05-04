@@ -7,6 +7,63 @@ import {
   obtenerParametrosArmadoMesas,
 } from "../api/mesasExamenApi";
 
+const normalizar = (valor) => String(valor || "").toLowerCase().trim();
+
+const mesaCoincideConBusqueda = (mesa, texto) => {
+  const valoresMesa = [
+    mesa.numero_mesa,
+    mesa.numero_mesa_texto,
+    mesa.fecha,
+    mesa.fecha_mesa,
+    mesa.turno,
+    mesa.materia,
+    mesa.curso,
+    mesa.docente,
+    mesa.estado,
+    mesa.observacion,
+    mesa.tipo_mesa,
+    mesa.cantidad_alumnos,
+    mesa.cantidad_alumnos_distintos,
+    mesa.cantidad_previas,
+  ];
+
+  const coincideMesa = valoresMesa.some((valor) => normalizar(valor).includes(texto));
+
+  if (coincideMesa) {
+    return true;
+  }
+
+  const materias = Array.isArray(mesa.materias) ? mesa.materias : [];
+  const docentes = Array.isArray(mesa.docentes) ? mesa.docentes : [];
+  const alumnos = Array.isArray(mesa.alumnos) ? mesa.alumnos : [];
+
+  const coincideMateria = materias.some((item) => normalizar(item?.nombre).includes(texto));
+  const coincideDocente = docentes.some((item) => normalizar(item?.nombre).includes(texto));
+
+  if (coincideMateria || coincideDocente) {
+    return true;
+  }
+
+  return alumnos.some((alumno) => {
+    const valoresAlumno = [
+      alumno.estudiante,
+      alumno.alumno,
+      alumno.dni,
+      alumno.materia,
+      alumno.curso,
+      alumno.curso_materia,
+      alumno.division_materia,
+      alumno.condicion,
+      alumno.docente,
+      alumno.estado,
+      alumno.observacion,
+      alumno.tipo_mesa,
+    ];
+
+    return valoresAlumno.some((valor) => normalizar(valor).includes(texto));
+  });
+};
+
 export const useMesasExamen = () => {
   const [busqueda, setBusqueda] = useState("");
   const [tab, setTab] = useState("contador");
@@ -30,7 +87,7 @@ export const useMesasExamen = () => {
     try {
       const response = await listarMesasExamen({
         pagina: 1,
-        porPagina: 100,
+        porPagina: 500,
         busqueda: "",
       });
 
@@ -98,7 +155,7 @@ export const useMesasExamen = () => {
 
   const eliminarBorrador = useCallback(async () => {
     const confirmar = window.confirm(
-      "¿Seguro que querés eliminar las mesas borrador/observadas sin número de mesa?"
+      "¿Seguro que querés eliminar las mesas generadas? Esta acción borra las filas actuales de la tabla mesas."
     );
 
     if (!confirmar) {
@@ -130,7 +187,7 @@ export const useMesasExamen = () => {
   }, [cargarMesas, cargarParametrosArmado]);
 
   const mesasFiltradas = useMemo(() => {
-    const texto = busqueda.trim().toLowerCase();
+    const texto = normalizar(busqueda);
 
     let base = [...mesas];
 
@@ -146,29 +203,7 @@ export const useMesasExamen = () => {
       return base;
     }
 
-    return base.filter((item) => {
-      const valores = [
-        item.numero_mesa,
-        item.fecha,
-        item.fecha_mesa,
-        item.turno,
-        item.materia,
-        item.estudiante,
-        item.alumno,
-        item.dni,
-        item.curso,
-        item.curso_materia,
-        item.division_materia,
-        item.docente,
-        item.estado,
-        item.observacion,
-        item.tipo_mesa,
-      ];
-
-      return valores.some((valor) =>
-        String(valor || "").toLowerCase().includes(texto)
-      );
-    });
+    return base.filter((item) => mesaCoincideConBusqueda(item, texto));
   }, [busqueda, mesas, tab]);
 
   const totalObservadas = useMemo(() => {
@@ -177,6 +212,10 @@ export const useMesasExamen = () => {
 
   const totalArmadas = useMemo(() => {
     return mesas.filter((item) => item.estado !== "observada").length;
+  }, [mesas]);
+
+  const totalAlumnos = useMemo(() => {
+    return mesas.reduce((total, item) => total + Number(item.cantidad_alumnos || 0), 0);
   }, [mesas]);
 
   return {
@@ -192,6 +231,7 @@ export const useMesasExamen = () => {
 
     totalObservadas,
     totalArmadas,
+    totalAlumnos,
 
     parametrosArmado,
     resumenArmado,

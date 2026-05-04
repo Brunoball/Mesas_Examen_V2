@@ -3,23 +3,41 @@
 declare(strict_types=1);
 
 /**
- * Fase 2 pendiente:
- * Agrupar registros de tipo_mesa = 'taller' por id_taller.
+ * Fase 2 - Talleres.
  *
- * Objetivo futuro:
- * - Tomar registros borrador de mesas con tipo_mesa = 'taller'.
- * - Unificarlos por id_taller.
- * - Asignar el mismo numero_mesa a todas las materias/docentes del taller.
- * - Forzar misma fecha_mesa e id_turno dentro del grupo.
+ * La expansión real de talleres se hace en Fase 1 al crear el armado:
+ * - una fila por cada cátedra activa del taller;
+ * - mismo id_previa + mismo id_taller;
+ * - numero_mesa exclusivo por previa de taller.
+ *
+ * Esta acción queda como reparación rápida de numeración para mesas ya creadas.
  */
 function mesas_armado_fase_2_agrupar_talleres(): void
 {
-    json_response([
-        'exito' => false,
-        'mensaje' => 'Fase 2 pendiente de implementación: agrupar talleres por id_taller.',
-        'data' => [
-            'fase' => 2,
-            'estado' => 'pendiente',
-        ],
-    ], 501);
+    try {
+        $pdo = db();
+
+        $resultado = mesas_armado_numerar_por_docente_materia(
+            $pdo,
+            true,
+            true,
+            true
+        );
+
+        $resultado['fase'] = 2;
+        $resultado['nota'] = 'La expansión completa de cátedras de taller se aplica al ejecutar mesas_armado_crear. Esta fase solo repara la numeración exclusiva de talleres ya existentes.';
+
+        json_response([
+            'exito' => true,
+            'mensaje' => 'Numeración de talleres reparada correctamente. Para expandir cátedras del taller, ejecutá nuevamente Armar Mesas.',
+            'data' => $resultado,
+        ]);
+    } catch (Throwable $e) {
+        log_error($e, 'mesas_armado_fase_2_agrupar_talleres');
+
+        json_response([
+            'exito' => false,
+            'mensaje' => 'Error interno al reparar la numeración de talleres.',
+        ], 500);
+    }
 }

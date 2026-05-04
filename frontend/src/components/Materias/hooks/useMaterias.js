@@ -20,15 +20,21 @@ function unificarMateriasPorCurso(actuales = [], nuevas = []) {
 
   [...actuales, ...nuevas].forEach((m) => {
     const idCurso = Number(m?.id_curso || 0);
+    const idDivision = Number(m?.id_division || 0);
     const idMateria = Number(m?.id_materia || 0);
     if (idCurso <= 0 || idMateria <= 0) return;
-    mapa.set(`${idCurso}-${idMateria}`, m);
+    mapa.set(`${idCurso}-${idDivision}-${idMateria}`, m);
   });
 
   return Array.from(mapa.values()).sort((a, b) => {
     const cursoA = Number(a.id_curso || 0);
     const cursoB = Number(b.id_curso || 0);
     if (cursoA !== cursoB) return cursoA - cursoB;
+
+    const divA = Number(a.id_division || 0);
+    const divB = Number(b.id_division || 0);
+    if (divA !== divB) return divA - divB;
+
     return String(a.materia || '').localeCompare(String(b.materia || ''), 'es');
   });
 }
@@ -43,6 +49,7 @@ export function useMaterias() {
   const [catalogos, setCatalogos] = useState({
     areas: [],
     cursos: [],
+    divisiones: [],
     materias: [],
     materiasPorCurso: [],
     talleres: [],
@@ -69,16 +76,17 @@ export function useMaterias() {
   const obtenerMateriasPorCurso = useCallback(
     async (idCurso, opciones = {}) => {
       const id = Number(idCurso || 0);
+      const idDivision = Number(opciones?.idDivision || opciones?.id_division || 0);
       if (id <= 0) return [];
 
-      const clave = String(id);
+      const clave = idDivision > 0 ? `${id}-${idDivision}` : String(id);
       const forzar = Boolean(opciones?.forzar);
 
       if (!forzar && Array.isArray(materiasPorCursoCache[clave])) {
         return materiasPorCursoCache[clave];
       }
 
-      const respuesta = await materiasApi.porCurso(id);
+      const respuesta = await materiasApi.porCurso(id, idDivision > 0 ? idDivision : null);
       const materiasCurso = obtenerArrayMateriasPorCurso(respuesta);
 
       setMateriasPorCursoCache((prev) => ({
@@ -95,6 +103,24 @@ export function useMaterias() {
     },
     [materiasPorCursoCache]
   );
+
+  const obtenerCatedrasTaller = useCallback(async (idCurso, divisiones = []) => {
+    const id = Number(idCurso || 0);
+    const idsDivisiones = Array.isArray(divisiones)
+      ? divisiones.map(Number).filter((x) => x > 0)
+      : String(divisiones || '')
+          .split(',')
+          .map((x) => Number(String(x).trim()))
+          .filter((x) => x > 0);
+
+    if (id <= 0 || idsDivisiones.length === 0) return [];
+
+    const respuesta = await materiasApi.talleresCatedrasPorCursoDivisiones(id, idsDivisiones);
+    if (Array.isArray(respuesta?.catedras)) return respuesta.catedras;
+    if (Array.isArray(respuesta?.data?.catedras)) return respuesta.data.catedras;
+    if (Array.isArray(respuesta?.data)) return respuesta.data;
+    return [];
+  }, []);
 
   const precargarMateriasDeCursos = useCallback(
     async (idsCursos = []) => {
@@ -136,6 +162,7 @@ export function useMaterias() {
           ...prev,
           areas: catResult.value.areas || catResult.value.data?.areas || [],
           cursos: catResult.value.cursos || catResult.value.data?.cursos || [],
+          divisiones: catResult.value.divisiones || catResult.value.data?.divisiones || [],
           materias: catResult.value.materias || catResult.value.data?.materias || [],
           // Ya no se carga desde materias_catalogos. Se completa bajo demanda
           // llamando a global_obtener_materias_por_curso al seleccionar curso.
@@ -225,7 +252,12 @@ export function useMaterias() {
       if (soloActivas && Number(t.activo) !== 1) return false;
       if (!q) return true;
 
-      return normalizar(t.taller).includes(q) || normalizar(t.curso).includes(q) || normalizar(t.materias).includes(q);
+      return (
+        normalizar(t.taller).includes(q) ||
+        normalizar(t.curso).includes(q) ||
+        normalizar(t.division).includes(q) ||
+        normalizar(t.materias).includes(q)
+      );
     });
   }, [talleres, busqueda, soloActivas]);
 
@@ -431,6 +463,7 @@ export function useMaterias() {
     setModalArea,
     cargarTodo,
     obtenerMateriasPorCurso,
+    obtenerCatedrasTaller,
     precargarMateriasDeCursos,
     guardarMateria,
     eliminarMateria,

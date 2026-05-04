@@ -25,6 +25,13 @@ export const materiasApi = {
     apiPost('materias_correlativas_eliminar', { id_materia_correlativa: idMateriaCorrelativa }),
 
   talleresListar: () => apiGet('talleres_listar'),
+  talleresCatedrasPorCursoDivisiones: (idCurso, divisiones = []) => {
+    const ids = Array.isArray(divisiones) ? divisiones.filter(Boolean).join(',') : divisiones;
+    return apiGet('talleres_catedras_por_curso_divisiones', {
+      id_curso: idCurso,
+      divisiones: ids,
+    });
+  },
   tallerGuardar: (payload) => apiPost('talleres_guardar', payload),
   tallerEliminar: (idTaller) => apiPost('talleres_eliminar', { id_taller: idTaller }),
   tallerMateriaAgregar: (payload) => apiPost('talleres_materia_agregar', payload),

@@ -25,9 +25,297 @@ require_once __DIR__ . '/fases/fase_4_agrupar_simples.php';
 require_once __DIR__ . '/fases/fase_5_validar_y_numerar.php';
 
 /**
- * Lista las mesas ya creadas en la tabla mesas.
- * Esta vista todavía trabaja sobre la estructura actual:
- * una fila de mesas representa una previa ya cruzada con cátedra/docente.
+ * Agrega un item único a una colección usando un índice interno.
+ */
+function mesas_examen_agregar_unico(array &$grupo, string $coleccion, string $indice, ?int $id, ?string $texto): void
+{
+    $texto = trim((string)$texto);
+
+    if ($texto === '') {
+        return;
+    }
+
+    $key = $id !== null && $id > 0 ? (string)$id : mb_strtolower($texto, 'UTF-8');
+
+    if (isset($grupo[$indice][$key])) {
+        return;
+    }
+
+    $grupo[$indice][$key] = true;
+    $grupo[$coleccion][] = [
+        'id' => $id,
+        'nombre' => $texto,
+    ];
+}
+
+/**
+ * Agrega texto único a una colección plana.
+ */
+function mesas_examen_agregar_texto_unico(array &$grupo, string $coleccion, string $indice, ?string $texto): void
+{
+    $texto = trim((string)$texto);
+
+    if ($texto === '') {
+        return;
+    }
+
+    $key = mb_strtolower($texto, 'UTF-8');
+
+    if (isset($grupo[$indice][$key])) {
+        return;
+    }
+
+    $grupo[$indice][$key] = true;
+    $grupo[$coleccion][] = $texto;
+}
+
+function mesas_examen_texto_lista(array $items, string $campo = 'nombre'): string
+{
+    $textos = [];
+
+    foreach ($items as $item) {
+        $valor = is_array($item) ? ($item[$campo] ?? '') : $item;
+        $valor = trim((string)$valor);
+
+        if ($valor !== '') {
+            $textos[] = $valor;
+        }
+    }
+
+    return implode(' / ', $textos);
+}
+
+function mesas_examen_tipo_grupo(array $tipos): string
+{
+    if (in_array('correlativa', $tipos, true)) {
+        return 'correlativa';
+    }
+
+    if (in_array('taller', $tipos, true)) {
+        return 'taller';
+    }
+
+    return 'simple';
+}
+
+function mesas_examen_estado_grupo(array $estados): string
+{
+    if (in_array('observada', $estados, true)) {
+        return 'observada';
+    }
+
+    if (in_array('borrador', $estados, true)) {
+        return 'borrador';
+    }
+
+    return 'armada';
+}
+
+/**
+ * Convierte las filas reales de `mesas` en mesas lógicas agrupadas por numero_mesa.
+ * La tabla actual no tiene mesa_detalle; por eso cada alumno queda dentro del arreglo `alumnos`.
+ */
+function mesas_examen_agrupar_por_numero(array $filas): array
+{
+    $grupos = [];
+
+    foreach ($filas as $fila) {
+        $numeroMesa = $fila['numero_mesa'] !== null ? (int)$fila['numero_mesa'] : null;
+        $key = $numeroMesa !== null ? 'mesa_' . $numeroMesa : 'sin_numero_' . (int)$fila['id_mesa'];
+
+        if (!isset($grupos[$key])) {
+            $grupos[$key] = [
+                'id' => $key,
+                'numero_mesa' => $numeroMesa,
+                'numero_mesa_texto' => $numeroMesa !== null ? 'Mesa N° ' . $numeroMesa : 'Sin número',
+                'fecha_mesa' => $fila['fecha_mesa'] ?? null,
+                'fecha' => $fila['fecha'] ?? null,
+                'id_turno' => $fila['id_turno'] !== null ? (int)$fila['id_turno'] : null,
+                'turno' => $fila['turno'] ?? null,
+                'estado' => $fila['estado'] ?? 'borrador',
+                'tipo_mesa' => $fila['tipo_mesa'] ?? 'simple',
+                'prioridad' => (int)($fila['prioridad'] ?? 0),
+                'observacion' => null,
+
+                'docente' => null,
+                'docentes' => [],
+                '_docentes_index' => [],
+
+                'materia' => null,
+                'materias' => [],
+                '_materias_index' => [],
+
+                'curso' => null,
+                'cursos' => [],
+                '_cursos_index' => [],
+
+                'fechas' => [],
+                '_fechas_index' => [],
+                'turnos' => [],
+                '_turnos_index' => [],
+                'observaciones' => [],
+                '_observaciones_index' => [],
+
+                '_tipos' => [],
+                '_estados' => [],
+                '_alumnos_dni_index' => [],
+                '_previas_index' => [],
+                '_alumnos_index' => [],
+
+                'cantidad_alumnos' => 0,
+                'cantidad_alumnos_distintos' => 0,
+                'cantidad_previas' => 0,
+                'cantidad_registros' => 0,
+                'alumnos' => [],
+                'registros' => [],
+            ];
+        }
+
+        $grupo =& $grupos[$key];
+
+        $grupo['_tipos'][] = (string)($fila['tipo_mesa'] ?? 'simple');
+        $grupo['_estados'][] = (string)($fila['estado'] ?? 'borrador');
+        $grupo['prioridad'] = max((int)$grupo['prioridad'], (int)($fila['prioridad'] ?? 0));
+        $grupo['cantidad_registros']++;
+
+        mesas_examen_agregar_unico(
+            $grupo,
+            'docentes',
+            '_docentes_index',
+            $fila['id_docente'] !== null ? (int)$fila['id_docente'] : null,
+            $fila['docente'] ?? null
+        );
+
+        mesas_examen_agregar_unico(
+            $grupo,
+            'materias',
+            '_materias_index',
+            $fila['id_materia'] !== null ? (int)$fila['id_materia'] : null,
+            $fila['materia'] ?? null
+        );
+
+        mesas_examen_agregar_texto_unico($grupo, 'cursos', '_cursos_index', $fila['curso'] ?? null);
+        mesas_examen_agregar_texto_unico($grupo, 'fechas', '_fechas_index', $fila['fecha'] ?? null);
+        mesas_examen_agregar_texto_unico($grupo, 'turnos', '_turnos_index', $fila['turno'] ?? null);
+        mesas_examen_agregar_texto_unico($grupo, 'observaciones', '_observaciones_index', $fila['observacion'] ?? null);
+
+        $dni = trim((string)($fila['dni'] ?? ''));
+        $idPrevia = $fila['id_previa'] !== null ? (int)$fila['id_previa'] : null;
+
+        if ($dni !== '') {
+            $grupo['_alumnos_dni_index'][$dni] = true;
+        }
+
+        if ($idPrevia !== null) {
+            $grupo['_previas_index'][(string)$idPrevia] = true;
+        }
+
+        $alumnoKey = $idPrevia !== null ? 'previa_' . $idPrevia : 'mesa_' . (int)$fila['id_mesa'];
+
+        if (!isset($grupo['_alumnos_index'][$alumnoKey])) {
+            $grupo['_alumnos_index'][$alumnoKey] = count($grupo['alumnos']);
+            $grupo['alumnos'][] = [
+                'id_mesa' => (int)$fila['id_mesa'],
+                'id_mesas' => [(int)$fila['id_mesa']],
+                'id_previa' => $idPrevia,
+                'dni' => $dni,
+                'estudiante' => $fila['estudiante'] ?? '',
+                'alumno' => $fila['estudiante'] ?? '',
+                'materia' => '',
+                'materias' => [],
+                '_materias_index' => [],
+                'id_materia' => $fila['id_materia'] !== null ? (int)$fila['id_materia'] : null,
+                'curso' => $fila['curso'] ?? '',
+                'curso_materia' => $fila['curso_materia'] ?? '',
+                'division_materia' => $fila['division_materia'] ?? '',
+                'cursando_curso' => $fila['cursando_curso'] ?? '',
+                'cursando_division' => $fila['cursando_division'] ?? '',
+                'condicion' => $fila['condicion'] ?? '',
+                'nota' => $fila['nota'] ?? null,
+                'anio' => $fila['anio'] ?? null,
+                'tipo_mesa' => $fila['tipo_mesa'] ?? 'simple',
+                'estado' => $fila['estado'] ?? 'borrador',
+                'observacion' => $fila['observacion'] ?? null,
+                'docente' => '',
+                'docentes' => [],
+                '_docentes_index' => [],
+                'fecha' => $fila['fecha'] ?? null,
+                'turno' => $fila['turno'] ?? null,
+                'cantidad_registros' => 0,
+            ];
+        }
+
+        $idxAlumno = (int)$grupo['_alumnos_index'][$alumnoKey];
+        $alumno =& $grupo['alumnos'][$idxAlumno];
+
+        $alumno['cantidad_registros']++;
+
+        if (!in_array((int)$fila['id_mesa'], $alumno['id_mesas'], true)) {
+            $alumno['id_mesas'][] = (int)$fila['id_mesa'];
+        }
+
+        mesas_examen_agregar_unico(
+            $alumno,
+            'materias',
+            '_materias_index',
+            $fila['id_materia'] !== null ? (int)$fila['id_materia'] : null,
+            $fila['materia'] ?? null
+        );
+
+        mesas_examen_agregar_unico(
+            $alumno,
+            'docentes',
+            '_docentes_index',
+            $fila['id_docente'] !== null ? (int)$fila['id_docente'] : null,
+            $fila['docente'] ?? null
+        );
+
+        unset($alumno, $grupo);
+    }
+
+    foreach ($grupos as &$grupo) {
+        $grupo['tipo_mesa'] = mesas_examen_tipo_grupo($grupo['_tipos']);
+        $grupo['estado'] = mesas_examen_estado_grupo($grupo['_estados']);
+        $grupo['docente'] = mesas_examen_texto_lista($grupo['docentes']);
+        $grupo['materia'] = mesas_examen_texto_lista($grupo['materias']);
+        $grupo['curso'] = mesas_examen_texto_lista($grupo['cursos'], '');
+        $grupo['fecha'] = mesas_examen_texto_lista($grupo['fechas'], '');
+        $grupo['turno'] = mesas_examen_texto_lista($grupo['turnos'], '');
+        $grupo['observacion'] = mesas_examen_texto_lista($grupo['observaciones'], '');
+
+        $grupo['cantidad_previas'] = count($grupo['_previas_index']);
+        $grupo['cantidad_alumnos'] = count($grupo['alumnos']);
+        $grupo['cantidad_alumnos_distintos'] = count($grupo['_alumnos_dni_index']);
+
+        foreach ($grupo['alumnos'] as &$alumno) {
+            $alumno['materia'] = mesas_examen_texto_lista($alumno['materias']);
+            $alumno['docente'] = mesas_examen_texto_lista($alumno['docentes']);
+            unset($alumno['_materias_index'], $alumno['_docentes_index']);
+        }
+        unset($alumno);
+
+        unset(
+            $grupo['_docentes_index'],
+            $grupo['_materias_index'],
+            $grupo['_cursos_index'],
+            $grupo['_fechas_index'],
+            $grupo['_turnos_index'],
+            $grupo['_observaciones_index'],
+            $grupo['_tipos'],
+            $grupo['_estados'],
+            $grupo['_alumnos_dni_index'],
+            $grupo['_previas_index'],
+            $grupo['_alumnos_index']
+        );
+    }
+    unset($grupo);
+
+    return array_values($grupos);
+}
+
+/**
+ * Lista las mesas ya creadas agrupadas por numero_mesa.
+ * Cada elemento devuelto representa una mesa lógica y trae dentro el arreglo `alumnos`.
  */
 function mesas_examen_listar(): void
 {
@@ -47,26 +335,17 @@ function mesas_examen_listar(): void
                 OR p.alumno LIKE ?
                 OR p.dni LIKE ?
                 OR doc.docente LIKE ?
+                OR con.condicion LIKE ?
                 OR t.turno LIKE ?
                 OR CAST(me.numero_mesa AS CHAR) LIKE ?
                 OR me.estado LIKE ?
+                OR me.tipo_mesa LIKE ?
+                OR CONCAT(curso_materia.nombre_curso, ' ', division_materia.nombre_division) LIKE ?
             )";
 
             $like = '%' . $busqueda . '%';
-            $params = [$like, $like, $like, $like, $like, $like, $like];
+            $params = [$like, $like, $like, $like, $like, $like, $like, $like, $like, $like];
         }
-
-        $stmtTotal = $pdo->prepare("
-            SELECT COUNT(*)
-            FROM mesas me
-            LEFT JOIN previas p ON p.id_previa = me.id_previa
-            LEFT JOIN materias mat ON mat.id_materia = p.id_materia
-            LEFT JOIN docentes doc ON doc.id_docente = me.id_docente
-            LEFT JOIN turnos t ON t.id_turno = me.id_turno
-            WHERE {$where}
-        ");
-        $stmtTotal->execute($params);
-        $total = (int)$stmtTotal->fetchColumn();
 
         $sql = "
             SELECT
@@ -92,7 +371,10 @@ function mesas_examen_listar(): void
                 p.anio,
                 p.inscripcion,
                 p.activo AS previa_activa,
+                p.id_condicion,
+                con.condicion,
 
+                COALESCE(cat.id_materia, p.id_materia) AS id_materia,
                 mat.materia,
 
                 curso_materia.nombre_curso AS curso_materia,
@@ -108,41 +390,38 @@ function mesas_examen_listar(): void
                 cat.id_division AS catedra_id_division
             FROM mesas me
             LEFT JOIN previas p ON p.id_previa = me.id_previa
-            LEFT JOIN materias mat ON mat.id_materia = p.id_materia
+            LEFT JOIN catedras cat ON cat.id_catedra = me.id_catedra
+            LEFT JOIN materias mat ON mat.id_materia = COALESCE(cat.id_materia, p.id_materia)
+            LEFT JOIN condicion con ON con.id_condicion = p.id_condicion
 
-            LEFT JOIN curso curso_materia ON curso_materia.id_curso = p.materia_id_curso
-            LEFT JOIN division division_materia ON division_materia.id_division = p.materia_id_division
+            LEFT JOIN curso curso_materia ON curso_materia.id_curso = COALESCE(cat.id_curso, p.materia_id_curso)
+            LEFT JOIN division division_materia ON division_materia.id_division = COALESCE(cat.id_division, p.materia_id_division)
 
             LEFT JOIN curso curso_cursando ON curso_cursando.id_curso = p.cursando_id_curso
             LEFT JOIN division division_cursando ON division_cursando.id_division = p.cursando_id_division
 
-            LEFT JOIN catedras cat ON cat.id_catedra = me.id_catedra
             LEFT JOIN docentes doc ON doc.id_docente = me.id_docente
             LEFT JOIN turnos t ON t.id_turno = me.id_turno
             WHERE {$where}
             ORDER BY
-                me.fecha_mesa IS NULL ASC,
+                me.numero_mesa IS NULL ASC,
+                me.numero_mesa ASC,
                 me.fecha_mesa ASC,
                 me.id_turno ASC,
-                me.prioridad DESC,
+                doc.docente ASC,
                 mat.materia ASC,
-                p.alumno ASC
-            LIMIT ? OFFSET ?
+                p.alumno ASC,
+                me.id_mesa ASC
         ";
 
         $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
 
-        $i = 1;
-        foreach ($params as $param) {
-            $stmt->bindValue($i, $param, PDO::PARAM_STR);
-            $i++;
-        }
+        $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $grupos = mesas_examen_agrupar_por_numero($filas);
 
-        $stmt->bindValue($i, $porPagina, PDO::PARAM_INT);
-        $stmt->bindValue($i + 1, $offset, PDO::PARAM_INT);
-        $stmt->execute();
-
-        $data = $stmt->fetchAll();
+        $total = count($grupos);
+        $data = array_slice($grupos, $offset, $porPagina);
 
         json_response([
             'exito' => true,
@@ -202,14 +481,23 @@ function mesas_armado_parametros(): void
         $fechas = $stmtFechas->fetch() ?: [];
 
         $hoy = new DateTimeImmutable('today');
-        $fechaInicio = $fechas['fecha_inicio_existente'] ?: $hoy->format('Y-m-d');
-        $fechaFin = $fechas['fecha_fin_existente'] ?: $hoy->modify('+7 days')->format('Y-m-d');
+
+        $fechaInicio = (string)($fechas['fecha_inicio_existente'] ?: $hoy->format('Y-m-d'));
+        $fechaFin = (string)($fechas['fecha_fin_existente'] ?: $hoy->modify('+7 days')->format('Y-m-d'));
+
+        $fechaInicio = mesas_armado_ajustar_a_dia_habil($fechaInicio, 'siguiente');
+        $fechaFin = mesas_armado_ajustar_a_dia_habil($fechaFin, 'siguiente');
+
+        if ($fechaFin < $fechaInicio) {
+            $fechaFin = $fechaInicio;
+        }
 
         json_response([
             'exito' => true,
             'data' => [
                 'fecha_inicio_sugerida' => $fechaInicio,
                 'fecha_fin_sugerida' => $fechaFin,
+                'excluir_fines_semana_obligatorio' => true,
                 'turnos' => $turnos,
                 'total_previas_para_armar' => $totalPrevias,
             ],
@@ -225,8 +513,8 @@ function mesas_armado_parametros(): void
 }
 
 /**
- * Elimina solamente el armado borrador/observado sin número de mesa.
- * No toca mesas ya numeradas.
+ * Elimina el armado operativo actual.
+ * En esta etapa también elimina filas numeradas porque numero_mesa se recalcula desde cero.
  */
 function mesas_armado_eliminar_borrador(): void
 {
@@ -235,8 +523,7 @@ function mesas_armado_eliminar_borrador(): void
 
         $stmt = $pdo->prepare("
             DELETE FROM mesas
-            WHERE numero_mesa IS NULL
-              AND estado IN ('borrador', 'observada')
+            WHERE estado IN ('borrador', 'observada', 'armada')
         ");
         $stmt->execute();
 

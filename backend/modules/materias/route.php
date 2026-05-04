@@ -55,6 +55,10 @@ function route_materias(string $action): bool
             talleres_listar();
             return true;
 
+        case 'talleres_catedras_por_curso_divisiones':
+            talleres_catedras_por_curso_divisiones();
+            return true;
+
         case 'talleres_guardar':
             talleres_guardar();
             return true;
