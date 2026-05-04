@@ -107,9 +107,3 @@
 .toast-advertencia .toast-icon{ color:#F59E0B !important; }
 .toast-cargando .toast-icon,
 .toast-info .toast-icon{ color:#0055BB !important; }
-html[data-theme="oscuro"] .toast-container{
-  background:rgba(15,23,42,.96) !important;
-  color:rgba(226,232,240,.92) !important;
-  border-color:rgba(148,163,184,.16) !important;
-  box-shadow:0 22px 46px rgba(0,0,0,.48) !important;
-}

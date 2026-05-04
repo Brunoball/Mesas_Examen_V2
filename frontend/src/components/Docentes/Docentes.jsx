@@ -3,20 +3,23 @@ import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faArrowLeft,
+  faBoxOpen,
   faInfoCircle,
   faEdit,
   faPlus,
   faRotateRight,
   faSearch,
+  faTimes,
   faTrash,
   faUserCheck,
   faUserSlash,
-  faUserTie,
 } from '@fortawesome/free-solid-svg-icons';
 import { useDocentes } from './hooks/useDocentes.js';
 import ModalDocente from './modales/ModalDocente.jsx';
 import ModalInfoDocente from './modales/ModalInfoDocente.jsx';
 import ModalConfirmarDocente from './modales/ModalConfirmarDocente.jsx';
+import '../Global/Global_css/roots.css';
+import '../Global/Global_css/Global_Section.css';
 import './Docentes.css';
 import Principal, { MesasShellContext } from '../Principal/Principal';
 
@@ -78,77 +81,108 @@ export default function Docentes() {
     return { ok: false, mensaje: 'Operación inválida.' };
   }
 
+  const textoVista = vista === 'activos' ? 'activos' : 'dados de baja';
+  const totalVisible = Array.isArray(docentes) ? docentes.length : 0;
+
   const contenido = (
-    <div className="docentes-page">
-      <div className="docentes-card">
-        <div className="docentes-header">
-          <div>
-            <button type="button" className="docentes-back" onClick={() => navigate('/panel')}>
-              <FontAwesomeIcon icon={faArrowLeft} /> Volver
-            </button>
-            <h1><FontAwesomeIcon icon={faUserTie} /> Docentes</h1>
-            <p>
-              Gestioná docentes sin repetir, altas, bajas, cátedras asignadas e indisponibilidad por día y turno.
-            </p>
+    <div className="docentes-page mov-page">
+      {mensaje && (
+        <div className={`mov-alert docentes-alerta ${mensaje.tipo === 'success' ? 'docentes-alerta-success' : 'docentes-alerta-error'}`}>
+          {mensaje.texto}
+        </div>
+      )}
+
+      {error && <div className="mov-alert docentes-alerta docentes-alerta-error">{error}</div>}
+
+      <section className="docentes-card mov-card mov-card--table">
+        <div className="mov-card__head docentes-card__head">
+          <div className="mov-card__headLeft docentes-card__headLeft">
+            <div className="title-mov docentes-titleBox">
+
+
+              <div className="mov-card__title docentes-section-title">
+                Docentes
+              </div>
+              <div className="mov-card__hint">
+                Mostrando <b>{totalVisible}</b> docentes 
+              </div>
+            </div>
+
+            <div className="mov-headFilters docentes-headFilters">
+              <div className="docentes-filterTabs" aria-label="Filtrar docentes por estado">
+                <span className="docentes-filterTabs__label">Estado</span>
+                <div className="mov-tabs docentes-tabsInline">
+                  <button
+                    type="button"
+                    className={`mov-tab docentes-tab ${vista === 'activos' ? 'is-active' : ''}`}
+                    onClick={() => cambiarVista('activos')}
+                  >
+                    <FontAwesomeIcon icon={faUserCheck} /> Activos
+                  </button>
+                  <button
+                    type="button"
+                    className={`mov-tab docentes-tab ${vista === 'bajas' ? 'is-active' : ''}`}
+                    onClick={() => cambiarVista('bajas')}
+                  >
+                    <FontAwesomeIcon icon={faUserSlash} /> Dados de baja
+                  </button>
+                </div>
+              </div>
+
+              <div className="cc-filter docentes-searchFilter">
+                <div className={`cc-floatingField cc-floatingField--search ${busqueda.trim() ? 'is-active' : ''}`}>
+                  <div className="cc-searchInput">
+                    <div className="cc-searchInput__fieldWrap">
+                      <input
+                        className="cc-input cc-input--floating docentes-searchInput"
+                        type="text"
+                        value={busqueda}
+                        onChange={(e) => setBusqueda(e.target.value)}
+                        placeholder="Buscar por docente, cargo u observación..."
+                      />
+                      <span className="docentes-filterTabs__label">
+                        <FontAwesomeIcon icon={faSearch} /> Búsqueda
+                      </span>
+                      {busqueda.trim() !== '' && (
+                        <button
+                          type="button"
+                          className="cc-clearSearch cc-clearSearch--inside"
+                          title="Limpiar búsqueda"
+                          onClick={() => setBusqueda('')}
+                        >
+                          <FontAwesomeIcon icon={faTimes} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="docentes-header-actions">
-            <button type="button" className="docentes-btn docentes-btn-light" onClick={reload} disabled={loading}>
-              <FontAwesomeIcon icon={faRotateRight} /> Actualizar
-            </button>
-            <button type="button" className="docentes-btn docentes-btn-primary" onClick={abrirCrear}>
+          <div className="mov-card__actions docentes-actionsHead">
+
+                          {!dentroDeShell && (
+                <button type="button" className="mov-btn mov-btn--ghost" onClick={() => navigate('/panel')}>
+                  <FontAwesomeIcon icon={faArrowLeft} /> Volver
+                </button>
+              )}
+            <button type="button" className="mov-btn mov-btn--primary" onClick={abrirCrear}>
               <FontAwesomeIcon icon={faPlus} /> Agregar docente
             </button>
           </div>
         </div>
 
-        <div className="docentes-tabs">
-          <button
-            type="button"
-            className={`docentes-tab ${vista === 'activos' ? 'active' : ''}`}
-            onClick={() => cambiarVista('activos')}
-          >
-            <FontAwesomeIcon icon={faUserCheck} /> Activos
-          </button>
-          <button
-            type="button"
-            className={`docentes-tab ${vista === 'bajas' ? 'active' : ''}`}
-            onClick={() => cambiarVista('bajas')}
-          >
-            <FontAwesomeIcon icon={faUserSlash} /> Dados de baja
-          </button>
-        </div>
-
-        <div className="docentes-toolbar">
-          <div className="docentes-search">
-            <FontAwesomeIcon icon={faSearch} />
-            <input
-              type="text"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar por docente, cargo u observación..."
-            />
-          </div>
-        </div>
-
-        {mensaje && (
-          <div className={`docentes-alerta ${mensaje.tipo === 'success' ? 'docentes-alerta-success' : 'docentes-alerta-error'}`}>
-            {mensaje.texto}
-          </div>
-        )}
-
-        {error && <div className="docentes-alerta docentes-alerta-error">{error}</div>}
-
-        <div className="docentes-table-wrap">
+        <div className="docentes-table-wrap mov-tableWrap">
           <table className="docentes-table">
             <thead>
               <tr>
                 <th>Docente</th>
                 <th>Cargo</th>
-                <th>Cátedras</th>
-                <th>No puede</th>
+                <th className="is-center">Cátedras</th>
+                <th className="is-center">No puede</th>
                 <th>Observación</th>
-                <th className="docentes-th-actions">Acciones</th>
+                <th className="docentes-th-actions is-center">Acciones</th>
               </tr>
             </thead>
 
@@ -161,8 +195,13 @@ export default function Docentes() {
 
               {!loading && docentes.length === 0 && (
                 <tr>
-                  <td colSpan="6" className="docentes-empty">
-                    {vista === 'activos' ? 'No se encontraron docentes activos.' : 'No hay docentes dados de baja.'}
+                  <td colSpan="6" className="docentes-empty docentes-emptyStateCell">
+                    <div className="cc-emptyState">
+                      <FontAwesomeIcon icon={faBoxOpen} className="cc-emptyIcon" />
+                      <div className="cc-emptyText">
+                        {vista === 'activos' ? 'No se encontraron docentes activos.' : 'No hay docentes dados de baja.'}
+                      </div>
+                    </div>
                   </td>
                 </tr>
               )}
@@ -178,30 +217,32 @@ export default function Docentes() {
                     </div>
                   </td>
                   <td>{item.cargo || '-'}</td>
-                  <td><span className="docentes-badge">{item.total_catedras || 0}</span></td>
-                  <td><span className="docentes-badge docentes-badge-soft">{item.total_indisponibilidades || 0}</span></td>
+                  <td className="is-center"><span className="mov-chip docentes-badge">{item.total_catedras || 0}</span></td>
+                  <td className="is-center"><span className="mov-chip mov-chip--neutral docentes-badge docentes-badge-soft">{item.total_indisponibilidades || 0}</span></td>
                   <td className="docentes-observacion">{item.observacion || '-'}</td>
                   <td className="docentes-actions">
-                    <button type="button" className="docentes-icon-btn" onClick={() => abrirInfo(item)} title="Ver información">
-                      <FontAwesomeIcon icon={faInfoCircle} />
-                    </button>
-                    <button type="button" className="docentes-icon-btn" onClick={() => abrirEditar(item)} title="Editar docente">
-                      <FontAwesomeIcon icon={faEdit} />
-                    </button>
-
-                    {vista === 'activos' ? (
-                      <button type="button" className="docentes-icon-btn docentes-icon-warning" onClick={() => abrirConfirmar('baja', item)} title="Dar de baja">
-                        <FontAwesomeIcon icon={faUserSlash} />
+                    <div className="mov-actionsInline">
+                      <button type="button" className="mov-iconBtn docentes-icon-btn" onClick={() => abrirInfo(item)} title="Ver información">
+                        <FontAwesomeIcon icon={faInfoCircle} />
                       </button>
-                    ) : (
-                      <button type="button" className="docentes-icon-btn docentes-icon-success" onClick={() => abrirConfirmar('alta', item)} title="Dar de alta">
-                        <FontAwesomeIcon icon={faUserCheck} />
+                      <button type="button" className="mov-iconBtn docentes-icon-btn" onClick={() => abrirEditar(item)} title="Editar docente">
+                        <FontAwesomeIcon icon={faEdit} />
                       </button>
-                    )}
 
-                    <button type="button" className="docentes-icon-btn docentes-icon-danger" onClick={() => abrirConfirmar('eliminar', item)} title="Eliminar">
-                      <FontAwesomeIcon icon={faTrash} />
-                    </button>
+                      {vista === 'activos' ? (
+                        <button type="button" className="mov-iconBtn docentes-icon-btn docentes-icon-warning" onClick={() => abrirConfirmar('baja', item)} title="Dar de baja">
+                          <FontAwesomeIcon icon={faUserSlash} />
+                        </button>
+                      ) : (
+                        <button type="button" className="mov-iconBtn docentes-icon-btn docentes-icon-success" onClick={() => abrirConfirmar('alta', item)} title="Dar de alta">
+                          <FontAwesomeIcon icon={faUserCheck} />
+                        </button>
+                      )}
+
+                      <button type="button" className="mov-iconBtn mov-iconBtn--danger docentes-icon-btn docentes-icon-danger" onClick={() => abrirConfirmar('eliminar', item)} title="Eliminar">
+                        <FontAwesomeIcon icon={faTrash} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -209,7 +250,7 @@ export default function Docentes() {
           </table>
         </div>
 
-        <div className="docentes-footer docentes-footer-simple">
+        <div className="docentes-footer">
           <span>
             Registros únicos cargados: <strong>{conteo.totalRegistros}</strong>
           </span>
@@ -219,12 +260,8 @@ export default function Docentes() {
               Coincidencias visibles: <strong>{conteo.totalFiltrados}</strong>
             </span>
           )}
-
-          <span className="docentes-footer-note">
-            El buscador filtra en pantalla sin volver a consultar la API.
-          </span>
         </div>
-      </div>
+      </section>
 
       {modalDocente.abierto && (
         <ModalDocente
