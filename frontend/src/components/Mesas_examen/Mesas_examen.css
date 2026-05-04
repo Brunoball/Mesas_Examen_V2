@@ -1290,3 +1290,787 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* =========================================================
+   VISTA DE GRUPOS FINALES
+========================================================= */
+
+.btn-group-final {
+  background: #173263;
+  color: #ffffff;
+  border-color: #173263;
+}
+
+.btn-group-final:hover:not(:disabled) {
+  background: #0f244a;
+}
+
+.mesas-table-grupos-finales {
+  min-width: 1220px;
+}
+
+.mesa-final-badge {
+  background: var(--mesas-midnight);
+  color: #ffffff;
+  border-color: var(--mesas-midnight);
+}
+
+.numeros-mesa-pills,
+.materias-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.numero-pill,
+.materias-pills span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 85, 187, 0.18);
+  background: rgba(0, 85, 187, 0.08);
+  color: var(--mesas-blue);
+  font-size: 12px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.numero-pill.tipo-taller {
+  background: rgba(245, 158, 11, 0.12);
+  color: #92400e;
+  border-color: rgba(245, 158, 11, 0.24);
+}
+
+.numero-pill.tipo-correlativa {
+  background: rgba(34, 173, 92, 0.12);
+  color: #127a41;
+  border-color: rgba(34, 173, 92, 0.24);
+}
+
+.prioridad-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: #f1f5f9;
+  border: 1px solid #d9e2ef;
+  color: var(--mesas-midnight);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.grupos-finales-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.alumnos-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.alumnos-panel-header > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mesa-final-meta-mini {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mesa-final-meta-mini span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: var(--mesas-text);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.numeros-finales-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.numero-final-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #ffffff;
+  overflow: hidden;
+  box-shadow: var(--mesas-shadow-sm);
+}
+
+.numero-final-header {
+  width: 100%;
+  min-height: 62px;
+  border: 0;
+  background: #f8fafc;
+  color: var(--mesas-midnight);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.numero-final-header strong {
+  display: block;
+  color: var(--mesas-midnight);
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.numero-final-header span {
+  display: block;
+  margin-top: 4px;
+  color: var(--mesas-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.numero-final-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(10, 37, 64, 0.08);
+  background: #ffffff;
+}
+
+.numero-final-info span {
+  color: var(--mesas-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.numero-final-info b {
+  color: var(--mesas-midnight);
+  font-weight: 850;
+}
+
+.alumnos-grid-final {
+  padding: 0 16px 16px;
+}
+
+.mesas-empty-mini {
+  padding: 18px;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: var(--mesas-muted);
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.numero-mesa-cell {
+  width: 120px;
+}
+
+.numero-mesa-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 46px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 13px;
+  background: var(--mesas-blue);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 900;
+  box-shadow: 0 8px 16px rgba(0, 85, 187, 0.18);
+}
+
+.numero-mesa-cell small {
+  display: block;
+  margin-top: 6px;
+  color: var(--mesas-muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.mesa-alumnos-resumen {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mesa-alumnos-resumen strong {
+  color: var(--mesas-midnight);
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.mesa-alumnos-resumen span,
+.mesa-alumnos-resumen small {
+  color: var(--mesas-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.acciones-cell {
+  width: 150px;
+}
+
+.btn-ver-alumnos {
+  min-height: 40px;
+  border: 1px solid var(--mesas-soft-border);
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--mesas-midnight);
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 850;
+  cursor: pointer;
+  box-shadow: var(--mesas-shadow-sm);
+}
+
+.btn-ver-alumnos:hover {
+  background: #f8fbff;
+}
+
+.fila-detalle-alumnos td {
+  padding: 0 !important;
+  background: #f8fafc;
+}
+
+.alumnos-panel {
+  padding: 18px;
+}
+
+.alumnos-panel-header {
+  margin-bottom: 14px;
+}
+
+.alumnos-panel-header strong {
+  color: var(--mesas-midnight);
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.alumnos-panel-header span {
+  color: var(--mesas-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.alumnos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.alumno-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 14px;
+  box-shadow: var(--mesas-shadow-sm);
+}
+
+.alumno-card-observada {
+  border-color: rgba(225, 61, 69, 0.26);
+  background: #fff7f7;
+}
+
+.alumno-card-top {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.alumno-card-top strong {
+  color: var(--mesas-midnight);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.alumno-card-top span {
+  color: var(--mesas-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.alumno-card-data {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.alumno-card-data span {
+  color: var(--mesas-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.alumno-card-data b {
+  color: var(--mesas-midnight);
+  font-weight: 850;
+}
+
+.alumno-observacion {
+  margin: 10px 0 0;
+  color: #c2410c;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+@media (max-width: 900px) {
+  .numero-final-info {
+    grid-template-columns: 1fr;
+  }
+
+  .alumnos-panel-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .mesa-final-meta-mini {
+    justify-content: flex-start;
+  }
+}
+
+/* =========================================================
+   VISTA TIPO PDF / IMPRESIÓN RÁPIDA DE MESAS
+========================================================= */
+
+.btn-view-pdf {
+  background: #0f766e;
+  color: #ffffff;
+  border-color: #0f766e;
+}
+
+.btn-view-table {
+  background: #ffffff;
+  color: var(--mesas-midnight);
+  border-color: var(--mesas-soft-border);
+  box-shadow: var(--mesas-shadow-sm);
+}
+
+.btn-print {
+  background: #111827;
+  color: #ffffff;
+  border-color: #111827;
+}
+
+.mesas-card-pdf-mode {
+  background: #eef2f7;
+}
+
+.mesas-pdf-view {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+  background: #eef2f7;
+  display: block;
+}
+
+.mesas-pdf-view > .mesas-pdf-sheet + .mesas-pdf-sheet {
+  margin-top: 18px;
+}
+
+.mesas-pdf-empty {
+  background: #ffffff;
+  border: 1px dashed var(--mesas-soft-border);
+  border-radius: 16px;
+}
+
+.mesas-pdf-sheet {
+  width: 100%;
+  min-width: 1180px;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  display: block;
+  overflow: visible !important;
+  background: #ffffff;
+  border: 1px solid #d7e3f5;
+  border-bottom: 2px solid #0055bb;
+  border-radius: 14px;
+  box-shadow: 0 12px 28px rgba(10, 37, 64, 0.1);
+}
+
+.mesas-pdf-sheet-observada {
+  border-color: rgba(225, 61, 69, 0.32);
+  border-bottom-color: #e13d45;
+}
+
+.mesas-pdf-header {
+  min-height: 74px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 22px 12px;
+  border-bottom: 1px solid rgba(10, 37, 64, 0.08);
+  background: #ffffff;
+  border-radius: 14px 14px 0 0;
+}
+
+.mesas-pdf-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.mesas-pdf-brand img {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.mesas-pdf-brand h3 {
+  margin: 0;
+  color: #001f5b;
+  font-size: 18px;
+  line-height: 1.1;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+.mesas-pdf-brand p {
+  margin: 4px 0 0;
+  color: #607086;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mesas-pdf-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  color: #001f5b;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.mesas-pdf-meta span {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.mesas-pdf-meta strong {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.mesas-pdf-observacion {
+  margin: 10px 22px 0;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: #fff7ed;
+  border: 1px solid rgba(225, 61, 69, 0.2);
+  color: #9a3412;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mesas-pdf-observacion-info {
+  background: #eff6ff;
+  border-color: rgba(0, 85, 187, 0.2);
+  color: #173263;
+}
+
+.mesas-pdf-table-wrap {
+  width: 100%;
+  display: block !important;
+  height: auto !important;
+  min-height: 80px;
+  max-height: none !important;
+  overflow: visible !important;
+  padding: 10px 22px 16px;
+}
+
+.mesas-pdf-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  color: #001f5b;
+  table-layout: fixed;
+  display: table !important;
+}
+
+.mesas-pdf-table thead {
+  display: table-header-group !important;
+}
+
+.mesas-pdf-table tbody {
+  display: table-row-group !important;
+}
+
+.mesas-pdf-table tr {
+  display: table-row !important;
+}
+
+.mesas-pdf-table th,
+.mesas-pdf-table td {
+  display: table-cell !important;
+}
+
+.mesas-pdf-table th {
+  padding: 11px 10px;
+  background: #e9ecff;
+  color: #001f5b;
+  border-bottom: 1px solid #dbe2f3;
+  font-size: 13px;
+  font-weight: 900;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.mesas-pdf-table td {
+  padding: 9px 10px;
+  border-bottom: 1px dashed rgba(10, 37, 64, 0.1);
+  vertical-align: middle;
+  color: #001f5b;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.25;
+  background: #ffffff;
+}
+
+.mesas-pdf-table tbody tr:nth-child(even) td {
+  background: #fffafa;
+}
+
+.mesas-pdf-table tbody tr:hover td {
+  background: #f8fbff;
+}
+
+.pdf-row-observada td {
+  background: #fff7ed !important;
+}
+
+.pdf-col-numero {
+  width: 86px;
+  text-align: center !important;
+}
+
+.pdf-col-tipo {
+  width: 105px;
+}
+
+.pdf-numero-cell {
+  text-align: center;
+}
+
+.pdf-numero-cell strong {
+  min-width: 42px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: #eef2ff;
+  border: 1px solid #dbe2ff;
+  color: #001f5b;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.pdf-materia-line-cell {
+  width: 260px;
+}
+
+.pdf-materia-line-cell strong,
+.pdf-docente-line-cell strong {
+  display: block;
+  color: #001f5b;
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.pdf-materia-line-cell small {
+  display: block;
+  margin-top: 6px;
+  color: #c2410c;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: none;
+}
+
+.pdf-estudiante-cell {
+  width: 280px;
+  font-weight: 650 !important;
+  text-transform: uppercase;
+}
+
+.pdf-nota-cell {
+  width: 82px;
+  text-align: center;
+}
+
+.pdf-nota-cell span {
+  min-width: 58px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid #d6d6d6;
+  background: #f8f8f8;
+  color: #001f5b;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.pdf-docente-line-cell {
+  width: 240px;
+}
+
+.pdf-tipo-cell span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  border: 1px solid #dbe2f3;
+  color: #173263;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+@media (max-width: 1100px) {
+  .mesas-pdf-view {
+    max-height: 65dvh;
+  }
+
+  .mesas-pdf-sheet {
+    min-width: 1080px;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 8mm;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .mesas-pdf-view,
+  .mesas-pdf-view * {
+    visibility: visible !important;
+  }
+
+  .mesas-pdf-view {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0;
+    background: #ffffff;
+  }
+
+  .mesas-pdf-view > .mesas-pdf-sheet + .mesas-pdf-sheet {
+    margin-top: 0;
+  }
+
+  .mesas-pdf-sheet {
+    min-width: 0;
+    width: 100%;
+    margin: 0 0 8mm;
+    border-radius: 0;
+    box-shadow: none;
+    page-break-after: always;
+    break-after: page;
+    overflow: visible !important;
+  }
+
+  .mesas-pdf-header {
+    padding: 8px 10px;
+    min-height: 56px;
+    border-radius: 0;
+  }
+
+  .mesas-pdf-brand img {
+    width: 28px;
+    height: 28px;
+  }
+
+  .mesas-pdf-brand h3 {
+    font-size: 13px;
+  }
+
+  .mesas-pdf-brand p,
+  .mesas-pdf-meta span,
+  .mesas-pdf-meta strong {
+    font-size: 9px;
+  }
+
+  .mesas-pdf-observacion {
+    margin: 5px 8px 0;
+    padding: 5px 7px;
+    font-size: 9px;
+  }
+
+  .mesas-pdf-table-wrap {
+    padding: 5px 8px 7px;
+    overflow: visible !important;
+  }
+
+  .mesas-pdf-table th {
+    padding: 5px 6px;
+    font-size: 9px;
+  }
+
+  .mesas-pdf-table td {
+    padding: 4px 6px;
+    font-size: 9px;
+  }
+
+  .pdf-materia-line-cell strong,
+  .pdf-docente-line-cell strong,
+  .pdf-numero-cell strong,
+  .pdf-nota-cell span,
+  .pdf-tipo-cell span {
+    font-size: 9px;
+  }
+
+  .pdf-numero-cell strong,
+  .pdf-nota-cell span {
+    min-width: 32px;
+    height: 22px;
+    border-radius: 6px;
+  }
+}

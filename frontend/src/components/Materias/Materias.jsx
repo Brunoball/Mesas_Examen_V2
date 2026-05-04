@@ -1,20 +1,15 @@
 // src/components/Materias/Materias.jsx
-import React, { useContext } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useContext, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowLeft,
-  faBook,
   faChevronDown,
-  faDiagramProject,
   faEdit,
   faFilter,
-  faFlask,
-  faLayerGroup,
   faMagnifyingGlass,
   faPlus,
   faPowerOff,
-  faRotateRight,
   faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 
@@ -31,6 +26,7 @@ import Principal, { MesasShellContext } from "../Principal/Principal";
 
 const Materias = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dentroDeShell = useContext(MesasShellContext);
 
   const state = useMaterias();
@@ -78,7 +74,15 @@ const Materias = () => {
     eliminarArea,
   } = state;
 
-  const volverAMaterias = () => setSeccionActiva("materias");
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const seccion = params.get("seccion") || "materias";
+    const seccionesValidas = ["materias", "areas", "correlativas", "talleres"];
+
+    setSeccionActiva(seccionesValidas.includes(seccion) ? seccion : "materias");
+  }, [location.search, setSeccionActiva]);
+
+  const volverAMaterias = () => navigate("/materias");
 
   const renderContenido = () => {
     if (seccionActiva === "correlativas") {
@@ -133,21 +137,11 @@ const Materias = () => {
             <div>
               <h2>Listado principal de materias</h2>
               <p>
-                Esta es la sección principal. Desde acá editás materias y abajo accedés a las subsecciones separadas.
+                Esta es la sección principal. Desde acá editás las materias; las áreas, correlativas y talleres quedan como subopciones del menú lateral.
               </p>
             </div>
 
             <div className="materias-header-actions">
-              <button
-                className="materias-btn ghost"
-                onClick={cargarTodo}
-                disabled={cargando}
-                type="button"
-              >
-                <FontAwesomeIcon icon={faRotateRight} />
-                {cargando ? "Actualizando..." : "Actualizar"}
-              </button>
-
               <button
                 className="materias-btn primary"
                 onClick={() => setModalMateria({ abierto: true, item: null })}
@@ -234,32 +228,6 @@ const Materias = () => {
           </div>
         </section>
 
-        <div className="materias-subsections-bar">
-          <div className="materias-subsections-title">
-            <span>Subsecciones de materias</span>
-            <small>Separadas para no mezclar el mantenimiento principal con reglas especiales.</small>
-          </div>
-
-          <div className="materias-subsections-buttons">
-            <button className="materias-section-btn" type="button" onClick={() => setSeccionActiva("correlativas")}>
-              <FontAwesomeIcon icon={faDiagramProject} />
-              Correlativas
-              <b>{correlativas.length}</b>
-            </button>
-
-            <button className="materias-section-btn" type="button" onClick={() => setSeccionActiva("talleres")}>
-              <FontAwesomeIcon icon={faFlask} />
-              Talleres
-              <b>{talleres.length}</b>
-            </button>
-
-            <button className="materias-section-btn" type="button" onClick={() => setSeccionActiva("areas")}>
-              <FontAwesomeIcon icon={faLayerGroup} />
-              Áreas
-              <b>{areas.length}</b>
-            </button>
-          </div>
-        </div>
 
         <div className="materias-bottom-actions main-bottom">
           <button className="materias-btn back" onClick={() => navigate("/panel")} type="button">

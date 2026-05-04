@@ -4,10 +4,8 @@ const POR_PAGINA_MAXIMO = 100;
 const LIMITE_PAGINAS_SEGURIDAD = 150;
 
 /*
-  Fallback defensivo: el sistema igual intenta obtener condiciones desde DB
-  por previas_catalogos / previas_condiciones / global_obtener_listas.
-  Esto evita que el formulario quede bloqueado si algún catálogo viejo todavía
-  no fue reemplazado en el backend local.
+  Fallback defensivo: el sistema igual intenta obtener condiciones desde DB.
+  El flujo principal usa un solo endpoint liviano: previas_catalogos.
 */
 const CONDICIONES_BASE = [
   { id_condicion: 1, condicion: 'COLOQUIO' },
@@ -79,18 +77,6 @@ function normalizarCondicion(item) {
   };
 }
 
-function unirPorId(listaA = [], listaB = [], campoId) {
-  const mapa = new Map();
-
-  [...listaA, ...listaB].forEach((item) => {
-    const id = String(item?.[campoId] ?? item?.id ?? '').trim();
-    if (!id || id === '0') return;
-    mapa.set(id, item);
-  });
-
-  return Array.from(mapa.values());
-}
-
 function normalizarLista(lista = [], normalizador, campoId) {
   const mapa = new Map();
 
@@ -104,62 +90,66 @@ function normalizarLista(lista = [], normalizador, campoId) {
   return Array.from(mapa.values());
 }
 
+function limpiarFiltros(filtros = {}) {
+  const result = {};
+
+  Object.entries(filtros || {}).forEach(([key, value]) => {
+    if (value !== '' && value !== null && value !== undefined) {
+      result[key] = value;
+    }
+  });
+
+  return result;
+}
+
 export const previasApi = {
   async catalogos() {
-    const [previasResult, catedrasResult, globalResult, condicionesResult] = await Promise.allSettled([
-      apiGet('previas_catalogos'),
-      apiGet('catedras_catalogos'),
-      apiGet('global_obtener_listas'),
-      apiGet('previas_condiciones'),
-    ]);
+    try {
+      const respuesta = await apiGet('previas_catalogos');
+      const data = obtenerDataCatalogo(respuesta);
 
-    const previasData = previasResult.status === 'fulfilled' ? obtenerDataCatalogo(previasResult.value) : {};
-    const catedrasData = catedrasResult.status === 'fulfilled' ? obtenerDataCatalogo(catedrasResult.value) : {};
-    const globalData = globalResult.status === 'fulfilled' ? obtenerDataCatalogo(globalResult.value) : {};
-    const condicionesData = condicionesResult.status === 'fulfilled' ? obtenerDataCatalogo(condicionesResult.value) : {};
+      const cursos = normalizarLista(
+        obtenerArrayDesdeVariantes(data, ['cursos', 'curso']),
+        normalizarCurso,
+        'id_curso'
+      ).sort((a, b) => Number(a.id_curso || 0) - Number(b.id_curso || 0));
 
-    const cursosPrevias = obtenerArrayDesdeVariantes(previasData, ['cursos', 'curso']).map(normalizarCurso);
-    const cursosCatedras = obtenerArrayDesdeVariantes(catedrasData, ['cursos', 'curso']).map(normalizarCurso);
-    const cursosGlobal = obtenerArrayDesdeVariantes(globalData, ['cursos', 'curso']).map(normalizarCurso);
+      const divisiones = normalizarLista(
+        obtenerArrayDesdeVariantes(data, ['divisiones', 'division']),
+        normalizarDivision,
+        'id_division'
+      ).sort((a, b) => String(a.nombre_division || '').localeCompare(String(b.nombre_division || ''), 'es'));
 
-    const divisionesPrevias = obtenerArrayDesdeVariantes(previasData, ['divisiones', 'division']).map(normalizarDivision);
-    const divisionesCatedras = obtenerArrayDesdeVariantes(catedrasData, ['divisiones', 'division']).map(normalizarDivision);
-    const divisionesGlobal = obtenerArrayDesdeVariantes(globalData, ['divisiones', 'division']).map(normalizarDivision);
+      let condiciones = normalizarLista(
+        obtenerArrayDesdeVariantes(data, ['condiciones', 'condicion']),
+        normalizarCondicion,
+        'id_condicion'
+      ).sort((a, b) => Number(a.id_condicion || 0) - Number(b.id_condicion || 0));
 
-    const condicionesPrevias = obtenerArrayDesdeVariantes(previasData, ['condiciones', 'condicion']).map(normalizarCondicion);
-    const condicionesGlobal = obtenerArrayDesdeVariantes(globalData, ['condiciones', 'condicion']).map(normalizarCondicion);
-    const condicionesDirectas = obtenerArrayDesdeVariantes(condicionesData, ['condiciones', 'condicion']).map(normalizarCondicion);
+      if (condiciones.length === 0) {
+        condiciones = normalizarLista(CONDICIONES_BASE, normalizarCondicion, 'id_condicion');
+      }
 
-    const cursos = unirPorId(
-      unirPorId(cursosPrevias, cursosCatedras, 'id_curso'),
-      cursosGlobal,
-      'id_curso'
-    ).sort((a, b) => Number(a.id_curso || 0) - Number(b.id_curso || 0));
+      return {
+        exito: true,
+        data: {
+          cursos,
+          divisiones,
+          condiciones,
+        },
+      };
+    } catch (error) {
+      const condiciones = await previasApi.condiciones().catch(() => CONDICIONES_BASE);
 
-    const divisiones = unirPorId(
-      unirPorId(divisionesPrevias, divisionesCatedras, 'id_division'),
-      divisionesGlobal,
-      'id_division'
-    ).sort((a, b) => String(a.nombre_division || '').localeCompare(String(b.nombre_division || ''), 'es'));
-
-    let condiciones = unirPorId(
-      unirPorId(condicionesPrevias, condicionesGlobal, 'id_condicion'),
-      condicionesDirectas,
-      'id_condicion'
-    ).sort((a, b) => Number(a.id_condicion || 0) - Number(b.id_condicion || 0));
-
-    if (condiciones.length === 0) {
-      condiciones = normalizarLista(CONDICIONES_BASE, normalizarCondicion, 'id_condicion');
+      return {
+        exito: true,
+        data: {
+          cursos: [],
+          divisiones: [],
+          condiciones,
+        },
+      };
     }
-
-    return {
-      exito: true,
-      data: {
-        cursos,
-        divisiones,
-        condiciones,
-      },
-    };
   },
 
   condiciones: async () => {
@@ -178,12 +168,13 @@ export const previasApi = {
   },
 
   listar: (pagina = 1, porPagina = POR_PAGINA_MAXIMO, filtros = {}) =>
-    apiGet('previas_listar', {
+    apiGet('previas_listar', limpiarFiltros({
       pagina,
-      por_pagina: porPagina,
+      por_pagina: Math.min(POR_PAGINA_MAXIMO, Number(porPagina || POR_PAGINA_MAXIMO)),
       ...filtros,
-    }),
+    })),
 
+  // Se mantiene por compatibilidad con otros llamados antiguos, pero la pantalla ya no lo usa.
   async listarTodos(activo = 1, filtros = {}) {
     let pagina = 1;
     let previas = [];

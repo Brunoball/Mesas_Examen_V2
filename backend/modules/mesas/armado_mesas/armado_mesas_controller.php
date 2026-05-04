@@ -23,6 +23,8 @@ require_once __DIR__ . '/fases/fase_2_agrupar_talleres.php';
 require_once __DIR__ . '/fases/fase_3_agrupar_correlativas.php';
 require_once __DIR__ . '/fases/fase_4_agrupar_simples.php';
 require_once __DIR__ . '/fases/fase_5_validar_y_numerar.php';
+require_once __DIR__ . '/fases/fase_6_agrupar_grupos_finales.php';
+require_once __DIR__ . '/fases/fase_7_reoptimizar_no_agrupadas.php';
 
 /**
  * Agrega un item único a una colección usando un índice interno.
@@ -87,12 +89,17 @@ function mesas_examen_texto_lista(array $items, string $campo = 'nombre'): strin
 
 function mesas_examen_tipo_grupo(array $tipos): string
 {
-    if (in_array('correlativa', $tipos, true)) {
-        return 'correlativa';
-    }
-
+    // Taller siempre tiene prioridad visual/operativa porque es el único tipo
+    // que debe manejarse como mesa especial y separada.
     if (in_array('taller', $tipos, true)) {
         return 'taller';
+    }
+
+    // Correlativa no es una mesa especial aislada: puede convivir con simple.
+    // Se muestra como correlativa solo para que el usuario vea que el grupo
+    // tiene prioridad académica, pero no se valida como tipo incompatible.
+    if (in_array('correlativa', $tipos, true)) {
+        return 'correlativa';
     }
 
     return 'simple';
@@ -521,6 +528,16 @@ function mesas_armado_eliminar_borrador(): void
     try {
         $pdo = db();
 
+        $gruposEliminados = 0;
+        $noAgrupadasEliminadas = 0;
+
+        if (function_exists('mesas_armado_grupos_asegurar_tablas')) {
+            mesas_armado_grupos_asegurar_tablas($pdo);
+
+            $noAgrupadasEliminadas = (int)$pdo->exec('DELETE FROM mesas_no_agrupadas');
+            $gruposEliminados = (int)$pdo->exec('DELETE FROM mesas_grupos');
+        }
+
         $stmt = $pdo->prepare("
             DELETE FROM mesas
             WHERE estado IN ('borrador', 'observada', 'armada')
@@ -532,6 +549,8 @@ function mesas_armado_eliminar_borrador(): void
             'mensaje' => 'Mesas borrador eliminadas correctamente.',
             'data' => [
                 'eliminadas' => $stmt->rowCount(),
+                'grupos_eliminados' => $gruposEliminados,
+                'no_agrupadas_eliminadas' => $noAgrupadasEliminadas,
             ],
         ]);
     } catch (Throwable $e) {

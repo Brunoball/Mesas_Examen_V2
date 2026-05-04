@@ -84,6 +84,20 @@ export const listarMesasExamen = ({ pagina = 1, porPagina = 100, busqueda = "" }
   });
 };
 
+export const listarMesasGruposFinales = ({ busqueda = "" } = {}) => {
+  return request("mesas_grupos_listar", {
+    method: "GET",
+    params: { busqueda },
+  });
+};
+
+export const listarMesasNoAgrupadas = ({ busqueda = "" } = {}) => {
+  return request("mesas_no_agrupadas_listar", {
+    method: "GET",
+    params: { busqueda },
+  });
+};
+
 export const obtenerParametrosArmadoMesas = () => {
   return request("mesas_armado_parametros", {
     method: "GET",
@@ -103,6 +117,23 @@ export const crearArmadoInicialMesas = ({
       fecha_fin,
       limpiar_borrador,
       excluir_fines_semana,
+    },
+  });
+};
+
+export const crearGruposFinalesMesas = ({
+  limpiar_grupos = true,
+  min_numeros = 2,
+  max_numeros = 4,
+  confirmar_grupos = false,
+} = {}) => {
+  return request("mesas_armado_grupos_finales", {
+    method: "POST",
+    body: {
+      limpiar_grupos,
+      min_numeros,
+      max_numeros,
+      confirmar_grupos,
     },
   });
 };

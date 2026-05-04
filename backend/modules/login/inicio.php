@@ -54,8 +54,6 @@ function login_inicio(): void
 
         iniciar_sesion_si_falta();
         $_SESSION['usuario_id'] = (int)$usuario['idUsuario'];
-        $_SESSION['usuario_nombre'] = (string)$usuario['Nombre_Completo'];
-        $_SESSION['usuario_rol'] = $rol;
 
         json_response([
             'exito' => true,

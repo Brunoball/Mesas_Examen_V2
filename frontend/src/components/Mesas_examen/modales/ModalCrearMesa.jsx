@@ -150,7 +150,7 @@ const ModalCrearMesa = ({
         <div className="mesas-modal-header">
           <div>
             <h3>Crear mesas de examen</h3>
-            <p>Cruza previas inscriptas con cátedras/docentes y genera los números de mesa.</p>
+            <p>Cruza previas con cátedras/docentes, genera los números y asigna fecha/turno.</p>
           </div>
 
           <button
@@ -167,7 +167,7 @@ const ModalCrearMesa = ({
           <div className="mesas-modal-alert">
             <FontAwesomeIcon icon={faTriangleExclamation} />
             <span>
-              Esta acción inserta/actualiza registros en la tabla <strong>mesas</strong> y deja el armado agrupado por número de mesa.
+              Esta acción inserta/actualiza registros en la tabla <strong>mesas</strong>, genera el número de mesa y carga <strong>fecha_mesa</strong> e <strong>id_turno</strong>.
             </span>
           </div>
 
@@ -274,7 +274,7 @@ const ModalCrearMesa = ({
               ) : (
                 <>
                   <FontAwesomeIcon icon={faCheck} />
-                  Crear mesas
+                  Crear y calendarizar
                 </>
               )}
             </button>

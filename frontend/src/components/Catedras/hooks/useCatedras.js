@@ -1,13 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { catedrasApi } from '../api/catedrasApi';
 import { usePaginacion } from '../../_shared/hooks/usePaginacion';
-
-function normalizar(texto) {
-  return String(texto || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-}
 
 function limpiarFiltros(filtros) {
   const result = {};
@@ -27,7 +20,8 @@ export function useCatedras() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState(null);
-  const [busqueda, setBusqueda] = useState('');
+  const [busqueda, setBusquedaState] = useState('');
+  const [busquedaDebounced, setBusquedaDebounced] = useState('');
   const [filtros, setFiltros] = useState({
     id_curso: '',
     id_division: '',
@@ -35,7 +29,8 @@ export function useCatedras() {
     sin_docente: '',
   });
 
-  const paginacion = usePaginacion(20);
+  // Igual que Previas: se cargan 100 registros por página.
+  const paginacion = usePaginacion(100);
 
   const mostrarMensaje = useCallback((tipo, texto) => {
     setMensaje({ tipo, texto });
@@ -57,29 +52,52 @@ export function useCatedras() {
     setError('');
 
     try {
+      const filtrosBackend = limpiarFiltros({ ...filtros });
+      const busquedaLimpia = busquedaDebounced.trim();
+
+      if (busquedaLimpia !== '') {
+        filtrosBackend.busqueda = busquedaLimpia;
+      }
+
       const res = await catedrasApi.listar(
         paginacion.pagina,
         paginacion.porPagina,
-        limpiarFiltros({ ...filtros, busqueda })
+        filtrosBackend
       );
 
-      setCatedras(res.data || []);
+      setCatedras(Array.isArray(res.data) ? res.data : []);
       paginacion.actualizarPaginacion(res.paginacion || {});
     } catch (e) {
       const msg = e.message || 'No se pudieron cargar las cátedras.';
       setError(msg);
+      setCatedras([]);
+      paginacion.actualizarPaginacion({ pagina: 1, total: 0, paginas: 1 });
     } finally {
       setLoading(false);
     }
-  }, [busqueda, filtros, paginacion.pagina, paginacion.porPagina]);
+  }, [busquedaDebounced, filtros, paginacion.pagina, paginacion.porPagina]);
 
   useEffect(() => {
     cargarCatalogos();
   }, [cargarCatalogos]);
 
+  // Igual que Previas: evita llamar al backend por cada tecla exacta.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setBusquedaDebounced(busqueda.trim());
+    }, 320);
+
+    return () => window.clearTimeout(timer);
+  }, [busqueda]);
+
   useEffect(() => {
     cargar();
   }, [cargar]);
+
+  function setBusqueda(value) {
+    paginacion.setPagina(1);
+    setBusquedaState(value);
+  }
 
   function actualizarFiltro(nombre, valor) {
     paginacion.setPagina(1);
@@ -88,22 +106,10 @@ export function useCatedras() {
 
   function limpiarTodosFiltros() {
     paginacion.setPagina(1);
-    setBusqueda('');
+    setBusquedaState('');
+    setBusquedaDebounced('');
     setFiltros({ id_curso: '', id_division: '', id_docente: '', sin_docente: '' });
   }
-
-  const catedrasFiltradas = useMemo(() => {
-    const q = normalizar(busqueda);
-    if (!q) return catedras;
-
-    return catedras.filter((item) => (
-      normalizar(item.nombre_curso).includes(q) ||
-      normalizar(item.nombre_division).includes(q) ||
-      normalizar(item.materia).includes(q) ||
-      normalizar(item.docente).includes(q) ||
-      normalizar(item.cargo_docente).includes(q)
-    ));
-  }, [catedras, busqueda]);
 
   async function asignarDocente(idCatedra, idDocente) {
     try {
@@ -119,16 +125,13 @@ export function useCatedras() {
   }
 
   return {
-    catedras: catedrasFiltradas,
+    catedras,
     catalogos,
     loading,
     error,
     mensaje,
     busqueda,
-    setBusqueda: (value) => {
-      paginacion.setPagina(1);
-      setBusqueda(value);
-    },
+    setBusqueda,
     filtros,
     actualizarFiltro,
     limpiarTodosFiltros,

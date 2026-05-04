@@ -17,8 +17,8 @@ function route_mesas(string $action): bool
 
         /*
          * Acción principal del botón/modal.
-         * Ahora crea el borrador y deja numero_mesa cargado.
-         * No asigna fecha_mesa ni id_turno en esta etapa.
+         * Crea el borrador, numera y, si llegan fecha_inicio/fecha_fin,
+         * valida y asigna fecha_mesa + id_turno en la tabla mesas.
          */
         case 'mesas_armado_crear':
         case 'mesas_armado_crear_numerado':
@@ -35,9 +35,18 @@ function route_mesas(string $action): bool
             mesas_armado_fase_2_agrupar_talleres();
             return true;
 
+        /*
+         * Fase 3 real: valida todo el armado actual y asigna fecha/turno
+         * por numero_mesa, respetando prioridad, correlativas, talleres,
+         * cantidad de alumnos, bloqueos docentes y choques de alumno/docente.
+         */
         case 'mesas_armado_fase_3_correlativas':
         case 'mesas_armado_fase_3_agrupar_correlativas':
-            mesas_armado_fase_3_agrupar_correlativas();
+        case 'mesas_armado_fase_3_calendarizar':
+        case 'mesas_armado_validar_y_calendarizar':
+        case 'mesas_armado_asignar_fechas_turnos':
+        case 'mesas_armado_calendarizar':
+            mesas_armado_fase_3_validar_y_calendarizar();
             return true;
 
         /*
@@ -56,6 +65,39 @@ function route_mesas(string $action): bool
         case 'mesas_armado_fase_5_validar_y_numerar':
             mesas_armado_fase_5_validar_y_numerar();
             return true;
+
+        /*
+         * Etapa final: cruza los numero_mesa ya calendarizados y arma la mesa
+         * final agrupando 2 a 4 números por misma fecha/turno/área. Taller queda solo.
+         */
+        case 'mesas_armado_fase_6_grupos_finales':
+        case 'mesas_armado_grupos_finales':
+        case 'mesas_armado_agrupar_grupos_finales':
+        case 'mesas_armado_crear_grupos':
+            mesas_armado_grupos_finales();
+            return true;
+
+        /*
+         * Fase 7 final: reoptimiza las mesas no agrupadas.
+         * Usa las mesas simples como comodines: puede moverles fecha/turno para
+         * completar grupos existentes o formar nuevos grupos compatibles.
+         */
+        case 'mesas_armado_fase_7_reoptimizar':
+        case 'mesas_armado_reoptimizar_no_agrupadas':
+        case 'mesas_armado_reoptimizar_grupos_finales':
+            mesas_armado_fase_7_reoptimizar_no_agrupadas();
+            return true;
+
+        case 'mesas_grupos_listar':
+        case 'mesas_armado_grupos_listar':
+            mesas_grupos_listar();
+            return true;
+
+        case 'mesas_no_agrupadas_listar':
+        case 'mesas_armado_no_agrupadas_listar':
+            mesas_no_agrupadas_listar();
+            return true;
+
     }
 
     return false;

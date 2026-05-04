@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { previasApi } from '../api/previasApi.js';
-
-function normalizar(texto) {
-  return String(texto || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-}
+import { usePaginacion } from '../../_shared/hooks/usePaginacion.js';
 
 const CONDICIONES_BASE = [
   { id_condicion: 1, condicion: 'COLOQUIO' },
@@ -72,8 +66,11 @@ export function usePrevias() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState(null);
-  const [busqueda, setBusqueda] = useState('');
+  const [busqueda, setBusquedaState] = useState('');
+  const [busquedaDebounced, setBusquedaDebounced] = useState('');
   const [vista, setVista] = useState('activas');
+
+  const paginacion = usePaginacion(100);
 
   const mostrarMensaje = useCallback((tipo, texto) => {
     setMensaje({ tipo, texto });
@@ -125,48 +122,63 @@ export function usePrevias() {
 
     try {
       const activo = vista === 'bajas' ? 0 : 1;
-      const res = await previasApi.listarTodos(activo);
+      const filtros = { activo };
+      const busquedaLimpia = busquedaDebounced.trim();
+
+      if (busquedaLimpia !== '') {
+        filtros.busqueda = busquedaLimpia;
+      }
+
+      const res = await previasApi.listar(
+        paginacion.pagina,
+        paginacion.porPagina,
+        filtros
+      );
+
       setPreviasBase(Array.isArray(res.data) ? res.data : []);
+      paginacion.actualizarPaginacion(res.paginacion || {});
     } catch (e) {
       setError(e.message || 'No se pudieron cargar las previas.');
       setPreviasBase([]);
+      paginacion.actualizarPaginacion({ pagina: 1, total: 0, paginas: 1 });
     } finally {
       setLoading(false);
     }
-  }, [vista]);
+  }, [vista, busquedaDebounced, paginacion.pagina, paginacion.porPagina]);
 
   useEffect(() => {
     cargarCatalogos();
   }, [cargarCatalogos]);
 
   useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setBusquedaDebounced(busqueda.trim());
+    }, 320);
+
+    return () => window.clearTimeout(timer);
+  }, [busqueda]);
+
+  useEffect(() => {
     cargar();
   }, [cargar]);
 
-  const previasFiltradas = useMemo(() => {
-    const q = normalizar(busqueda);
-    if (!q) return previasBase;
-
-    return previasBase.filter((item) => (
-      normalizar(item.alumno).includes(q) ||
-      normalizar(item.dni).includes(q) ||
-      normalizar(item.materia).includes(q) ||
-      normalizar(item.condicion).includes(q) ||
-      normalizar(item.curso_materia).includes(q) ||
-      normalizar(item.inscripcion_texto).includes(q) ||
-      normalizar(item.anio).includes(q)
-    ));
-  }, [previasBase, busqueda]);
-
-  const conteo = useMemo(() => ({
-    totalRegistros: previasBase.length,
-    totalFiltrados: previasFiltradas.length,
-  }), [previasBase.length, previasFiltradas.length]);
+  function setBusqueda(value) {
+    paginacion.setPagina(1);
+    setBusquedaState(value);
+  }
 
   function cambiarVista(nuevaVista) {
+    paginacion.setPagina(1);
     setVista(nuevaVista);
-    setBusqueda('');
+    setBusquedaState('');
+    setBusquedaDebounced('');
   }
+
+  const conteo = useMemo(() => ({
+    totalRegistros: Number(paginacion.totalRegistros || 0),
+    totalPagina: previasBase.length,
+    totalFiltrados: busquedaDebounced.trim() !== '' ? Number(paginacion.totalRegistros || 0) : previasBase.length,
+  }), [paginacion.totalRegistros, previasBase.length, busquedaDebounced]);
 
   async function obtener(idPrevia) {
     try {
@@ -232,7 +244,7 @@ export function usePrevias() {
   }
 
   return {
-    previas: previasFiltradas,
+    previas: previasBase,
     previasBase,
     catalogos,
     materiasPorCursoCache,
@@ -244,6 +256,7 @@ export function usePrevias() {
     vista,
     cambiarVista,
     conteo,
+    paginacion,
     reload: cargar,
     obtener,
     obtenerMateriasPorCurso,

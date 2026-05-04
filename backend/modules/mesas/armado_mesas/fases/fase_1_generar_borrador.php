@@ -18,6 +18,13 @@ function mesas_armado_crear(): void
     $pdo = db();
     $body = request_body();
 
+    $fechaInicio = mesas_armado_leer_fecha_parametro($body, ['fecha_inicio', 'fechaInicio', 'inicio', 'desde']);
+    $fechaFin = mesas_armado_leer_fecha_parametro($body, ['fecha_fin', 'fechaFin', 'fin', 'hasta']);
+    $debeCalendarizar = $fechaInicio !== null && $fechaFin !== null;
+    // Por defecto, si se calendariza correctamente, también se genera la mesa final agrupada.
+    // Se puede desactivar enviando generar_grupos=false.
+    $generarGruposFinales = filter_var($body['generar_grupos'] ?? true, FILTER_VALIDATE_BOOLEAN);
+
     // Por defecto se limpia todo el armado operativo anterior para que no queden restos.
     $limpiarBorrador = filter_var($body['limpiar_borrador'] ?? true, FILTER_VALIDATE_BOOLEAN);
 
@@ -31,10 +38,21 @@ function mesas_armado_crear(): void
             ], 422);
         }
 
+        // IMPORTANTE: mesas_armado_grupos_asegurar_tablas ejecuta CREATE TABLE IF NOT EXISTS,
+        // que en MySQL/MariaDB dispara un commit implícito y rompe cualquier transacción activa.
+        // Por eso se llama ANTES de beginTransaction().
+        if ($limpiarBorrador && function_exists('mesas_armado_grupos_asegurar_tablas')) {
+            mesas_armado_grupos_asegurar_tablas($pdo);
+        }
+
         $pdo->beginTransaction();
 
         if ($limpiarBorrador) {
-            // Se limpia también lo numerado porque esta etapa recalcula desde cero.
+            if (function_exists('mesas_armado_grupos_asegurar_tablas')) {
+                $pdo->exec('DELETE FROM mesas_no_agrupadas');
+                $pdo->exec('DELETE FROM mesas_grupos');
+            }
+
             $pdo->exec("
                 DELETE FROM mesas
                 WHERE estado IN ('borrador', 'observada', 'armada')
@@ -213,11 +231,61 @@ function mesas_armado_crear(): void
             true    // incluir armadas si existieran
         );
 
+        $resultadoCalendarizacion = null;
+
+        /*
+         * Importante:
+         * El modal ya envía fecha_inicio y fecha_fin. Por eso esta acción principal
+         * no debe quedarse solamente en numero_mesa: después de numerar valida el
+         * armado y asigna fecha_mesa/id_turno en la misma tabla `mesas`.
+         */
+        if ($debeCalendarizar) {
+            $resultadoCalendarizacion = mesas_armado_fase_3_validar_y_calendarizar_core(
+                $pdo,
+                (string)$fechaInicio,
+                (string)$fechaFin,
+                [
+                    'auto_reparar_numeracion' => false,
+                    'limpiar_asignacion_previa' => true,
+                    'marcar_armada' => false,
+                    // La acción principal calendariza las mesas válidas y deja observadas las problemáticas.
+                    'permitir_observadas' => true,
+                ]
+            );
+        }
+
         $pdo->commit();
+
+        $resultadoGruposFinales = null;
+        $errorGruposFinales = null;
+
+        if ($debeCalendarizar && $generarGruposFinales) {
+            try {
+                $resultadoGruposFinales = mesas_armado_grupos_finales_core($pdo, [
+                    'limpiar_grupos' => true,
+                    'min_numeros' => 2,
+                    'max_numeros' => 4,
+                    'confirmar_grupos' => false,
+                ]);
+            } catch (Throwable $eGrupos) {
+                log_error($eGrupos, 'mesas_armado_crear_grupos_finales');
+                $errorGruposFinales = 'El armado fue generado y calendarizado, pero falló la agrupación final de mesas.';
+            }
+        }
+
+        $calendarizacionEjecutada = is_array($resultadoCalendarizacion)
+            && (bool)($resultadoCalendarizacion['data']['calendarizacion_ejecutada'] ?? false);
+
+        $calendarizacionCompleta = $calendarizacionEjecutada
+            && (int)($resultadoCalendarizacion['data']['calendarizacion']['total_no_calendarizadas'] ?? 0) === 0;
 
         json_response([
             'exito' => true,
-            'mensaje' => 'Armado generado y numerado correctamente. Los talleres se expanden por todas sus materias y quedan con mesa exclusiva por previa.',
+            'mensaje' => $calendarizacionEjecutada
+                ? ($calendarizacionCompleta
+                    ? 'Armado generado, numerado y calendarizado correctamente con fecha y turno.'
+                    : 'Armado generado y calendarizado parcialmente. Algunas mesas quedaron observadas.')
+                : 'Armado generado y numerado correctamente. No se calendarizó porque no se enviaron fecha_inicio y fecha_fin.',
             'data' => [
                 'total_previas_procesadas' => count($previas),
                 'insertados' => $insertados,
@@ -232,12 +300,20 @@ function mesas_armado_crear(): void
                 'filas_taller_generadas' => $filasTallerGeneradas,
                 'materias_taller_sin_catedra' => $materiasTallerSinCatedra,
                 'materias_taller_sin_docente' => $materiasTallerSinDocente,
-                'fecha_mesa_generada' => false,
-                'turno_generado' => false,
+                'fecha_mesa_generada' => $calendarizacionEjecutada,
+                'turno_generado' => $calendarizacionEjecutada,
                 'numero_mesa_generado' => true,
+                'calendarizacion_ejecutada' => $calendarizacionEjecutada,
+                'calendarizacion_completa' => $calendarizacionCompleta,
+                'fecha_inicio' => $fechaInicio,
+                'fecha_fin' => $fechaFin,
                 'criterio_numero_mesa' => 'taller_exclusivo_por_previa_y_docente_materia_para_el_resto',
                 'numeracion' => $resultadoNumeracion,
-                'detalle' => 'Esta fase cruza previas con cátedras/docentes. Si la previa es taller, crea una fila por cada id_catedra del taller con el mismo id_previa y un numero_mesa exclusivo para esa previa.',
+                'fase_3_calendarizacion' => $resultadoCalendarizacion['data'] ?? null,
+                'grupos_finales_generados' => is_array($resultadoGruposFinales),
+                'fase_6_grupos_finales' => $resultadoGruposFinales,
+                'error_grupos_finales' => $errorGruposFinales,
+                'detalle' => 'Esta fase cruza previas con cátedras/docentes, numera, asigna fecha/turno y genera mesas_grupos cuando se enviaron fechas.',
             ],
         ]);
     } catch (Throwable $e) {

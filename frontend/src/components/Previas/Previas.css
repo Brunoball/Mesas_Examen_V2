@@ -374,6 +374,61 @@
   color: #425466;
 }
 
+.previas-pagination {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.previas-page-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 92px;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(29, 66, 138, 0.18);
+  border-radius: 12px;
+  background: #fff;
+  color: #1d428a;
+  font-weight: 850;
+  cursor: pointer;
+  transition: 180ms ease;
+}
+
+.previas-page-btn:hover:not(:disabled) {
+  background: #f5f8ff;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(10, 37, 64, 0.08);
+}
+
+.previas-page-btn:disabled {
+  opacity: 0.52;
+  cursor: not-allowed;
+}
+
+.previas-page-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.previas-page-info small {
+  margin-left: 6px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 750;
+}
+
 /* MODALES / FORMULARIO */
 .previas-modal-overlay {
   position: fixed;
@@ -774,5 +829,31 @@
 
   .previas-form-shell {
     width: 100%;
+  }
+
+
+  .previas-footer {
+    align-items: stretch;
+  }
+
+  .previas-pagination {
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+  }
+
+  .previas-page-btn {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .previas-page-info {
+    flex: 1.2;
+    justify-content: center;
+  }
+
+  .previas-footer-note {
+    width: 100%;
+    margin-left: 0;
   }
 }

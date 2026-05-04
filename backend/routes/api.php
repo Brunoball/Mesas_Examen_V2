@@ -48,6 +48,7 @@ try {
     require_once __DIR__ . '/../modules/docentes/route.php';
     require_once __DIR__ . '/../modules/previas/route.php';
     require_once __DIR__ . '/../modules/mesas/route.php';
+    require_once __DIR__ . '/../modules/auditoria/route.php';
 
     if (route_login($action)) {
         exit;
@@ -74,6 +75,10 @@ try {
     }
 
     if (route_mesas($action)) {
+        exit;
+    }
+
+    if (route_auditoria($action)) {
         exit;
     }
 

@@ -107,7 +107,27 @@ const NAV_ITEMS = [
     icon: faBookOpen,
     bottomIcon: faProjectDiagram,
     ruta: "/materias",
-    description: "Gestionar materias, talleres y correlatividades.",
+    description: "Gestionar materias, áreas, correlativas y talleres.",
+    children: [
+      {
+        key: "materias-areas",
+        label: "Áreas",
+        ruta: "/materias?seccion=areas",
+        seccion: "areas",
+      },
+      {
+        key: "materias-correlativas",
+        label: "Correlativas",
+        ruta: "/materias?seccion=correlativas",
+        seccion: "correlativas",
+      },
+      {
+        key: "materias-talleres",
+        label: "Talleres",
+        ruta: "/materias?seccion=talleres",
+        seccion: "talleres",
+      },
+    ],
   },
   {
     key: "catedras",
@@ -214,6 +234,9 @@ const Principal = ({ children = null }) => {
   const activeKey = NAV_ITEMS.find(
     (item) => location.pathname === item.ruta || location.pathname.startsWith(item.ruta + "/")
   )?.key || "";
+
+  const searchParams = new URLSearchParams(location.search);
+  const materiaSubseccionActiva = searchParams.get("seccion") || "materias";
 
   const activeLabel = NAV_ITEMS.find((item) => item.key === activeKey)?.label || "Panel";
   const hasChildren = React.Children.count(children) > 0;
@@ -322,19 +345,46 @@ const Principal = ({ children = null }) => {
         <nav className="me-nav">
           {NAV_ITEMS.map((item) => {
             const isActive = activeKey === item.key;
+            const tieneSubitems = Array.isArray(item.children) && item.children.length > 0;
+
             return (
-              <button
+              <div
                 key={item.key}
-                type="button"
-                className={`me-nav__item ${isActive ? "is-active" : ""}`}
-                onClick={() => handleNavigate(item.ruta)}
-                title={item.label}
+                className={`me-navGroup ${tieneSubitems ? "has-subnav" : ""} ${isActive ? "is-active" : ""}`}
               >
-                <span className="me-nav__icon">
-                  <FontAwesomeIcon icon={item.icon} />
-                </span>
-                <span className="me-nav__label">{item.label}</span>
-              </button>
+                <button
+                  type="button"
+                  className={`me-nav__item ${isActive ? "is-active" : ""}`}
+                  onClick={() => handleNavigate(item.ruta)}
+                  title={item.label}
+                >
+                  <span className="me-nav__icon">
+                    <FontAwesomeIcon icon={item.icon} />
+                  </span>
+                  <span className="me-nav__label">{item.label}</span>
+                </button>
+
+                {tieneSubitems && (
+                  <div className="me-subnav" aria-label={`Subsecciones de ${item.label}`}>
+                    {item.children.map((subitem) => {
+                      const isSubActive = isActive && materiaSubseccionActiva === subitem.seccion;
+
+                      return (
+                        <button
+                          key={subitem.key}
+                          type="button"
+                          className={`me-subnav__item ${isSubActive ? "is-active" : ""}`}
+                          onClick={() => handleNavigate(subitem.ruta)}
+                          title={subitem.label}
+                        >
+                          <span className="me-subnav__dot" aria-hidden="true" />
+                          <span className="me-subnav__label">{subitem.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>

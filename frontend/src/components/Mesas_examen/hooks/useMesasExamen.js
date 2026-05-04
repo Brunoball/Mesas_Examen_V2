@@ -2,74 +2,101 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   crearArmadoInicialMesas,
+  crearGruposFinalesMesas,
   eliminarBorradorMesas,
-  listarMesasExamen,
+  listarMesasGruposFinales,
+  listarMesasNoAgrupadas,
   obtenerParametrosArmadoMesas,
 } from "../api/mesasExamenApi";
 
 const normalizar = (valor) => String(valor || "").toLowerCase().trim();
 
-const mesaCoincideConBusqueda = (mesa, texto) => {
-  const valoresMesa = [
-    mesa.numero_mesa,
-    mesa.numero_mesa_texto,
-    mesa.fecha,
-    mesa.fecha_mesa,
-    mesa.turno,
-    mesa.materia,
-    mesa.curso,
-    mesa.docente,
-    mesa.estado,
-    mesa.observacion,
-    mesa.tipo_mesa,
-    mesa.cantidad_alumnos,
-    mesa.cantidad_alumnos_distintos,
-    mesa.cantidad_previas,
+const grupoCoincideConBusqueda = (grupo, texto) => {
+  const valoresGrupo = [
+    grupo.id_grupo,
+    grupo.id_no_agrupada,
+    grupo.mesa_final_texto,
+    grupo.fecha,
+    grupo.fecha_mesa,
+    grupo.turno,
+    grupo.area,
+    grupo.estado,
+    grupo.observacion,
+    grupo.motivo,
+    grupo.numeros_mesa_texto,
+    grupo.tipos_mesa_texto,
+    grupo.cantidad_numeros,
+    grupo.cantidad_alumnos,
+    grupo.cantidad_previas,
+    grupo.docente,
+    grupo.materia,
   ];
 
-  const coincideMesa = valoresMesa.some((valor) => normalizar(valor).includes(texto));
-
-  if (coincideMesa) {
+  if (valoresGrupo.some((valor) => normalizar(valor).includes(texto))) {
     return true;
   }
 
-  const materias = Array.isArray(mesa.materias) ? mesa.materias : [];
-  const docentes = Array.isArray(mesa.docentes) ? mesa.docentes : [];
-  const alumnos = Array.isArray(mesa.alumnos) ? mesa.alumnos : [];
+  const docentes = Array.isArray(grupo.docentes) ? grupo.docentes : [];
+  const materias = Array.isArray(grupo.materias) ? grupo.materias : [];
 
-  const coincideMateria = materias.some((item) => normalizar(item?.nombre).includes(texto));
-  const coincideDocente = docentes.some((item) => normalizar(item?.nombre).includes(texto));
-
-  if (coincideMateria || coincideDocente) {
+  if (docentes.some((item) => normalizar(item?.nombre).includes(texto))) {
     return true;
   }
 
-  return alumnos.some((alumno) => {
-    const valoresAlumno = [
-      alumno.estudiante,
-      alumno.alumno,
-      alumno.dni,
-      alumno.materia,
-      alumno.curso,
-      alumno.curso_materia,
-      alumno.division_materia,
-      alumno.condicion,
-      alumno.docente,
-      alumno.estado,
-      alumno.observacion,
-      alumno.tipo_mesa,
+  if (materias.some((item) => normalizar(item?.nombre).includes(texto))) {
+    return true;
+  }
+
+  const numeros = Array.isArray(grupo.numeros) ? grupo.numeros : [];
+
+  return numeros.some((numero) => {
+    const valoresNumero = [
+      numero.numero_mesa,
+      numero.numero_mesa_texto,
+      numero.tipo_mesa,
+      numero.prioridad,
+      numero.cantidad_alumnos,
+      numero.docente,
+      numero.materia,
+      numero.observacion,
     ];
 
-    return valoresAlumno.some((valor) => normalizar(valor).includes(texto));
+    if (valoresNumero.some((valor) => normalizar(valor).includes(texto))) {
+      return true;
+    }
+
+    const alumnos = Array.isArray(numero.alumnos) ? numero.alumnos : [];
+
+    return alumnos.some((alumno) => {
+      const valoresAlumno = [
+        alumno.estudiante,
+        alumno.alumno,
+        alumno.dni,
+        alumno.materia,
+        alumno.docente,
+        alumno.curso,
+        alumno.curso_alumno,
+        alumno.division_alumno,
+        alumno.curso_materia,
+        alumno.division_materia,
+        alumno.condicion,
+        alumno.estado,
+        alumno.observacion,
+        alumno.tipo_mesa,
+        alumno.numero_mesa,
+      ];
+
+      return valoresAlumno.some((valor) => normalizar(valor).includes(texto));
+    });
   });
 };
 
 export const useMesasExamen = () => {
   const [busqueda, setBusqueda] = useState("");
-  const [tab, setTab] = useState("contador");
+  const [tab, setTab] = useState("grupos-finales");
 
-  const [mesas, setMesas] = useState([]);
-  const [paginacion, setPaginacion] = useState(null);
+  const [gruposFinales, setGruposFinales] = useState([]);
+  const [noAgrupadas, setNoAgrupadas] = useState([]);
 
   const [parametrosArmado, setParametrosArmado] = useState(null);
   const [resumenArmado, setResumenArmado] = useState(null);
@@ -78,6 +105,7 @@ export const useMesasExamen = () => {
 
   const [cargando, setCargando] = useState(false);
   const [armando, setArmando] = useState(false);
+  const [agrupando, setAgrupando] = useState(false);
   const [error, setError] = useState("");
 
   const cargarMesas = useCallback(async () => {
@@ -85,17 +113,17 @@ export const useMesasExamen = () => {
     setError("");
 
     try {
-      const response = await listarMesasExamen({
-        pagina: 1,
-        porPagina: 500,
-        busqueda: "",
-      });
+      const [responseGrupos, responseNoAgrupadas] = await Promise.all([
+        listarMesasGruposFinales({ busqueda: "" }),
+        listarMesasNoAgrupadas({ busqueda: "" }),
+      ]);
 
-      setMesas(response.data || []);
-      setPaginacion(response.paginacion || null);
+      setGruposFinales(responseGrupos.data || []);
+      setNoAgrupadas(responseNoAgrupadas.data || []);
     } catch (err) {
-      setError(err.message || "Error al cargar las mesas.");
-      setMesas([]);
+      setError(err.message || "Error al cargar las mesas finales.");
+      setGruposFinales([]);
+      setNoAgrupadas([]);
     } finally {
       setCargando(false);
     }
@@ -128,6 +156,34 @@ export const useMesasExamen = () => {
     }
   }, [armando]);
 
+  const generarGruposFinales = useCallback(async () => {
+    setAgrupando(true);
+    setError("");
+
+    try {
+      const response = await crearGruposFinalesMesas({
+        limpiar_grupos: true,
+        min_numeros: 2,
+        max_numeros: 4,
+      });
+
+      setResumenArmado((actual) => ({
+        ...(actual || {}),
+        grupos_finales: response.data || null,
+      }));
+
+      await cargarMesas();
+      setTab("grupos-finales");
+
+      return response;
+    } catch (err) {
+      setError(err.message || "Error al generar los grupos finales.");
+      throw err;
+    } finally {
+      setAgrupando(false);
+    }
+  }, [cargarMesas]);
+
   const crearMesas = useCallback(
     async (payload) => {
       setArmando(true);
@@ -136,15 +192,24 @@ export const useMesasExamen = () => {
 
       try {
         const response = await crearArmadoInicialMesas(payload);
+        const responseGrupos = await crearGruposFinalesMesas({
+          limpiar_grupos: true,
+          min_numeros: 2,
+          max_numeros: 4,
+        });
 
-        setResumenArmado(response.data || null);
+        setResumenArmado({
+          ...(response.data || {}),
+          grupos_finales: responseGrupos.data || null,
+        });
         setModalCrearAbierto(false);
+        setTab("grupos-finales");
 
         await cargarMesas();
 
         return response;
       } catch (err) {
-        setError(err.message || "Error al crear el armado inicial.");
+        setError(err.message || "Error al crear el armado de mesas.");
         throw err;
       } finally {
         setArmando(false);
@@ -155,7 +220,7 @@ export const useMesasExamen = () => {
 
   const eliminarBorrador = useCallback(async () => {
     const confirmar = window.confirm(
-      "¿Seguro que querés eliminar las mesas generadas? Esta acción borra las filas actuales de la tabla mesas."
+      "¿Seguro que querés eliminar el armado actual? Esta acción borra mesas, grupos finales y no agrupadas."
     );
 
     if (!confirmar) {
@@ -171,11 +236,13 @@ export const useMesasExamen = () => {
 
       setResumenArmado({
         eliminadas: response?.data?.eliminadas || 0,
+        grupos_eliminados: response?.data?.grupos_eliminados || 0,
+        no_agrupadas_eliminadas: response?.data?.no_agrupadas_eliminadas || 0,
       });
 
       await cargarMesas();
     } catch (err) {
-      setError(err.message || "Error al eliminar las mesas borrador.");
+      setError(err.message || "Error al eliminar el armado actual.");
     } finally {
       setArmando(false);
     }
@@ -186,37 +253,30 @@ export const useMesasExamen = () => {
     cargarParametrosArmado();
   }, [cargarMesas, cargarParametrosArmado]);
 
-  const mesasFiltradas = useMemo(() => {
+  const gruposFiltrados = useMemo(() => {
     const texto = normalizar(busqueda);
-
-    let base = [...mesas];
-
-    if (tab === "grupos") {
-      base = base.filter((item) => item.estado !== "observada");
-    }
-
-    if (tab === "no-agrupadas") {
-      base = base.filter((item) => item.estado === "observada");
-    }
+    const base = tab === "no-agrupadas" ? [...noAgrupadas] : [...gruposFinales];
 
     if (!texto) {
       return base;
     }
 
-    return base.filter((item) => mesaCoincideConBusqueda(item, texto));
-  }, [busqueda, mesas, tab]);
+    return base.filter((item) => grupoCoincideConBusqueda(item, texto));
+  }, [busqueda, gruposFinales, noAgrupadas, tab]);
 
-  const totalObservadas = useMemo(() => {
-    return mesas.filter((item) => item.estado === "observada").length;
-  }, [mesas]);
+  const totalGrupos = gruposFinales.length;
+  const totalNoAgrupadas = noAgrupadas.length;
 
-  const totalArmadas = useMemo(() => {
-    return mesas.filter((item) => item.estado !== "observada").length;
-  }, [mesas]);
+  const totalNumerosAgrupados = useMemo(() => {
+    return gruposFinales.reduce(
+      (total, item) => total + (Array.isArray(item.numeros) ? item.numeros.length : Number(item.cantidad_numeros || 0)),
+      0
+    );
+  }, [gruposFinales]);
 
   const totalAlumnos = useMemo(() => {
-    return mesas.reduce((total, item) => total + Number(item.cantidad_alumnos || 0), 0);
-  }, [mesas]);
+    return gruposFinales.reduce((total, item) => total + Number(item.cantidad_previas || item.cantidad_alumnos || 0), 0);
+  }, [gruposFinales]);
 
   return {
     busqueda,
@@ -225,12 +285,14 @@ export const useMesasExamen = () => {
     tab,
     setTab,
 
-    mesas,
-    mesasFiltradas,
-    paginacion,
+    gruposFinales,
+    noAgrupadas,
+    mesas: gruposFinales,
+    mesasFiltradas: gruposFiltrados,
 
-    totalObservadas,
-    totalArmadas,
+    totalGrupos,
+    totalNoAgrupadas,
+    totalNumerosAgrupados,
     totalAlumnos,
 
     parametrosArmado,
@@ -242,11 +304,13 @@ export const useMesasExamen = () => {
 
     crearMesas,
     eliminarBorrador,
+    generarGruposFinales,
 
     cargarMesas,
 
     cargando,
     armando,
+    agrupando,
     error,
   };
 };

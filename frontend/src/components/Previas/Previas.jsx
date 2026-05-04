@@ -33,6 +33,7 @@ export default function Previas() {
     vista,
     cambiarVista,
     conteo,
+    paginacion,
     reload,
     obtener,
     guardar,
@@ -211,17 +212,46 @@ export default function Previas() {
 
         <div className="previas-footer previas-footer-simple">
           <span>
-            Registros cargados: <strong>{conteo.totalRegistros}</strong>
+            Registros totales: <strong>{conteo.totalRegistros}</strong>
+          </span>
+
+          <span>
+            Mostrando: <strong>{conteo.totalPagina}</strong>
           </span>
 
           {busqueda.trim() !== '' && (
             <span>
-              Coincidencias visibles: <strong>{conteo.totalFiltrados}</strong>
+              Coincidencias encontradas: <strong>{conteo.totalFiltrados}</strong>
             </span>
           )}
 
+          <div className="previas-pagination">
+            <button
+              type="button"
+              className="previas-page-btn"
+              disabled={paginacion.pagina <= 1 || loading}
+              onClick={() => paginacion.setPagina((p) => Math.max(1, p - 1))}
+            >
+              Anterior
+            </button>
+
+            <span className="previas-page-info">
+              Página <strong>{paginacion.pagina}</strong> / <strong>{paginacion.totalPaginas}</strong>
+              <small>100 por página</small>
+            </span>
+
+            <button
+              type="button"
+              className="previas-page-btn"
+              disabled={paginacion.pagina >= paginacion.totalPaginas || loading}
+              onClick={() => paginacion.setPagina((p) => p + 1)}
+            >
+              Siguiente
+            </button>
+          </div>
+
           <span className="previas-footer-note">
-            La columna Curso muestra el curso y división de la materia previa.
+            El buscador consulta en toda la base, no solo en la página cargada.
           </span>
         </div>
       </div>

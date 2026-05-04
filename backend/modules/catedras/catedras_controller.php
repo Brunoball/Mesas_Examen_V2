@@ -13,7 +13,7 @@ function catedras_int($value): int
 function catedras_paginacion(): array
 {
     $pagina = max(1, catedras_int($_GET['pagina'] ?? 1));
-    $porPagina = min(100, max(1, catedras_int($_GET['por_pagina'] ?? 20)));
+    $porPagina = min(100, max(1, catedras_int($_GET['por_pagina'] ?? 100)));
 
     return [
         'pagina' => $pagina,
@@ -84,14 +84,39 @@ function catedras_listar(): void
     }
 
     if ($busqueda !== '') {
-        $where[] = '(m.materia LIKE :busqueda OR d.docente LIKE :busqueda OR cu.nombre_curso LIKE :busqueda OR divi.nombre_division LIKE :busqueda)';
-        $params[':busqueda'] = '%' . $busqueda . '%';
+        /*
+         * IMPORTANTE:
+         * No se reutiliza el mismo placeholder (:busqueda) varias veces en el OR.
+         * En varias configuraciones PDO/MySQL eso genera SQLSTATE[HY093] / 500
+         * cuando se busca, aunque el listado sin búsqueda funcione.
+         */
+        $whereBusqueda = [
+            'm.materia LIKE :busqueda_materia',
+            "COALESCE(d.docente, '') LIKE :busqueda_docente",
+            "COALESCE(cargo.cargo, '') LIKE :busqueda_cargo",
+            'cu.nombre_curso LIKE :busqueda_curso',
+            'divi.nombre_division LIKE :busqueda_division',
+        ];
+
+        $likeBusqueda = '%' . $busqueda . '%';
+        $params[':busqueda_materia'] = $likeBusqueda;
+        $params[':busqueda_docente'] = $likeBusqueda;
+        $params[':busqueda_cargo'] = $likeBusqueda;
+        $params[':busqueda_curso'] = $likeBusqueda;
+        $params[':busqueda_division'] = $likeBusqueda;
+
+        if (is_numeric($busqueda)) {
+            $whereBusqueda[] = 'cat.id_catedra = :busqueda_id_catedra';
+            $params[':busqueda_id_catedra'] = (int)$busqueda;
+        }
+
+        $where[] = '(' . implode(' OR ', $whereBusqueda) . ')';
     }
 
     $whereSql = implode(' AND ', $where);
 
     try {
-        $countSql = "\n            SELECT COUNT(*)\n            FROM catedras cat\n            INNER JOIN curso cu ON cu.id_curso = cat.id_curso\n            INNER JOIN division divi ON divi.id_division = cat.id_division\n            INNER JOIN materias m ON m.id_materia = cat.id_materia\n            LEFT JOIN docentes d ON d.id_docente = cat.id_docente\n            WHERE {$whereSql}\n        ";
+        $countSql = "\n            SELECT COUNT(*)\n            FROM catedras cat\n            INNER JOIN curso cu ON cu.id_curso = cat.id_curso\n            INNER JOIN division divi ON divi.id_division = cat.id_division\n            INNER JOIN materias m ON m.id_materia = cat.id_materia\n            LEFT JOIN docentes d ON d.id_docente = cat.id_docente\n            LEFT JOIN cargos cargo ON cargo.id_cargo = d.id_cargo\n            WHERE {$whereSql}\n        ";
 
         $stmtCount = $pdo->prepare($countSql);
         foreach ($params as $key => $value) {
