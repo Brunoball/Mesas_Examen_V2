@@ -1,5 +1,6 @@
 <?php
 // backend/config/db.php
+//php -S localhost:3001 -c "C:\PHP\php1\php.ini"
 declare(strict_types=1);
 
 require_once __DIR__ . '/env.php';

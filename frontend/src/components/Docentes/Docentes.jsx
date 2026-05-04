@@ -7,7 +7,6 @@ import {
   faInfoCircle,
   faEdit,
   faPlus,
-  faRotateRight,
   faSearch,
   faTimes,
   faTrash,
@@ -20,8 +19,70 @@ import ModalInfoDocente from './modales/ModalInfoDocente.jsx';
 import ModalConfirmarDocente from './modales/ModalConfirmarDocente.jsx';
 import '../Global/Global_css/roots.css';
 import '../Global/Global_css/Global_Section.css';
+import '../Global/Global_css/Global_DivTable.css';
 import './Docentes.css';
 import Principal, { MesasShellContext } from '../Principal/Principal';
+
+const DOCENTES_GRID_COLS = '1.5fr 1fr 0.7fr 0.7fr 1fr 1fr ';
+
+const SKELETON_ROWS = 8;
+
+const DOCENTES_COLUMNS = [
+  { key: 'docente', label: 'Docente', strong: true },
+  { key: 'cargo', label: 'Cargo' },
+  { key: 'catedras', label: 'Cátedras', align: 'center' },
+  { key: 'no_puede', label: 'No puede', align: 'center' },
+  { key: 'observacion', label: 'Observación' },
+  { key: 'acciones', label: 'Acciones', align: 'center', actions: true },
+];
+
+const SKELETON_WIDTHS = ['72%', '54%', '38%', '46%', '64%', '44%'];
+
+function safeText(value) {
+  const text = String(value ?? '').trim();
+  return text || '—';
+}
+
+function alignClass(align) {
+  if (align === 'right') return 'is-right';
+  if (align === 'center') return 'is-center';
+  return '';
+}
+
+function renderSkeletonRow(index) {
+  return (
+    <div
+      key={`docente-skel-${index}`}
+      className="mov-gridTable mov-gridTable--row mov-row--skeleton global-divTable__row docentes-gridRow"
+      style={{ gridTemplateColumns: DOCENTES_GRID_COLS}}
+      role="row"
+      aria-hidden="true"
+    >
+      {DOCENTES_COLUMNS.map((column, columnIndex) => (
+        <div
+          key={column.key}
+          className={[
+            'mov-gridCell',
+            alignClass(column.align),
+            column.actions ? 'mov-gridCell--actions' : '',
+          ].filter(Boolean).join(' ')}
+          role="cell"
+          data-label={column.label}
+        >
+          {column.actions ? (
+            <div className="mov-skelActions">
+              <span className="mov-skelIcon" />
+              <span className="mov-skelIcon" />
+              <span className="mov-skelIcon" />
+            </div>
+          ) : (
+            <span className="mov-skeletonBar" style={{ width: SKELETON_WIDTHS[(index + columnIndex) % SKELETON_WIDTHS.length] }} />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function Docentes() {
   const navigate = useNavigate();
@@ -37,7 +98,6 @@ export default function Docentes() {
     vista,
     cambiarVista,
     conteo,
-    reload,
     obtener,
     guardar,
     darBaja,
@@ -81,7 +141,6 @@ export default function Docentes() {
     return { ok: false, mensaje: 'Operación inválida.' };
   }
 
-  const textoVista = vista === 'activos' ? 'activos' : 'dados de baja';
   const totalVisible = Array.isArray(docentes) ? docentes.length : 0;
 
   const contenido = (
@@ -98,13 +157,11 @@ export default function Docentes() {
         <div className="mov-card__head docentes-card__head">
           <div className="mov-card__headLeft docentes-card__headLeft">
             <div className="title-mov docentes-titleBox">
-
-
               <div className="mov-card__title docentes-section-title">
-                Docentes
+                Mesas · Docentes
               </div>
               <div className="mov-card__hint">
-                Mostrando <b>{totalVisible}</b> docentes 
+                Mostrando <b>{totalVisible}</b> docentes
               </div>
             </div>
 
@@ -138,7 +195,7 @@ export default function Docentes() {
                         type="text"
                         value={busqueda}
                         onChange={(e) => setBusqueda(e.target.value)}
-                        placeholder="Buscar por docente, cargo u observación..."
+                        placeholder="Busqueda"
                       />
                       <span className="docentes-filterTabs__label">
                         <FontAwesomeIcon icon={faSearch} /> Búsqueda
@@ -146,7 +203,7 @@ export default function Docentes() {
                       {busqueda.trim() !== '' && (
                         <button
                           type="button"
-                          className="cc-clearSearch cc-clearSearch--inside"
+                          className="cc-clearSearch cc-clearSearch--inside docentes-clearSearch"
                           title="Limpiar búsqueda"
                           onClick={() => setBusqueda('')}
                         >
@@ -161,93 +218,117 @@ export default function Docentes() {
           </div>
 
           <div className="mov-card__actions docentes-actionsHead">
-
-                          {!dentroDeShell && (
-                <button type="button" className="mov-btn mov-btn--ghost" onClick={() => navigate('/panel')}>
-                  <FontAwesomeIcon icon={faArrowLeft} /> Volver
-                </button>
-              )}
             <button type="button" className="mov-btn mov-btn--primary" onClick={abrirCrear}>
               <FontAwesomeIcon icon={faPlus} /> Agregar docente
             </button>
           </div>
         </div>
 
-        <div className="docentes-table-wrap mov-tableWrap">
-          <table className="docentes-table">
-            <thead>
-              <tr>
-                <th>Docente</th>
-                <th>Cargo</th>
-                <th className="is-center">Cátedras</th>
-                <th className="is-center">No puede</th>
-                <th>Observación</th>
-                <th className="docentes-th-actions is-center">Acciones</th>
-              </tr>
-            </thead>
+        <div className="docentes-divTable global-divTable" role="table" aria-label="Listado de docentes">
+          <div
+            className="mov-gridTable mov-gridTable--head global-divTable__head docentes-gridHead"
+            style={{ gridTemplateColumns: DOCENTES_GRID_COLS}}
+            role="row"
+          >
+            {DOCENTES_COLUMNS.map((column) => (
+              <div
+                key={column.key}
+                className={[
+                  'mov-gridCell',
+                  'mov-gridCell--head',
+                  alignClass(column.align),
+                ].filter(Boolean).join(' ')}
+                role="columnheader"
+              >
+                {column.label}
+              </div>
+            ))}
+          </div>
 
-            <tbody>
-              {loading && (
-                <tr>
-                  <td colSpan="6" className="docentes-empty">Cargando docentes...</td>
-                </tr>
-              )}
+          <div className="docentes-table-wrap mov-tableWrap global-divTable__wrap" role="rowgroup">
+            <div
+              className={`mov-gridBody mov-gridBody--relative global-divTable__body docentes-gridBody ${loading ? 'mov-softLoading' : ''}`}
 
-              {!loading && docentes.length === 0 && (
-                <tr>
-                  <td colSpan="6" className="docentes-empty docentes-emptyStateCell">
-                    <div className="cc-emptyState">
+            >
+              {loading ? (
+                <div className="mov-skeletonWrap" aria-busy="true" aria-label="Cargando docentes">
+                  {Array.from({ length: SKELETON_ROWS }).map((_, index) => renderSkeletonRow(index))}
+                </div>
+              ) : (
+                <>
+                  {docentes.map((item) => (
+                    <div
+                      key={`${item.id_docente}-${item.ids_docentes_texto}`}
+                      className="mov-gridTable mov-gridTable--row global-divTable__row docentes-gridRow"
+                      style={{ gridTemplateColumns: DOCENTES_GRID_COLS }}
+                      role="row"
+                    >
+                      <div className="mov-gridCell is-strong" role="cell" data-label="Docente">
+                        <div className="docentes-name-cell" title={safeText(item.docente)}>
+                          <strong>{safeText(item.docente)}</strong>
+                          {Number(item.cantidad_registros) > 1 && (
+                            <small>{item.cantidad_registros} registros unificados</small>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mov-gridCell" role="cell" data-label="Cargo" title={safeText(item.cargo)}>
+                        <span className="mov-ellipsissss">{safeText(item.cargo)}</span>
+                      </div>
+
+                      <div className="mov-gridCell is-center" role="cell" data-label="Cátedras">
+                        <span className="mov-chip docentes-badge">{item.total_catedras || 0}</span>
+                      </div>
+
+                      <div className="mov-gridCell is-center" role="cell" data-label="No puede">
+                        <span className="mov-chip mov-chip--neutral docentes-badge docentes-badge-soft">
+                          {item.total_indisponibilidades || 0}
+                        </span>
+                      </div>
+
+                      <div className="mov-gridCell" role="cell" data-label="Observación" title={safeText(item.observacion)}>
+                        <span className="mov-ellipsissss docentes-observacion">{safeText(item.observacion)}</span>
+                      </div>
+
+                      <div className="mov-gridCell mov-gridCell--actions is-center" role="cell" data-label="Acciones">
+                        <div className="mov-actionsInline">
+                          <button type="button" className="mov-iconBtn docentes-icon-btn" onClick={() => abrirInfo(item)} title="Ver información">
+                            <FontAwesomeIcon icon={faInfoCircle} />
+                          </button>
+                          <button type="button" className="mov-iconBtn docentes-icon-btn" onClick={() => abrirEditar(item)} title="Editar docente">
+                            <FontAwesomeIcon icon={faEdit} />
+                          </button>
+
+                          {vista === 'activos' ? (
+                            <button type="button" className="mov-iconBtn docentes-icon-btn docentes-icon-warning" onClick={() => abrirConfirmar('baja', item)} title="Dar de baja">
+                              <FontAwesomeIcon icon={faUserSlash} />
+                            </button>
+                          ) : (
+                            <button type="button" className="mov-iconBtn docentes-icon-btn docentes-icon-success" onClick={() => abrirConfirmar('alta', item)} title="Dar de alta">
+                              <FontAwesomeIcon icon={faUserCheck} />
+                            </button>
+                          )}
+
+                          <button type="button" className="mov-iconBtn mov-iconBtn--danger docentes-icon-btn docentes-icon-danger" onClick={() => abrirConfirmar('eliminar', item)} title="Eliminar">
+                            <FontAwesomeIcon icon={faTrash} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {docentes.length === 0 && (
+                    <div className="cc-emptyState docentes-emptyState">
                       <FontAwesomeIcon icon={faBoxOpen} className="cc-emptyIcon" />
                       <div className="cc-emptyText">
                         {vista === 'activos' ? 'No se encontraron docentes activos.' : 'No hay docentes dados de baja.'}
                       </div>
                     </div>
-                  </td>
-                </tr>
+                  )}
+                </>
               )}
-
-              {!loading && docentes.map((item) => (
-                <tr key={`${item.id_docente}-${item.ids_docentes_texto}`}>
-                  <td>
-                    <div className="docentes-name-cell">
-                      <strong>{item.docente}</strong>
-                      {Number(item.cantidad_registros) > 1 && (
-                        <small>{item.cantidad_registros} registros unificados</small>
-                      )}
-                    </div>
-                  </td>
-                  <td>{item.cargo || '-'}</td>
-                  <td className="is-center"><span className="mov-chip docentes-badge">{item.total_catedras || 0}</span></td>
-                  <td className="is-center"><span className="mov-chip mov-chip--neutral docentes-badge docentes-badge-soft">{item.total_indisponibilidades || 0}</span></td>
-                  <td className="docentes-observacion">{item.observacion || '-'}</td>
-                  <td className="docentes-actions">
-                    <div className="mov-actionsInline">
-                      <button type="button" className="mov-iconBtn docentes-icon-btn" onClick={() => abrirInfo(item)} title="Ver información">
-                        <FontAwesomeIcon icon={faInfoCircle} />
-                      </button>
-                      <button type="button" className="mov-iconBtn docentes-icon-btn" onClick={() => abrirEditar(item)} title="Editar docente">
-                        <FontAwesomeIcon icon={faEdit} />
-                      </button>
-
-                      {vista === 'activos' ? (
-                        <button type="button" className="mov-iconBtn docentes-icon-btn docentes-icon-warning" onClick={() => abrirConfirmar('baja', item)} title="Dar de baja">
-                          <FontAwesomeIcon icon={faUserSlash} />
-                        </button>
-                      ) : (
-                        <button type="button" className="mov-iconBtn docentes-icon-btn docentes-icon-success" onClick={() => abrirConfirmar('alta', item)} title="Dar de alta">
-                          <FontAwesomeIcon icon={faUserCheck} />
-                        </button>
-                      )}
-
-                      <button type="button" className="mov-iconBtn mov-iconBtn--danger docentes-icon-btn docentes-icon-danger" onClick={() => abrirConfirmar('eliminar', item)} title="Eliminar">
-                        <FontAwesomeIcon icon={faTrash} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            </div>
+          </div>
         </div>
 
         <div className="docentes-footer">

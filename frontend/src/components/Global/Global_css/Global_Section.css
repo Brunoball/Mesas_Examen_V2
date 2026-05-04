@@ -275,7 +275,7 @@
 .mov-tab.is-active{
   background:#fff;
   color:var(--balto-action);
-  border-color:color-mix(in srgb, var(--balto-action) 24%, #fff);
+
   box-shadow:var(--mov-shadow-sm);
 }
 
