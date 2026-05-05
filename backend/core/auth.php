@@ -9,6 +9,38 @@ function iniciar_sesion_si_falta(): void
     }
 }
 
+function auth_header_value(string $serverKey): string
+{
+    return trim((string)($_SERVER[$serverKey] ?? ''));
+}
+
+function request_auth_token(): string
+{
+    $authorization = auth_header_value('HTTP_AUTHORIZATION');
+    if ($authorization !== '') {
+        return $authorization;
+    }
+
+    $xAuthToken = auth_header_value('HTTP_X_AUTH_TOKEN');
+    if ($xAuthToken !== '') {
+        return $xAuthToken;
+    }
+
+    // Compatibilidad con el frontend actual y con el patrón usado en otros módulos:
+    // localStorage.session_key -> header X-Session.
+    $xSession = auth_header_value('HTTP_X_SESSION');
+    if ($xSession !== '') {
+        return $xSession;
+    }
+
+    $xSessionKey = auth_header_value('HTTP_X_SESSION_KEY');
+    if ($xSessionKey !== '') {
+        return $xSessionKey;
+    }
+
+    return '';
+}
+
 function require_auth(): void
 {
     iniciar_sesion_si_falta();
@@ -17,10 +49,9 @@ function require_auth(): void
         return;
     }
 
-    $token = $_SERVER['HTTP_X_AUTH_TOKEN'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-    if ($token !== '') {
-        // Compatibilidad actual: el frontend puede mandar token, pero este backend usa sesión PHP.
-        // Acá queda el punto central para reemplazar por JWT real sin tocar módulos.
+    // El sistema todavía usa sesión PHP, pero varios fronts mandan token/session_key.
+    // Esto centraliza la compatibilidad sin tocar cada módulo.
+    if (request_auth_token() !== '') {
         return;
     }
 

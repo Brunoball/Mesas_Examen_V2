@@ -16,6 +16,7 @@ import {
   faUserCircle,
   faMoon,
   faSun,
+  faClipboardList,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "./principal.css";
@@ -100,6 +101,14 @@ const NAV_ITEMS = [
     bottomIcon: faGraduationCap,
     ruta: "/previas",
     description: "Cargar, editar, dar de baja y administrar previas.",
+  },
+  {
+    key: "configuracion-formulario",
+    label: "Config. Formulario",
+    icon: faClipboardList,
+    bottomIcon: faClipboardList,
+    ruta: "/configuracion-formulario",
+    description: "Definir apertura y cierre del formulario público.",
   },
   {
     key: "materias",

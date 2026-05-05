@@ -1,0 +1,388 @@
+/* src/components/ConfiguracionFormulario/ConfiguracionFormulario.css */
+
+.cfgFormPage {
+  min-height: 100vh;
+  width: 100%;
+  padding: 34px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #243044;
+  background:
+    linear-gradient(135deg, rgba(14, 42, 86, .30), rgba(255, 255, 255, .20)),
+    radial-gradient(circle at top left, rgba(50, 93, 176, .20), transparent 34%),
+    #eef2f7;
+  box-sizing: border-box;
+}
+
+.cfgFormPage * {
+  box-sizing: border-box;
+}
+
+.cfgFormShell {
+  width: min(1100px, 100%);
+  border-radius: 20px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, .82);
+  box-shadow: 0 28px 80px rgba(15, 23, 42, .28);
+  border: 1px solid rgba(255, 255, 255, .65);
+  backdrop-filter: blur(10px);
+}
+
+.cfgFormHeader {
+  background: #244b96;
+  color: #fff;
+  min-height: 110px;
+  padding: 26px 24px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.cfgFormHeader h1 {
+  margin: 0 0 8px;
+  font-size: clamp(24px, 3vw, 31px);
+  line-height: 1.05;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.cfgFormHeader p {
+  margin: 0;
+  font-size: 15.5px;
+  color: rgba(255, 255, 255, .94);
+}
+
+.cfgFormStatusPill {
+  flex: 0 0 auto;
+  min-height: 45px;
+  padding: 0 18px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 14px;
+  color: #394151;
+  background: #edf3ff;
+  box-shadow: 0 16px 30px rgba(0, 0, 0, .14);
+}
+
+.cfgFormStatusPill i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: block;
+}
+
+.cfgFormStatusPill.is-closed i {
+  background: #dc2f3a;
+}
+
+.cfgFormStatusPill.is-open i {
+  background: #16a34a;
+}
+
+.cfgFormBody {
+  padding: 22px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 20px;
+}
+
+.cfgFormCard {
+  background: rgba(255, 255, 255, .92);
+  border: 1px solid rgba(226, 232, 240, .95);
+  border-radius: 17px;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, .10);
+}
+
+.cfgFormCard--main {
+  padding: 22px 18px 18px;
+}
+
+.cfgFormField {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.cfgFormField span,
+.cfgFormGroupTitle {
+  font-size: 14.5px;
+  color: #405068;
+  font-weight: 700;
+}
+
+.cfgFormField--full {
+  width: 100%;
+}
+
+.cfgFormField input,
+.cfgFormDateRow input,
+.cfgFormDateRow select {
+  border: 1px solid #dce5f1;
+  background: #fff;
+  color: #263244;
+  height: 45px;
+  border-radius: 14px;
+  outline: none;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, .06);
+  font-size: 15px;
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+.cfgFormField input {
+  padding: 0 14px;
+}
+
+.cfgFormField input:focus,
+.cfgFormDateRow input:focus,
+.cfgFormDateRow select:focus {
+  border-color: #244b96;
+  box-shadow: 0 0 0 4px rgba(36, 75, 150, .13);
+}
+
+.cfgFormGroupTitle {
+  margin-top: 18px;
+  margin-bottom: 8px;
+}
+
+.cfgFormDateRow {
+  display: grid;
+  grid-template-columns: 180px 86px 12px 86px 36px;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  max-width: 430px;
+}
+
+.cfgFormDateRow input,
+.cfgFormDateRow select {
+  width: 100%;
+  padding: 0 14px;
+}
+
+.cfgFormDateRow strong {
+  color: #405068;
+  text-align: center;
+  font-size: 18px;
+}
+
+.cfgFormHs {
+  color: #526177;
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.cfgFormField--message {
+  margin-top: 18px;
+}
+
+.cfgFormActions {
+  margin-top: 15px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.cfgFormBtn {
+  border: 0;
+  height: 40px;
+  min-width: 86px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform .16s ease, box-shadow .16s ease, opacity .16s ease;
+}
+
+.cfgFormBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.cfgFormBtn:disabled {
+  opacity: .65;
+  cursor: not-allowed;
+}
+
+.cfgFormBtn--ghost {
+  background: #fff;
+  color: #243044;
+  border: 1px solid #d7e1ed;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, .08);
+}
+
+.cfgFormBtn--primary {
+  background: #244b96;
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(36, 75, 150, .25);
+}
+
+.cfgFormSide {
+  display: grid;
+  gap: 17px;
+  grid-template-rows: auto 1fr;
+}
+
+.cfgFormPreview {
+  padding: 20px 15px;
+}
+
+.cfgFormPreview h2 {
+  margin: 0 0 18px;
+  font-size: 16px;
+  color: #202a3a;
+}
+
+.cfgFormPreviewRow {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 8px;
+  align-items: start;
+  margin: 14px 0;
+  color: #41506a;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.cfgFormPreviewRow b {
+  color: #42516b;
+  font-size: 15.5px;
+}
+
+.cfgFormPreviewRow--estado {
+  align-items: center;
+}
+
+.cfgFormPreviewRow em {
+  height: 38px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-style: normal;
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: .02em;
+}
+
+.cfgFormPreviewRow em.is-closed {
+  color: #8d1f27;
+  background: #fde9ec;
+  border: 1px solid #ffb5bf;
+}
+
+.cfgFormPreviewRow em.is-open {
+  color: #126334;
+  background: #e8f9ef;
+  border: 1px solid #91deb0;
+}
+
+.cfgFormTip {
+  min-height: 160px;
+  padding: 30px 15px;
+  display: flex;
+  align-items: flex-start;
+  color: #3b485e;
+  font-size: 15.5px;
+  line-height: 1.75;
+  border-radius: 17px;
+  background: linear-gradient(135deg, rgba(229, 234, 241, .95), rgba(255, 235, 235, .90));
+  box-shadow: 0 14px 30px rgba(15, 23, 42, .08);
+}
+
+.cfgFormLoading {
+  min-height: 312px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #526177;
+  font-weight: 800;
+}
+
+.cfgFormToast {
+  position: fixed;
+  top: 22px;
+  right: 22px;
+  z-index: 50;
+  max-width: min(420px, calc(100vw - 44px));
+  padding: 13px 16px;
+  border-radius: 14px;
+  font-weight: 800;
+  box-shadow: 0 16px 45px rgba(15, 23, 42, .22);
+  animation: cfgToastIn .2s ease both;
+}
+
+.cfgFormToast--ok {
+  background: #e8f9ef;
+  color: #126334;
+  border: 1px solid #91deb0;
+}
+
+.cfgFormToast--error {
+  background: #fde9ec;
+  color: #8d1f27;
+  border: 1px solid #ffb5bf;
+}
+
+@keyframes cfgToastIn {
+  from { transform: translateY(-8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (max-width: 900px) {
+  .cfgFormPage {
+    padding: 18px 12px;
+    align-items: flex-start;
+  }
+
+  .cfgFormHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cfgFormStatusPill {
+    align-self: flex-start;
+  }
+
+  .cfgFormBody {
+    grid-template-columns: 1fr;
+  }
+
+  .cfgFormDateRow {
+    grid-template-columns: 1fr 74px 10px 74px 32px;
+    max-width: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .cfgFormHeader,
+  .cfgFormBody,
+  .cfgFormCard--main {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .cfgFormDateRow {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .cfgFormDate {
+    grid-column: 1 / -1;
+  }
+
+  .cfgFormDateRow strong,
+  .cfgFormHs {
+    display: none;
+  }
+
+  .cfgFormActions {
+    justify-content: stretch;
+  }
+
+  .cfgFormBtn {
+    flex: 1;
+  }
+}
