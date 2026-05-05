@@ -31,7 +31,7 @@ const DOCENTES_COLUMNS = [
   { key: 'docente', label: 'Docente', strong: true },
   { key: 'cargo', label: 'Cargo' },
   { key: 'catedras', label: 'Cátedras', align: 'center' },
-  { key: 'no_puede', label: 'No puede', align: 'center' },
+  { key: 'disponibilidad', label: 'Disponibilidad', align: 'center' },
   { key: 'observacion', label: 'Observación' },
   { key: 'acciones', label: 'Acciones', align: 'center', actions: true },
 ];
@@ -280,9 +280,9 @@ export default function Docentes() {
                         <span className="mov-chip docentes-badge">{item.total_catedras || 0}</span>
                       </div>
 
-                      <div className="mov-gridCell is-center" role="cell" data-label="No puede">
+                      <div className="mov-gridCell is-center" role="cell" data-label="Disponibilidad">
                         <span className="mov-chip mov-chip--neutral docentes-badge docentes-badge-soft">
-                          {item.total_indisponibilidades || 0}
+                          {item.total_disponibilidades || 0}
                         </span>
                       </div>
 

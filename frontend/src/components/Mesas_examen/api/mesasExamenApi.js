@@ -109,14 +109,20 @@ export const crearArmadoInicialMesas = ({
   fecha_fin,
   limpiar_borrador = true,
   excluir_fines_semana = true,
+  tipo_armado = "area",
 }) => {
-  return request("mesas_armado_crear", {
+  const action = tipo_armado === "docentes"
+    ? "mesas_armado_crear_docentes"
+    : "mesas_armado_crear";
+
+  return request(action, {
     method: "POST",
     body: {
       fecha_inicio,
       fecha_fin,
       limpiar_borrador,
       excluir_fines_semana,
+      tipo_armado,
     },
   });
 };
@@ -126,14 +132,20 @@ export const crearGruposFinalesMesas = ({
   min_numeros = 2,
   max_numeros = 4,
   confirmar_grupos = false,
+  tipo_armado = "area",
 } = {}) => {
-  return request("mesas_armado_grupos_finales", {
+  const action = tipo_armado === "docentes"
+    ? "mesas_armado_grupos_finales_docentes"
+    : "mesas_armado_grupos_finales";
+
+  return request(action, {
     method: "POST",
     body: {
       limpiar_grupos,
       min_numeros,
       max_numeros,
       confirmar_grupos,
+      tipo_armado,
     },
   });
 };

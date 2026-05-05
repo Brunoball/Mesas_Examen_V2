@@ -1,5 +1,5 @@
 <?php
-// backend/modules/mesas/armado_mesas/fases/fase_6_agrupar_grupos_finales.php
+// backend/modules/mesas/armado_mesas_docentes/fases/fase_6_agrupar_grupos_finales.php
 declare(strict_types=1);
 
 /**
@@ -17,18 +17,18 @@ declare(strict_types=1);
  * - No se agrupan numeros que compartan alumnos.
  * - Se valida que los docentes estén disponibles en el día/turno del slot.
  */
-function mesas_armado_grupos_finales(): void
+function mesas_armado_docentes_grupos_finales(): void
 {
     try {
         $pdo = db();
         $body = request_body();
 
-        $resultado = mesas_armado_grupos_finales_core($pdo, [
-            'limpiar_grupos' => mesas_armado_grupos_bool($body['limpiar_grupos'] ?? ($_GET['limpiar_grupos'] ?? true)),
+        $resultado = mesas_armado_docentes_grupos_finales_core($pdo, [
+            'limpiar_grupos' => mesas_armado_docentes_grupos_bool($body['limpiar_grupos'] ?? ($_GET['limpiar_grupos'] ?? true)),
             'min_numeros' => isset($body['min_numeros']) ? (int)$body['min_numeros'] : (isset($_GET['min_numeros']) ? (int)$_GET['min_numeros'] : 2),
             'max_numeros' => isset($body['max_numeros']) ? (int)$body['max_numeros'] : (isset($_GET['max_numeros']) ? (int)$_GET['max_numeros'] : 4),
-            'confirmar_grupos' => mesas_armado_grupos_bool($body['confirmar_grupos'] ?? ($_GET['confirmar_grupos'] ?? false)),
-            'reoptimizar' => mesas_armado_grupos_bool($body['reoptimizar'] ?? ($_GET['reoptimizar'] ?? true)),
+            'confirmar_grupos' => mesas_armado_docentes_grupos_bool($body['confirmar_grupos'] ?? ($_GET['confirmar_grupos'] ?? false)),
+            'reoptimizar' => mesas_armado_docentes_grupos_bool($body['reoptimizar'] ?? ($_GET['reoptimizar'] ?? true)),
         ]);
 
         json_response([
@@ -37,7 +37,7 @@ function mesas_armado_grupos_finales(): void
             'data' => $resultado,
         ]);
     } catch (Throwable $e) {
-        log_error($e, 'mesas_armado_grupos_finales');
+        log_error($e, 'mesas_armado_docentes_grupos_finales');
 
         json_response([
             'exito' => false,
@@ -47,7 +47,7 @@ function mesas_armado_grupos_finales(): void
     }
 }
 
-function mesas_armado_grupos_bool(mixed $valor): bool
+function mesas_armado_docentes_grupos_bool(mixed $valor): bool
 {
     if (is_bool($valor)) {
         return $valor;
@@ -70,7 +70,7 @@ function mesas_armado_grupos_bool(mixed $valor): bool
     return (bool)$valor;
 }
 
-function mesas_armado_grupos_finales_core(PDO $pdo, array $opciones = []): array
+function mesas_armado_docentes_grupos_finales_core(PDO $pdo, array $opciones = []): array
 {
     $limpiarGrupos = (bool)($opciones['limpiar_grupos'] ?? true);
     $minNumeros = max(2, (int)($opciones['min_numeros'] ?? 2));
@@ -78,7 +78,7 @@ function mesas_armado_grupos_finales_core(PDO $pdo, array $opciones = []): array
     $confirmarGrupos = (bool)($opciones['confirmar_grupos'] ?? false);
     $reoptimizar = (bool)($opciones['reoptimizar'] ?? true);
 
-    mesas_armado_grupos_asegurar_tablas($pdo);
+    mesas_armado_docentes_grupos_asegurar_tablas($pdo);
 
     $manejaTransaccion = !$pdo->inTransaction();
 
@@ -88,13 +88,13 @@ function mesas_armado_grupos_finales_core(PDO $pdo, array $opciones = []): array
 
     try {
         if ($limpiarGrupos) {
-            mesas_armado_grupos_limpiar($pdo);
+            mesas_armado_docentes_grupos_limpiar($pdo);
         }
 
-        $numeros = mesas_armado_grupos_obtener_numeros_mesa($pdo);
-        $disponibilidadDocentes = mesas_armado_obtener_disponibilidad_docentes($pdo);
-        $horasTurnos = mesas_armado_grupos_obtener_horas_turnos($pdo);
-        $proximoNumeroGrupo = mesas_armado_grupos_proximo_numero($pdo);
+        $numeros = mesas_armado_docentes_grupos_obtener_numeros_mesa($pdo);
+        $disponibilidadDocentes = mesas_armado_docentes_obtener_disponibilidad_docentes($pdo);
+        $horasTurnos = mesas_armado_docentes_grupos_obtener_horas_turnos($pdo);
+        $proximoNumeroGrupo = mesas_armado_docentes_grupos_proximo_numero($pdo);
 
         $insertGrupo = $pdo->prepare("\n            INSERT INTO mesas_grupos (\n                numero_grupo,\n                numero_mesa,\n                fecha_mesa,\n                id_turno,\n                hora,\n                id_area,\n                orden,\n                tipo_mesa,\n                prioridad,\n                cantidad_alumnos,\n                estado,\n                observacion\n            ) VALUES (\n                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?\n            )\n        ");
 
@@ -112,10 +112,10 @@ function mesas_armado_grupos_finales_core(PDO $pdo, array $opciones = []): array
 
         foreach ($numeros as $numero) {
             $totalNumeros++;
-            $motivoInvalido = mesas_armado_grupos_motivo_invalido($numero, $disponibilidadDocentes);
+            $motivoInvalido = mesas_armado_docentes_grupos_motivo_invalido($numero, $disponibilidadDocentes);
 
             if ($motivoInvalido !== null) {
-                mesas_armado_grupos_insertar_no_agrupada($insertNoAgrupada, $numero, $motivoInvalido, $horasTurnos);
+                mesas_armado_docentes_grupos_insertar_no_agrupada($insertNoAgrupada, $numero, $motivoInvalido, $horasTurnos);
                 $totalInvalidos++;
                 $totalNoAgrupadas++;
                 $motivos[$motivoInvalido] = ($motivos[$motivoInvalido] ?? 0) + 1;
@@ -123,7 +123,7 @@ function mesas_armado_grupos_finales_core(PDO $pdo, array $opciones = []): array
             }
 
             if ($numero['es_taller']) {
-                mesas_armado_grupos_insertar_grupo_simple(
+                mesas_armado_docentes_grupos_insertar_grupo_simple(
                     $insertGrupo,
                     $proximoNumeroGrupo,
                     [$numero],
@@ -139,7 +139,7 @@ function mesas_armado_grupos_finales_core(PDO $pdo, array $opciones = []): array
                 continue;
             }
 
-            $key = $numero['fecha_mesa'] . '|' . $numero['id_turno'] . '|' . $numero['id_area'];
+            $key = $numero['fecha_mesa'] . '|' . $numero['id_turno'];
             $buckets[$key][] = $numero;
             $totalNormales++;
         }
@@ -148,21 +148,23 @@ function mesas_armado_grupos_finales_core(PDO $pdo, array $opciones = []): array
             usort($bucket, static function (array $a, array $b): int {
                 return [
                     -(int)$a['prioridad'],
+                    (int)($a['id_area'] ?? 999999),
                     -(int)$a['cantidad_alumnos'],
                     -(int)$a['cantidad_docentes'],
                     (int)$a['numero_mesa'],
                 ] <=> [
                     -(int)$b['prioridad'],
+                    (int)($b['id_area'] ?? 999999),
                     -(int)$b['cantidad_alumnos'],
                     -(int)$b['cantidad_docentes'],
                     (int)$b['numero_mesa'],
                 ];
             });
 
-            [$grupos, $sobrantes] = mesas_armado_grupos_formar_subgrupos($bucket, $minNumeros, $maxNumeros);
+            [$grupos, $sobrantes] = mesas_armado_docentes_grupos_formar_subgrupos($bucket, $minNumeros, $maxNumeros);
 
             foreach ($grupos as $grupo) {
-                mesas_armado_grupos_insertar_grupo_simple(
+                mesas_armado_docentes_grupos_insertar_grupo_simple(
                     $insertGrupo,
                     $proximoNumeroGrupo,
                     $grupo,
@@ -177,8 +179,8 @@ function mesas_armado_grupos_finales_core(PDO $pdo, array $opciones = []): array
             }
 
             foreach ($sobrantes as $sobrante) {
-                $motivo = 'sin_compatibles_para_formar_grupo_de_2_a_4_en_misma_fecha_turno_area';
-                mesas_armado_grupos_insertar_no_agrupada($insertNoAgrupada, $sobrante, $motivo, $horasTurnos);
+                $motivo = 'sin_compatibles_para_formar_grupo_de_2_a_4_en_misma_fecha_turno_disponibilidad_docente';
+                mesas_armado_docentes_grupos_insertar_no_agrupada($insertNoAgrupada, $sobrante, $motivo, $horasTurnos);
                 $totalNoAgrupadas++;
                 $motivos[$motivo] = ($motivos[$motivo] ?? 0) + 1;
             }
@@ -186,8 +188,8 @@ function mesas_armado_grupos_finales_core(PDO $pdo, array $opciones = []): array
 
         $resultadoReoptimizacion = null;
 
-        if ($reoptimizar && function_exists('mesas_armado_fase_7_reoptimizar_no_agrupadas_core')) {
-            $resultadoReoptimizacion = mesas_armado_fase_7_reoptimizar_no_agrupadas_core(
+        if ($reoptimizar && function_exists('mesas_armado_docentes_fase_7_reoptimizar_no_agrupadas_core')) {
+            $resultadoReoptimizacion = mesas_armado_docentes_fase_7_reoptimizar_no_agrupadas_core(
                 $pdo,
                 [
                     'min_numeros' => $minNumeros,
@@ -207,7 +209,7 @@ function mesas_armado_grupos_finales_core(PDO $pdo, array $opciones = []): array
             ");
         }
 
-        $totalesFinales = mesas_armado_grupos_totales_finales($pdo);
+        $totalesFinales = mesas_armado_docentes_grupos_totales_finales($pdo);
 
         if ($manejaTransaccion) {
             $pdo->commit();
@@ -219,7 +221,7 @@ function mesas_armado_grupos_finales_core(PDO $pdo, array $opciones = []): array
             'agrupacion_final_generada' => true,
             'reoptimizacion_ejecutada' => is_array($resultadoReoptimizacion),
             'estructura' => 'simple_sin_detalle',
-            'criterio' => 'mesas_grupos guarda una fila por numero_mesa usando numero_grupo repetido. Todo numero_mesa con prioridad 1/taller queda como grupo individual. Correlativas quedan como anclas de fecha/turno. Las simples funcionan como comodines y la fase 7 puede moverlas de fecha/turno para completar grupos compatibles de 2 a 4 por area, sin choque de alumnos/docentes.',
+            'criterio' => 'mesas_grupos guarda una fila por numero_mesa usando numero_grupo repetido. Todo numero_mesa con prioridad 1/taller queda como grupo individual. Correlativas quedan como anclas de fecha/turno. Las simples funcionan como comodines y la fase 7 puede moverlas de fecha/turno para completar grupos compatibles de 2 a 4 por disponibilidad docente como criterio principal y area como preferencia secundaria, sin choque de alumnos/docentes.',
             'min_numeros_por_grupo' => $minNumeros,
             'max_numeros_por_grupo' => $maxNumeros,
             'total_numeros_leidos' => $totalNumeros,
@@ -232,7 +234,7 @@ function mesas_armado_grupos_finales_core(PDO $pdo, array $opciones = []): array
             'total_grupos_generados' => $totalesFinales['total_grupos'],
             'total_filas_insertadas_en_mesas_grupos' => $totalesFinales['total_filas_grupo'],
             'total_no_agrupadas' => $totalesFinales['total_no_agrupadas'],
-            'motivos_no_agrupadas' => mesas_armado_grupos_motivos_no_agrupadas_actuales($pdo),
+            'motivos_no_agrupadas' => mesas_armado_docentes_grupos_motivos_no_agrupadas_actuales($pdo),
             'motivos_no_agrupadas_iniciales' => $motivos,
         ];
 
@@ -245,7 +247,7 @@ function mesas_armado_grupos_finales_core(PDO $pdo, array $opciones = []): array
     }
 }
 
-function mesas_armado_grupos_asegurar_tablas(PDO $pdo): void
+function mesas_armado_docentes_grupos_asegurar_tablas(PDO $pdo): void
 {
     /*
      * Este módulo usa la estructura simple:
@@ -258,8 +260,8 @@ function mesas_armado_grupos_asegurar_tablas(PDO $pdo): void
      */
     $pdo->exec('DROP TABLE IF EXISTS mesas_grupos_detalle');
 
-    $columnasGrupos = mesas_armado_grupos_columnas_tabla($pdo, 'mesas_grupos');
-    $columnasNoAgrupadas = mesas_armado_grupos_columnas_tabla($pdo, 'mesas_no_agrupadas');
+    $columnasGrupos = mesas_armado_docentes_grupos_columnas_tabla($pdo, 'mesas_grupos');
+    $columnasNoAgrupadas = mesas_armado_docentes_grupos_columnas_tabla($pdo, 'mesas_no_agrupadas');
 
     $requeridasGrupos = [
         'id_mesa_grupo',
@@ -306,7 +308,7 @@ function mesas_armado_grupos_asegurar_tablas(PDO $pdo): void
     $pdo->exec("\n        CREATE TABLE IF NOT EXISTS mesas_no_agrupadas (\n            id INT UNSIGNED NOT NULL AUTO_INCREMENT,\n            numero_mesa INT NOT NULL,\n            fecha_mesa DATE NOT NULL,\n            id_turno INT NOT NULL,\n            hora TIME DEFAULT NULL,\n            id_area TINYINT DEFAULT NULL,\n            tipo_mesa ENUM('simple','correlativa','taller') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'simple',\n            prioridad TINYINT NOT NULL DEFAULT 0,\n            cantidad_alumnos INT NOT NULL DEFAULT 0,\n            motivo VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,\n            estado ENUM('pendiente','reoptimizada','confirmada') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pendiente',\n            fecha_registro TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,\n            PRIMARY KEY (id),\n            KEY idx_numero_mesa (numero_mesa),\n            KEY idx_fecha_turno (fecha_mesa, id_turno),\n            KEY idx_area (id_area),\n            KEY idx_estado (estado),\n            CONSTRAINT fk_no_agrupadas_turno\n                FOREIGN KEY (id_turno) REFERENCES turnos(id_turno)\n                ON DELETE RESTRICT ON UPDATE CASCADE,\n            CONSTRAINT fk_no_agrupadas_area\n                FOREIGN KEY (id_area) REFERENCES areas(id_area)\n                ON DELETE SET NULL ON UPDATE CASCADE\n        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci\n    ");
 }
 
-function mesas_armado_grupos_columnas_tabla(PDO $pdo, string $tabla): ?array
+function mesas_armado_docentes_grupos_columnas_tabla(PDO $pdo, string $tabla): ?array
 {
     $stmt = $pdo->prepare("\n        SELECT COLUMN_NAME\n        FROM INFORMATION_SCHEMA.COLUMNS\n        WHERE TABLE_SCHEMA = DATABASE()\n          AND TABLE_NAME = ?\n    ");
     $stmt->execute([$tabla]);
@@ -320,19 +322,19 @@ function mesas_armado_grupos_columnas_tabla(PDO $pdo, string $tabla): ?array
     return array_map(static fn ($columna): string => (string)$columna, $columnas);
 }
 
-function mesas_armado_grupos_limpiar(PDO $pdo): void
+function mesas_armado_docentes_grupos_limpiar(PDO $pdo): void
 {
     $pdo->exec('DELETE FROM mesas_no_agrupadas');
     $pdo->exec('DELETE FROM mesas_grupos');
 }
 
-function mesas_armado_grupos_proximo_numero(PDO $pdo): int
+function mesas_armado_docentes_grupos_proximo_numero(PDO $pdo): int
 {
     $stmt = $pdo->query('SELECT COALESCE(MAX(numero_grupo), 0) + 1 FROM mesas_grupos');
     return max(1, (int)$stmt->fetchColumn());
 }
 
-function mesas_armado_grupos_obtener_horas_turnos(PDO $pdo): array
+function mesas_armado_docentes_grupos_obtener_horas_turnos(PDO $pdo): array
 {
     $stmt = $pdo->query("\n        SELECT id_turno, turno\n        FROM turnos\n        WHERE activo = 1\n        ORDER BY id_turno ASC\n    ");
 
@@ -354,7 +356,7 @@ function mesas_armado_grupos_obtener_horas_turnos(PDO $pdo): array
     return $map;
 }
 
-function mesas_armado_grupos_obtener_numeros_mesa(PDO $pdo): array
+function mesas_armado_docentes_grupos_obtener_numeros_mesa(PDO $pdo): array
 {
     $sql = "\n        SELECT\n            me.numero_mesa,\n            MIN(me.fecha_mesa) AS fecha_mesa,\n            MIN(me.id_turno) AS id_turno,\n            MAX(me.prioridad) AS prioridad,\n            MAX(CASE WHEN me.tipo_mesa = 'correlativa' THEN 1 ELSE 0 END) AS tiene_correlativa,\n            MAX(CASE WHEN me.tipo_mesa = 'taller' OR me.id_taller IS NOT NULL OR me.prioridad = 1 THEN 1 ELSE 0 END) AS es_taller,\n            MAX(me.id_taller) AS id_taller,\n            MIN(am.id_area) AS id_area,\n            COUNT(*) AS cantidad_registros,\n            COUNT(DISTINCT p.dni) AS cantidad_alumnos,\n            COUNT(DISTINCT me.id_docente) AS cantidad_docentes,\n            COUNT(DISTINCT am.id_area) AS cantidad_areas,\n            COUNT(DISTINCT CONCAT(COALESCE(CAST(me.fecha_mesa AS CHAR), 'NULL'), '|', COALESCE(CAST(me.id_turno AS CHAR), 'NULL'))) AS cantidad_slots,\n            SUM(CASE WHEN me.estado = 'observada' THEN 1 ELSE 0 END) AS cantidad_observadas,\n            SUM(CASE WHEN me.fecha_mesa IS NULL OR me.id_turno IS NULL THEN 1 ELSE 0 END) AS cantidad_sin_slot,\n            GROUP_CONCAT(DISTINCT me.tipo_mesa ORDER BY me.tipo_mesa SEPARATOR ',') AS tipos_csv,\n            GROUP_CONCAT(DISTINCT me.id_docente ORDER BY me.id_docente SEPARATOR ',') AS docentes_csv,\n            GROUP_CONCAT(DISTINCT p.dni ORDER BY p.dni SEPARATOR ',') AS alumnos_csv,\n            GROUP_CONCAT(DISTINCT am.id_area ORDER BY am.id_area SEPARATOR ',') AS areas_csv\n        FROM mesas me\n        LEFT JOIN previas p\n            ON p.id_previa = me.id_previa\n        LEFT JOIN catedras cat\n            ON cat.id_catedra = me.id_catedra\n        LEFT JOIN areas_materias am\n            ON am.id_materia = COALESCE(cat.id_materia, p.id_materia)\n           AND am.activo = 1\n        LEFT JOIN areas a\n            ON a.id_area = am.id_area\n           AND a.activo = 1\n        WHERE me.numero_mesa IS NOT NULL\n          AND me.estado IN ('borrador', 'armada')\n        GROUP BY me.numero_mesa\n        ORDER BY\n            MIN(me.fecha_mesa) ASC,\n            MIN(me.id_turno) ASC,\n            MIN(am.id_area) ASC,\n            MAX(me.prioridad) DESC,\n            COUNT(DISTINCT p.dni) DESC,\n            me.numero_mesa ASC\n    ";
 
@@ -396,17 +398,17 @@ function mesas_armado_grupos_obtener_numeros_mesa(PDO $pdo): array
             'cantidad_slots' => (int)($fila['cantidad_slots'] ?? 0),
             'cantidad_observadas' => (int)($fila['cantidad_observadas'] ?? 0),
             'cantidad_sin_slot' => (int)($fila['cantidad_sin_slot'] ?? 0),
-            'tipos' => mesas_armado_grupos_csv_a_array($fila['tipos_csv'] ?? ''),
-            'docentes' => array_values(array_unique(array_map('intval', mesas_armado_grupos_csv_a_array($fila['docentes_csv'] ?? '')))),
-            'alumnos' => mesas_armado_grupos_csv_a_array($fila['alumnos_csv'] ?? ''),
-            'areas' => array_values(array_unique(array_map('intval', mesas_armado_grupos_csv_a_array($fila['areas_csv'] ?? '')))),
+            'tipos' => mesas_armado_docentes_grupos_csv_a_array($fila['tipos_csv'] ?? ''),
+            'docentes' => array_values(array_unique(array_map('intval', mesas_armado_docentes_grupos_csv_a_array($fila['docentes_csv'] ?? '')))),
+            'alumnos' => mesas_armado_docentes_grupos_csv_a_array($fila['alumnos_csv'] ?? ''),
+            'areas' => array_values(array_unique(array_map('intval', mesas_armado_docentes_grupos_csv_a_array($fila['areas_csv'] ?? '')))),
         ];
     }
 
     return $numeros;
 }
 
-function mesas_armado_grupos_csv_a_array(?string $csv): array
+function mesas_armado_docentes_grupos_csv_a_array(?string $csv): array
 {
     $csv = trim((string)$csv);
 
@@ -417,7 +419,7 @@ function mesas_armado_grupos_csv_a_array(?string $csv): array
     return array_values(array_filter(array_map('trim', explode(',', $csv)), static fn ($v) => $v !== ''));
 }
 
-function mesas_armado_grupos_motivo_invalido(array $numero, array $disponibilidadDocentes): ?string
+function mesas_armado_docentes_grupos_motivo_invalido(array $numero, array $disponibilidadDocentes): ?string
 {
     if ((int)$numero['cantidad_observadas'] > 0) {
         return 'numero_mesa_con_registros_observados';
@@ -444,7 +446,7 @@ function mesas_armado_grupos_motivo_invalido(array $numero, array $disponibilida
             return 'numero_mesa_con_docente_no_resuelto';
         }
 
-        if (mesas_armado_docente_no_disponible($disponibilidadDocentes, $idDocente, (string)$numero['fecha_mesa'], (int)$numero['id_turno'])) {
+        if (mesas_armado_docentes_docente_no_disponible($disponibilidadDocentes, $idDocente, (string)$numero['fecha_mesa'], (int)$numero['id_turno'])) {
             return 'docente_sin_disponibilidad_en_dia_turno';
         }
     }
@@ -452,7 +454,7 @@ function mesas_armado_grupos_motivo_invalido(array $numero, array $disponibilida
     return null;
 }
 
-function mesas_armado_grupos_formar_subgrupos(array $bucket, int $minNumeros, int $maxNumeros): array
+function mesas_armado_docentes_grupos_formar_subgrupos(array $bucket, int $minNumeros, int $maxNumeros): array
 {
     $pendientes = array_values($bucket);
     $grupos = [];
@@ -465,7 +467,7 @@ function mesas_armado_grupos_formar_subgrupos(array $bucket, int $minNumeros, in
 
         $i = 0;
         while ($i < count($pendientes) && count($grupo) < $maxNumeros) {
-            if (mesas_armado_grupos_es_compatible_con_grupo($pendientes[$i], $grupo)) {
+            if (mesas_armado_docentes_grupos_es_compatible_con_grupo($pendientes[$i], $grupo)) {
                 $grupo[] = $pendientes[$i];
                 array_splice($pendientes, $i, 1);
                 continue;
@@ -486,10 +488,10 @@ function mesas_armado_grupos_formar_subgrupos(array $bucket, int $minNumeros, in
         $sobrantes[] = $item;
     }
 
-    return mesas_armado_grupos_rebalancear_sobrantes($grupos, $sobrantes, $minNumeros, $maxNumeros);
+    return mesas_armado_docentes_grupos_rebalancear_sobrantes($grupos, $sobrantes, $minNumeros, $maxNumeros);
 }
 
-function mesas_armado_grupos_es_compatible_con_grupo(array $numero, array $grupo): bool
+function mesas_armado_docentes_grupos_es_compatible_con_grupo(array $numero, array $grupo): bool
 {
     if ($numero['es_taller']) {
         return false;
@@ -508,11 +510,14 @@ function mesas_armado_grupos_es_compatible_con_grupo(array $numero, array $grupo
             return false;
         }
 
-        if ((int)$numero['id_area'] !== (int)$actual['id_area']) {
+        // En el armado por disponibilidad docente, el área ya no es una restricción dura.
+        // Se usa como preferencia de orden dentro del mismo día/turno.
+
+        if (count(array_intersect($numero['alumnos'], $actual['alumnos'])) > 0) {
             return false;
         }
 
-        if (count(array_intersect($numero['alumnos'], $actual['alumnos'])) > 0) {
+        if (count(array_intersect($numero['docentes'], $actual['docentes'])) > 0) {
             return false;
         }
     }
@@ -520,7 +525,7 @@ function mesas_armado_grupos_es_compatible_con_grupo(array $numero, array $grupo
     return true;
 }
 
-function mesas_armado_grupos_rebalancear_sobrantes(array $grupos, array $sobrantes, int $minNumeros, int $maxNumeros): array
+function mesas_armado_docentes_grupos_rebalancear_sobrantes(array $grupos, array $sobrantes, int $minNumeros, int $maxNumeros): array
 {
     if (count($sobrantes) === 0 || count($grupos) === 0) {
         return [$grupos, $sobrantes];
@@ -536,7 +541,7 @@ function mesas_armado_grupos_rebalancear_sobrantes(array $grupos, array $sobrant
                 continue;
             }
 
-            if (mesas_armado_grupos_es_compatible_con_grupo($sobrante, $grupo)) {
+            if (mesas_armado_docentes_grupos_es_compatible_con_grupo($sobrante, $grupo)) {
                 $grupo[] = $sobrante;
                 $ubicado = true;
                 break;
@@ -560,7 +565,7 @@ function mesas_armado_grupos_rebalancear_sobrantes(array $grupos, array $sobrant
             for ($j = count($grupos[$idx]) - 1; $j >= 0; $j--) {
                 $movido = $grupos[$idx][$j];
 
-                if (!mesas_armado_grupos_es_compatible_con_grupo($movido, [$sobrante])) {
+                if (!mesas_armado_docentes_grupos_es_compatible_con_grupo($movido, [$sobrante])) {
                     continue;
                 }
 
@@ -574,7 +579,7 @@ function mesas_armado_grupos_rebalancear_sobrantes(array $grupos, array $sobrant
     return [$grupos, $pendientes];
 }
 
-function mesas_armado_grupos_insertar_grupo_simple(
+function mesas_armado_docentes_grupos_insertar_grupo_simple(
     PDOStatement $insertGrupo,
     int $numeroGrupo,
     array $numeros,
@@ -604,7 +609,7 @@ function mesas_armado_grupos_insertar_grupo_simple(
     }
 }
 
-function mesas_armado_grupos_insertar_no_agrupada(PDOStatement $stmt, array $numero, string $motivo, array $horasTurnos): void
+function mesas_armado_docentes_grupos_insertar_no_agrupada(PDOStatement $stmt, array $numero, string $motivo, array $horasTurnos): void
 {
     $idTurno = $numero['id_turno'] !== null ? (int)$numero['id_turno'] : 0;
 
@@ -622,7 +627,7 @@ function mesas_armado_grupos_insertar_no_agrupada(PDOStatement $stmt, array $num
 }
 
 
-function mesas_armado_grupos_totales_finales(PDO $pdo): array
+function mesas_armado_docentes_grupos_totales_finales(PDO $pdo): array
 {
     $totalGrupos = (int)$pdo->query('SELECT COUNT(DISTINCT numero_grupo) FROM mesas_grupos')->fetchColumn();
     $totalFilasGrupo = (int)$pdo->query('SELECT COUNT(*) FROM mesas_grupos')->fetchColumn();
@@ -635,7 +640,7 @@ function mesas_armado_grupos_totales_finales(PDO $pdo): array
     ];
 }
 
-function mesas_armado_grupos_motivos_no_agrupadas_actuales(PDO $pdo): array
+function mesas_armado_docentes_grupos_motivos_no_agrupadas_actuales(PDO $pdo): array
 {
     $stmt = $pdo->query("
         SELECT motivo, COUNT(*) AS total
@@ -653,7 +658,7 @@ function mesas_armado_grupos_motivos_no_agrupadas_actuales(PDO $pdo): array
     return $salida;
 }
 
-function mesas_armado_grupos_agregar_unico(array &$item, string $coleccion, string $indice, mixed $id, ?string $texto): void
+function mesas_armado_docentes_grupos_agregar_unico(array &$item, string $coleccion, string $indice, mixed $id, ?string $texto): void
 {
     $texto = trim((string)$texto);
 
@@ -674,7 +679,7 @@ function mesas_armado_grupos_agregar_unico(array &$item, string $coleccion, stri
     ];
 }
 
-function mesas_armado_grupos_texto_lista(array $items, string $campo = 'nombre'): string
+function mesas_armado_docentes_grupos_texto_lista(array $items, string $campo = 'nombre'): string
 {
     $textos = [];
 
@@ -690,7 +695,7 @@ function mesas_armado_grupos_texto_lista(array $items, string $campo = 'nombre')
     return implode(' / ', $textos);
 }
 
-function mesas_armado_grupos_inicializar_numero(array $detalle): array
+function mesas_armado_docentes_grupos_inicializar_numero(array $detalle): array
 {
     return [
         'id' => 'numero_' . (int)$detalle['numero_mesa'],
@@ -715,11 +720,11 @@ function mesas_armado_grupos_inicializar_numero(array $detalle): array
     ];
 }
 
-function mesas_armado_grupos_limpieza_salida(array $grupo): array
+function mesas_armado_docentes_grupos_limpieza_salida(array $grupo): array
 {
     foreach ($grupo['numeros'] as &$numero) {
-        $numero['docente'] = mesas_armado_grupos_texto_lista($numero['docentes']);
-        $numero['materia'] = mesas_armado_grupos_texto_lista($numero['materias']);
+        $numero['docente'] = mesas_armado_docentes_grupos_texto_lista($numero['docentes']);
+        $numero['materia'] = mesas_armado_docentes_grupos_texto_lista($numero['materias']);
         $numero['cantidad_previas'] = count($numero['alumnos']);
         $numero['cantidad_alumnos_distintos'] = count($numero['_dni_index']);
 
@@ -727,8 +732,8 @@ function mesas_armado_grupos_limpieza_salida(array $grupo): array
     }
     unset($numero);
 
-    $grupo['docente'] = mesas_armado_grupos_texto_lista($grupo['docentes']);
-    $grupo['materia'] = mesas_armado_grupos_texto_lista($grupo['materias']);
+    $grupo['docente'] = mesas_armado_docentes_grupos_texto_lista($grupo['docentes']);
+    $grupo['materia'] = mesas_armado_docentes_grupos_texto_lista($grupo['materias']);
     $grupo['cantidad_previas'] = count($grupo['alumnos']);
     $grupo['cantidad_alumnos_distintos'] = count($grupo['_dni_index']);
 
@@ -743,7 +748,7 @@ function mesas_armado_grupos_limpieza_salida(array $grupo): array
     return $grupo;
 }
 
-function mesas_armado_grupos_busqueda_grupo(array $grupo, string $texto): bool
+function mesas_armado_docentes_grupos_busqueda_grupo(array $grupo, string $texto): bool
 {
     $texto = mb_strtolower(trim($texto), 'UTF-8');
 
@@ -815,7 +820,7 @@ function mesas_armado_grupos_busqueda_grupo(array $grupo, string $texto): bool
     return false;
 }
 
-function mesas_armado_grupos_hidratar_detalles(PDO $pdo, array $gruposBase, array $numerosGrupo): array
+function mesas_armado_docentes_grupos_hidratar_detalles(PDO $pdo, array $gruposBase, array $numerosGrupo): array
 {
     if (count($numerosGrupo) === 0) {
         return [];
@@ -878,16 +883,16 @@ function mesas_armado_grupos_hidratar_detalles(PDO $pdo, array $gruposBase, arra
 
         if (!isset($grupo['_numeros_index'][$numeroKey])) {
             $grupo['_numeros_index'][$numeroKey] = count($grupo['numeros']);
-            $grupo['numeros'][] = mesas_armado_grupos_inicializar_numero($fila);
+            $grupo['numeros'][] = mesas_armado_docentes_grupos_inicializar_numero($fila);
         }
 
         $idxNumero = (int)$grupo['_numeros_index'][$numeroKey];
         $numero =& $grupo['numeros'][$idxNumero];
 
-        mesas_armado_grupos_agregar_unico($grupo, 'docentes', '_docentes_index', $fila['id_docente_real'] ?? null, $fila['docente'] ?? null);
-        mesas_armado_grupos_agregar_unico($grupo, 'materias', '_materias_index', $fila['id_materia'] ?? null, $fila['materia'] ?? null);
-        mesas_armado_grupos_agregar_unico($numero, 'docentes', '_docentes_index', $fila['id_docente_real'] ?? null, $fila['docente'] ?? null);
-        mesas_armado_grupos_agregar_unico($numero, 'materias', '_materias_index', $fila['id_materia'] ?? null, $fila['materia'] ?? null);
+        mesas_armado_docentes_grupos_agregar_unico($grupo, 'docentes', '_docentes_index', $fila['id_docente_real'] ?? null, $fila['docente'] ?? null);
+        mesas_armado_docentes_grupos_agregar_unico($grupo, 'materias', '_materias_index', $fila['id_materia'] ?? null, $fila['materia'] ?? null);
+        mesas_armado_docentes_grupos_agregar_unico($numero, 'docentes', '_docentes_index', $fila['id_docente_real'] ?? null, $fila['docente'] ?? null);
+        mesas_armado_docentes_grupos_agregar_unico($numero, 'materias', '_materias_index', $fila['id_materia'] ?? null, $fila['materia'] ?? null);
 
         if ($fila['id_mesa'] === null) {
             unset($numero, $grupo);
@@ -946,14 +951,14 @@ function mesas_armado_grupos_hidratar_detalles(PDO $pdo, array $gruposBase, arra
         unset($numero, $grupo);
     }
 
-    return array_map('mesas_armado_grupos_limpieza_salida', array_values($grupos));
+    return array_map('mesas_armado_docentes_grupos_limpieza_salida', array_values($grupos));
 }
 
-function mesas_grupos_listar(): void
+function mesas_docentes_grupos_listar(): void
 {
     try {
         $pdo = db();
-        mesas_armado_grupos_asegurar_tablas($pdo);
+        mesas_armado_docentes_grupos_asegurar_tablas($pdo);
 
         $busqueda = trim((string)($_GET['busqueda'] ?? ''));
 
@@ -961,10 +966,10 @@ function mesas_grupos_listar(): void
 
         $base = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $numerosGrupo = array_map(static fn (array $fila): int => (int)$fila['numero_grupo'], $base);
-        $grupos = mesas_armado_grupos_hidratar_detalles($pdo, $base, $numerosGrupo);
+        $grupos = mesas_armado_docentes_grupos_hidratar_detalles($pdo, $base, $numerosGrupo);
 
         if ($busqueda !== '') {
-            $grupos = array_values(array_filter($grupos, static fn (array $grupo): bool => mesas_armado_grupos_busqueda_grupo($grupo, $busqueda)));
+            $grupos = array_values(array_filter($grupos, static fn (array $grupo): bool => mesas_armado_docentes_grupos_busqueda_grupo($grupo, $busqueda)));
         }
 
         json_response([
@@ -987,11 +992,11 @@ function mesas_grupos_listar(): void
     }
 }
 
-function mesas_no_agrupadas_listar(): void
+function mesas_docentes_no_agrupadas_listar(): void
 {
     try {
         $pdo = db();
-        mesas_armado_grupos_asegurar_tablas($pdo);
+        mesas_armado_docentes_grupos_asegurar_tablas($pdo);
 
         $busqueda = trim((string)($_GET['busqueda'] ?? ''));
 
@@ -1031,7 +1036,7 @@ function mesas_no_agrupadas_listar(): void
                 'materia' => '',
                 'materias' => [],
                 '_materias_index' => [],
-                'numeros' => [mesas_armado_grupos_inicializar_numero([
+                'numeros' => [mesas_armado_docentes_grupos_inicializar_numero([
                     'numero_mesa' => $numero,
                     'orden' => 1,
                     'tipo_numero' => $fila['tipo_mesa'] ?? 'simple',
@@ -1045,16 +1050,16 @@ function mesas_no_agrupadas_listar(): void
                 '_dni_index' => [],
             ];
 
-            $detalle = mesas_armado_grupos_hidratar_numero_suelto($pdo, $numero);
+            $detalle = mesas_armado_docentes_grupos_hidratar_numero_suelto($pdo, $numero);
 
             foreach ($detalle as $filaDetalle) {
                 $idxNumero = 0;
                 $num =& $grupo['numeros'][$idxNumero];
 
-                mesas_armado_grupos_agregar_unico($grupo, 'docentes', '_docentes_index', $filaDetalle['id_docente_real'] ?? null, $filaDetalle['docente'] ?? null);
-                mesas_armado_grupos_agregar_unico($grupo, 'materias', '_materias_index', $filaDetalle['id_materia'] ?? null, $filaDetalle['materia'] ?? null);
-                mesas_armado_grupos_agregar_unico($num, 'docentes', '_docentes_index', $filaDetalle['id_docente_real'] ?? null, $filaDetalle['docente'] ?? null);
-                mesas_armado_grupos_agregar_unico($num, 'materias', '_materias_index', $filaDetalle['id_materia'] ?? null, $filaDetalle['materia'] ?? null);
+                mesas_armado_docentes_grupos_agregar_unico($grupo, 'docentes', '_docentes_index', $filaDetalle['id_docente_real'] ?? null, $filaDetalle['docente'] ?? null);
+                mesas_armado_docentes_grupos_agregar_unico($grupo, 'materias', '_materias_index', $filaDetalle['id_materia'] ?? null, $filaDetalle['materia'] ?? null);
+                mesas_armado_docentes_grupos_agregar_unico($num, 'docentes', '_docentes_index', $filaDetalle['id_docente_real'] ?? null, $filaDetalle['docente'] ?? null);
+                mesas_armado_docentes_grupos_agregar_unico($num, 'materias', '_materias_index', $filaDetalle['id_materia'] ?? null, $filaDetalle['materia'] ?? null);
 
                 if ($filaDetalle['id_mesa'] !== null) {
                     $alumno = [
@@ -1093,11 +1098,11 @@ function mesas_no_agrupadas_listar(): void
                 unset($num);
             }
 
-            $salida[] = mesas_armado_grupos_limpieza_salida($grupo);
+            $salida[] = mesas_armado_docentes_grupos_limpieza_salida($grupo);
         }
 
         if ($busqueda !== '') {
-            $salida = array_values(array_filter($salida, static fn (array $grupo): bool => mesas_armado_grupos_busqueda_grupo($grupo, $busqueda)));
+            $salida = array_values(array_filter($salida, static fn (array $grupo): bool => mesas_armado_docentes_grupos_busqueda_grupo($grupo, $busqueda)));
         }
 
         json_response([
@@ -1115,7 +1120,7 @@ function mesas_no_agrupadas_listar(): void
     }
 }
 
-function mesas_armado_grupos_hidratar_numero_suelto(PDO $pdo, int $numeroMesa): array
+function mesas_armado_docentes_grupos_hidratar_numero_suelto(PDO $pdo, int $numeroMesa): array
 {
     $stmt = $pdo->prepare("\n        SELECT\n            me.id_mesa,\n            me.numero_mesa,\n            me.prioridad AS prioridad_registro,\n            me.tipo_mesa AS tipo_registro,\n            me.id_taller,\n            me.id_catedra,\n            me.id_previa,\n            me.id_docente,\n            me.fecha_mesa,\n            DATE_FORMAT(me.fecha_mesa, '%d/%m/%Y') AS fecha,\n            me.id_turno,\n            turno_mesa.turno,\n            me.estado AS estado_registro,\n            me.observacion AS observacion_registro,\n            p.dni,\n            p.alumno AS estudiante,\n            p.nota,\n            p.anio,\n            con.condicion,\n            curso_cursando.id_curso AS id_curso_alumno,\n            curso_cursando.nombre_curso AS curso_alumno,\n            division_cursando.id_division AS id_division_alumno,\n            division_cursando.nombre_division AS division_alumno,\n            COALESCE(cat.id_materia, p.id_materia) AS id_materia,\n            mat.materia,\n            curso_materia.id_curso AS id_curso_materia,\n            curso_materia.nombre_curso AS curso_materia,\n            division_materia.id_division AS id_division_materia,\n            division_materia.nombre_division AS division_materia,\n            doc.id_docente AS id_docente_real,\n            doc.docente\n        FROM mesas me\n        LEFT JOIN previas p ON p.id_previa = me.id_previa\n        LEFT JOIN catedras cat ON cat.id_catedra = me.id_catedra\n        LEFT JOIN materias mat ON mat.id_materia = COALESCE(cat.id_materia, p.id_materia)\n        LEFT JOIN condicion con ON con.id_condicion = p.id_condicion\n        LEFT JOIN curso curso_cursando ON curso_cursando.id_curso = p.cursando_id_curso\n        LEFT JOIN division division_cursando ON division_cursando.id_division = p.cursando_id_division\n        LEFT JOIN curso curso_materia ON curso_materia.id_curso = COALESCE(cat.id_curso, p.materia_id_curso)\n        LEFT JOIN division division_materia ON division_materia.id_division = COALESCE(cat.id_division, p.materia_id_division)\n        LEFT JOIN docentes doc ON doc.id_docente = me.id_docente\n        LEFT JOIN turnos turno_mesa ON turno_mesa.id_turno = me.id_turno\n        WHERE me.numero_mesa = ?\n        ORDER BY mat.materia, p.alumno, me.id_mesa\n    ");
     $stmt->execute([$numeroMesa]);

@@ -1,16 +1,16 @@
 <?php
-// backend/modules/mesas/armado_mesas/fases/helpers_armado.php
+// backend/modules/mesas/armado_mesas_docentes/fases/helpers_armado.php
 declare(strict_types=1);
 
-function mesas_armado_fecha_valida(string $fecha): bool
+function mesas_armado_docentes_fecha_valida(string $fecha): bool
 {
     $d = DateTimeImmutable::createFromFormat('Y-m-d', $fecha);
     return $d instanceof DateTimeImmutable && $d->format('Y-m-d') === $fecha;
 }
 
-function mesas_armado_fecha_es_fin_de_semana(string $fecha): bool
+function mesas_armado_docentes_fecha_es_fin_de_semana(string $fecha): bool
 {
-    if (!mesas_armado_fecha_valida($fecha)) {
+    if (!mesas_armado_docentes_fecha_valida($fecha)) {
         return false;
     }
 
@@ -20,9 +20,9 @@ function mesas_armado_fecha_es_fin_de_semana(string $fecha): bool
     return $numeroDia >= 6;
 }
 
-function mesas_armado_ajustar_a_dia_habil(string $fecha, string $direccion = 'siguiente'): string
+function mesas_armado_docentes_ajustar_a_dia_habil(string $fecha, string $direccion = 'siguiente'): string
 {
-    if (!mesas_armado_fecha_valida($fecha)) {
+    if (!mesas_armado_docentes_fecha_valida($fecha)) {
         return $fecha;
     }
 
@@ -36,7 +36,7 @@ function mesas_armado_ajustar_a_dia_habil(string $fecha, string $direccion = 'si
     return $d->format('Y-m-d');
 }
 
-function mesas_armado_obtener_slots(PDO $pdo, string $fechaInicio, string $fechaFin, bool $excluirFinesSemana = true): array
+function mesas_armado_docentes_obtener_slots(PDO $pdo, string $fechaInicio, string $fechaFin, bool $excluirFinesSemana = true): array
 {
     // Regla obligatoria del armado: nunca se generan mesas sábado ni domingo.
     // Aunque el frontend envíe otro valor, el backend siempre descarta fines de semana.
@@ -95,7 +95,7 @@ function mesas_armado_obtener_slots(PDO $pdo, string $fechaInicio, string $fecha
  * 3 = ROTACIÓN
  * 4 = VACANTE
  */
-function mesas_armado_obtener_previas_para_armar(PDO $pdo): array
+function mesas_armado_docentes_obtener_previas_para_armar(PDO $pdo): array
 {
     $sql = "
         SELECT
@@ -253,9 +253,9 @@ function mesas_armado_obtener_previas_para_armar(PDO $pdo): array
  * - El armado no trabaja por fecha puntual de disponibilidad: calcula el dia
  *   de la semana desde fecha_mesa y compara contra dia_semana.
  */
-function mesas_armado_obtener_disponibilidad_docentes(PDO $pdo): array
+function mesas_armado_docentes_obtener_disponibilidad_docentes(PDO $pdo): array
 {
-    if (!mesas_armado_tabla_existe($pdo, 'docentes_disponibilidad')) {
+    if (!mesas_armado_docentes_tabla_existe($pdo, 'docentes_disponibilidad')) {
         return [];
     }
 
@@ -292,7 +292,7 @@ function mesas_armado_obtener_disponibilidad_docentes(PDO $pdo): array
     return $map;
 }
 
-function mesas_armado_tabla_existe(PDO $pdo, string $tabla): bool
+function mesas_armado_docentes_tabla_existe(PDO $pdo, string $tabla): bool
 {
     $stmt = $pdo->prepare("
         SELECT COUNT(*)
@@ -305,16 +305,16 @@ function mesas_armado_tabla_existe(PDO $pdo, string $tabla): bool
     return (int)$stmt->fetchColumn() > 0;
 }
 
-function mesas_armado_dia_semana_desde_fecha(string $fecha): ?int
+function mesas_armado_docentes_dia_semana_desde_fecha(string $fecha): ?int
 {
-    if (!mesas_armado_fecha_valida($fecha)) {
+    if (!mesas_armado_docentes_fecha_valida($fecha)) {
         return null;
     }
 
     return (int)(new DateTimeImmutable($fecha))->format('N');
 }
 
-function mesas_armado_docente_disponible(array $disponibilidadDocentes, int $idDocente, string $fecha, int $idTurno): bool
+function mesas_armado_docentes_docente_disponible(array $disponibilidadDocentes, int $idDocente, string $fecha, int $idTurno): bool
 {
     if ($idDocente <= 0 || $idTurno <= 0) {
         return false;
@@ -325,7 +325,7 @@ function mesas_armado_docente_disponible(array $disponibilidadDocentes, int $idD
         return true;
     }
 
-    $diaSemana = mesas_armado_dia_semana_desde_fecha($fecha);
+    $diaSemana = mesas_armado_docentes_dia_semana_desde_fecha($fecha);
 
     if ($diaSemana === null || $diaSemana < 1 || $diaSemana > 5) {
         return false;
@@ -343,12 +343,12 @@ function mesas_armado_docente_disponible(array $disponibilidadDocentes, int $idD
     return false;
 }
 
-function mesas_armado_docente_no_disponible(array $disponibilidadDocentes, int $idDocente, string $fecha, int $idTurno): bool
+function mesas_armado_docentes_docente_no_disponible(array $disponibilidadDocentes, int $idDocente, string $fecha, int $idTurno): bool
 {
-    return !mesas_armado_docente_disponible($disponibilidadDocentes, $idDocente, $fecha, $idTurno);
+    return !mesas_armado_docentes_docente_disponible($disponibilidadDocentes, $idDocente, $fecha, $idTurno);
 }
 
-function mesas_armado_buscar_slot_disponible(
+function mesas_armado_docentes_buscar_slot_disponible(
     array $slots,
     array $disponibilidadDocentes,
     int $idDocente,
@@ -369,11 +369,11 @@ function mesas_armado_buscar_slot_disponible(
         $fecha = (string)$slot['fecha'];
         $idTurno = (int)$slot['id_turno'];
 
-        if (mesas_armado_docente_no_disponible($disponibilidadDocentes, $idDocente, $fecha, $idTurno)) {
+        if (mesas_armado_docentes_docente_no_disponible($disponibilidadDocentes, $idDocente, $fecha, $idTurno)) {
             continue;
         }
 
-        $claveAlumno = mesas_armado_clave_ocupacion_alumno($dni, $fecha, $idTurno);
+        $claveAlumno = mesas_armado_docentes_clave_ocupacion_alumno($dni, $fecha, $idTurno);
 
         if (isset($ocupacionAlumno[$claveAlumno])) {
             continue;
@@ -387,12 +387,12 @@ function mesas_armado_buscar_slot_disponible(
     return null;
 }
 
-function mesas_armado_clave_ocupacion_alumno(string $dni, string $fecha, int $idTurno): string
+function mesas_armado_docentes_clave_ocupacion_alumno(string $dni, string $fecha, int $idTurno): string
 {
     return $dni . '|' . $fecha . '|' . $idTurno;
 }
 
-function mesas_armado_obtener_mesa_por_previa(PDO $pdo, int $idPrevia): int
+function mesas_armado_docentes_obtener_mesa_por_previa(PDO $pdo, int $idPrevia): int
 {
     // Reutiliza cualquier fila operativa de esa previa.
     // Si no se limpia el borrador, evita insertar duplicados al rearmar.
@@ -410,7 +410,7 @@ function mesas_armado_obtener_mesa_por_previa(PDO $pdo, int $idPrevia): int
     return (int)($stmt->fetchColumn() ?: 0);
 }
 
-function mesas_armado_eliminar_mesas_por_previa(PDO $pdo, int $idPrevia): int
+function mesas_armado_docentes_eliminar_mesas_por_previa(PDO $pdo, int $idPrevia): int
 {
     $stmt = $pdo->prepare("
         DELETE FROM mesas
@@ -422,7 +422,7 @@ function mesas_armado_eliminar_mesas_por_previa(PDO $pdo, int $idPrevia): int
     return $stmt->rowCount();
 }
 
-function mesas_armado_obtener_materias_de_taller(PDO $pdo, int $idTaller, int $idCurso, int $idDivision): array
+function mesas_armado_docentes_obtener_materias_de_taller(PDO $pdo, int $idTaller, int $idCurso, int $idDivision): array
 {
     /**
      * talleres_materias guarda solo id_catedra como vínculo real.
@@ -476,7 +476,7 @@ function mesas_armado_obtener_materias_de_taller(PDO $pdo, int $idTaller, int $i
  * Mantiene la misma regla del armado base: si hubiera más de una opción,
  * prioriza docente suplente activo; si no, el docente activo disponible.
  */
-function mesas_armado_obtener_catedra_para_materia_curso_division(
+function mesas_armado_docentes_obtener_catedra_para_materia_curso_division(
     PDO $pdo,
     int $idMateria,
     int $idCurso,

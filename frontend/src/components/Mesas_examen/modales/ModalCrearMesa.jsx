@@ -56,6 +56,7 @@ const ModalCrearMesa = ({
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
   const [limpiarBorrador, setLimpiarBorrador] = useState(true);
+  const [tipoArmado, setTipoArmado] = useState("area");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -66,6 +67,7 @@ const ModalCrearMesa = ({
       setFechaInicio(inicioSugerido);
       setFechaFin(finSugerido && finSugerido >= inicioSugerido ? finSugerido : inicioSugerido);
       setLimpiarBorrador(true);
+      setTipoArmado("area");
       setError("");
     }
   }, [abierto, parametros]);
@@ -141,6 +143,7 @@ const ModalCrearMesa = ({
       fecha_fin: fechaFin,
       limpiar_borrador: limpiarBorrador,
       excluir_fines_semana: true,
+      tipo_armado: tipoArmado,
     });
   };
 
@@ -236,6 +239,40 @@ const ModalCrearMesa = ({
               </div>
             </div>
           )}
+
+          <div className="mesas-tipo-armado-box">
+            <span className="mesas-tipo-armado-title">
+              Criterio de armado
+            </span>
+
+            <div className="mesas-tipo-armado-grid">
+              <label className={`mesas-tipo-armado-card ${tipoArmado === "area" ? "activo" : ""}`}>
+                <input
+                  type="checkbox"
+                  checked={tipoArmado === "area"}
+                  onChange={() => setTipoArmado("area")}
+                  disabled={cargando}
+                />
+                <div>
+                  <strong>Armado por área</strong>
+                  <span>Usa el armado actual: compacta por área y valida disponibilidad docente.</span>
+                </div>
+              </label>
+
+              <label className={`mesas-tipo-armado-card ${tipoArmado === "docentes" ? "activo" : ""}`}>
+                <input
+                  type="checkbox"
+                  checked={tipoArmado === "docentes"}
+                  onChange={() => setTipoArmado("docentes")}
+                  disabled={cargando}
+                />
+                <div>
+                  <strong>Armado por disponibilidad docente</strong>
+                  <span>Prioriza días/turnos disponibles del docente y usa el área como criterio secundario.</span>
+                </div>
+              </label>
+            </div>
+          </div>
 
           <div className="mesas-modal-options">
             <label>

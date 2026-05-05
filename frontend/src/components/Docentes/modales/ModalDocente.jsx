@@ -9,13 +9,13 @@ import {
   faUserTie,
 } from '@fortawesome/free-solid-svg-icons';
 
-function hoyISO() {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
+const DIAS_SEMANA_DEFAULT = [
+  { id_dia_semana: 1, dia_semana: 'LUNES' },
+  { id_dia_semana: 2, dia_semana: 'MARTES' },
+  { id_dia_semana: 3, dia_semana: 'MIÉRCOLES' },
+  { id_dia_semana: 4, dia_semana: 'JUEVES' },
+  { id_dia_semana: 5, dia_semana: 'VIERNES' },
+];
 
 function idsDesdeItem(item) {
   if (Array.isArray(item?.ids_docentes)) return item.ids_docentes.map(Number).filter(Boolean);
@@ -25,12 +25,20 @@ function idsDesdeItem(item) {
   return item?.id_docente ? [Number(item.id_docente)] : [];
 }
 
+function normalizarDisponibilidad(bloque) {
+  return {
+    id_dia_semana: bloque?.id_dia_semana ? String(bloque.id_dia_semana) : '',
+    id_turno: bloque?.id_turno ? String(bloque.id_turno) : '',
+    fecha: bloque?.fecha || '',
+  };
+}
+
 export default function ModalDocente({ modo = 'crear', item, catalogos, onGuardar, onCerrar }) {
   const [docente, setDocente] = useState('');
   const [idCargo, setIdCargo] = useState('');
   const [observacion, setObservacion] = useState('');
   const [activo, setActivo] = useState(1);
-  const [indisponibilidades, setIndisponibilidades] = useState([]);
+  const [disponibilidades, setDisponibilidades] = useState([]);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
 
@@ -41,17 +49,17 @@ export default function ModalDocente({ modo = 'crear', item, catalogos, onGuarda
     setIdCargo(item?.id_cargo ? String(item.id_cargo) : '');
     setObservacion(item?.observacion || '');
     setActivo(Number(item?.activo ?? 1));
-    setIndisponibilidades(
-      Array.isArray(item?.indisponibilidades)
-        ? item.indisponibilidades.map((bloque) => ({
-            fecha: bloque.fecha || '',
-            id_turno: bloque.id_turno ? String(bloque.id_turno) : '',
-          }))
+    setDisponibilidades(
+      Array.isArray(item?.disponibilidades)
+        ? item.disponibilidades.map(normalizarDisponibilidad)
         : []
     );
   }, [item]);
 
   const titulo = editando ? 'Editar docente' : 'Agregar docente';
+  const diasSemana = Array.isArray(catalogos?.dias_semana) && catalogos.dias_semana.length > 0
+    ? catalogos.dias_semana
+    : DIAS_SEMANA_DEFAULT;
 
   const resumenRegistros = useMemo(() => {
     const ids = idsDesdeItem(item);
@@ -59,18 +67,18 @@ export default function ModalDocente({ modo = 'crear', item, catalogos, onGuarda
     return `Este docente tiene ${ids.length} registros internos unificados. Se actualizarán juntos para no repetirlo.`;
   }, [editando, item]);
 
-  function agregarIndisponibilidad() {
-    setIndisponibilidades((prev) => [...prev, { fecha: hoyISO(), id_turno: '' }]);
+  function agregarDisponibilidad() {
+    setDisponibilidades((prev) => [...prev, { id_dia_semana: '', id_turno: '', fecha: '' }]);
   }
 
-  function actualizarIndisponibilidad(index, campo, valor) {
-    setIndisponibilidades((prev) => prev.map((itemBloque, i) => (
+  function actualizarDisponibilidad(index, campo, valor) {
+    setDisponibilidades((prev) => prev.map((itemBloque, i) => (
       i === index ? { ...itemBloque, [campo]: valor } : itemBloque
     )));
   }
 
-  function eliminarIndisponibilidad(index) {
-    setIndisponibilidades((prev) => prev.filter((_, i) => i !== index));
+  function eliminarDisponibilidad(index) {
+    setDisponibilidades((prev) => prev.filter((_, i) => i !== index));
   }
 
   async function handleSubmit(e) {
@@ -87,11 +95,12 @@ export default function ModalDocente({ modo = 'crear', item, catalogos, onGuarda
       return;
     }
 
-    const bloquesValidos = indisponibilidades
-      .filter((bloque) => bloque.fecha)
+    const disponibilidadesValidas = disponibilidades
+      .filter((bloque) => bloque.id_dia_semana && bloque.id_turno)
       .map((bloque) => ({
-        fecha: bloque.fecha,
-        id_turno: bloque.id_turno ? Number(bloque.id_turno) : null,
+        id_dia_semana: Number(bloque.id_dia_semana),
+        id_turno: Number(bloque.id_turno),
+        fecha: bloque.fecha || null,
       }));
 
     setGuardando(true);
@@ -102,7 +111,7 @@ export default function ModalDocente({ modo = 'crear', item, catalogos, onGuarda
       id_cargo: Number(idCargo),
       observacion: observacion.trim(),
       activo,
-      indisponibilidades: bloquesValidos,
+      disponibilidades: disponibilidadesValidas,
     });
     setGuardando(false);
 
@@ -119,7 +128,7 @@ export default function ModalDocente({ modo = 'crear', item, catalogos, onGuarda
         <div className="docentes-modal-header">
           <div>
             <h2><FontAwesomeIcon icon={faUserTie} /> {titulo}</h2>
-            <p>Datos principales del docente e indisponibilidad para el armado de mesas.</p>
+            <p>Datos principales del docente y días en los que asiste a la escuela.</p>
           </div>
           <button type="button" className="docentes-modal-close" onClick={onCerrar}>
             <FontAwesomeIcon icon={faTimes} />
@@ -166,47 +175,60 @@ export default function ModalDocente({ modo = 'crear', item, catalogos, onGuarda
           <section className="docentes-bloques-box">
             <div className="docentes-bloques-header">
               <div>
-                <h3><FontAwesomeIcon icon={faCalendarDays} /> Indisponibilidad</h3>
-                <p>Agregá las fechas y turnos en los que el docente no puede estar en mesas.</p>
+                <h3><FontAwesomeIcon icon={faCalendarDays} /> Disponibilidad del docente</h3>
+                <p>Agregá los días de lunes a viernes y el turno en el que el docente va a la escuela.</p>
               </div>
-              <button type="button" className="docentes-btn docentes-btn-light" onClick={agregarIndisponibilidad}>
+              <button type="button" className="docentes-btn docentes-btn-light" onClick={agregarDisponibilidad}>
                 <FontAwesomeIcon icon={faPlus} /> Agregar día
               </button>
             </div>
 
-            {indisponibilidades.length === 0 && (
-              <div className="docentes-empty-small">Sin indisponibilidades cargadas.</div>
+            {disponibilidades.length === 0 && (
+              <div className="docentes-empty-small">Sin disponibilidad cargada.</div>
             )}
 
-            {indisponibilidades.map((bloque, index) => (
-              <div className="docentes-bloque-row" key={`${bloque.fecha}-${index}`}>
+            {disponibilidades.map((bloque, index) => (
+              <div className="docentes-bloque-row" key={`${bloque.id_dia_semana}-${bloque.id_turno}-${bloque.fecha}-${index}`}>
                 <label>
-                  Fecha
-                  <input
-                    type="date"
-                    value={bloque.fecha}
-                    onChange={(e) => actualizarIndisponibilidad(index, 'fecha', e.target.value)}
-                  />
+                  Día
+                  <select
+                    value={bloque.id_dia_semana || ''}
+                    onChange={(e) => actualizarDisponibilidad(index, 'id_dia_semana', e.target.value)}
+                  >
+                    <option value="">Seleccionar día</option>
+                    {diasSemana.map((dia) => (
+                      <option key={dia.id_dia_semana} value={dia.id_dia_semana}>{dia.dia_semana}</option>
+                    ))}
+                  </select>
                 </label>
 
                 <label>
                   Turno
                   <select
                     value={bloque.id_turno || ''}
-                    onChange={(e) => actualizarIndisponibilidad(index, 'id_turno', e.target.value)}
+                    onChange={(e) => actualizarDisponibilidad(index, 'id_turno', e.target.value)}
                   >
-                    <option value="">Todos los turnos</option>
+                    <option value="">Seleccionar turno</option>
                     {(catalogos.turnos || []).map((turno) => (
                       <option key={turno.id_turno} value={turno.id_turno}>{turno.turno}</option>
                     ))}
                   </select>
                 </label>
 
+                <label>
+                  Fecha puntual opcional
+                  <input
+                    type="date"
+                    value={bloque.fecha || ''}
+                    onChange={(e) => actualizarDisponibilidad(index, 'fecha', e.target.value)}
+                  />
+                </label>
+
                 <button
                   type="button"
                   className="docentes-icon-btn docentes-icon-danger"
-                  onClick={() => eliminarIndisponibilidad(index)}
-                  title="Quitar indisponibilidad"
+                  onClick={() => eliminarDisponibilidad(index)}
+                  title="Quitar disponibilidad"
                 >
                   <FontAwesomeIcon icon={faTrash} />
                 </button>

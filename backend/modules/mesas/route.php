@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/armado_mesas/armado_mesas_controller.php';
+require_once __DIR__ . '/armado_mesas_docentes/armado_mesas_docentes_controller.php';
 
 function route_mesas(string $action): bool
 {
@@ -26,6 +27,17 @@ function route_mesas(string $action): bool
             mesas_armado_crear();
             return true;
 
+        /*
+         * Variante alternativa desde el modal:
+         * usa la carpeta armado_mesas_docentes y prioriza disponibilidad docente.
+         * El armado por area anterior queda intacto en mesas_armado_crear.
+         */
+        case 'mesas_armado_crear_docentes':
+        case 'mesas_armado_docentes_crear':
+        case 'mesas_armado_crear_por_disponibilidad_docente':
+            mesas_armado_docentes_crear();
+            return true;
+
         case 'mesas_armado_eliminar_borrador':
             mesas_armado_eliminar_borrador();
             return true;
@@ -38,7 +50,7 @@ function route_mesas(string $action): bool
         /*
          * Fase 3 real: valida todo el armado actual y asigna fecha/turno
          * por numero_mesa, respetando prioridad, correlativas, talleres,
-         * cantidad de alumnos, bloqueos docentes y choques de alumno/docente.
+         * cantidad de alumnos, disponibilidad docente y choques de alumno/docente.
          */
         case 'mesas_armado_fase_3_correlativas':
         case 'mesas_armado_fase_3_agrupar_correlativas':
@@ -75,6 +87,12 @@ function route_mesas(string $action): bool
         case 'mesas_armado_agrupar_grupos_finales':
         case 'mesas_armado_crear_grupos':
             mesas_armado_grupos_finales();
+            return true;
+
+        case 'mesas_armado_grupos_finales_docentes':
+        case 'mesas_armado_docentes_grupos_finales':
+        case 'mesas_armado_crear_grupos_docentes':
+            mesas_armado_docentes_grupos_finales();
             return true;
 
         /*

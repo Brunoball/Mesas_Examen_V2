@@ -18,7 +18,7 @@ function idsDesdeItem(item) {
 
 export function useDocentes() {
   const [docentesBase, setDocentesBase] = useState([]);
-  const [catalogos, setCatalogos] = useState({ cargos: [], turnos: [] });
+  const [catalogos, setCatalogos] = useState({ cargos: [], turnos: [], dias_semana: [] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState(null);
@@ -34,7 +34,7 @@ export function useDocentes() {
   const cargarCatalogos = useCallback(async () => {
     try {
       const res = await docentesApi.catalogos();
-      setCatalogos(res.data || { cargos: [], turnos: [] });
+      setCatalogos(res.data || { cargos: [], turnos: [], dias_semana: [] });
     } catch (e) {
       console.error('Error cargando catálogos de docentes:', e);
     }
@@ -76,6 +76,7 @@ export function useDocentes() {
       normalizar(item.docente).includes(q) ||
       normalizar(item.cargo).includes(q) ||
       normalizar(item.observacion).includes(q) ||
+      normalizar(item.disponibilidad_resumen).includes(q) ||
       normalizar(item.ids_docentes_texto).includes(q)
     ));
   }, [docentesBase, busqueda]);

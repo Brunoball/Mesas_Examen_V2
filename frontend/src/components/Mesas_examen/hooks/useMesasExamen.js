@@ -191,11 +191,13 @@ export const useMesasExamen = () => {
       setResumenArmado(null);
 
       try {
+        const tipoArmado = payload?.tipo_armado || "area";
         const response = await crearArmadoInicialMesas(payload);
         const responseGrupos = await crearGruposFinalesMesas({
           limpiar_grupos: true,
           min_numeros: 2,
           max_numeros: 4,
+          tipo_armado: tipoArmado,
         });
 
         setResumenArmado({

@@ -130,6 +130,36 @@ function docentes_validar_fecha($fecha): ?string
     return $fecha;
 }
 
+function docentes_validar_dia_semana($dia): int
+{
+    $dia = docentes_int($dia);
+    return ($dia >= 1 && $dia <= 5) ? $dia : 0;
+}
+
+function docentes_nombre_dia(int $dia): string
+{
+    $dias = [
+        1 => 'LUNES',
+        2 => 'MARTES',
+        3 => 'MIÉRCOLES',
+        4 => 'JUEVES',
+        5 => 'VIERNES',
+    ];
+
+    return $dias[$dia] ?? '';
+}
+
+function docentes_catalogo_dias_semana(): array
+{
+    return [
+        ['id_dia_semana' => 1, 'dia_semana' => 'LUNES'],
+        ['id_dia_semana' => 2, 'dia_semana' => 'MARTES'],
+        ['id_dia_semana' => 3, 'dia_semana' => 'MIÉRCOLES'],
+        ['id_dia_semana' => 4, 'dia_semana' => 'JUEVES'],
+        ['id_dia_semana' => 5, 'dia_semana' => 'VIERNES'],
+    ];
+}
+
 function docentes_catalogos(): void
 {
     $pdo = db();
@@ -158,6 +188,7 @@ function docentes_catalogos(): void
             'data' => [
                 'cargos' => $cargos,
                 'turnos' => $turnos,
+                'dias_semana' => docentes_catalogo_dias_semana(),
             ],
         ]);
     } catch (Throwable $e) {
@@ -197,7 +228,9 @@ function docentes_armar_grupos(array $filas): array
                 'fecha_registro' => (string)($fila['fecha_registro'] ?? ''),
                 'cantidad_registros' => 0,
                 'total_catedras' => 0,
+                'total_disponibilidades' => 0,
                 'total_indisponibilidades' => 0,
+                'disponibilidad_resumen' => '',
             ];
         }
 
@@ -215,7 +248,9 @@ function docentes_armar_grupos(array $filas): array
 
         $grupos[$clave]['cantidad_registros']++;
         $grupos[$clave]['total_catedras'] += (int)($fila['total_catedras'] ?? 0);
-        $grupos[$clave]['total_indisponibilidades'] += (int)($fila['total_indisponibilidades'] ?? 0);
+        $totalDisponibilidadesFila = (int)($fila['total_disponibilidades'] ?? $fila['total_indisponibilidades'] ?? 0);
+        $grupos[$clave]['total_disponibilidades'] = max((int)$grupos[$clave]['total_disponibilidades'], $totalDisponibilidadesFila);
+        $grupos[$clave]['total_indisponibilidades'] = (int)$grupos[$clave]['total_disponibilidades'];
 
         if (!empty($fila['cargo'])) {
             $grupos[$clave]['cargos'][(string)$fila['cargo']] = true;
@@ -286,15 +321,15 @@ function docentes_listar(): void
                 COALESCE(d.motivo, '') AS observacion,
                 d.fecha_carga AS fecha_registro,
                 COUNT(DISTINCT cat.id_catedra) AS total_catedras,
-                COUNT(DISTINCT bloq.id_no) AS total_indisponibilidades
+                COUNT(DISTINCT disp.id_disponibilidad) AS total_disponibilidades
             FROM docentes d
             LEFT JOIN cargos cargo 
                 ON cargo.id_cargo = d.id_cargo
             LEFT JOIN catedras cat 
                 ON cat.id_docente = d.id_docente
                AND cat.activo = 1
-            LEFT JOIN docentes_bloques_no bloq 
-                ON bloq.id_docente = d.id_docente
+            LEFT JOIN docentes_disponibilidad disp
+                ON disp.id_docente = d.id_docente
             WHERE {$whereSql}
             GROUP BY
                 d.id_docente,
@@ -377,7 +412,7 @@ function docentes_obtener_grupo_por_id(PDO $pdo, int $idDocente): array
             COALESCE(d.motivo, '') AS observacion,
             d.fecha_carga AS fecha_registro,
             0 AS total_catedras,
-            0 AS total_indisponibilidades
+            0 AS total_disponibilidades
         FROM docentes d
         LEFT JOIN cargos cargo 
             ON cargo.id_cargo = d.id_cargo
@@ -465,32 +500,44 @@ function docentes_obtener(): void
         $stmtCatedras->execute($ids);
         $catedras = $stmtCatedras->fetchAll(PDO::FETCH_ASSOC);
 
-        $stmtBloques = $pdo->prepare("
+        $stmtDisponibilidades = $pdo->prepare("
             SELECT
-                MIN(b.id_no) AS id_no,
-                b.fecha,
-                b.id_turno,
-                COALESCE(t.turno, 'TODOS') AS turno
-            FROM docentes_bloques_no b
-            LEFT JOIN turnos t 
-                ON t.id_turno = b.id_turno
-            WHERE b.id_docente IN ({$placeholders})
+                MIN(disp.id_disponibilidad) AS id_disponibilidad,
+                disp.dia_semana AS id_dia_semana,
+                CASE disp.dia_semana
+                    WHEN 1 THEN 'LUNES'
+                    WHEN 2 THEN 'MARTES'
+                    WHEN 3 THEN 'MIÉRCOLES'
+                    WHEN 4 THEN 'JUEVES'
+                    WHEN 5 THEN 'VIERNES'
+                    ELSE ''
+                END AS dia_semana,
+                disp.id_turno,
+                COALESCE(t.turno, '') AS turno,
+                disp.fecha
+            FROM docentes_disponibilidad disp
+            INNER JOIN turnos t
+                ON t.id_turno = disp.id_turno
+            WHERE disp.id_docente IN ({$placeholders})
             GROUP BY 
-                b.fecha,
-                b.id_turno,
-                t.turno
+                disp.dia_semana,
+                disp.id_turno,
+                t.turno,
+                disp.fecha
             ORDER BY 
-                b.fecha ASC,
-                COALESCE(t.id_turno, 0) ASC
+                disp.dia_semana ASC,
+                t.id_turno ASC,
+                disp.fecha ASC
         ");
 
-        $stmtBloques->execute($ids);
-        $bloques = $stmtBloques->fetchAll(PDO::FETCH_ASSOC);
+        $stmtDisponibilidades->execute($ids);
+        $disponibilidades = $stmtDisponibilidades->fetchAll(PDO::FETCH_ASSOC);
 
         $docente['catedras'] = $catedras;
-        $docente['indisponibilidades'] = $bloques;
+        $docente['disponibilidades'] = $disponibilidades;
         $docente['total_catedras'] = count($catedras);
-        $docente['total_indisponibilidades'] = count($bloques);
+        $docente['total_disponibilidades'] = count($disponibilidades);
+        $docente['total_indisponibilidades'] = 0;
 
         json_response([
             'exito' => true,
@@ -522,8 +569,8 @@ function docentes_guardar(): void
 
     $activo = docentes_int($body['activo'] ?? 1) === 0 ? 0 : 1;
 
-    $indisponibilidades = is_array($body['indisponibilidades'] ?? null)
-        ? $body['indisponibilidades']
+    $disponibilidades = is_array($body['disponibilidades'] ?? null)
+        ? $body['disponibilidades']
         : [];
 
     if ($docente === '') {
@@ -613,12 +660,12 @@ function docentes_guardar(): void
 
         $placeholders = implode(',', array_fill(0, count($idsDocentes), '?'));
 
-        $stmtDeleteBloques = $pdo->prepare("
-            DELETE FROM docentes_bloques_no
+        $stmtDeleteDisponibilidades = $pdo->prepare("
+            DELETE FROM docentes_disponibilidad
             WHERE id_docente IN ({$placeholders})
         ");
 
-        $stmtDeleteBloques->execute($idsDocentes);
+        $stmtDeleteDisponibilidades->execute($idsDocentes);
 
         $stmtTurno = $pdo->prepare("
             SELECT id_turno
@@ -628,56 +675,56 @@ function docentes_guardar(): void
             LIMIT 1
         ");
 
-        $stmtInsertBloque = $pdo->prepare("
-            INSERT IGNORE INTO docentes_bloques_no 
-                (id_docente, id_turno, fecha)
+        $stmtInsertDisponibilidad = $pdo->prepare("
+            INSERT IGNORE INTO docentes_disponibilidad 
+                (id_docente, dia_semana, id_turno, fecha)
             VALUES 
-                (:id_docente, :id_turno, :fecha)
+                (:id_docente, :dia_semana, :id_turno, :fecha)
         ");
 
-        $bloquesUnicos = [];
+        $disponibilidadesUnicas = [];
 
-        foreach ($indisponibilidades as $bloque) {
+        foreach ($disponibilidades as $bloque) {
             if (!is_array($bloque)) {
                 continue;
             }
 
-            $fecha = docentes_validar_fecha($bloque['fecha'] ?? null);
+            $diaSemana = docentes_validar_dia_semana($bloque['id_dia_semana'] ?? $bloque['dia_semana'] ?? null);
             $idTurno = docentes_int($bloque['id_turno'] ?? 0);
+            $fecha = docentes_validar_fecha($bloque['fecha'] ?? null);
 
-            if ($fecha === null) {
+            if ($diaSemana <= 0 || $idTurno <= 0) {
                 continue;
             }
 
-            $claveBloque = $fecha . '|' . $idTurno;
+            $claveBloque = $diaSemana . '|' . $idTurno . '|' . ($fecha ?? '');
 
-            if (isset($bloquesUnicos[$claveBloque])) {
+            if (isset($disponibilidadesUnicas[$claveBloque])) {
                 continue;
             }
 
-            $bloquesUnicos[$claveBloque] = true;
+            $disponibilidadesUnicas[$claveBloque] = true;
 
-            if ($idTurno > 0) {
-                $stmtTurno->execute([
-                    ':id_turno' => $idTurno,
-                ]);
+            $stmtTurno->execute([
+                ':id_turno' => $idTurno,
+            ]);
 
-                if (!$stmtTurno->fetch(PDO::FETCH_ASSOC)) {
-                    continue;
-                }
+            if (!$stmtTurno->fetch(PDO::FETCH_ASSOC)) {
+                continue;
             }
 
-            foreach ($idsDocentes as $idDocenteBloque) {
-                $stmtInsertBloque->bindValue(':id_docente', $idDocenteBloque, PDO::PARAM_INT);
+            foreach ($idsDocentes as $idDocenteDisponibilidad) {
+                $stmtInsertDisponibilidad->bindValue(':id_docente', $idDocenteDisponibilidad, PDO::PARAM_INT);
+                $stmtInsertDisponibilidad->bindValue(':dia_semana', $diaSemana, PDO::PARAM_INT);
+                $stmtInsertDisponibilidad->bindValue(':id_turno', $idTurno, PDO::PARAM_INT);
 
-                if ($idTurno > 0) {
-                    $stmtInsertBloque->bindValue(':id_turno', $idTurno, PDO::PARAM_INT);
+                if ($fecha !== null) {
+                    $stmtInsertDisponibilidad->bindValue(':fecha', $fecha, PDO::PARAM_STR);
                 } else {
-                    $stmtInsertBloque->bindValue(':id_turno', null, PDO::PARAM_NULL);
+                    $stmtInsertDisponibilidad->bindValue(':fecha', null, PDO::PARAM_NULL);
                 }
 
-                $stmtInsertBloque->bindValue(':fecha', $fecha, PDO::PARAM_STR);
-                $stmtInsertBloque->execute();
+                $stmtInsertDisponibilidad->execute();
             }
         }
 
@@ -804,6 +851,13 @@ function docentes_eliminar(): void
         }
 
         $pdo->beginTransaction();
+
+        $stmtDisponibilidad = $pdo->prepare("
+            DELETE FROM docentes_disponibilidad
+            WHERE id_docente IN ({$placeholders})
+        ");
+
+        $stmtDisponibilidad->execute($idsDocentes);
 
         $stmtBloques = $pdo->prepare("
             DELETE FROM docentes_bloques_no

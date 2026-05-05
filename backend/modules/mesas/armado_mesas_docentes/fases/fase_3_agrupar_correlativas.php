@@ -1,5 +1,5 @@
 <?php
-// backend/modules/mesas/armado_mesas/fases/fase_3_agrupar_correlativas.php
+// backend/modules/mesas/armado_mesas_docentes/fases/fase_3_agrupar_correlativas.php
 declare(strict_types=1);
 
 /*
@@ -29,22 +29,22 @@ declare(strict_types=1);
 |--------------------------------------------------------------------------
 */
 
-function mesas_armado_fase_3_agrupar_correlativas(): void
+function mesas_armado_docentes_fase_3_agrupar_correlativas(): void
 {
-    mesas_armado_fase_3_validar_y_calendarizar();
+    mesas_armado_docentes_fase_3_validar_y_calendarizar();
 }
 
 /**
  * Endpoint público de la fase 3.
  * Valida el armado actual y asigna fecha/turno. Usa transacción propia.
  */
-function mesas_armado_fase_3_validar_y_calendarizar(): void
+function mesas_armado_docentes_fase_3_validar_y_calendarizar(): void
 {
     $pdo = db();
     $body = request_body();
 
-    $fechaInicio = mesas_armado_leer_fecha_parametro($body, ['fecha_inicio', 'fechaInicio', 'inicio', 'desde']);
-    $fechaFin = mesas_armado_leer_fecha_parametro($body, ['fecha_fin', 'fechaFin', 'fin', 'hasta']);
+    $fechaInicio = mesas_armado_docentes_leer_fecha_parametro($body, ['fecha_inicio', 'fechaInicio', 'inicio', 'desde']);
+    $fechaFin = mesas_armado_docentes_leer_fecha_parametro($body, ['fecha_fin', 'fechaFin', 'fin', 'hasta']);
 
     $opciones = [
         'auto_reparar_numeracion' => filter_var($body['auto_reparar_numeracion'] ?? $body['autoRepararNumeracion'] ?? true, FILTER_VALIDATE_BOOLEAN),
@@ -61,7 +61,7 @@ function mesas_armado_fase_3_validar_y_calendarizar(): void
                 'mensaje' => 'Debés enviar fecha_inicio y fecha_fin para calendarizar las mesas.',
                 'data' => [
                     'ejemplo' => [
-                        'action' => 'mesas_armado_fase_3_calendarizar',
+                        'action' => 'mesas_armado_docentes_fase_3_calendarizar',
                         'fecha_inicio' => '2026-05-07',
                         'fecha_fin' => '2026-05-15',
                     ],
@@ -71,7 +71,7 @@ function mesas_armado_fase_3_validar_y_calendarizar(): void
 
         $pdo->beginTransaction();
 
-        $resultado = mesas_armado_fase_3_validar_y_calendarizar_core(
+        $resultado = mesas_armado_docentes_fase_3_validar_y_calendarizar_core(
             $pdo,
             (string)$fechaInicio,
             (string)$fechaFin,
@@ -99,7 +99,7 @@ function mesas_armado_fase_3_validar_y_calendarizar(): void
             $pdo->rollBack();
         }
 
-        log_error($e, 'mesas_armado_fase_3_validar_y_calendarizar');
+        log_error($e, 'mesas_armado_docentes_fase_3_validar_y_calendarizar');
 
         json_response([
             'exito' => false,
@@ -111,9 +111,9 @@ function mesas_armado_fase_3_validar_y_calendarizar(): void
 /**
  * Núcleo reutilizable de calendarización.
  * No abre ni cierra transacción: lo usa tanto el endpoint directo como la acción
- * principal mesas_armado_crear para que el botón del modal ya deje fecha/turno.
+ * principal mesas_armado_docentes_crear para que el botón del modal ya deje fecha/turno.
  */
-function mesas_armado_fase_3_validar_y_calendarizar_core(
+function mesas_armado_docentes_fase_3_validar_y_calendarizar_core(
     PDO $pdo,
     string $fechaInicio,
     string $fechaFin,
@@ -124,7 +124,7 @@ function mesas_armado_fase_3_validar_y_calendarizar_core(
     $marcarArmada = (bool)($opciones['marcar_armada'] ?? false);
     $permitirObservadas = (bool)($opciones['permitir_observadas'] ?? false);
 
-    if (!mesas_armado_fecha_valida($fechaInicio) || !mesas_armado_fecha_valida($fechaFin)) {
+    if (!mesas_armado_docentes_fecha_valida($fechaInicio) || !mesas_armado_docentes_fecha_valida($fechaFin)) {
         throw new InvalidArgumentException('Las fechas deben tener formato válido YYYY-MM-DD.');
     }
 
@@ -132,7 +132,7 @@ function mesas_armado_fase_3_validar_y_calendarizar_core(
         throw new InvalidArgumentException('La fecha de fin no puede ser menor que la fecha de inicio.');
     }
 
-    $slots = mesas_armado_obtener_slots($pdo, $fechaInicio, $fechaFin, true);
+    $slots = mesas_armado_docentes_obtener_slots($pdo, $fechaInicio, $fechaFin, true);
 
     if (count($slots) === 0) {
         return [
@@ -150,10 +150,10 @@ function mesas_armado_fase_3_validar_y_calendarizar_core(
     }
 
     $numeracionReparada = null;
-    $sinNumero = mesas_armado_contar_mesas_sin_numero($pdo);
+    $sinNumero = mesas_armado_docentes_contar_mesas_sin_numero($pdo);
 
     if ($sinNumero > 0 && $autoRepararNumeracion) {
-        $numeracionReparada = mesas_armado_numerar_por_docente_materia_core(
+        $numeracionReparada = mesas_armado_docentes_numerar_por_docente_materia_core(
             $pdo,
             true,
             true,
@@ -162,11 +162,11 @@ function mesas_armado_fase_3_validar_y_calendarizar_core(
     }
 
     if ($limpiarAsignacionPrevia) {
-        mesas_armado_limpiar_fechas_turnos($pdo);
+        mesas_armado_docentes_limpiar_fechas_turnos($pdo);
     }
 
-    $docentesNormalizados = mesas_armado_normalizar_docente_desde_catedra($pdo);
-    $validacion = mesas_armado_validar_armado_actual_core($pdo);
+    $docentesNormalizados = mesas_armado_docentes_normalizar_docente_desde_catedra($pdo);
+    $validacion = mesas_armado_docentes_validar_armado_actual_core($pdo);
 
     if (!$permitirObservadas && $validacion['errores_bloqueantes'] > 0) {
         return [
@@ -183,9 +183,9 @@ function mesas_armado_fase_3_validar_y_calendarizar_core(
         ];
     }
 
-    $disponibilidadDocentes = mesas_armado_obtener_disponibilidad_docentes($pdo);
-    $relacionesCorrelativas = mesas_armado_obtener_relaciones_correlativas_para_calendarizar($pdo);
-    $grupos = mesas_armado_obtener_grupos_calendarizables($pdo, $relacionesCorrelativas, $disponibilidadDocentes);
+    $disponibilidadDocentes = mesas_armado_docentes_obtener_disponibilidad_docentes($pdo);
+    $relacionesCorrelativas = mesas_armado_docentes_obtener_relaciones_correlativas_para_calendarizar($pdo);
+    $grupos = mesas_armado_docentes_obtener_grupos_calendarizables($pdo, $relacionesCorrelativas, $disponibilidadDocentes);
 
     if (count($grupos) === 0) {
         return [
@@ -202,7 +202,7 @@ function mesas_armado_fase_3_validar_y_calendarizar_core(
         ];
     }
 
-    $resultadoCalendarizacion = mesas_armado_calendarizar_grupos(
+    $resultadoCalendarizacion = mesas_armado_docentes_calendarizar_grupos(
         $pdo,
         $grupos,
         $slots,
@@ -224,7 +224,7 @@ function mesas_armado_fase_3_validar_y_calendarizar_core(
                 : 'Fase 3 no pudo asignar fecha/turno a ninguna mesa.'),
         'data' => [
             'fase' => 3,
-            'criterio' => 'compactacion_por_area_prioridad_volumen_disponibilidad',
+            'criterio' => 'disponibilidad_docente_primero_area_segundo',
             'fecha_inicio' => $fechaInicio,
             'fecha_fin' => $fechaFin,
             'slots_habiles' => $slots,
@@ -241,7 +241,7 @@ function mesas_armado_fase_3_validar_y_calendarizar_core(
     ];
 }
 
-function mesas_armado_leer_fecha_parametro(array $body, array $nombres): ?string
+function mesas_armado_docentes_leer_fecha_parametro(array $body, array $nombres): ?string
 {
     foreach ($nombres as $nombre) {
         if (isset($body[$nombre]) && trim((string)$body[$nombre]) !== '') {
@@ -260,7 +260,7 @@ function mesas_armado_leer_fecha_parametro(array $body, array $nombres): ?string
     return null;
 }
 
-function mesas_armado_contar_mesas_sin_numero(PDO $pdo): int
+function mesas_armado_docentes_contar_mesas_sin_numero(PDO $pdo): int
 {
     $stmt = $pdo->query("
         SELECT COUNT(*)
@@ -272,7 +272,7 @@ function mesas_armado_contar_mesas_sin_numero(PDO $pdo): int
     return (int)$stmt->fetchColumn();
 }
 
-function mesas_armado_limpiar_fechas_turnos(PDO $pdo): void
+function mesas_armado_docentes_limpiar_fechas_turnos(PDO $pdo): void
 {
     $pdo->exec("
         UPDATE mesas
@@ -283,7 +283,7 @@ function mesas_armado_limpiar_fechas_turnos(PDO $pdo): void
     ");
 }
 
-function mesas_armado_normalizar_docente_desde_catedra(PDO $pdo): int
+function mesas_armado_docentes_normalizar_docente_desde_catedra(PDO $pdo): int
 {
     $stmt = $pdo->prepare("
         UPDATE mesas me
@@ -303,7 +303,7 @@ function mesas_armado_normalizar_docente_desde_catedra(PDO $pdo): int
     return $stmt->rowCount();
 }
 
-function mesas_armado_obtener_filas_para_validar(PDO $pdo): array
+function mesas_armado_docentes_obtener_filas_para_validar(PDO $pdo): array
 {
     $stmt = $pdo->query("
         SELECT
@@ -367,9 +367,9 @@ function mesas_armado_obtener_filas_para_validar(PDO $pdo): array
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-function mesas_armado_validar_armado_actual_core(PDO $pdo): array
+function mesas_armado_docentes_validar_armado_actual_core(PDO $pdo): array
 {
-    $filas = mesas_armado_obtener_filas_para_validar($pdo);
+    $filas = mesas_armado_docentes_obtener_filas_para_validar($pdo);
 
     $erroresPorMesa = [];
     $erroresPorGrupo = [];
@@ -545,7 +545,7 @@ function mesas_armado_validar_armado_actual_core(PDO $pdo): array
         }
     }
 
-    mesas_armado_actualizar_estado_validacion($pdo, $idsConError, array_keys($idsSinError));
+    mesas_armado_docentes_actualizar_estado_validacion($pdo, $idsConError, array_keys($idsSinError));
 
     return [
         'total_filas_revisadas' => count($filas),
@@ -561,7 +561,7 @@ function mesas_armado_validar_armado_actual_core(PDO $pdo): array
     ];
 }
 
-function mesas_armado_actualizar_estado_validacion(PDO $pdo, array $idsConError, array $idsSinError): void
+function mesas_armado_docentes_actualizar_estado_validacion(PDO $pdo, array $idsConError, array $idsSinError): void
 {
     if (count($idsConError) > 0) {
         $stmtError = $pdo->prepare("
@@ -592,7 +592,7 @@ function mesas_armado_actualizar_estado_validacion(PDO $pdo, array $idsConError,
     }
 }
 
-function mesas_armado_obtener_relaciones_correlativas_para_calendarizar(PDO $pdo): array
+function mesas_armado_docentes_obtener_relaciones_correlativas_para_calendarizar(PDO $pdo): array
 {
     $stmt = $pdo->query("
         SELECT
@@ -672,7 +672,7 @@ function mesas_armado_obtener_relaciones_correlativas_para_calendarizar(PDO $pdo
     ];
 }
 
-function mesas_armado_obtener_grupos_calendarizables(PDO $pdo, array $relacionesCorrelativas, array $disponibilidadDocentes): array
+function mesas_armado_docentes_obtener_grupos_calendarizables(PDO $pdo, array $relacionesCorrelativas, array $disponibilidadDocentes): array
 {
     $stmt = $pdo->query("
         SELECT
@@ -847,8 +847,8 @@ function mesas_armado_obtener_grupos_calendarizables(PDO $pdo, array $relaciones
         $grupo['cantidad_previas'] = count($grupo['ids_previa']);
         $grupo['cantidad_alumnos'] = count($grupo['dnis']);
         $grupo['cantidad_docentes'] = count($grupo['docentes']);
-        $grupo['cantidad_registros_disponibilidad_docentes'] = mesas_armado_contar_registros_disponibilidad_de_docentes($disponibilidadDocentes, $grupo['docentes']);
-        $grupo['rol_correlativa_texto'] = mesas_armado_texto_rol_correlativa((int)$grupo['orden_correlativa']);
+        $grupo['cantidad_registros_disponibilidad_docentes'] = mesas_armado_docentes_contar_registros_disponibilidad_de_docentes($disponibilidadDocentes, $grupo['docentes']);
+        $grupo['rol_correlativa_texto'] = mesas_armado_docentes_texto_rol_correlativa((int)$grupo['orden_correlativa']);
     }
     unset($grupo);
 
@@ -867,14 +867,27 @@ function mesas_armado_obtener_grupos_calendarizables(PDO $pdo, array $relaciones
             return 2;
         };
 
-        return [$tipoOrden($a), (int)$a['orden_correlativa'], -(int)$a['cantidad_alumnos'], -(int)$a['cantidad_previas'], -(int)$a['cantidad_registros_disponibilidad_docentes'], (string)$a['area_key'], (int)$a['numero_mesa']]
-            <=> [$tipoOrden($b), (int)$b['orden_correlativa'], -(int)$b['cantidad_alumnos'], -(int)$b['cantidad_previas'], -(int)$b['cantidad_registros_disponibilidad_docentes'], (string)$b['area_key'], (int)$b['numero_mesa']];
+        return [
+            $tipoOrden($a),
+            (int)$a['orden_correlativa'],
+            -(int)$a['cantidad_registros_disponibilidad_docentes'],
+            -(int)$a['cantidad_alumnos'],
+            -(int)$a['cantidad_previas'],
+            (int)$a['numero_mesa']
+        ] <=> [
+            $tipoOrden($b),
+            (int)$b['orden_correlativa'],
+            -(int)$b['cantidad_registros_disponibilidad_docentes'],
+            -(int)$b['cantidad_alumnos'],
+            -(int)$b['cantidad_previas'],
+            (int)$b['numero_mesa']
+        ];
     });
 
     return $grupos;
 }
 
-function mesas_armado_texto_rol_correlativa(int $rol): string
+function mesas_armado_docentes_texto_rol_correlativa(int $rol): string
 {
     if ($rol === 0) {
         return 'correlativa_anterior';
@@ -891,7 +904,7 @@ function mesas_armado_texto_rol_correlativa(int $rol): string
     return 'sin_correlativa';
 }
 
-function mesas_armado_contar_registros_disponibilidad_de_docentes(array $disponibilidadDocentes, array $idsDocentes): int
+function mesas_armado_docentes_contar_registros_disponibilidad_de_docentes(array $disponibilidadDocentes, array $idsDocentes): int
 {
     $total = 0;
 
@@ -902,7 +915,7 @@ function mesas_armado_contar_registros_disponibilidad_de_docentes(array $disponi
     return $total;
 }
 
-function mesas_armado_calendarizar_grupos(
+function mesas_armado_docentes_calendarizar_grupos(
     PDO $pdo,
     array $grupos,
     array $slots,
@@ -919,7 +932,7 @@ function mesas_armado_calendarizar_grupos(
     $noCalendarizadas = [];
 
     foreach ($grupos as $grupo) {
-        $slotAsignado = mesas_armado_buscar_slot_disponible_para_grupo(
+        $slotAsignado = mesas_armado_docentes_buscar_slot_disponible_para_grupo(
             $grupo,
             $slots,
             $disponibilidadDocentes,
@@ -931,7 +944,7 @@ function mesas_armado_calendarizar_grupos(
         );
 
         if ($slotAsignado === null) {
-            mesas_armado_marcar_grupo_observado(
+            mesas_armado_docentes_marcar_grupo_observado(
                 $pdo,
                 $grupo['ids_mesa'],
                 'No se encontró fecha/turno disponible respetando disponibilidad docente, alumnos, correlativas y compactación por área.'
@@ -958,7 +971,7 @@ function mesas_armado_calendarizar_grupos(
         $slotIndex = (int)$slotAsignado['_slot_index'];
         $areaKey = (string)($grupo['area_key'] ?? 'sin_area');
 
-        mesas_armado_actualizar_grupo_calendarizado(
+        mesas_armado_docentes_actualizar_grupo_calendarizado(
             $pdo,
             $grupo['ids_mesa'],
             $fecha,
@@ -967,11 +980,11 @@ function mesas_armado_calendarizar_grupos(
         );
 
         foreach ($grupo['docentes'] as $idDocente) {
-            $ocupacionDocente[mesas_armado_clave_ocupacion_docente((int)$idDocente, $fecha, $idTurno)] = true;
+            $ocupacionDocente[mesas_armado_docentes_clave_ocupacion_docente((int)$idDocente, $fecha, $idTurno)] = true;
         }
 
         foreach ($grupo['dnis'] as $dni) {
-            $ocupacionAlumno[mesas_armado_clave_ocupacion_alumno((string)$dni, $fecha, $idTurno)] = true;
+            $ocupacionAlumno[mesas_armado_docentes_clave_ocupacion_alumno((string)$dni, $fecha, $idTurno)] = true;
         }
 
         foreach ($grupo['ids_previa'] as $idPrevia) {
@@ -1034,21 +1047,21 @@ function mesas_armado_calendarizar_grupos(
         'resumen_para_futura_agrupacion' => array_slice($resumenSlots, 0, 80),
         'criterio_profesional' => [
             'fecha_turno_en_mesas' => 'La fecha_mesa/id_turno cargada en mesas es la propuesta operativa del numero_mesa. En mesas_grupos solo se deben unir numeros que ya comparten ese mismo slot, salvo que una reoptimización los mueva juntos.',
-            'compactacion' => 'Para maximizar agrupación futura, las mesas no prioritarias buscan primero slots ya abiertos de su misma area.',
+            'compactacion' => 'En esta variante primero se buscan slots compatibles con la disponibilidad positiva del docente; luego se prefiere compactar por area cuando sea posible.',
             'prioridad' => 'Correlativa anterior, correlativas y mesas con mayor cantidad de alumnos se procesan antes para quedarse con los primeros slots disponibles.',
             'taller' => 'Taller sigue siendo especial: no se mezcla dentro del mismo numero_mesa, pero puede compartir fecha/turno con otros numeros si no chocan docentes ni alumnos.',
         ],
         'orden_aplicado' => [
             '1_prioridad_academica' => 'correlativa anterior/equivalente/posterior como prioridad de orden; no como tipo aislado obligatorio',
-            '2_volumen' => 'mayor cantidad de alumnos y previas primero',
-            '3_restriccion_docente' => 'docentes con disponibilidad cargada primero',
-            '4_compactacion_area' => 'misma area intenta quedar en mismo slot para facilitar mesas_grupos',
-            '5_disponibilidad' => 'slot hábil donde el docente esté disponible por día de semana y turno, sin choque de docente/alumno ni correlativa posterior antes de anterior',
+            '2_restriccion_docente' => 'docentes con disponibilidad cargada primero y slots compatibles por dia/turno',
+            '3_volumen' => 'mayor cantidad de alumnos y previas primero',
+            '4_area_secundaria' => 'misma area se usa como preferencia secundaria, no como criterio principal',
+            '5_compatibilidad' => 'sin choque de docente/alumno ni correlativa posterior antes de anterior',
         ],
     ];
 }
 
-function mesas_armado_buscar_slot_disponible_para_grupo(
+function mesas_armado_docentes_buscar_slot_disponible_para_grupo(
     array $grupo,
     array $slots,
     array $disponibilidadDocentes,
@@ -1058,7 +1071,7 @@ function mesas_armado_buscar_slot_disponible_para_grupo(
     array $relacionesCorrelativas,
     array $slotsPorArea
 ): ?array {
-    $indicesCandidatos = mesas_armado_indices_slots_para_grupo($grupo, $slots, $slotsPorArea);
+    $indicesCandidatos = mesas_armado_docentes_indices_slots_para_grupo($grupo, $slots, $slotsPorArea, $disponibilidadDocentes);
 
     foreach ($indicesCandidatos as $idx) {
         if (!isset($slots[$idx])) {
@@ -1069,7 +1082,7 @@ function mesas_armado_buscar_slot_disponible_para_grupo(
         $fecha = (string)$slot['fecha'];
         $idTurno = (int)$slot['id_turno'];
 
-        if (!mesas_armado_slot_respeta_correlativas($grupo, (int)$idx, $previaSlotIndex, $relacionesCorrelativas)) {
+        if (!mesas_armado_docentes_slot_respeta_correlativas($grupo, (int)$idx, $previaSlotIndex, $relacionesCorrelativas)) {
             continue;
         }
 
@@ -1078,12 +1091,12 @@ function mesas_armado_buscar_slot_disponible_para_grupo(
         foreach ($grupo['docentes'] as $idDocente) {
             $idDocente = (int)$idDocente;
 
-            if (mesas_armado_docente_no_disponible($disponibilidadDocentes, $idDocente, $fecha, $idTurno)) {
+            if (mesas_armado_docentes_docente_no_disponible($disponibilidadDocentes, $idDocente, $fecha, $idTurno)) {
                 $docenteDisponible = false;
                 break;
             }
 
-            if (isset($ocupacionDocente[mesas_armado_clave_ocupacion_docente($idDocente, $fecha, $idTurno)])) {
+            if (isset($ocupacionDocente[mesas_armado_docentes_clave_ocupacion_docente($idDocente, $fecha, $idTurno)])) {
                 $docenteDisponible = false;
                 break;
             }
@@ -1096,7 +1109,7 @@ function mesas_armado_buscar_slot_disponible_para_grupo(
         $alumnoDisponible = true;
 
         foreach ($grupo['dnis'] as $dni) {
-            if (isset($ocupacionAlumno[mesas_armado_clave_ocupacion_alumno((string)$dni, $fecha, $idTurno)])) {
+            if (isset($ocupacionAlumno[mesas_armado_docentes_clave_ocupacion_alumno((string)$dni, $fecha, $idTurno)])) {
                 $alumnoDisponible = false;
                 break;
             }
@@ -1113,7 +1126,7 @@ function mesas_armado_buscar_slot_disponible_para_grupo(
     return null;
 }
 
-function mesas_armado_indices_slots_para_grupo(array $grupo, array $slots, array $slotsPorArea): array
+function mesas_armado_docentes_indices_slots_para_grupo(array $grupo, array $slots, array $slotsPorArea, array $disponibilidadDocentes): array
 {
     $total = count($slots);
 
@@ -1121,35 +1134,50 @@ function mesas_armado_indices_slots_para_grupo(array $grupo, array $slots, array
         return [];
     }
 
-    $todos = range(0, $total - 1);
+    $indices = range(0, $total - 1);
+
+    usort($indices, static function (int $a, int $b) use ($grupo, $slots, $slotsPorArea, $disponibilidadDocentes): int {
+        $scoreA = mesas_armado_docentes_score_slot_para_grupo($grupo, $slots[$a], $a, $slotsPorArea, $disponibilidadDocentes);
+        $scoreB = mesas_armado_docentes_score_slot_para_grupo($grupo, $slots[$b], $b, $slotsPorArea, $disponibilidadDocentes);
+
+        return $scoreA <=> $scoreB;
+    });
+
+    return $indices;
+}
+
+function mesas_armado_docentes_score_slot_para_grupo(array $grupo, array $slot, int $idx, array $slotsPorArea, array $disponibilidadDocentes): array
+{
+    $fecha = (string)($slot['fecha'] ?? '');
+    $idTurno = (int)($slot['id_turno'] ?? 0);
     $areaKey = (string)($grupo['area_key'] ?? 'sin_area');
-    $slotsMismaArea = isset($slotsPorArea[$areaKey]) ? array_map('intval', array_keys($slotsPorArea[$areaKey])) : [];
-    sort($slotsMismaArea);
 
-    $esCorrelativaPrioritaria = (int)($grupo['prioridad'] ?? 0) >= 2 || (int)($grupo['orden_correlativa'] ?? 9) <= 1;
-    $esTaller = (string)($grupo['tipo_mesa'] ?? '') === 'taller';
+    $docentes = array_map('intval', $grupo['docentes'] ?? []);
+    $docenteNoDisponible = 0;
+    $docenteConDisponibilidadExplicita = 0;
 
-    // Las prioritarias buscan el primer slot real disponible. Las normales chicas
-    // intentan compactarse primero con su area para que la futura mesa_grupo sea más fácil.
-    if ($esCorrelativaPrioritaria || $esTaller) {
-        return $todos;
-    }
+    foreach ($docentes as $idDocente) {
+        if (mesas_armado_docentes_docente_no_disponible($disponibilidadDocentes, $idDocente, $fecha, $idTurno)) {
+            $docenteNoDisponible = 1;
+            break;
+        }
 
-    $vistos = [];
-    $ordenados = [];
-
-    foreach (array_merge($slotsMismaArea, $todos) as $idx) {
-        $idx = (int)$idx;
-        if (!isset($vistos[$idx])) {
-            $vistos[$idx] = true;
-            $ordenados[] = $idx;
+        if (isset($disponibilidadDocentes[$idDocente]) && count($disponibilidadDocentes[$idDocente]) > 0) {
+            $docenteConDisponibilidadExplicita = 1;
         }
     }
 
-    return $ordenados;
+    $slotAbiertoMismaArea = isset($slotsPorArea[$areaKey][$idx]) ? 0 : 1;
+
+    return [
+        $docenteNoDisponible,                           // primero: que el docente pueda ese día/turno
+        $docenteConDisponibilidadExplicita ? 0 : 1,      // luego: docentes con disponibilidad cargada tienen prioridad real
+        $slotAbiertoMismaArea,                           // después: compactar por área si ya hay slot abierto
+        $idx,                                            // finalmente: orden cronológico del rango
+    ];
 }
 
-function mesas_armado_slot_respeta_correlativas(array $grupo, int $slotIndex, array $previaSlotIndex, array $relacionesCorrelativas): bool
+function mesas_armado_docentes_slot_respeta_correlativas(array $grupo, int $slotIndex, array $previaSlotIndex, array $relacionesCorrelativas): bool
 {
     $anterioresPorPosterior = $relacionesCorrelativas['anteriores_por_posterior'] ?? [];
 
@@ -1172,12 +1200,12 @@ function mesas_armado_slot_respeta_correlativas(array $grupo, int $slotIndex, ar
     return true;
 }
 
-function mesas_armado_clave_ocupacion_docente(int $idDocente, string $fecha, int $idTurno): string
+function mesas_armado_docentes_clave_ocupacion_docente(int $idDocente, string $fecha, int $idTurno): string
 {
     return $idDocente . '|' . $fecha . '|' . $idTurno;
 }
 
-function mesas_armado_actualizar_grupo_calendarizado(PDO $pdo, array $idsMesa, string $fecha, int $idTurno, string $estado): void
+function mesas_armado_docentes_actualizar_grupo_calendarizado(PDO $pdo, array $idsMesa, string $fecha, int $idTurno, string $estado): void
 {
     if (count($idsMesa) === 0) {
         return;
@@ -1197,7 +1225,7 @@ function mesas_armado_actualizar_grupo_calendarizado(PDO $pdo, array $idsMesa, s
     $stmt->execute($params);
 }
 
-function mesas_armado_marcar_grupo_observado(PDO $pdo, array $idsMesa, string $observacion): void
+function mesas_armado_docentes_marcar_grupo_observado(PDO $pdo, array $idsMesa, string $observacion): void
 {
     if (count($idsMesa) === 0) {
         return;

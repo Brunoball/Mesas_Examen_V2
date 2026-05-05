@@ -10,7 +10,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 
 function formatearFecha(fecha) {
-  if (!fecha) return '-';
+  if (!fecha) return '';
   const [y, m, d] = String(fecha).split('-');
   if (!y || !m || !d) return fecha;
   return `${d}/${m}/${y}`;
@@ -18,7 +18,7 @@ function formatearFecha(fecha) {
 
 export default function ModalInfoDocente({ item, onCerrar }) {
   const catedras = Array.isArray(item?.catedras) ? item.catedras : [];
-  const bloques = Array.isArray(item?.indisponibilidades) ? item.indisponibilidades : [];
+  const disponibilidades = Array.isArray(item?.disponibilidades) ? item.disponibilidades : [];
 
   return (
     <div className="docentes-modal-overlay" role="dialog" aria-modal="true">
@@ -26,7 +26,7 @@ export default function ModalInfoDocente({ item, onCerrar }) {
         <div className="docentes-modal-header">
           <div>
             <h2><FontAwesomeIcon icon={faInfoCircle} /> Información del docente</h2>
-            <p>Datos, cátedras asignadas e indisponibilidad cargada.</p>
+            <p>Datos, cátedras asignadas y disponibilidad cargada.</p>
           </div>
           <button type="button" className="docentes-modal-close" onClick={onCerrar}>
             <FontAwesomeIcon icon={faTimes} />
@@ -52,8 +52,8 @@ export default function ModalInfoDocente({ item, onCerrar }) {
             <strong>{catedras.length}</strong>
           </div>
           <div className="docentes-info-card">
-            <span>Indisponibilidades</span>
-            <strong>{bloques.length}</strong>
+            <span>Días disponibles</span>
+            <strong>{disponibilidades.length}</strong>
           </div>
         </div>
 
@@ -86,14 +86,15 @@ export default function ModalInfoDocente({ item, onCerrar }) {
         </section>
 
         <section className="docentes-info-section">
-          <h3><FontAwesomeIcon icon={faCalendarDays} /> Días y turnos que no puede</h3>
+          <h3><FontAwesomeIcon icon={faCalendarDays} /> Días y turnos que asiste</h3>
 
           <div className="docentes-bloques-lista">
-            {bloques.length === 0 && <div className="docentes-empty-small">Sin indisponibilidades cargadas.</div>}
-            {bloques.map((bloque, index) => (
-              <div className="docentes-bloque-chip" key={`${bloque.fecha}-${bloque.id_turno || 'todos'}-${index}`}>
-                <strong>{formatearFecha(bloque.fecha)}</strong>
-                <span>{bloque.turno || 'TODOS'}</span>
+            {disponibilidades.length === 0 && <div className="docentes-empty-small">Sin disponibilidad cargada.</div>}
+            {disponibilidades.map((bloque, index) => (
+              <div className="docentes-bloque-chip" key={`${bloque.id_dia_semana}-${bloque.id_turno}-${bloque.fecha || 'semanal'}-${index}`}>
+                <strong>{bloque.dia_semana || 'DÍA'}</strong>
+                <span>{bloque.turno || 'TURNO'}</span>
+                {bloque.fecha && <small>{formatearFecha(bloque.fecha)}</small>}
               </div>
             ))}
           </div>

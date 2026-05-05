@@ -562,7 +562,7 @@ background:rgba(0,85,187,.07);
 
 .docentes-bloque-row{
   display:grid;
-  grid-template-columns:1fr 1fr auto;
+  grid-template-columns:1fr 1fr 1fr auto;
   gap:12px;
   align-items:end;
   padding:12px 14px;
@@ -721,6 +721,11 @@ background:rgba(0,85,187,.07);
   border-radius:999px;
   padding:6px 10px;
   font-size:12px;
+}
+
+.docentes-bloque-chip small{
+  color:color-mix(in srgb, var(--balto-action) 78%, #000);
+  font-weight:600;
 }
 
 .docentes-confirm-box{
