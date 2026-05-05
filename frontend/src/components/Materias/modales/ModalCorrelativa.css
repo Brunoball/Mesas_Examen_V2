@@ -801,3 +801,118 @@
   color:rgba(66,84,102,.72) !important;
 }
 
+
+/* Ajuste visual Materias — coherencia con Docentes / Ventas */
+.modal-corr-overlay{
+  background:rgba(10,37,64,.55) !important;
+  backdrop-filter:blur(6px) !important;
+}
+
+.modal-corr{
+  background:#fff !important;
+  border:1px solid rgba(10,37,64,.12) !important;
+  border-radius:18px !important;
+  box-shadow:0 28px 64px -24px rgba(10,37,64,.32) !important;
+  color:#0A2540 !important;
+}
+
+.modal-corr-header{
+  background:#fff !important;
+  border-bottom:1px solid rgba(10,37,64,.10) !important;
+}
+
+.modal-corr-header h2{
+  color:#0A2540 !important;
+  font-weight:650 !important;
+  letter-spacing:-.02em !important;
+}
+
+.modal-corr-header h2 svg,
+.modal-corr-section-title{
+  color:#0055BB !important;
+}
+
+.modal-corr-header p,
+.modal-corr-example,
+.auto-course-chain{
+  color:rgba(66,84,102,.84) !important;
+}
+
+.modal-corr-section,
+.modal-corr-relacion,
+.modal-corr-auto-preview,
+.modal-corr-example{
+  background:#fff !important;
+  border:1px solid rgba(10,37,64,.12) !important;
+  border-radius:16px !important;
+  box-shadow:0 1px 3px rgba(10,37,64,.06) !important;
+}
+
+.modal-corr-field label,
+.modal-corr-checks label{
+  color:#0A2540 !important;
+  font-weight:600 !important;
+}
+
+.modal-corr-field select,
+.modal-corr-field input{
+  background:#fff !important;
+  border-color:#D9E2EF !important;
+  color:#0A2540 !important;
+  border-radius:12px !important;
+  font-weight:520 !important;
+}
+
+.modal-corr-field select:focus,
+.modal-corr-field input:focus{
+  border-color:#0055BB !important;
+  box-shadow:0 0 0 4px rgba(0,85,187,.12) !important;
+  outline:none !important;
+}
+
+.modal-corr-close,
+.btn-corr.ghost{
+  background:#fff !important;
+  border:1px solid #D9E2EF !important;
+  color:#0A2540 !important;
+  box-shadow:0 1px 3px rgba(10,37,64,.06) !important;
+}
+
+.btn-corr.primary,
+.modal-corr-add{
+  background:#0055BB !important;
+  border-color:#0055BB !important;
+  color:#fff !important;
+  box-shadow:0 10px 22px rgba(0,85,187,.20) !important;
+}
+
+.modal-corr-remove{
+  background:#fff !important;
+  border:1px solid rgba(225,61,69,.28) !important;
+  color:#E13D45 !important;
+}
+
+.modal-corr-error{
+  background:rgba(225,61,69,.10) !important;
+  border-color:rgba(225,61,69,.22) !important;
+  color:#B4232B !important;
+}
+
+.modal-corr-mode-tabs{
+  background:#fff !important;
+  border:1px solid rgba(10,37,64,.12) !important;
+  border-radius:16px !important;
+  box-shadow:0 1px 3px rgba(10,37,64,.06) !important;
+}
+
+.modal-corr-mode-tabs button{
+  color:#425466 !important;
+  border-radius:12px !important;
+  font-weight:600 !important;
+}
+
+.modal-corr-mode-tabs button.active{
+  background:#0A2540 !important;
+  color:#fff !important;
+  box-shadow:0 10px 22px rgba(10,37,64,.18) !important;
+}

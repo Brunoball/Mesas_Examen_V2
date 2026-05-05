@@ -284,8 +284,8 @@
   min-height:0;
   overflow:auto;
   overflow-x:hidden;
-  max-height:calc(100vh - 240px);
-  min-height:calc(100vh - 240px);
+  max-height:calc(100vh - 250px);
+  min-height:calc(100vh - 250px);
   scrollbar-gutter:stable;
 }
 

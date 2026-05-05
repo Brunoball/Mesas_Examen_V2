@@ -122,16 +122,7 @@ background:rgba(0,85,187,.07);
 ========================= */
 
 
-.docentes-table-wrap.mov-tableWrap{
-  border:0;
-  border-radius:0;
-  background:#fff;
-  max-height:calc(100vh - 288px);
-  min-height:calc(100vh - 288px);
-  overflow:auto;
-  overflow-x:auto;
-  scrollbar-gutter:stable;
-}
+
 
 .docentes-table-wrap .mov-gridBody--relative{
   height:calc(100vh - 292px);

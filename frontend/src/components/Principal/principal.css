@@ -755,7 +755,6 @@ button { font-family: inherit; }
   border-radius: var(--me-r-lg);
   box-shadow: var(--me-shadow-md);
   backdrop-filter: blur(10px);
-  padding: 20px;
   contain: layout paint style;
   overflow: hidden;
 }

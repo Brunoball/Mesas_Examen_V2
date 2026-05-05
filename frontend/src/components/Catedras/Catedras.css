@@ -132,16 +132,7 @@
   min-width:1000px;
 }
 
-.catedras-table-wrap.mov-tableWrap{
-  border:0;
-  border-radius:0;
-  background:#fff;
-  max-height:calc(100vh - 306px);
-  min-height:calc(100vh - 306px);
-  overflow:auto;
-  overflow-x:auto;
-  scrollbar-gutter:stable;
-}
+
 
 .catedras-table-wrap .mov-gridBody--relative{
   height:calc(100vh - 310px);
@@ -242,7 +233,7 @@
 }
 
 .catedras-pageBtn{
-  height:34px;
+  height:28px;
   padding:0 12px;
   font-size:12px;
   border-radius:10px;

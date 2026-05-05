@@ -1,18 +1,21 @@
 // src/components/Materias/Materias.jsx
 import React, { useContext, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faArrowLeft,
-  faChevronDown,
+  faBook,
+  faBoxOpen,
   faEdit,
-  faFilter,
   faMagnifyingGlass,
   faPlus,
   faPowerOff,
+  faTimes,
   faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 
+import "../Global/Global_css/roots.css";
+import "../Global/Global_css/Global_Section.css";
+import "../Global/Global_css/Global_DivTable.css";
 import "./Materias.css";
 import ModalMateria from "./modales/ModalMateria";
 import ModalCorrelativa from "./modales/ModalCorrelativa";
@@ -24,8 +27,73 @@ import SeccionAreas from "./secciones/SeccionAreas";
 import { useMaterias } from "./hooks/useMaterias";
 import Principal, { MesasShellContext } from "../Principal/Principal";
 
+const MATERIAS_GRID_COLS = "1.35fr 1.1fr 1.05fr 1.05fr .85fr .75fr .8fr";
+const SKELETON_ROWS = 7;
+
+const MATERIAS_COLUMNS = [
+  { key: "materia", label: "Materia", strong: true },
+  { key: "area", label: "Área" },
+  { key: "cursos", label: "Cursos" },
+  { key: "talleres", label: "Talleres" },
+  { key: "correlativas", label: "Correlativas", align: "center" },
+  { key: "estado", label: "Estado", align: "center" },
+  { key: "acciones", label: "Acciones", align: "center", actions: true },
+];
+
+const SKELETON_WIDTHS = ["74%", "58%", "54%", "52%", "38%", "46%", "42%"];
+
+function safeText(value) {
+  const text = String(value ?? "").trim();
+  return text || "—";
+}
+
+function alignClass(align) {
+  if (align === "right") return "is-right";
+  if (align === "center") return "is-center";
+  return "";
+}
+
+function renderSkeletonRow(index) {
+  return (
+    <div
+      key={`materia-skel-${index}`}
+      className="mov-gridTable mov-gridTable--row mov-row--skeleton global-divTable__row materias-gridRow"
+      style={{ gridTemplateColumns: MATERIAS_GRID_COLS }}
+      role="row"
+      aria-hidden="true"
+    >
+      {MATERIAS_COLUMNS.map((column, columnIndex) => (
+        <div
+          key={column.key}
+          className={[
+            "mov-gridCell",
+            alignClass(column.align),
+            column.actions ? "mov-gridCell--actions" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          role="cell"
+          data-label={column.label}
+        >
+          {column.actions ? (
+            <div className="mov-skelActions">
+              <span className="mov-skelIcon" />
+              <span className="mov-skelIcon" />
+              <span className="mov-skelIcon" />
+            </div>
+          ) : (
+            <span
+              className="mov-skeletonBar"
+              style={{ width: SKELETON_WIDTHS[(index + columnIndex) % SKELETON_WIDTHS.length] }}
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const Materias = () => {
-  const navigate = useNavigate();
   const location = useLocation();
   const dentroDeShell = useContext(MesasShellContext);
 
@@ -57,7 +125,6 @@ const Materias = () => {
     setModalTaller,
     modalArea,
     setModalArea,
-    cargarTodo,
     guardarMateria,
     eliminarMateria,
     cambiarEstadoMateria,
@@ -82,7 +149,54 @@ const Materias = () => {
     setSeccionActiva(seccionesValidas.includes(seccion) ? seccion : "materias");
   }, [location.search, setSeccionActiva]);
 
-  const volverAMaterias = () => navigate("/materias");
+  const valorBusqueda = String(busqueda ?? "");
+  const listaMaterias = Array.isArray(materias) ? materias : [];
+  const listaMateriasFiltradas = Array.isArray(materiasFiltradas) ? materiasFiltradas : [];
+  const totalActivas = listaMaterias.filter((m) => Number(m.activo) === 1).length;
+
+  const renderFiltrosGlobales = () => (
+    <div className="mov-headFilters materias-headFilters materias-globalFilters materias-integratedFilters">
+      <div className="mov-search materias-searchFilter">
+
+        <div className="materias-searchBox">
+          <input
+            id="materias-busqueda"
+            className="cc-input cc-input--floating catedras-searchInput"
+            type="text"
+            value={valorBusqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar por materia, área, taller, curso o correlatividad"
+          />
+                  <span className="catedras-filterTabs__label">
+          <FontAwesomeIcon icon={faMagnifyingGlass} /> Búsqueda
+        </span>
+          {valorBusqueda.trim() !== "" && (
+            <button
+              type="button"
+              className="mov-clearSearch materias-clearSearch"
+              title="Limpiar búsqueda"
+              onClick={() => setBusqueda("")}
+            >
+              <FontAwesomeIcon icon={faTimes} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="catedras-filterTabs catedras-selectFilter catedras-selectFilter--estado">
+        <span className="catedras-filterTabs__label">Estado</span>
+        <select
+          className="catedras-filterSelect"
+          id="materias-estado"
+          value={soloActivas ? "activas" : "todas"}
+          onChange={(e) => setSoloActivas(e.target.value === "activas")}
+        >
+          <option value="activas">Solo activas</option>
+          <option value="todas">Todas</option>
+        </select>
+      </div>
+    </div>
+  );
 
   const renderContenido = () => {
     if (seccionActiva === "correlativas") {
@@ -91,11 +205,10 @@ const Materias = () => {
           cargando={cargando}
           correlativas={correlativas}
           correlativasFiltradas={correlativasFiltradas}
-          onVolver={volverAMaterias}
-          onRefresh={cargarTodo}
           onNueva={() => setModalCorrelativa({ abierto: true, item: null })}
           onEditar={(item) => setModalCorrelativa({ abierto: true, item })}
           onEliminar={eliminarCorrelativa}
+          headerFilters={renderFiltrosGlobales()}
         />
       );
     }
@@ -106,11 +219,10 @@ const Materias = () => {
           cargando={cargando}
           talleres={talleres}
           talleresFiltrados={talleresFiltrados}
-          onVolver={volverAMaterias}
-          onRefresh={cargarTodo}
           onNuevo={() => setModalTaller({ abierto: true, item: null })}
           onEditar={(item) => setModalTaller({ abierto: true, item })}
           onEliminar={eliminarTaller}
+          headerFilters={renderFiltrosGlobales()}
         />
       );
     }
@@ -121,162 +233,174 @@ const Materias = () => {
           cargando={cargando}
           areas={areas}
           areasFiltradas={areasFiltradas}
-          onVolver={volverAMaterias}
-          onRefresh={cargarTodo}
           onNueva={() => setModalArea({ abierto: true, item: null })}
           onEditar={(item) => setModalArea({ abierto: true, item })}
           onEliminar={eliminarArea}
+          headerFilters={renderFiltrosGlobales()}
         />
       );
     }
 
     return (
-      <>
-        <section className="materias-card">
-          <div className="materias-card-header">
-            <div>
-              <h2>Listado principal de materias</h2>
-              <p>
-                Esta es la sección principal. Desde acá editás las materias; las áreas, correlativas y talleres quedan como subopciones del menú lateral.
-              </p>
+      <section className="materias-card mov-card mov-card--table">
+        <div className="mov-card__head materias-card__head materias-main-head">
+          <div className="mov-card__headLeft materias-card__headLeft">
+            <div className="title-mov materias-titleBox">
+              <div className="mov-card__title materias-section-title">
+                <FontAwesomeIcon icon={faBook} /> Materias · Materias
+              </div>
+              <div className="mov-card__hint">
+                Mostrando <b>{listaMateriasFiltradas.length}</b> de <b>{listaMaterias.length}</b> materias
+              </div>
             </div>
 
-            <div className="materias-header-actions">
-              <button
-                className="materias-btn primary"
-                onClick={() => setModalMateria({ abierto: true, item: null })}
-                type="button"
-              >
-                <FontAwesomeIcon icon={faPlus} />
-                Nueva materia
-              </button>
-            </div>
+            {renderFiltrosGlobales()}
           </div>
 
-          <div className="materias-table-wrap">
-            <table className="materias-table">
-              <thead>
-                <tr>
-                  <th>Materia</th>
-                  <th>Área</th>
-                  <th>Cursos</th>
-                  <th>Talleres</th>
-                  <th>Correlativas</th>
-                  <th>Estado</th>
-                  <th className="acciones">Acciones</th>
-                </tr>
-              </thead>
+          <div className="mov-card__actions materias-actionsHead">
+            <button
+              className="mov-btn mov-btn--primary"
+              onClick={() => setModalMateria({ abierto: true, item: null })}
+              type="button"
+            >
+              <FontAwesomeIcon icon={faPlus} /> Nueva materia
+            </button>
+          </div>
+        </div>
 
-              <tbody>
-                {materiasFiltradas.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" className="empty">
-                      {cargando ? "Cargando..." : "No hay materias para mostrar."}
-                    </td>
-                  </tr>
-                ) : (
-                  materiasFiltradas.map((m) => (
-                    <tr key={m.id_materia}>
-                      <td>
-                        <strong>{m.materia}</strong>
-                      </td>
+        <div className="materias-divTable global-divTable" role="table" aria-label="Listado de materias">
+          <div
+            className="mov-gridTable mov-gridTable--head global-divTable__head materias-gridHead"
+            style={{ gridTemplateColumns: MATERIAS_GRID_COLS }}
+            role="row"
+          >
+            {MATERIAS_COLUMNS.map((column) => (
+              <div
+                key={column.key}
+                className={["mov-gridCell", "mov-gridCell--head", alignClass(column.align)]
+                  .filter(Boolean)
+                  .join(" ")}
+                role="columnheader"
+              >
+                {column.label}
+              </div>
+            ))}
+          </div>
 
-                      <td>{m.areas || "-"}</td>
-                      <td>{m.cursos || "-"}</td>
-                      <td>{m.talleres || "-"}</td>
-                      <td>{m.cantidad_correlativas || 0}</td>
+          <div className="materias-table-wrap mov-tableWrap global-divTable__wrap" role="rowgroup">
+            <div
+              className={`mov-gridBody mov-gridBody--relative global-divTable__body materias-gridBody ${cargando ? "mov-softLoading" : ""}`}
+            >
+              {cargando ? (
+                <div className="mov-skeletonWrap" aria-busy="true" aria-label="Cargando materias">
+                  {Array.from({ length: SKELETON_ROWS }).map((_, index) => renderSkeletonRow(index))}
+                </div>
+              ) : (
+                <>
+                  {listaMateriasFiltradas.map((m) => (
+                    <div
+                      key={m.id_materia}
+                      className="mov-gridTable mov-gridTable--row global-divTable__row materias-gridRow"
+                      style={{ gridTemplateColumns: MATERIAS_GRID_COLS }}
+                      role="row"
+                    >
+                      <div className="mov-gridCell is-strong" role="cell" data-label="Materia" title={safeText(m.materia)}>
+                        <div className="materias-name-cell">
+                          <strong>{safeText(m.materia)}</strong>
+                        </div>
+                      </div>
 
-                      <td>
-                        <span className={`badge ${Number(m.activo) === 1 ? "ok" : "off"}`}>
+                      <div className="mov-gridCell" role="cell" data-label="Área" title={safeText(m.areas)}>
+                        <span className="mov-ellipsissss">{safeText(m.areas)}</span>
+                      </div>
+
+                      <div className="mov-gridCell" role="cell" data-label="Cursos" title={safeText(m.cursos)}>
+                        <span className="mov-ellipsissss">{safeText(m.cursos)}</span>
+                      </div>
+
+                      <div className="mov-gridCell" role="cell" data-label="Talleres" title={safeText(m.talleres)}>
+                        <span className="mov-ellipsissss">{safeText(m.talleres)}</span>
+                      </div>
+
+                      <div className="mov-gridCell is-center" role="cell" data-label="Correlativas">
+                        <span className="mov-chip materias-badge">{m.cantidad_correlativas || 0}</span>
+                      </div>
+
+                      <div className="mov-gridCell is-center" role="cell" data-label="Estado">
+                        <span className={`mov-chip materias-badge ${Number(m.activo) === 1 ? "mov-chip--ok" : "mov-chip--neutral"}`}>
                           {Number(m.activo) === 1 ? "ACTIVA" : "INACTIVA"}
                         </span>
-                      </td>
+                      </div>
 
-                      <td className="acciones">
-                        <button
-                          className="icon-btn"
-                          title="Editar"
-                          onClick={() => setModalMateria({ abierto: true, item: m })}
-                          type="button"
-                        >
-                          <FontAwesomeIcon icon={faEdit} />
-                        </button>
+                      <div className="mov-gridCell mov-gridCell--actions is-center" role="cell" data-label="Acciones">
+                        <div className="mov-actionsInline">
+                          <button
+                            className="mov-iconBtn materias-icon-btn"
+                            title="Editar"
+                            onClick={() => setModalMateria({ abierto: true, item: m })}
+                            type="button"
+                          >
+                            <FontAwesomeIcon icon={faEdit} />
+                          </button>
 
-                        <button
-                          className="icon-btn"
-                          title="Activar / desactivar"
-                          onClick={() => cambiarEstadoMateria(m)}
-                          type="button"
-                        >
-                          <FontAwesomeIcon icon={faPowerOff} />
-                        </button>
+                          <button
+                            className="mov-iconBtn materias-icon-btn"
+                            title="Activar / desactivar"
+                            onClick={() => cambiarEstadoMateria(m)}
+                            type="button"
+                          >
+                            <FontAwesomeIcon icon={faPowerOff} />
+                          </button>
 
-                        <button
-                          className="icon-btn danger"
-                          title="Eliminar"
-                          onClick={() => eliminarMateria(m)}
-                          type="button"
-                        >
-                          <FontAwesomeIcon icon={faTrash} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                          <button
+                            className="mov-iconBtn mov-iconBtn--danger materias-icon-btn materias-icon-danger"
+                            title="Eliminar"
+                            onClick={() => eliminarMateria(m)}
+                            type="button"
+                          >
+                            <FontAwesomeIcon icon={faTrash} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {listaMateriasFiltradas.length === 0 && (
+                    <div className="cc-emptyState materias-emptyState">
+                      <FontAwesomeIcon icon={faBoxOpen} className="cc-emptyIcon" />
+                      <div className="cc-emptyText">No hay materias para mostrar.</div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
-        </section>
-
-
-        <div className="materias-bottom-actions main-bottom">
-          <button className="materias-btn back" onClick={() => navigate("/panel")} type="button">
-            <FontAwesomeIcon icon={faArrowLeft} />
-            Volver Atrás
-          </button>
         </div>
-      </>
+
+        <div className="materias-footer">
+          <span>
+            Total: <strong>{listaMaterias.length}</strong>
+          </span>
+          <span>
+            Activas: <strong>{totalActivas}</strong>
+          </span>
+          <span>
+            Visibles: <strong>{listaMateriasFiltradas.length}</strong>
+          </span>
+        </div>
+      </section>
     );
   };
 
   const contenido = (
-    <div className="materias-page">
-      <header className="materias-topbar">
-        <div className="materias-title-wrap">
-          <h1>Materias</h1>
-          <p>
-            {seccionActiva === "materias"
-              ? "Administración principal de materias."
-              : "Subsección del módulo de materias."}
-          </p>
+    <div className="materias-page mov-page">
+      {mensaje && (
+        <div className={`mov-alert materias-alerta ${mensaje.tipo === "success" || mensaje.tipo === "ok" ? "materias-alerta-success" : "materias-alerta-error"}`}>
+          {mensaje.texto}
         </div>
+      )}
 
-        <div className="materias-search">
-          <input
-            type="text"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar por materia, área, taller, curso o correlatividad"
-          />
-          <FontAwesomeIcon icon={faMagnifyingGlass} className="materias-search-icon" />
-        </div>
-
-        <button
-          className="materias-filter-btn"
-          type="button"
-          onClick={() => setSoloActivas((v) => !v)}
-        >
-          <FontAwesomeIcon icon={faFilter} />
-          {soloActivas ? "Solo activas" : "Todas"}
-          <FontAwesomeIcon icon={faChevronDown} />
-        </button>
-      </header>
-
-      <main className="materias-content">
-        {mensaje && <div className={`materias-toast ${mensaje.tipo}`}>{mensaje.texto}</div>}
-
-        {renderContenido()}
-      </main>
+      <main className="materias-content">{renderContenido()}</main>
 
       {modalMateria.abierto && (
         <ModalMateria
