@@ -1,11 +1,18 @@
 // src/components/Principal/Principal.jsx
-import React, { createContext, useEffect, useRef, useState, useCallback, memo } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  memo,
+} from "react";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faSignOutAlt,
   faLayerGroup,
-  faCalendarDays,
   faBookOpen,
   faProjectDiagram,
   faChalkboardTeacher,
@@ -14,8 +21,6 @@ import {
   faXmark,
   faGraduationCap,
   faUserCircle,
-  faMoon,
-  faSun,
   faClipboardList,
 } from "@fortawesome/free-solid-svg-icons";
 
@@ -27,13 +32,23 @@ export const MesasShellContext = createContext(false);
 /* =========================================================
    Modal cierre de sesión
 ========================================================= */
-const ConfirmLogoutModal = memo(function ConfirmLogoutModal({ open, onClose, onConfirm }) {
+const ConfirmLogoutModal = memo(function ConfirmLogoutModal({
+  open,
+  onClose,
+  onConfirm,
+  loading = false,
+}) {
   const cancelBtnRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
+
     cancelBtnRef.current?.focus();
-    const onKeyDown = (e) => { if (e.key === "Escape") onClose(); };
+
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open, onClose]);
@@ -44,37 +59,43 @@ const ConfirmLogoutModal = memo(function ConfirmLogoutModal({ open, onClose, onC
 
   return (
     <div
-      className="me-modal-overlay"
+      className="pp-modal-overlay"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="me-modal-title"
+      aria-labelledby="pp-modal-title"
       onMouseDown={onClose}
     >
-      <div className="me-modal" onMouseDown={stop}>
-        <div className="me-modal__icon" aria-hidden="true">
+      <div className="pp-modal" onMouseDown={stop}>
+        <div className="pp-modal__icon" aria-hidden="true">
           <FontAwesomeIcon icon={faSignOutAlt} />
         </div>
-        <h3 id="me-modal-title" className="me-modal__title">
+
+        <h3 id="pp-modal-title" className="pp-modal__title">
           Confirmar cierre de sesión
         </h3>
-        <p className="me-modal__text">
+
+        <p className="pp-modal__text">
           ¿Estás seguro de que deseas cerrar la sesión?
         </p>
-        <div className="me-modal__actions">
+
+        <div className="pp-modal__actions">
           <button
             type="button"
-            className="me-btn me-btn--ghost"
+            className="pp-btn pp-btn--ghost"
             onClick={onClose}
             ref={cancelBtnRef}
+            disabled={loading}
           >
             Cancelar
           </button>
+
           <button
             type="button"
-            className="me-btn me-btn--danger"
+            className="pp-btn pp-btn--danger"
             onClick={onConfirm}
+            disabled={loading}
           >
-            Confirmar
+            {loading ? "Cerrando..." : "Confirmar"}
           </button>
         </div>
       </div>
@@ -90,7 +111,6 @@ const NAV_ITEMS = [
     key: "mesas",
     label: "Mesas de Examen",
     icon: faLayerGroup,
-    bottomIcon: faCalendarDays,
     ruta: "/mesas-examen",
     description: "Crear, consultar, agrupar y exportar mesas.",
   },
@@ -98,7 +118,6 @@ const NAV_ITEMS = [
     key: "previas",
     label: "Previas",
     icon: faGraduationCap,
-    bottomIcon: faGraduationCap,
     ruta: "/previas",
     description: "Cargar, editar, dar de baja y administrar previas.",
   },
@@ -106,7 +125,6 @@ const NAV_ITEMS = [
     key: "configuracion-formulario",
     label: "Config. Formulario",
     icon: faClipboardList,
-    bottomIcon: faClipboardList,
     ruta: "/configuracion-formulario",
     description: "Definir apertura y cierre del formulario público.",
   },
@@ -114,7 +132,6 @@ const NAV_ITEMS = [
     key: "materias",
     label: "Materias",
     icon: faBookOpen,
-    bottomIcon: faProjectDiagram,
     ruta: "/materias",
     description: "Gestionar materias, áreas, correlativas y talleres.",
     children: [
@@ -142,7 +159,6 @@ const NAV_ITEMS = [
     key: "catedras",
     label: "Cátedras",
     icon: faChalkboardTeacher,
-    bottomIcon: faChalkboardTeacher,
     ruta: "/catedras",
     description: "Consultar curso, división, materia y asignar docentes.",
   },
@@ -150,7 +166,6 @@ const NAV_ITEMS = [
     key: "docentes",
     label: "Docentes",
     icon: faUserTie,
-    bottomIcon: faUserTie,
     ruta: "/docentes",
     description: "Gestionar altas, bajas, datos e indisponibilidad.",
   },
@@ -170,11 +185,12 @@ const Principal = ({ children = null }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [showModal, setShowModal] = useState(false);
-  const [isExiting, setIsExiting] = useState(false);
   const [usuario, setUsuario] = useState(null);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [closingUI, setClosingUI] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [tema, setTema] = useState("claro");
+  const [openSubmenuKey, setOpenSubmenuKey] = useState("");
 
   useEffect(() => {
     try {
@@ -185,254 +201,324 @@ const Principal = ({ children = null }) => {
       setUsuario(null);
     }
 
-    // Recuperar tema guardado
-    const temaGuardado = localStorage.getItem("tema_mesas") || "claro";
-    setTema(temaGuardado);
-    document.documentElement.setAttribute("data-theme", temaGuardado);
+    // Mesas queda fijo en modo claro. No se porta la lógica de modo oscuro de Balto.
+    document.documentElement.setAttribute("data-theme", "claro");
+    document.body?.classList?.remove("dark");
+    localStorage.removeItem("tema_mesas");
   }, []);
 
-  // Cerrar drawer al cambiar de ruta
   useEffect(() => {
     setDrawerOpen(false);
-  }, [location.pathname]);
+  }, [location.pathname, location.search]);
 
-  // Escape cierra el drawer
   useEffect(() => {
     if (!drawerOpen) return;
-    const onKeyDown = (e) => { if (e.key === "Escape") setDrawerOpen(false); };
+
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setDrawerOpen(false);
+    };
+
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [drawerOpen]);
 
-  // Bloquear scroll body cuando drawer abierto
   useEffect(() => {
     if (!drawerOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.classList.add("me-lockScroll");
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.classList.add("pp-lockScroll");
     document.body.style.overflow = "hidden";
+
     return () => {
-      document.body.style.overflow = prev;
-      document.body.classList.remove("me-lockScroll");
+      document.body.style.overflow = prevOverflow;
+      document.body.classList.remove("pp-lockScroll");
     };
   }, [drawerOpen]);
 
-  const toggleTema = useCallback(() => {
-    const nuevo = tema === "claro" ? "oscuro" : "claro";
-    setTema(nuevo);
-    document.documentElement.setAttribute("data-theme", nuevo);
-    localStorage.setItem("tema_mesas", nuevo);
-  }, [tema]);
+  const searchParams = useMemo(
+    () => new URLSearchParams(location.search),
+    [location.search]
+  );
 
-  const handleNavigate = useCallback((ruta) => {
-    navigate(ruta);
-    setDrawerOpen(false);
-  }, [navigate]);
+  const materiaSubseccionActiva = searchParams.get("seccion") || "materias";
+
+  const activeKey = useMemo(() => {
+    const found = NAV_ITEMS.find((item) => {
+      if (item.key === "materias") {
+        return location.pathname === item.ruta || location.pathname.startsWith("/materias/");
+      }
+
+      return (
+        location.pathname === item.ruta ||
+        location.pathname.startsWith(`${item.ruta}/`)
+      );
+    });
+
+    return found?.key || "";
+  }, [location.pathname]);
+
+  const activeLabel = useMemo(() => {
+    const found = NAV_ITEMS.find((item) => item.key === activeKey);
+    return found?.label || "Panel";
+  }, [activeKey]);
+
+  useEffect(() => {
+    const activeItem = NAV_ITEMS.find((item) => item.key === activeKey);
+    if (activeItem?.children?.length) {
+      setOpenSubmenuKey(activeItem.key);
+    }
+  }, [activeKey]);
+
+  const hasChildren = React.Children.count(children) > 0;
+
+  const handleNavigate = useCallback(
+    (ruta) => {
+      navigate(ruta);
+      setDrawerOpen(false);
+    },
+    [navigate]
+  );
+
+  const handleLogoClick = useCallback(() => {
+    handleNavigate("/mesas-examen");
+  }, [handleNavigate]);
+
+  const toggleSubmenu = useCallback((itemKey) => {
+    setOpenSubmenuKey((prev) => (prev === itemKey ? "" : itemKey));
+  }, []);
 
   const confirmarCierreSesion = useCallback(() => {
+    setClosingUI(true);
     setIsExiting(true);
+
     setTimeout(() => {
       sessionStorage.clear();
       localStorage.removeItem("token");
       localStorage.removeItem("usuario");
-      setShowModal(false);
+      setShowLogoutModal(false);
       navigate("/", { replace: true });
     }, 350);
   }, [navigate]);
 
-  // Determinar sección activa
-  const activeKey = NAV_ITEMS.find(
-    (item) => location.pathname === item.ruta || location.pathname.startsWith(item.ruta + "/")
-  )?.key || "";
-
-  const searchParams = new URLSearchParams(location.search);
-  const materiaSubseccionActiva = searchParams.get("seccion") || "materias";
-
-  const activeLabel = NAV_ITEMS.find((item) => item.key === activeKey)?.label || "Panel";
-  const hasChildren = React.Children.count(children) > 0;
-
   return (
     <MesasShellContext.Provider value={true}>
-      <div className={`me-shell ${isExiting ? "me-shell--exiting" : ""}`}>
+      <div className={`pp-shell ${isExiting ? "pp-shell--exiting" : ""}`}>
+        <header className="mov-topbar">
+          <div className="mov-topbar__left">
+            <button
+              className="pp-burger"
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              aria-label="Abrir menú"
+              title="Menú"
+            >
+              <FontAwesomeIcon icon={faBars} />
+            </button>
 
-      {/* ── TOPBAR ── */}
-      <header className="me-topbar">
-        <div className="me-topbar__left">
-          <button
-            className="me-burger"
-            type="button"
-            onClick={() => setDrawerOpen(true)}
-            aria-label="Abrir menú"
-          >
-            <FontAwesomeIcon icon={faBars} />
-          </button>
+            <button
+              className="mov-topbar__logo"
+              type="button"
+              onClick={handleLogoClick}
+              title="Ir al panel principal"
+            >
+              <img
+                src={logoRH}
+                alt="Logo IPET N° 50"
+                className="mov-topbar__logoImg mov-topbar__logoImg--escudo"
+              />
+            </button>
 
-          <div className="me-topbar__brand">
-            <div className="me-topbar__brandMark">
-              <FontAwesomeIcon icon={faGraduationCap} />
-            </div>
-            <div className="me-topbar__brandText">
-              <span className="me-topbar__brandName">IPET N° 50</span>
-              <span className="me-topbar__brandSub">Sistema de Mesas de Examen</span>
-            </div>
-          </div>
-        </div>
+            <div className="mov-topbar__titles">
+              <div className="mov-topbar__sysname">
+                <span className="mov-topbar__brandName">IPET N° 50</span>
+                <span className="mov-topbar__brandDot">•</span>
+                <span className="mov-topbar__brandType">Sistema de Mesas</span>
+              </div>
 
-        <div className="me-topbar__right">
-          <div className="me-topbar__section">{activeLabel}</div>
-
-
-          <div className="me-topbar__user" title={usuario?.Nombre_Completo || "Usuario"}>
-            <FontAwesomeIcon icon={faUserCircle} />
-          </div>
-
-          <button
-            className="me-topbar__logoutBtn"
-            onClick={() => setShowModal(true)}
-            title="Cerrar sesión"
-            aria-label="Cerrar sesión"
-          >
-            <FontAwesomeIcon icon={faSignOutAlt} />
-          </button>
-        </div>
-      </header>
-
-      {/* ── OVERLAY DRAWER (mobile) ── */}
-      <div
-        className={`me-drawerOverlay ${drawerOpen ? "is-open" : ""}`}
-        onMouseDown={() => setDrawerOpen(false)}
-      />
-
-      {/* ── SIDEBAR ── */}
-      <aside className={`me-sidebar ${drawerOpen ? "is-drawerOpen" : ""}`}>
-
-        {/* Cabecera del drawer (solo mobile) */}
-        <div className="me-drawerHeader">
-          <div className="me-drawerBrand">
-            <div className="me-drawerBrand__mark">
-              <FontAwesomeIcon icon={faGraduationCap} />
-            </div>
-            <div className="me-drawerBrand__txt">
-              <div className="me-drawerBrand__title">IPET N° 50</div>
-              <div className="me-drawerBrand__sub">Mesas de Examen</div>
+              <div className="mov-topbar__sysby">
+                Desarrollado por{" "}
+                <a
+                  href="https://3devsnet.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mov-topbar__sysbyLink"
+                >
+                  3 devs
+                </a>
+              </div>
             </div>
           </div>
-          <button
-            className="me-drawerClose"
-            type="button"
-            onClick={() => setDrawerOpen(false)}
-            aria-label="Cerrar menú"
-          >
-            <FontAwesomeIcon icon={faXmark} />
-          </button>
-        </div>
 
-        {/* Logo (desktop, colapsado) */}
-        <div className="me-brand">
-          <div className="me-brand__mark">
-            <img src={logoRH} alt="Logo IPET 50" className="me-brand__logo" />
-          </div>
-          <div className="me-brand__text">
-            <div className="me-brand__title">IPET N° 50</div>
-            <div className="me-brand__subtitle">Mesas de Examen</div>
-          </div>
-        </div>
+          <div className="mov-topbar__right">
+            <div className="mov-topbar__section">{activeLabel}</div>
 
-        {/* Usuario (solo cuando sidebar expandido) */}
-        {usuario?.Nombre_Completo && (
-          <div className="me-sidebarUser">
-            <div className="me-sidebarUser__avatar">
+            <div
+              className="mov-topbar__usericon"
+              title={usuario?.Nombre_Completo || usuario?.nombre || "Usuario"}
+              aria-label="Usuario"
+            >
               <FontAwesomeIcon icon={faUserCircle} />
             </div>
-            <div className="me-sidebarUser__info">
-              <span className="me-sidebarUser__name">{usuario.Nombre_Completo}</span>
-              <span className="me-sidebarUser__role">Administrador</span>
+
+            <button
+              className="pp-topbarLogout"
+              type="button"
+              onClick={() => setShowLogoutModal(true)}
+              title="Cerrar sesión"
+              aria-label="Cerrar sesión"
+            >
+              <FontAwesomeIcon icon={faSignOutAlt} />
+            </button>
+          </div>
+        </header>
+
+        <div
+          className={`pp-drawerOverlay ${drawerOpen ? "is-open" : ""}`}
+          onMouseDown={() => setDrawerOpen(false)}
+        />
+
+        <aside className={`pp-sidebar ${drawerOpen ? "is-drawerOpen" : ""}`}>
+          <div className="pp-drawerHeader">
+            <div
+              className="pp-drawerBrand"
+              onClick={handleLogoClick}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") handleLogoClick();
+              }}
+            >
+              <div className="pp-drawerBrand__mark">
+                <FontAwesomeIcon icon={faGraduationCap} />
+              </div>
+
+              <div className="pp-drawerBrand__txt">
+                <div className="pp-drawerBrand__t">IPET N° 50</div>
+                <div className="pp-drawerBrand__s">Mesas de Examen</div>
+              </div>
+            </div>
+
+            <button
+              className="pp-drawerClose"
+              type="button"
+              onClick={() => setDrawerOpen(false)}
+              aria-label="Cerrar menú"
+              title="Cerrar"
+            >
+              <FontAwesomeIcon icon={faXmark} />
+            </button>
+          </div>
+
+          <div
+            className="pp-brand panel_contable"
+            onClick={handleLogoClick}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") handleLogoClick();
+            }}
+          >
+            <div className="pp-brand__mark pp-brand__mark--image">
+              <img src={logoRH} alt="Logo IPET N° 50" className="pp-brand__logo" />
+            </div>
+
+            <div className="pp-brand__text">
+              <div className="pp-brand__title">IPET N° 50</div>
+              <div className="pp-brand__subtitle">Mesas de Examen</div>
             </div>
           </div>
-        )}
 
-        {/* Navegación */}
-        <nav className="me-nav">
-          {NAV_ITEMS.map((item) => {
-            const isActive = activeKey === item.key;
-            const tieneSubitems = Array.isArray(item.children) && item.children.length > 0;
+          <nav className="pp-nav" aria-label="Navegación principal">
+            {NAV_ITEMS.map((item) => {
+              const hasSub = Array.isArray(item.children) && item.children.length > 0;
+              const isActive = activeKey === item.key;
+              const isOpen = openSubmenuKey === item.key;
 
-            return (
-              <div
-                key={item.key}
-                className={`me-navGroup ${tieneSubitems ? "has-subnav" : ""} ${isActive ? "is-active" : ""}`}
-              >
-                <button
-                  type="button"
-                  className={`me-nav__item ${isActive ? "is-active" : ""}`}
-                  onClick={() => handleNavigate(item.ruta)}
-                  title={item.label}
+              return (
+                <div
+                  key={item.key}
+                  className={`pp-navGroup ${hasSub ? "has-sub" : ""} ${
+                    isOpen ? "is-open" : ""
+                  }`}
                 >
-                  <span className="me-nav__icon">
-                    <FontAwesomeIcon icon={item.icon} />
-                  </span>
-                  <span className="me-nav__label">{item.label}</span>
-                </button>
+                  <button
+                    type="button"
+                    className={`pp-nav__item ${isActive ? "is-active" : ""}`}
+                    onClick={() => {
+                      if (hasSub) {
+                        toggleSubmenu(item.key);
+                        return;
+                      }
 
-                {tieneSubitems && (
-                  <div className="me-subnav" aria-label={`Subsecciones de ${item.label}`}>
-                    {item.children.map((subitem) => {
-                      const isSubActive = isActive && materiaSubseccionActiva === subitem.seccion;
+                      handleNavigate(item.ruta);
+                    }}
+                    onDoubleClick={() => {
+                      if (hasSub) handleNavigate(item.ruta);
+                    }}
+                    title={item.description || item.label}
+                    aria-expanded={hasSub ? isOpen : undefined}
+                    aria-haspopup={hasSub ? "menu" : undefined}
+                  >
+                    <span className="pp-nav__icon">
+                      <FontAwesomeIcon icon={item.icon} />
+                    </span>
 
-                      return (
-                        <button
-                          key={subitem.key}
-                          type="button"
-                          className={`me-subnav__item ${isSubActive ? "is-active" : ""}`}
-                          onClick={() => handleNavigate(subitem.ruta)}
-                          title={subitem.label}
-                        >
-                          <span className="me-subnav__dot" aria-hidden="true" />
-                          <span className="me-subnav__label">{subitem.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </nav>
+                    <span className="pp-nav__label">{item.label}</span>
+                  </button>
 
-        {/* Logout (bottom) */}
-        <div className="me-sidebar__bottom">
-          <button
-            type="button"
-            className="me-sidebarLogout"
-            onClick={() => setShowModal(true)}
-          >
-            <span className="me-sidebarLogout__icon">
-              <FontAwesomeIcon icon={faSignOutAlt} />
-            </span>
-            <span className="me-sidebarLogout__label">Cerrar Sesión</span>
-          </button>
+                  {hasSub && (
+                    <div className="pp-navSub" aria-label={`Subsecciones de ${item.label}`}>
+                      {item.children.map((subitem) => {
+                        const isSubActive =
+                          isActive && materiaSubseccionActiva === subitem.seccion;
 
-          <div className="me-sidebar__footer">
-            Desarrollado por{" "}
-            <a href="https://3devsnet.com" target="_blank" rel="noopener noreferrer">
-              3devs.solutions
-            </a>
+                        return (
+                          <button
+                            key={subitem.key}
+                            type="button"
+                            className={`pp-navSub__item ${isSubActive ? "is-active" : ""}`}
+                            onClick={() => handleNavigate(subitem.ruta)}
+                            title={subitem.label}
+                          >
+                            <span className="pp-navSub__dot" aria-hidden="true" />
+                            <span className="pp-navSub__label">{subitem.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+
+          <div className="pp-sidebar__bottom">
+            <button
+              type="button"
+              className="pp-logout"
+              onClick={() => setShowLogoutModal(true)}
+              title="Cerrar sesión"
+            >
+              <span className="pp-logout__icon">
+                <FontAwesomeIcon icon={faSignOutAlt} />
+              </span>
+              <span className="pp-logout__label">Cerrar sesión</span>
+            </button>
           </div>
-        </div>
-      </aside>
+        </aside>
 
-      {/* ── CONTENIDO PRINCIPAL ── */}
-      <main className="me-content">
-        <div className="me-content__inner">
-          {hasChildren ? children : <StableOutlet />}
-        </div>
-      </main>
+        <main className="pp-content">
+          <div className="pp-content__inner">
+            {hasChildren ? children : <StableOutlet />}
+          </div>
+        </main>
 
-      {/* ── MODAL LOGOUT ── */}
-      <ConfirmLogoutModal
-        open={showModal}
-        onClose={() => setShowModal(false)}
-        onConfirm={confirmarCierreSesion}
-      />
+        <ConfirmLogoutModal
+          open={showLogoutModal}
+          onClose={() => setShowLogoutModal(false)}
+          onConfirm={confirmarCierreSesion}
+          loading={closingUI}
+        />
       </div>
     </MesasShellContext.Provider>
   );

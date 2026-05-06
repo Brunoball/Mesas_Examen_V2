@@ -250,35 +250,6 @@ background:rgba(0,85,187,.07);
 }
 
 
-/* Forzar estética clara de Docentes aunque existan estilos globales activos. */
-.docentes-page.mov-page,
-.docentes-page.mov-page .docentes-card.mov-card,
-.docentes-page.mov-page .docentes-table-wrap.mov-tableWrap,
-.docentes-page.mov-page .docentes-footer,
-.docentes-page.mov-page .docentes-modal,
-.docentes-page.mov-page .docentes-modal-header,
-.docentes-page.mov-page .docentes-info-card,
-.docentes-page.mov-page .docentes-info-table-wrap,
-.docentes-page.mov-page .docentes-tabsInline,
-.docentes-page.mov-page .docentes-filterTabs__label{
-  background:#fff !important;
-}
-
-.docentes-page.mov-page .docentes-section-title,
-.docentes-page.mov-page .docentes-name-cell strong,
-.docentes-page.mov-page .docentes-footer strong,
-.docentes-page.mov-page .docentes-modal-header h2,
-.docentes-page.mov-page .docentes-info-head h3,
-.docentes-page.mov-page .docentes-info-card strong{
-  color:var(--balto-ink) !important;
-}
-
-.docentes-page.mov-page .docentes-footer,
-.docentes-page.mov-page .docentes-modal,
-.docentes-page.mov-page .docentes-info-table-wrap{
-  border-color:color-mix(in srgb, var(--mov-border) 70%, #fff) !important;
-}
-
 /* =========================
    Alertas
 ========================= */

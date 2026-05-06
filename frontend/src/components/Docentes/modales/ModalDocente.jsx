@@ -1,13 +1,22 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
+  faBriefcase,
   faCalendarDays,
+  faCheckCircle,
+  faClock,
+  faInfoCircle,
   faPlus,
   faSave,
   faTimes,
   faTrash,
+  faUserCheck,
+  faUserSlash,
   faUserTie,
 } from '@fortawesome/free-solid-svg-icons';
+import ModalTutorialGlobal from '../../Global/Modales/ModalTutorialGlobal';
+import '../../Global/Global_css/Global_Modals.css';
 
 const DIAS_SEMANA_DEFAULT = [
   { id_dia_semana: 1, dia_semana: 'LUNES' },
@@ -17,8 +26,14 @@ const DIAS_SEMANA_DEFAULT = [
   { id_dia_semana: 5, dia_semana: 'VIERNES' },
 ];
 
+const MAX_REGLAS_DISPONIBILIDAD = 5;
+const TAB_FICHA = 'ficha';
+const TAB_ORGANIZACION = 'organizacion';
+
 function idsDesdeItem(item) {
-  if (Array.isArray(item?.ids_docentes)) return item.ids_docentes.map(Number).filter(Boolean);
+  if (Array.isArray(item?.ids_docentes)) {
+    return item.ids_docentes.map(Number).filter(Boolean);
+  }
   if (item?.ids_docentes_texto) {
     return String(item.ids_docentes_texto).split(',').map(Number).filter(Boolean);
   }
@@ -33,33 +48,135 @@ function normalizarDisponibilidad(bloque) {
   };
 }
 
-export default function ModalDocente({ modo = 'crear', item, catalogos, onGuardar, onCerrar }) {
-  const [docente, setDocente] = useState('');
-  const [idCargo, setIdCargo] = useState('');
-  const [observacion, setObservacion] = useState('');
-  const [activo, setActivo] = useState(1);
-  const [disponibilidades, setDisponibilidades] = useState([]);
-  const [guardando, setGuardando] = useState(false);
-  const [error, setError] = useState('');
+function obtenerNombrePorId(lista, id, campoId, campoNombre, fallback = 'Sin seleccionar') {
+  const encontrado = (lista || []).find(
+    (item) => String(item?.[campoId]) === String(id)
+  );
+  return encontrado?.[campoNombre] || fallback;
+}
 
+function intentarAbrirSelectorFecha(e) {
+  const input = e.currentTarget.querySelector('input');
+  if (!input || input.disabled) return;
+  if (typeof input.showPicker === 'function') {
+    try { input.showPicker(); return; } catch (_) { input.focus(); }
+  }
+  input.focus();
+}
+
+function reglaTieneDatos(bloque) {
+  return Boolean(bloque?.id_dia_semana || bloque?.id_turno || bloque?.fecha);
+}
+
+function reglaTieneConfiguracionValida(bloque) {
+  if (!reglaTieneDatos(bloque)) return false;
+  if (bloque.id_turno || bloque.fecha) return true;
+  return false;
+}
+
+function obtenerEstadoInicial(modo, item) {
+  if (modo !== 'editar') {
+    return {
+      pestaniaActiva: TAB_FICHA,
+      docente: '',
+      idCargo: '',
+      activo: 1,
+      comentarios: '',
+      disponibilidades: [],
+      mostrarTutorial: false,
+      error: '',
+    };
+  }
+  return {
+    pestaniaActiva: TAB_FICHA,
+    docente: item?.docente || '',
+    idCargo: item?.id_cargo ? String(item.id_cargo) : '',
+    activo: Number(item?.activo ?? 1),
+    comentarios: item?.comentarios || item?.comentario || item?.observacion || '',
+    disponibilidades: Array.isArray(item?.disponibilidades)
+      ? item.disponibilidades.map(normalizarDisponibilidad).slice(0, MAX_REGLAS_DISPONIBILIDAD)
+      : [],
+    mostrarTutorial: false,
+    error: '',
+  };
+}
+
+export default function ModalDocente({
+  modo = 'crear',
+  item,
+  catalogos,
+  onGuardar,
+  onCerrar,
+}) {
+  const estadoInicial = useMemo(() => obtenerEstadoInicial(modo, item), [modo, item]);
+
+  const [pestaniaActiva, setPestaniaActiva] = useState(() => estadoInicial.pestaniaActiva);
+  const [docente, setDocente] = useState(() => estadoInicial.docente);
+  const [idCargo, setIdCargo] = useState(() => estadoInicial.idCargo);
+  const [activo, setActivo] = useState(() => estadoInicial.activo);
+  const [comentarios, setComentarios] = useState(() => estadoInicial.comentarios);
+  const [disponibilidades, setDisponibilidades] = useState(() => estadoInicial.disponibilidades);
+  const [mostrarTutorial, setMostrarTutorial] = useState(() => estadoInicial.mostrarTutorial);
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState(() => estadoInicial.error);
+
+  const primerRender = useRef(true);
   const editando = modo === 'editar' && item?.id_docente;
 
   useEffect(() => {
-    setDocente(item?.docente || '');
-    setIdCargo(item?.id_cargo ? String(item.id_cargo) : '');
-    setObservacion(item?.observacion || '');
-    setActivo(Number(item?.activo ?? 1));
-    setDisponibilidades(
-      Array.isArray(item?.disponibilidades)
-        ? item.disponibilidades.map(normalizarDisponibilidad)
-        : []
-    );
-  }, [item]);
+    if (primerRender.current) { primerRender.current = false; return; }
+    const nuevoEstado = obtenerEstadoInicial(modo, item);
+    setPestaniaActiva(nuevoEstado.pestaniaActiva);
+    setDocente(nuevoEstado.docente);
+    setIdCargo(nuevoEstado.idCargo);
+    setActivo(nuevoEstado.activo);
+    setComentarios(nuevoEstado.comentarios);
+    setDisponibilidades(nuevoEstado.disponibilidades);
+    setMostrarTutorial(nuevoEstado.mostrarTutorial);
+    setError(nuevoEstado.error);
+  }, [modo, item]);
+
+  useEffect(() => {
+    const body = document.body;
+    const overflowAnterior = body.style.overflow;
+    body.style.overflow = 'hidden';
+    return () => { body.style.overflow = overflowAnterior; };
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (mostrarTutorial) { setMostrarTutorial(false); return; }
+      if (!guardando) onCerrar();
+    };
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, [guardando, mostrarTutorial, onCerrar]);
 
   const titulo = editando ? 'Editar docente' : 'Agregar docente';
-  const diasSemana = Array.isArray(catalogos?.dias_semana) && catalogos.dias_semana.length > 0
-    ? catalogos.dias_semana
-    : DIAS_SEMANA_DEFAULT;
+
+  const diasSemana = useMemo(() => {
+    return Array.isArray(catalogos?.dias_semana) && catalogos.dias_semana.length > 0
+      ? catalogos.dias_semana
+      : DIAS_SEMANA_DEFAULT;
+  }, [catalogos?.dias_semana]);
+
+  const cargoSeleccionado = useMemo(
+    () => obtenerNombrePorId(catalogos?.cargos, idCargo, 'id_cargo', 'cargo'),
+    [catalogos?.cargos, idCargo]
+  );
+
+  const reglasConDatos = useMemo(
+    () => disponibilidades.filter(reglaTieneDatos),
+    [disponibilidades]
+  );
+
+  const disponibilidadesCompletas = useMemo(
+    () => reglasConDatos.filter(reglaTieneConfiguracionValida).length,
+    [reglasConDatos]
+  );
 
   const resumenRegistros = useMemo(() => {
     const ids = idsDesdeItem(item);
@@ -67,14 +184,20 @@ export default function ModalDocente({ modo = 'crear', item, catalogos, onGuarda
     return `Este docente tiene ${ids.length} registros internos unificados. Se actualizarán juntos para no repetirlo.`;
   }, [editando, item]);
 
+  const puedeAgregarDisponibilidad = disponibilidades.length < MAX_REGLAS_DISPONIBILIDAD;
+
   function agregarDisponibilidad() {
-    setDisponibilidades((prev) => [...prev, { id_dia_semana: '', id_turno: '', fecha: '' }]);
+    setError('');
+    setDisponibilidades((prev) => {
+      if (prev.length >= MAX_REGLAS_DISPONIBILIDAD) return prev;
+      return [...prev, { id_dia_semana: '', id_turno: '', fecha: '' }];
+    });
   }
 
   function actualizarDisponibilidad(index, campo, valor) {
-    setDisponibilidades((prev) => prev.map((itemBloque, i) => (
-      i === index ? { ...itemBloque, [campo]: valor } : itemBloque
-    )));
+    setDisponibilidades((prev) =>
+      prev.map((itemBloque, i) => i === index ? { ...itemBloque, [campo]: valor } : itemBloque)
+    );
   }
 
   function eliminarDisponibilidad(index) {
@@ -86,166 +209,415 @@ export default function ModalDocente({ modo = 'crear', item, catalogos, onGuarda
     setError('');
 
     if (!docente.trim()) {
+      setPestaniaActiva(TAB_FICHA);
       setError('El nombre del docente es obligatorio.');
       return;
     }
-
     if (!idCargo) {
+      setPestaniaActiva(TAB_FICHA);
       setError('Debe seleccionar un cargo.');
       return;
     }
 
-    const disponibilidadesValidas = disponibilidades
-      .filter((bloque) => bloque.id_dia_semana && bloque.id_turno)
-      .map((bloque) => ({
-        id_dia_semana: Number(bloque.id_dia_semana),
-        id_turno: Number(bloque.id_turno),
-        fecha: bloque.fecha || null,
-      }));
+    const reglasConDatosActuales = disponibilidades.filter(reglaTieneDatos);
+    const reglaInvalida = reglasConDatosActuales.find((bloque) => !reglaTieneConfiguracionValida(bloque));
+    if (reglaInvalida) {
+      setPestaniaActiva(TAB_ORGANIZACION);
+      setError('Cada regla debe tener al menos un turno o una fecha. Los slots vacíos se ignoran.');
+      return;
+    }
 
+    const reglasSoloTurno = reglasConDatosActuales.filter(
+      (bloque) => bloque.id_turno && !bloque.fecha && !bloque.id_dia_semana
+    );
+    if (reglasSoloTurno.length > 1) {
+      setPestaniaActiva(TAB_ORGANIZACION);
+      setError('Solo se permite una regla de "solo turno" sin fecha.');
+      return;
+    }
+
+    const disponibilidadesValidas = reglasConDatosActuales.map((bloque) => ({
+      id_dia_semana: bloque.id_dia_semana ? Number(bloque.id_dia_semana) : null,
+      id_turno: bloque.id_turno ? Number(bloque.id_turno) : null,
+      fecha: bloque.fecha || null,
+    }));
+
+    const comentariosLimpios = comentarios.trim();
     setGuardando(true);
-    const res = await onGuardar({
-      id_docente: item?.id_docente || 0,
-      ids_docentes: idsDesdeItem(item),
-      docente: docente.trim(),
-      id_cargo: Number(idCargo),
-      observacion: observacion.trim(),
-      activo,
-      disponibilidades: disponibilidadesValidas,
-    });
-    setGuardando(false);
 
-    if (res.ok) {
-      onCerrar();
-    } else {
-      setError(res.mensaje || 'No se pudo guardar el docente.');
+    try {
+      const res = await onGuardar({
+        id_docente: item?.id_docente || 0,
+        ids_docentes: idsDesdeItem(item),
+        docente: docente.trim(),
+        id_cargo: Number(idCargo),
+        activo,
+        comentarios: comentariosLimpios,
+        comentario: comentariosLimpios,
+        observacion: comentariosLimpios,
+        disponibilidades: disponibilidadesValidas,
+      });
+      if (res?.ok) { onCerrar(); }
+      else { setError(res?.mensaje || 'No se pudo guardar el docente.'); }
+    } catch (err) {
+      setError(err?.message || 'No se pudo guardar el docente.');
+    } finally {
+      setGuardando(false);
     }
   }
 
-  return (
-    <div className="docentes-modal-overlay" role="dialog" aria-modal="true">
-      <div className="docentes-modal docentes-modal-lg">
-        <div className="docentes-modal-header">
-          <div>
-            <h2><FontAwesomeIcon icon={faUserTie} /> {titulo}</h2>
-            <p>Datos principales del docente y días en los que asiste a la escuela.</p>
+  const modal = (
+    <div
+      className="gm-modalOverlay"
+      role="presentation"
+      onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+    >
+      <div
+        className="gm-modal gm-modal--docente"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="gm-docente-title"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        {/* HEADER */}
+        <div className="gm-modal__header">
+          <div className="gm-modal__headIcon" aria-hidden="true">
+            <FontAwesomeIcon icon={faUserTie} />
           </div>
-          <button type="button" className="docentes-modal-close" onClick={onCerrar}>
+          <div className="gm-modal__headText">
+            <h2 id="gm-docente-title">{titulo}</h2>
+            <p>Completá la ficha principal y organizá hasta {MAX_REGLAS_DISPONIBILIDAD} reglas de disponibilidad.</p>
+          </div>
+          <button
+            type="button"
+            className="gm-modal__close"
+            onClick={onCerrar}
+            disabled={guardando}
+            aria-label="Cerrar modal"
+          >
             <FontAwesomeIcon icon={faTimes} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="docentes-form">
-          {error && <div className="docentes-alerta docentes-alerta-error">{error}</div>}
-          {resumenRegistros && <div className="docentes-alerta docentes-alerta-info">{resumenRegistros}</div>}
+        <form onSubmit={handleSubmit} className="gm-modal__form">
+          <div className="gm-modal__content">
 
-          <div className="docentes-form-grid">
-            <label className="docentes-label">
-              Nombre y apellido
-              <input
-                type="text"
-                value={docente}
-                onChange={(e) => setDocente(e.target.value.toUpperCase())}
-                placeholder="Ej: PÉREZ, JUAN"
-                autoFocus
-              />
-            </label>
-
-            <label className="docentes-label">
-              Cargo
-              <select value={idCargo} onChange={(e) => setIdCargo(e.target.value)}>
-                <option value="">Seleccionar cargo</option>
-                {(catalogos.cargos || []).map((cargo) => (
-                  <option key={cargo.id_cargo} value={cargo.id_cargo}>{cargo.cargo}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="docentes-label docentes-label-full">
-              Observación
-              <textarea
-                value={observacion}
-                onChange={(e) => setObservacion(e.target.value)}
-                placeholder="Observación opcional, motivo de baja, licencia, etc."
-                rows={3}
-              />
-            </label>
-          </div>
-
-          <section className="docentes-bloques-box">
-            <div className="docentes-bloques-header">
-              <div>
-                <h3><FontAwesomeIcon icon={faCalendarDays} /> Disponibilidad del docente</h3>
-                <p>Agregá los días de lunes a viernes y el turno en el que el docente va a la escuela.</p>
+            {/* ALERTS */}
+            {error && (
+              <div className="gm-alert gm-alert--error gm-alert--banner">
+                <FontAwesomeIcon icon={faInfoCircle} />
+                <span>{error}</span>
               </div>
-              <button type="button" className="docentes-btn docentes-btn-light" onClick={agregarDisponibilidad}>
-                <FontAwesomeIcon icon={faPlus} /> Agregar día
+            )}
+            {resumenRegistros && (
+              <div className="gm-alert gm-alert--info gm-alert--banner">
+                <FontAwesomeIcon icon={faInfoCircle} />
+                <span>{resumenRegistros}</span>
+              </div>
+            )}
+
+            {/* TABS */}
+            <div className="gm-tabs" role="tablist" aria-label="Secciones del docente">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={pestaniaActiva === TAB_FICHA}
+                className={`gm-tab${pestaniaActiva === TAB_FICHA ? ' is-active' : ''}`}
+                onClick={() => setPestaniaActiva(TAB_FICHA)}
+              >
+                <FontAwesomeIcon icon={faUserTie} />
+                <span>Ficha principal</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={pestaniaActiva === TAB_ORGANIZACION}
+                className={`gm-tab${pestaniaActiva === TAB_ORGANIZACION ? ' is-active' : ''}`}
+                onClick={() => setPestaniaActiva(TAB_ORGANIZACION)}
+              >
+                <FontAwesomeIcon icon={faCalendarDays} />
+                <span>Organización semanal</span>
+                {disponibilidadesCompletas > 0 && (
+                  <span className="gm-tab__badge">{disponibilidadesCompletas}</span>
+                )}
               </button>
             </div>
 
-            {disponibilidades.length === 0 && (
-              <div className="docentes-empty-small">Sin disponibilidad cargada.</div>
+            {/* TAB: FICHA */}
+            {pestaniaActiva === TAB_FICHA && (
+              <section className="gm-panel" role="tabpanel">
+                <div className="gm-panel__head">
+                  <div>
+                    <span className="gm-panel__eyebrow">Ficha principal</span>
+                    <h3><FontAwesomeIcon icon={faUserTie} /> Datos del docente</h3>
+                  </div>
+                  <span className="gm-panel__tag">Obligatorio</span>
+                </div>
+
+                <div className="gm-panel__body">
+                  {/* Nombre — fila completa */}
+                  <div className="gm-formRow gm-formRow--full">
+                    <label className="gm-field">
+                      <input
+                        className="gm-input"
+                        type="text"
+                        value={docente}
+                        onChange={(e) => setDocente(e.target.value.toUpperCase())}
+                        placeholder=" "
+                        disabled={guardando}
+                      />
+                      <span className="gm-label">Nombre y apellido *</span>
+                    </label>
+                  </div>
+
+                  {/* Cargo + Estado — fila partida */}
+                  <div className="gm-formRow gm-formRow--split">
+                    <label className="gm-field">
+                      <select
+                        className="gm-input gm-select"
+                        value={idCargo}
+                        onChange={(e) => setIdCargo(e.target.value)}
+                        disabled={guardando}
+                      >
+                        <option value="">Seleccionar cargo</option>
+                        {(catalogos?.cargos || []).map((cargo) => (
+                          <option key={cargo.id_cargo} value={cargo.id_cargo}>
+                            {cargo.cargo}
+                          </option>
+                        ))}
+                      </select>
+                      <span className={`gm-label${idCargo ? ' is-up' : ''}`}>Cargo *</span>
+                    </label>
+
+                    <div className="gm-field gm-field--status">
+                      <div className="gm-statusToggle" role="group" aria-label="Estado del docente">
+                        <button
+                          type="button"
+                          className={`gm-statusToggle__btn${Number(activo) === 1 ? ' is-active' : ''}`}
+                          onClick={() => setActivo(1)}
+                          disabled={guardando}
+                        >
+                          <FontAwesomeIcon icon={faUserCheck} /> Activo
+                        </button>
+                        <button
+                          type="button"
+                          className={`gm-statusToggle__btn gm-statusToggle__btn--danger${Number(activo) === 0 ? ' is-active' : ''}`}
+                          onClick={() => setActivo(0)}
+                          disabled={guardando}
+                        >
+                          <FontAwesomeIcon icon={faUserSlash} /> Inactivo
+                        </button>
+                      </div>
+                      <span className="gm-label is-up">Estado</span>
+                    </div>
+                  </div>
+
+                  {/* Comentarios — fila completa */}
+                  <div className="gm-formRow gm-formRow--full">
+                    <label className="gm-field gm-field--textarea">
+                      <textarea
+                        className="gm-input"
+                        value={comentarios}
+                        onChange={(e) => setComentarios(e.target.value)}
+                        placeholder=" "
+                        disabled={guardando}
+                        maxLength={500}
+                      />
+                      <span className={`gm-label${comentarios ? ' is-up' : ''}`}>
+                        Comentarios opcionales
+                      </span>
+                    </label>
+                  </div>
+
+                </div>
+              </section>
             )}
 
-            {disponibilidades.map((bloque, index) => (
-              <div className="docentes-bloque-row" key={`${bloque.id_dia_semana}-${bloque.id_turno}-${bloque.fecha}-${index}`}>
-                <label>
-                  Día
-                  <select
-                    value={bloque.id_dia_semana || ''}
-                    onChange={(e) => actualizarDisponibilidad(index, 'id_dia_semana', e.target.value)}
-                  >
-                    <option value="">Seleccionar día</option>
-                    {diasSemana.map((dia) => (
-                      <option key={dia.id_dia_semana} value={dia.id_dia_semana}>{dia.dia_semana}</option>
-                    ))}
-                  </select>
-                </label>
+            {/* TAB: ORGANIZACIÓN */}
+            {pestaniaActiva === TAB_ORGANIZACION && (
+              <section className="gm-panel gm-panel--schedule" role="tabpanel">
+                <div className="gm-panel__head gm-panel__head--split">
+                  <div>
+                    <span className="gm-panel__eyebrow">Organización semanal</span>
+                    <h3><FontAwesomeIcon icon={faCalendarDays} /> Disponibilidad</h3>
+                  </div>
+                  <div className="gm-panel__actions">
+                    <button
+                      type="button"
+                      className={`gm-iconBtn gm-iconBtn--help${mostrarTutorial ? ' is-active' : ''}`}
+                      onClick={() => setMostrarTutorial((v) => !v)}
+                      title={mostrarTutorial ? 'Cerrar ayuda' : 'Ver tutorial'}
+                      aria-label={mostrarTutorial ? 'Cerrar ayuda de disponibilidad' : 'Ver ayuda de disponibilidad'}
+                    >
+                      <FontAwesomeIcon icon={faInfoCircle} />
+                    </button>
+                    <button
+                      type="button"
+                      className="gm-btn gm-btn--soft"
+                      onClick={agregarDisponibilidad}
+                      disabled={guardando || !puedeAgregarDisponibilidad}
+                    >
+                      <FontAwesomeIcon icon={faPlus} /> Agregar regla
+                    </button>
+                  </div>
+                </div>
 
-                <label>
-                  Turno
-                  <select
-                    value={bloque.id_turno || ''}
-                    onChange={(e) => actualizarDisponibilidad(index, 'id_turno', e.target.value)}
-                  >
-                    <option value="">Seleccionar turno</option>
-                    {(catalogos.turnos || []).map((turno) => (
-                      <option key={turno.id_turno} value={turno.id_turno}>{turno.turno}</option>
-                    ))}
-                  </select>
-                </label>
+                <div className="gm-panel__body">
+                  <div className="gm-ruleCounter">
+                    <span>{disponibilidades.length}/{MAX_REGLAS_DISPONIBILIDAD} reglas creadas</span>
+                    <strong>Los slots vacíos se ignoran al guardar.</strong>
+                  </div>
 
-                <label>
-                  Fecha puntual opcional
-                  <input
-                    type="date"
-                    value={bloque.fecha || ''}
-                    onChange={(e) => actualizarDisponibilidad(index, 'fecha', e.target.value)}
-                  />
-                </label>
+                  {disponibilidades.length === 0 && (
+                    <div className="gm-emptySchedule">
+                      <div className="gm-emptySchedule__icon">
+                        <FontAwesomeIcon icon={faCalendarDays} />
+                      </div>
+                      <strong>Sin reglas cargadas</strong>
+                      <span>Usá "Agregar regla" para definir hasta {MAX_REGLAS_DISPONIBILIDAD} indisponibilidades del docente.</span>
+                    </div>
+                  )}
 
-                <button
-                  type="button"
-                  className="docentes-icon-btn docentes-icon-danger"
-                  onClick={() => eliminarDisponibilidad(index)}
-                  title="Quitar disponibilidad"
-                >
-                  <FontAwesomeIcon icon={faTrash} />
-                </button>
-              </div>
-            ))}
-          </section>
+                  {disponibilidades.length > 0 && (
+                    <div className="gm-scheduleList">
+                      {disponibilidades.map((bloque, index) => (
+                        <article
+                          className="gm-scheduleCard"
+                          key={`${bloque.id_dia_semana}-${bloque.id_turno}-${bloque.fecha}-${index}`}
+                        >
+                          <div className="gm-scheduleCard__head">
+                            <div className="gm-scheduleCard__number">
+                              {String(index + 1).padStart(2, '0')}
+                            </div>
+                            <div>
+                              <strong>Regla de disponibilidad</strong>
+                              <span>Turno, fecha o combinación puntual</span>
+                            </div>
+                            <button
+                              type="button"
+                              className="gm-iconBtn gm-iconBtn--danger"
+                              onClick={() => eliminarDisponibilidad(index)}
+                              title="Quitar regla"
+                              disabled={guardando}
+                            >
+                              <FontAwesomeIcon icon={faTrash} />
+                            </button>
+                          </div>
 
-          <div className="docentes-modal-actions">
-            <button type="button" className="docentes-btn docentes-btn-light" onClick={onCerrar} disabled={guardando}>
+                          <div className="gm-scheduleGrid gm-scheduleGrid--rules">
+                            <label className="gm-field">
+                              <select
+                                className="gm-input gm-select"
+                                value={bloque.id_dia_semana || ''}
+                                onChange={(e) => actualizarDisponibilidad(index, 'id_dia_semana', e.target.value)}
+                                disabled={guardando}
+                              >
+                                <option value="">Sin día semanal</option>
+                                {diasSemana.map((dia) => (
+                                  <option key={dia.id_dia_semana} value={dia.id_dia_semana}>
+                                    {dia.dia_semana}
+                                  </option>
+                                ))}
+                              </select>
+                              <span className={`gm-label${bloque.id_dia_semana ? ' is-up' : ''}`}>
+                                Día semanal
+                              </span>
+                            </label>
+
+                            <label className="gm-field">
+                              <select
+                                className="gm-input gm-select"
+                                value={bloque.id_turno || ''}
+                                onChange={(e) => actualizarDisponibilidad(index, 'id_turno', e.target.value)}
+                                disabled={guardando}
+                              >
+                                <option value="">Sin turno</option>
+                                {(catalogos?.turnos || []).map((turno) => (
+                                  <option key={turno.id_turno} value={turno.id_turno}>
+                                    {turno.turno}
+                                  </option>
+                                ))}
+                              </select>
+                              <span className={`gm-label${bloque.id_turno ? ' is-up' : ''}`}>
+                                Turno
+                              </span>
+                            </label>
+
+                            <label
+                              className="gm-field gm-field--date"
+                              onClick={intentarAbrirSelectorFecha}
+                            >
+                              <input
+                                className="gm-input"
+                                type="date"
+                                value={bloque.fecha || ''}
+                                onChange={(e) => actualizarDisponibilidad(index, 'fecha', e.target.value)}
+                                disabled={guardando}
+                              />
+                              <span className={`gm-label${bloque.fecha ? ' is-up' : ''}`}>
+                                Fecha puntual
+                              </span>
+                            </label>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+          </div>
+
+          {/* FOOTER ACTIONS */}
+          <div className="gm-modal__actions">
+            <button
+              type="button"
+              className="gm-btn gm-btn--ghost"
+              onClick={onCerrar}
+              disabled={guardando}
+            >
               Cancelar
             </button>
-            <button type="submit" className="docentes-btn docentes-btn-primary" disabled={guardando}>
-              <FontAwesomeIcon icon={faSave} /> {guardando ? 'Guardando...' : 'Guardar docente'}
+            <button
+              type="submit"
+              className="gm-btn gm-btn--primary"
+              disabled={guardando}
+            >
+              <FontAwesomeIcon icon={faSave} />{' '}
+              {guardando ? 'Guardando...' : 'Guardar docente'}
             </button>
           </div>
         </form>
+
+        {mostrarTutorial && (
+          <ModalTutorialGlobal
+            titulo="Cómo configurar indisponibilidades"
+            descripcion="Usá las reglas para indicar cuándo el docente no puede ser asignado."
+            onCerrar={() => setMostrarTutorial(false)}
+          >
+            <ul className="gm-tutorialList">
+              <li>
+                <strong>Solo Turno</strong>
+                <span>(dejar la fecha vacía): nunca puede en ese turno (máximo uno).</span>
+              </li>
+              <li>
+                <strong>Solo Fecha</strong>
+                <span>(dejar turno en blanco): no puede en todo ese día.</span>
+              </li>
+              <li>
+                <strong>Turno + Fecha</strong>
+                <span>no puede en ese turno ese día.</span>
+              </li>
+              <li>
+                <strong>Hasta {MAX_REGLAS_DISPONIBILIDAD} reglas</strong>
+                <span>los slots vacíos se ignoran.</span>
+              </li>
+            </ul>
+          </ModalTutorialGlobal>
+        )}
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }

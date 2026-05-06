@@ -16,7 +16,7 @@ import {
 import { useDocentes } from './hooks/useDocentes.js';
 import ModalDocente from './modales/ModalDocente.jsx';
 import ModalInfoDocente from './modales/ModalInfoDocente.jsx';
-import ModalConfirmarDocente from './modales/ModalConfirmarDocente.jsx';
+import ModalEliminarGlobal from '../Global/Modales/ModalEliminarGlobal.jsx';
 import '../Global/Global_css/roots.css';
 import '../Global/Global_css/Global_Section.css';
 import '../Global/Global_css/Global_DivTable.css';
@@ -134,11 +134,69 @@ export default function Docentes() {
     setModalConfirmar({ abierto: true, tipo, item });
   }
 
-  async function confirmarOperacion(motivo = '') {
+  async function confirmarOperacion({ motivo = '' } = {}) {
     if (modalConfirmar.tipo === 'baja') return darBaja(modalConfirmar.item, motivo);
     if (modalConfirmar.tipo === 'alta') return darAlta(modalConfirmar.item);
     if (modalConfirmar.tipo === 'eliminar') return eliminar(modalConfirmar.item);
     return { ok: false, mensaje: 'Operación inválida.' };
+  }
+
+  function obtenerConfigModalConfirmar() {
+    const item = modalConfirmar.item || {};
+    const cantidadRegistros = Number(item.cantidad_registros || 0);
+    const idsTexto = safeText(item.ids_docentes_texto || item.id_docente);
+
+    const details = [
+      { label: 'Docente', value: item.docente },
+      { label: 'Cargo', value: item.cargo || 'Sin cargo' },
+      {
+        label: cantidadRegistros > 1 ? 'Registros unificados' : 'ID docente',
+        value: cantidadRegistros > 1 ? `${cantidadRegistros} registros (${idsTexto})` : idsTexto,
+      },
+    ];
+
+    if (modalConfirmar.tipo === 'baja') {
+      return {
+        operacion: 'baja',
+        title: 'Dar de baja docente',
+        message: 'El docente dejará de figurar como activo, pero se conservará en la sección de dados de baja.',
+        warning: 'Podés agregar un motivo u observación antes de confirmar.',
+        confirmLabel: 'Dar de baja',
+        loadingLabel: 'Procesando...',
+        successMessage: 'Docente dado de baja correctamente.',
+        errorMessage: 'No se pudo dar de baja el docente.',
+        details,
+        showReason: true,
+        reasonLabel: 'Motivo u observación de baja',
+        reasonPlaceholder: 'Ej: licencia, jubilación, pase, etc.',
+      };
+    }
+
+    if (modalConfirmar.tipo === 'alta') {
+      return {
+        operacion: 'alta',
+        title: 'Dar de alta docente',
+        message: 'El docente volverá a figurar como activo en el listado principal.',
+        warning: '',
+        confirmLabel: 'Dar de alta',
+        loadingLabel: 'Procesando...',
+        successMessage: 'Docente dado de alta correctamente.',
+        errorMessage: 'No se pudo dar de alta el docente.',
+        details,
+      };
+    }
+
+    return {
+      operacion: 'eliminar',
+      title: 'Eliminar docente',
+      message: '¿Seguro que querés eliminar este docente definitivamente?',
+      warning: 'Esta acción no se puede deshacer. Si tenía cátedras asignadas, quedarán sin docente.',
+      confirmLabel: 'Eliminar',
+      loadingLabel: 'Eliminando...',
+      successMessage: 'Docente eliminado correctamente.',
+      errorMessage: 'No se pudo eliminar el docente.',
+      details,
+    };
   }
 
   const totalVisible = Array.isArray(docentes) ? docentes.length : 0;
@@ -354,13 +412,7 @@ export default function Docentes() {
         />
       )}
 
-      {modalInfo.abierto && modalInfo.cargando && (
-        <div className="docentes-modal-overlay">
-          <div className="docentes-modal docentes-modal-sm">
-            <div className="docentes-empty">Cargando información del docente...</div>
-          </div>
-        </div>
-      )}
+
 
       {modalInfo.abierto && modalInfo.item && (
         <ModalInfoDocente
@@ -370,11 +422,12 @@ export default function Docentes() {
       )}
 
       {modalConfirmar.abierto && (
-        <ModalConfirmarDocente
-          tipo={modalConfirmar.tipo}
-          item={modalConfirmar.item}
-          onConfirmar={confirmarOperacion}
-          onCerrar={() => setModalConfirmar({ abierto: false, tipo: '', item: null })}
+        <ModalEliminarGlobal
+          open={modalConfirmar.abierto}
+          row={modalConfirmar.item}
+          onConfirm={confirmarOperacion}
+          onClose={() => setModalConfirmar({ abierto: false, tipo: '', item: null })}
+          {...obtenerConfigModalConfirmar()}
         />
       )}
     </div>
