@@ -106,8 +106,14 @@ const Inicio = () => {
         setCargando(false);
         return;
       }
-      const token = data.token;
+      const token = data.token || data.session_key;
+      const sessionKey = data.session_key || data.token;
+
       if (token) localStorage.setItem('token', token);
+      if (sessionKey) localStorage.setItem('session_key', sessionKey);
+      if (data.csrf_token) localStorage.setItem('csrf_token', data.csrf_token);
+      if (data.tenant) localStorage.setItem('tenant', JSON.stringify(data.tenant));
+      if (data.tenant?.idTenant) localStorage.setItem('idTenant', String(data.tenant.idTenant));
 
       const usuarioResp = data.usuario || {};
       let rol = (usuarioResp.rol ?? data.rol ?? '').toString();
@@ -120,6 +126,8 @@ const Inicio = () => {
 
       const usuarioFinal = {
         ...usuarioResp,
+        idTenant: usuarioResp.idTenant || data.tenant?.idTenant || null,
+        tenant: data.tenant || usuarioResp.tenant || null,
         rol: normalizeRol(rol),
       };
       localStorage.setItem('usuario', JSON.stringify(usuarioFinal));

@@ -198,12 +198,18 @@ function mesas_armado_grupos_finales_core(PDO $pdo, array $opciones = []): array
             );
         }
 
+        $blindajeCobertura = mesas_armado_grupos_blindar_cobertura_salida($pdo, $horasTurnos, $disponibilidadDocentes);
+
         if ($confirmarGrupos) {
+            // Confirmar solo debe dejar como armadas las mesas que realmente quedaron agrupadas.
+            // Tambien limpia observaciones viejas de numeros que fueron rescatados por reoptimizacion.
             $pdo->exec("
-                UPDATE mesas
-                SET estado = 'armada', observacion = NULL
-                WHERE numero_mesa IS NOT NULL
-                  AND estado <> 'observada'
+                UPDATE mesas me
+                INNER JOIN mesas_grupos mg
+                    ON mg.numero_mesa = me.numero_mesa
+                SET me.estado = 'armada',
+                    me.observacion = NULL
+                WHERE me.numero_mesa IS NOT NULL
             ");
         }
 
@@ -219,7 +225,7 @@ function mesas_armado_grupos_finales_core(PDO $pdo, array $opciones = []): array
             'agrupacion_final_generada' => true,
             'reoptimizacion_ejecutada' => is_array($resultadoReoptimizacion),
             'estructura' => 'simple_sin_detalle',
-            'criterio' => 'mesas_grupos guarda una fila por numero_mesa usando numero_grupo repetido. Todo numero_mesa con prioridad 1/taller queda como grupo individual. Correlativas quedan como anclas de fecha/turno. Las simples funcionan como comodines y la fase 7 puede moverlas de fecha/turno para completar grupos compatibles de 2 a 4 por area, sin choque de alumnos/docentes.',
+            'criterio' => 'mesas_grupos guarda una fila por numero_mesa usando numero_grupo repetido. Todo numero_mesa con prioridad 1/taller queda como grupo individual. Correlativas quedan como anclas de fecha/turno. Las simples funcionan como comodines y la fase 7 puede moverlas de fecha/turno para completar grupos compatibles de 2 a 4 por area, sin choque de alumnos. Se permite compartir docente solo si el grupo final conserva al menos 2 docentes/personas distintas; talleres quedan como excepcion individual.',
             'min_numeros_por_grupo' => $minNumeros,
             'max_numeros_por_grupo' => $maxNumeros,
             'total_numeros_leidos' => $totalNumeros,
@@ -229,6 +235,8 @@ function mesas_armado_grupos_finales_core(PDO $pdo, array $opciones = []): array
             'total_grupos_generados_inicialmente' => $totalGrupos,
             'total_filas_insertadas_inicialmente_en_mesas_grupos' => $totalFilasGrupo,
             'total_no_agrupadas_iniciales' => $totalNoAgrupadas,
+            'blindaje_cobertura' => $blindajeCobertura,
+            'total_orfanas_detectadas_por_blindaje' => $blindajeCobertura['total_orfanas_detectadas'] ?? 0,
             'total_grupos_generados' => $totalesFinales['total_grupos'],
             'total_filas_insertadas_en_mesas_grupos' => $totalesFinales['total_filas_grupo'],
             'total_no_agrupadas' => $totalesFinales['total_no_agrupadas'],
@@ -303,7 +311,21 @@ function mesas_armado_grupos_asegurar_tablas(PDO $pdo): void
 
     $pdo->exec("\n        CREATE TABLE IF NOT EXISTS mesas_grupos (\n            id_mesa_grupo INT UNSIGNED NOT NULL AUTO_INCREMENT,\n            numero_grupo INT UNSIGNED NOT NULL,\n            numero_mesa INT NOT NULL,\n            fecha_mesa DATE NOT NULL,\n            id_turno INT NOT NULL,\n            hora TIME DEFAULT NULL,\n            id_area TINYINT DEFAULT NULL,\n            orden TINYINT NOT NULL DEFAULT 1,\n            tipo_mesa ENUM('simple','correlativa','taller') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'simple',\n            prioridad TINYINT NOT NULL DEFAULT 0,\n            cantidad_alumnos INT NOT NULL DEFAULT 0,\n            estado ENUM('borrador','validado','armada','observado') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'borrador',\n            observacion VARCHAR(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n            creado_en TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,\n            PRIMARY KEY (id_mesa_grupo),\n            UNIQUE KEY uq_grupo_numero_mesa (numero_grupo, numero_mesa),\n            KEY idx_numero_grupo (numero_grupo),\n            KEY idx_numero_mesa (numero_mesa),\n            KEY idx_fecha_turno (fecha_mesa, id_turno),\n            KEY idx_area (id_area),\n            KEY idx_estado (estado),\n            CONSTRAINT fk_mesas_grupos_turno\n                FOREIGN KEY (id_turno) REFERENCES turnos(id_turno)\n                ON DELETE RESTRICT ON UPDATE CASCADE,\n            CONSTRAINT fk_mesas_grupos_area\n                FOREIGN KEY (id_area) REFERENCES areas(id_area)\n                ON DELETE SET NULL ON UPDATE CASCADE\n        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci\n    ");
 
-    $pdo->exec("\n        CREATE TABLE IF NOT EXISTS mesas_no_agrupadas (\n            id INT UNSIGNED NOT NULL AUTO_INCREMENT,\n            numero_mesa INT NOT NULL,\n            fecha_mesa DATE NOT NULL,\n            id_turno INT NOT NULL,\n            hora TIME DEFAULT NULL,\n            id_area TINYINT DEFAULT NULL,\n            tipo_mesa ENUM('simple','correlativa','taller') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'simple',\n            prioridad TINYINT NOT NULL DEFAULT 0,\n            cantidad_alumnos INT NOT NULL DEFAULT 0,\n            motivo VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,\n            estado ENUM('pendiente','reoptimizada','confirmada') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pendiente',\n            fecha_registro TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,\n            PRIMARY KEY (id),\n            KEY idx_numero_mesa (numero_mesa),\n            KEY idx_fecha_turno (fecha_mesa, id_turno),\n            KEY idx_area (id_area),\n            KEY idx_estado (estado),\n            CONSTRAINT fk_no_agrupadas_turno\n                FOREIGN KEY (id_turno) REFERENCES turnos(id_turno)\n                ON DELETE RESTRICT ON UPDATE CASCADE,\n            CONSTRAINT fk_no_agrupadas_area\n                FOREIGN KEY (id_area) REFERENCES areas(id_area)\n                ON DELETE SET NULL ON UPDATE CASCADE\n        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci\n    ");
+    $pdo->exec("\n        CREATE TABLE IF NOT EXISTS mesas_no_agrupadas (\n            id INT UNSIGNED NOT NULL AUTO_INCREMENT,\n            numero_mesa INT NOT NULL,\n            fecha_mesa DATE NULL,\n            id_turno INT NULL,\n            hora TIME DEFAULT NULL,\n            id_area TINYINT DEFAULT NULL,\n            tipo_mesa ENUM('simple','correlativa','taller') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'simple',\n            prioridad TINYINT NOT NULL DEFAULT 0,\n            cantidad_alumnos INT NOT NULL DEFAULT 0,\n            motivo VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,\n            estado ENUM('pendiente','reoptimizada','confirmada') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pendiente',\n            fecha_registro TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,\n            PRIMARY KEY (id),\n            KEY idx_numero_mesa (numero_mesa),\n            KEY idx_fecha_turno (fecha_mesa, id_turno),\n            KEY idx_area (id_area),\n            KEY idx_estado (estado),\n            CONSTRAINT fk_no_agrupadas_turno\n                FOREIGN KEY (id_turno) REFERENCES turnos(id_turno)\n                ON DELETE RESTRICT ON UPDATE CASCADE,\n            CONSTRAINT fk_no_agrupadas_area\n                FOREIGN KEY (id_area) REFERENCES areas(id_area)\n                ON DELETE SET NULL ON UPDATE CASCADE\n        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci\n    ");
+
+    // Blindaje estructural: si la tabla ya existía con fecha/turno obligatorios,
+    // se flexibiliza para poder mostrar también mesas numeradas incompletas.
+    try {
+        $pdo->exec('ALTER TABLE mesas_no_agrupadas MODIFY fecha_mesa DATE NULL');
+    } catch (Throwable $e) {
+        // No interrumpir el armado por una migración ya aplicada o no permitida.
+    }
+
+    try {
+        $pdo->exec('ALTER TABLE mesas_no_agrupadas MODIFY id_turno INT NULL');
+    } catch (Throwable $e) {
+        // No interrumpir el armado por una migración ya aplicada o no permitida.
+    }
 }
 
 function mesas_armado_grupos_columnas_tabla(PDO $pdo, string $tabla): ?array
@@ -356,7 +378,7 @@ function mesas_armado_grupos_obtener_horas_turnos(PDO $pdo): array
 
 function mesas_armado_grupos_obtener_numeros_mesa(PDO $pdo): array
 {
-    $sql = "\n        SELECT\n            me.numero_mesa,\n            MIN(me.fecha_mesa) AS fecha_mesa,\n            MIN(me.id_turno) AS id_turno,\n            MAX(me.prioridad) AS prioridad,\n            MAX(CASE WHEN me.tipo_mesa = 'correlativa' THEN 1 ELSE 0 END) AS tiene_correlativa,\n            MAX(CASE WHEN me.tipo_mesa = 'taller' OR me.id_taller IS NOT NULL OR me.prioridad = 1 THEN 1 ELSE 0 END) AS es_taller,\n            MAX(me.id_taller) AS id_taller,\n            MIN(am.id_area) AS id_area,\n            COUNT(*) AS cantidad_registros,\n            COUNT(DISTINCT p.dni) AS cantidad_alumnos,\n            COUNT(DISTINCT me.id_docente) AS cantidad_docentes,\n            COUNT(DISTINCT am.id_area) AS cantidad_areas,\n            COUNT(DISTINCT CONCAT(COALESCE(CAST(me.fecha_mesa AS CHAR), 'NULL'), '|', COALESCE(CAST(me.id_turno AS CHAR), 'NULL'))) AS cantidad_slots,\n            SUM(CASE WHEN me.estado = 'observada' THEN 1 ELSE 0 END) AS cantidad_observadas,\n            SUM(CASE WHEN me.fecha_mesa IS NULL OR me.id_turno IS NULL THEN 1 ELSE 0 END) AS cantidad_sin_slot,\n            GROUP_CONCAT(DISTINCT me.tipo_mesa ORDER BY me.tipo_mesa SEPARATOR ',') AS tipos_csv,\n            GROUP_CONCAT(DISTINCT me.id_docente ORDER BY me.id_docente SEPARATOR ',') AS docentes_csv,\n            GROUP_CONCAT(DISTINCT p.dni ORDER BY p.dni SEPARATOR ',') AS alumnos_csv,\n            GROUP_CONCAT(DISTINCT am.id_area ORDER BY am.id_area SEPARATOR ',') AS areas_csv\n        FROM mesas me\n        LEFT JOIN previas p\n            ON p.id_previa = me.id_previa\n        LEFT JOIN catedras cat\n            ON cat.id_catedra = me.id_catedra\n        LEFT JOIN areas_materias am\n            ON am.id_materia = COALESCE(cat.id_materia, p.id_materia)\n           AND am.activo = 1\n        LEFT JOIN areas a\n            ON a.id_area = am.id_area\n           AND a.activo = 1\n        WHERE me.numero_mesa IS NOT NULL\n          AND me.estado IN ('borrador', 'armada')\n        GROUP BY me.numero_mesa\n        ORDER BY\n            MIN(me.fecha_mesa) ASC,\n            MIN(me.id_turno) ASC,\n            MIN(am.id_area) ASC,\n            MAX(me.prioridad) DESC,\n            COUNT(DISTINCT p.dni) DESC,\n            me.numero_mesa ASC\n    ";
+    $sql = "\n        SELECT\n            me.numero_mesa,\n            MIN(me.fecha_mesa) AS fecha_mesa,\n            MIN(me.id_turno) AS id_turno,\n            MAX(me.prioridad) AS prioridad,\n            MAX(CASE WHEN me.tipo_mesa = 'correlativa' THEN 1 ELSE 0 END) AS tiene_correlativa,\n            MAX(CASE WHEN me.tipo_mesa = 'taller' OR me.id_taller IS NOT NULL OR me.prioridad = 1 THEN 1 ELSE 0 END) AS es_taller,\n            MAX(me.id_taller) AS id_taller,\n            MIN(am.id_area) AS id_area,\n            COUNT(*) AS cantidad_registros,\n            COUNT(DISTINCT p.dni) AS cantidad_alumnos,\n            COUNT(DISTINCT me.id_docente) AS cantidad_docentes,\n            COUNT(DISTINCT am.id_area) AS cantidad_areas,\n            COUNT(DISTINCT CONCAT(COALESCE(CAST(me.fecha_mesa AS CHAR), 'NULL'), '|', COALESCE(CAST(me.id_turno AS CHAR), 'NULL'))) AS cantidad_slots,\n            SUM(CASE WHEN me.estado = 'observada' THEN 1 ELSE 0 END) AS cantidad_observadas,\n            SUM(CASE WHEN me.fecha_mesa IS NULL OR me.id_turno IS NULL THEN 1 ELSE 0 END) AS cantidad_sin_slot,\n            GROUP_CONCAT(DISTINCT me.tipo_mesa ORDER BY me.tipo_mesa SEPARATOR ',') AS tipos_csv,\n            GROUP_CONCAT(DISTINCT me.id_docente ORDER BY me.id_docente SEPARATOR ',') AS docentes_csv,\n            GROUP_CONCAT(DISTINCT p.dni ORDER BY p.dni SEPARATOR ',') AS alumnos_csv,\n            GROUP_CONCAT(DISTINCT am.id_area ORDER BY am.id_area SEPARATOR ',') AS areas_csv\n        FROM mesas me\n        LEFT JOIN previas p\n            ON p.id_previa = me.id_previa\n        LEFT JOIN catedras cat\n            ON cat.id_catedra = me.id_catedra\n        LEFT JOIN areas_materias am\n            ON am.id_materia = COALESCE(cat.id_materia, p.id_materia)\n           AND am.activo = 1\n        LEFT JOIN areas a\n            ON a.id_area = am.id_area\n           AND a.activo = 1\n        WHERE me.numero_mesa IS NOT NULL\n          AND me.estado IN ('borrador', 'armada', 'observada')\n        GROUP BY me.numero_mesa\n        ORDER BY\n            MIN(me.fecha_mesa) ASC,\n            MIN(me.id_turno) ASC,\n            MIN(am.id_area) ASC,\n            MAX(me.prioridad) DESC,\n            COUNT(DISTINCT p.dni) DESC,\n            me.numero_mesa ASC\n    ";
 
     $stmt = $pdo->query($sql);
     $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -416,6 +438,91 @@ function mesas_armado_grupos_csv_a_array(?string $csv): array
 
     return array_values(array_filter(array_map('trim', explode(',', $csv)), static fn ($v) => $v !== ''));
 }
+function mesas_armado_grupos_es_simple_para_compartir_docente(array $numero): bool
+{
+    return empty($numero['es_taller'])
+        && (int)($numero['prioridad'] ?? 0) === 0
+        && (string)($numero['tipo_mesa'] ?? 'simple') === 'simple';
+}
+
+function mesas_armado_grupos_comparten_docente(array $a, array $b): bool
+{
+    return count(array_intersect($a['docentes'] ?? [], $b['docentes'] ?? [])) > 0;
+}
+
+function mesas_armado_grupos_misma_area(array $a, array $b): bool
+{
+    return ($a['id_area'] ?? null) !== null
+        && ($b['id_area'] ?? null) !== null
+        && (int)$a['id_area'] === (int)$b['id_area'];
+}
+
+function mesas_armado_grupos_docente_compartido_permitido(array $numero, array $actual): bool
+{
+    return mesas_armado_grupos_es_simple_para_compartir_docente($numero)
+        && mesas_armado_grupos_es_simple_para_compartir_docente($actual)
+        && mesas_armado_grupos_misma_area($numero, $actual)
+        && mesas_armado_grupos_comparten_docente($numero, $actual);
+}
+
+
+function mesas_armado_grupos_cantidad_docentes_distintos(array $numeros): int
+{
+    $docentes = [];
+
+    foreach ($numeros as $numero) {
+        foreach (($numero['docentes'] ?? []) as $idDocente) {
+            $idDocente = (int)$idDocente;
+            if ($idDocente > 0) {
+                $docentes[$idDocente] = true;
+            }
+        }
+    }
+
+    return count($docentes);
+}
+
+function mesas_armado_grupos_contiene_taller(array $numeros): bool
+{
+    foreach ($numeros as $numero) {
+        if (!empty($numero['es_taller']) || (string)($numero['tipo_mesa'] ?? '') === 'taller' || (int)($numero['prioridad'] ?? 0) === 1) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function mesas_armado_grupos_cumple_minimo_docentes_distintos(array $numeros, int $minDocentes = 2): bool
+{
+    if (mesas_armado_grupos_contiene_taller($numeros)) {
+        return true;
+    }
+
+    if (count($numeros) < 2) {
+        return false;
+    }
+
+    return mesas_armado_grupos_cantidad_docentes_distintos($numeros) >= $minDocentes;
+}
+
+function mesas_armado_grupos_score_candidato_para_grupo(array $numero, array $grupo): int
+{
+    $score = 0;
+
+    foreach ($grupo as $actual) {
+        if (mesas_armado_grupos_docente_compartido_permitido($numero, $actual)) {
+            $score += 100000;
+        } elseif (mesas_armado_grupos_misma_area($numero, $actual)) {
+            $score += 1000;
+        }
+    }
+
+    $score += (int)($numero['prioridad'] ?? 0) * 100;
+    $score += (int)($numero['cantidad_alumnos'] ?? 0);
+
+    return $score;
+}
 
 function mesas_armado_grupos_motivo_invalido(array $numero, array $disponibilidadDocentes): ?string
 {
@@ -463,6 +570,17 @@ function mesas_armado_grupos_formar_subgrupos(array $bucket, int $minNumeros, in
         $base = array_shift($pendientes);
         $grupo[] = $base;
 
+        usort($pendientes, static function (array $a, array $b) use ($grupo): int {
+            $scoreA = mesas_armado_grupos_score_candidato_para_grupo($a, $grupo);
+            $scoreB = mesas_armado_grupos_score_candidato_para_grupo($b, $grupo);
+
+            if ($scoreA !== $scoreB) {
+                return $scoreB <=> $scoreA;
+            }
+
+            return (int)$a['numero_mesa'] <=> (int)$b['numero_mesa'];
+        });
+
         $i = 0;
         while ($i < count($pendientes) && count($grupo) < $maxNumeros) {
             if (mesas_armado_grupos_es_compatible_con_grupo($pendientes[$i], $grupo)) {
@@ -473,7 +591,7 @@ function mesas_armado_grupos_formar_subgrupos(array $bucket, int $minNumeros, in
             $i++;
         }
 
-        if (count($grupo) >= $minNumeros) {
+        if (count($grupo) >= $minNumeros && mesas_armado_grupos_cumple_minimo_docentes_distintos($grupo)) {
             $grupos[] = $grupo;
         } else {
             foreach ($grupo as $item) {
@@ -536,7 +654,9 @@ function mesas_armado_grupos_rebalancear_sobrantes(array $grupos, array $sobrant
                 continue;
             }
 
-            if (mesas_armado_grupos_es_compatible_con_grupo($sobrante, $grupo)) {
+            if (mesas_armado_grupos_es_compatible_con_grupo($sobrante, $grupo)
+                && mesas_armado_grupos_cumple_minimo_docentes_distintos(array_merge($grupo, [$sobrante]))
+            ) {
                 $grupo[] = $sobrante;
                 $ubicado = true;
                 break;
@@ -561,6 +681,15 @@ function mesas_armado_grupos_rebalancear_sobrantes(array $grupos, array $sobrant
                 $movido = $grupos[$idx][$j];
 
                 if (!mesas_armado_grupos_es_compatible_con_grupo($movido, [$sobrante])) {
+                    continue;
+                }
+
+                $grupoOrigenRestante = $grupos[$idx];
+                array_splice($grupoOrigenRestante, $j, 1);
+
+                if (!mesas_armado_grupos_cumple_minimo_docentes_distintos([$sobrante, $movido])
+                    || !mesas_armado_grupos_cumple_minimo_docentes_distintos($grupoOrigenRestante)
+                ) {
                     continue;
                 }
 
@@ -606,19 +735,76 @@ function mesas_armado_grupos_insertar_grupo_simple(
 
 function mesas_armado_grupos_insertar_no_agrupada(PDOStatement $stmt, array $numero, string $motivo, array $horasTurnos): void
 {
-    $idTurno = $numero['id_turno'] !== null ? (int)$numero['id_turno'] : 0;
+    $idTurno = $numero['id_turno'] !== null ? (int)$numero['id_turno'] : null;
 
     $stmt->execute([
         (int)$numero['numero_mesa'],
-        $numero['fecha_mesa'] ?? date('Y-m-d'),
+        $numero['fecha_mesa'] ?? null,
         $idTurno,
-        $idTurno > 0 ? ($horasTurnos[$idTurno] ?? null) : null,
+        $idTurno !== null && $idTurno > 0 ? ($horasTurnos[$idTurno] ?? null) : null,
         $numero['id_area'] !== null ? (int)$numero['id_area'] : null,
         (string)$numero['tipo_mesa'],
         (int)$numero['prioridad'],
         (int)$numero['cantidad_alumnos'],
         $motivo,
     ]);
+}
+
+
+function mesas_armado_grupos_blindar_cobertura_salida(PDO $pdo, array $horasTurnos = [], ?array $disponibilidadDocentes = null): array
+{
+    $disponibilidadDocentes = $disponibilidadDocentes ?? mesas_armado_obtener_disponibilidad_docentes($pdo);
+    $numeros = mesas_armado_grupos_obtener_numeros_mesa($pdo);
+
+    $stmtCubiertos = $pdo->query("
+        SELECT DISTINCT numero_mesa
+        FROM mesas_grupos
+        UNION
+        SELECT DISTINCT numero_mesa
+        FROM mesas_no_agrupadas
+    ");
+
+    $cubiertos = [];
+    foreach ($stmtCubiertos->fetchAll(PDO::FETCH_COLUMN) as $numeroMesa) {
+        $cubiertos[(int)$numeroMesa] = true;
+    }
+
+    $insertNoAgrupada = $pdo->prepare("\n        INSERT INTO mesas_no_agrupadas (\n            numero_mesa,\n            fecha_mesa,\n            id_turno,\n            hora,\n            id_area,\n            tipo_mesa,\n            prioridad,\n            cantidad_alumnos,\n            motivo,\n            estado\n        ) VALUES (\n            ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente'\n        )\n    ");
+
+    $orfas = [];
+    $motivos = [];
+
+    foreach ($numeros as $numero) {
+        $numeroMesa = (int)$numero['numero_mesa'];
+
+        if (isset($cubiertos[$numeroMesa])) {
+            continue;
+        }
+
+        $motivo = mesas_armado_grupos_motivo_invalido($numero, $disponibilidadDocentes)
+            ?? 'blindaje_final_numero_mesa_sin_salida_en_grupos_ni_no_agrupadas';
+
+        mesas_armado_grupos_insertar_no_agrupada($insertNoAgrupada, $numero, $motivo, $horasTurnos);
+
+        $cubiertos[$numeroMesa] = true;
+        $orfas[] = [
+            'numero_mesa' => $numeroMesa,
+            'motivo' => $motivo,
+            'fecha_mesa' => $numero['fecha_mesa'] ?? null,
+            'id_turno' => $numero['id_turno'] ?? null,
+            'id_area' => $numero['id_area'] ?? null,
+            'tipo_mesa' => $numero['tipo_mesa'] ?? 'simple',
+        ];
+        $motivos[$motivo] = ($motivos[$motivo] ?? 0) + 1;
+    }
+
+    return [
+        'ejecutado' => true,
+        'total_numeros_revisados' => count($numeros),
+        'total_orfanas_detectadas' => count($orfas),
+        'numeros_orfanos_enviados_a_no_agrupadas' => $orfas,
+        'motivos' => $motivos,
+    ];
 }
 
 

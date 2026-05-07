@@ -4,6 +4,16 @@ function getAuthToken() {
   return localStorage.getItem('token') || sessionStorage.getItem('auth_token') || '';
 }
 
+function getSessionKey() {
+  return (
+    localStorage.getItem('session_key') ||
+    sessionStorage.getItem('session_key') ||
+    localStorage.getItem('token') ||
+    sessionStorage.getItem('auth_token') ||
+    ''
+  );
+}
+
 function getCsrfToken() {
   return (
     document.querySelector('meta[name="csrf-token"]')?.content ||
@@ -34,12 +44,14 @@ function crearErrorApi(action, res, data) {
 
 function buildHeaders(extraHeaders = {}) {
   const token = getAuthToken();
+  const sessionKey = getSessionKey();
   const csrf = getCsrfToken();
 
   return {
     'Content-Type': 'application/json',
     'X-Requested-With': 'XMLHttpRequest',
     ...(token ? { Authorization: `Bearer ${token}`, 'X-Auth-Token': token } : {}),
+    ...(sessionKey ? { 'X-Session': sessionKey } : {}),
     ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
     ...extraHeaders,
   };

@@ -1,6 +1,9 @@
 <?php
 // backend/core/auth.php
+// Auth SaaS: valida session_key en mesas_master y deja disponible usuario/tenant actual.
 declare(strict_types=1);
+
+require_once __DIR__ . '/../config/db.php';
 
 function iniciar_sesion_si_falta(): void
 {
@@ -16,50 +19,96 @@ function auth_header_value(string $serverKey): string
 
 function request_auth_token(): string
 {
+    if (function_exists('request_session_key')) {
+        return request_session_key();
+    }
+
     $authorization = auth_header_value('HTTP_AUTHORIZATION');
     if ($authorization !== '') {
+        if (stripos($authorization, 'Bearer ') === 0) {
+            return trim(substr($authorization, 7));
+        }
         return $authorization;
     }
 
-    $xAuthToken = auth_header_value('HTTP_X_AUTH_TOKEN');
-    if ($xAuthToken !== '') {
-        return $xAuthToken;
-    }
-
-    // Compatibilidad con el frontend actual y con el patrón usado en otros módulos:
-    // localStorage.session_key -> header X-Session.
-    $xSession = auth_header_value('HTTP_X_SESSION');
-    if ($xSession !== '') {
-        return $xSession;
-    }
-
-    $xSessionKey = auth_header_value('HTTP_X_SESSION_KEY');
-    if ($xSessionKey !== '') {
-        return $xSessionKey;
+    foreach (['HTTP_X_AUTH_TOKEN', 'HTTP_X_SESSION', 'HTTP_X_SESSION_KEY'] as $header) {
+        $value = auth_header_value($header);
+        if ($value !== '') return $value;
     }
 
     return '';
+}
+
+function auth_context(): ?array
+{
+    if (!function_exists('tenant_context')) {
+        return null;
+    }
+
+    return tenant_context(request_auth_token());
 }
 
 function require_auth(): void
 {
     iniciar_sesion_si_falta();
 
-    if (!empty($_SESSION['usuario_id'])) {
+    $ctx = auth_context();
+    if ($ctx) {
+        $_SESSION['usuario_id'] = (int)$ctx['idUsuarioMaster'];
+        $_SESSION['idUsuarioMaster'] = (int)$ctx['idUsuarioMaster'];
+        $_SESSION['idTenant'] = (int)$ctx['idTenant'];
+        $_SESSION['usuario'] = (string)$ctx['usuario'];
+        $_SESSION['rol'] = (string)$ctx['rol'];
         return;
     }
 
-    // El sistema todavía usa sesión PHP, pero varios fronts mandan token/session_key.
-    // Esto centraliza la compatibilidad sin tocar cada módulo.
-    if (request_auth_token() !== '') {
-        return;
-    }
-
-    json_response(['exito' => false, 'mensaje' => 'No autorizado.'], 401);
+    json_response(['exito' => false, 'mensaje' => 'Sesión expirada.'], 401);
 }
 
 function usuario_id(): int
 {
     iniciar_sesion_si_falta();
-    return (int)($_SESSION['usuario_id'] ?? 0);
+
+    $id = (int)($_SESSION['idUsuarioMaster'] ?? $_SESSION['usuario_id'] ?? 0);
+    if ($id > 0) {
+        return $id;
+    }
+
+    $ctx = auth_context();
+    return $ctx ? (int)$ctx['idUsuarioMaster'] : 0;
+}
+
+function tenant_id_actual(): int
+{
+    iniciar_sesion_si_falta();
+
+    $id = (int)($_SESSION['idTenant'] ?? 0);
+    if ($id > 0) return $id;
+
+    $ctx = auth_context();
+    return $ctx ? (int)$ctx['idTenant'] : 0;
+}
+
+function usuario_actual(): ?array
+{
+    $ctx = auth_context();
+    if (!$ctx) return null;
+
+    return [
+        'idUsuarioMaster' => (int)$ctx['idUsuarioMaster'],
+        'idUsuario' => (int)$ctx['idUsuarioMaster'],
+        'usuario' => (string)$ctx['usuario'],
+        'Nombre_Completo' => (string)$ctx['usuario'],
+        'email_recuperacion' => $ctx['email_recuperacion'] ?? null,
+        'rol' => (string)$ctx['rol'],
+        'tema' => (string)$ctx['tema'],
+        'idTenant' => (int)$ctx['idTenant'],
+        'tenant' => [
+            'idTenant' => (int)$ctx['idTenant'],
+            'nombre' => (string)$ctx['tenant_nombre'],
+            'logo_url' => $ctx['logo_url'] ?? null,
+            'logo_icono_url' => $ctx['logo_icono_url'] ?? null,
+            'db_name' => (string)$ctx['db_name'],
+        ],
+    ];
 }

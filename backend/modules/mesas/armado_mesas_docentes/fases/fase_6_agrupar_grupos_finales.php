@@ -200,12 +200,18 @@ function mesas_armado_docentes_grupos_finales_core(PDO $pdo, array $opciones = [
             );
         }
 
+        $blindajeCobertura = mesas_armado_docentes_grupos_blindar_cobertura_salida($pdo, $horasTurnos, $disponibilidadDocentes);
+
         if ($confirmarGrupos) {
+            // Confirmar solo debe dejar como armadas las mesas que realmente quedaron agrupadas.
+            // Tambien limpia observaciones viejas de numeros que fueron rescatados por reoptimizacion.
             $pdo->exec("
-                UPDATE mesas
-                SET estado = 'armada', observacion = NULL
-                WHERE numero_mesa IS NOT NULL
-                  AND estado <> 'observada'
+                UPDATE mesas me
+                INNER JOIN mesas_grupos mg
+                    ON mg.numero_mesa = me.numero_mesa
+                SET me.estado = 'armada',
+                    me.observacion = NULL
+                WHERE me.numero_mesa IS NOT NULL
             ");
         }
 
@@ -221,7 +227,7 @@ function mesas_armado_docentes_grupos_finales_core(PDO $pdo, array $opciones = [
             'agrupacion_final_generada' => true,
             'reoptimizacion_ejecutada' => is_array($resultadoReoptimizacion),
             'estructura' => 'simple_sin_detalle',
-            'criterio' => 'mesas_grupos guarda una fila por numero_mesa usando numero_grupo repetido. Todo numero_mesa con prioridad 1/taller queda como grupo individual. Correlativas quedan como anclas de fecha/turno. Las simples funcionan como comodines y la fase 7 puede moverlas de fecha/turno para completar grupos compatibles de 2 a 4 por disponibilidad docente como criterio principal y area como preferencia secundaria, sin choque de alumnos/docentes.',
+            'criterio' => 'mesas_grupos guarda una fila por numero_mesa usando numero_grupo repetido. Todo numero_mesa con prioridad 1/taller queda como grupo individual. Correlativas quedan como anclas de fecha/turno. Las simples funcionan como comodines y la fase 7 puede moverlas de fecha/turno para completar grupos compatibles de 2 a 4 por disponibilidad docente como criterio principal y area como preferencia secundaria, permitiendo mismo docente dentro del mismo grupo solamente cuando sean mesas simples de la misma área, sin choque de alumnos.',
             'min_numeros_por_grupo' => $minNumeros,
             'max_numeros_por_grupo' => $maxNumeros,
             'total_numeros_leidos' => $totalNumeros,
@@ -231,6 +237,8 @@ function mesas_armado_docentes_grupos_finales_core(PDO $pdo, array $opciones = [
             'total_grupos_generados_inicialmente' => $totalGrupos,
             'total_filas_insertadas_inicialmente_en_mesas_grupos' => $totalFilasGrupo,
             'total_no_agrupadas_iniciales' => $totalNoAgrupadas,
+            'blindaje_cobertura' => $blindajeCobertura,
+            'total_orfanas_detectadas_por_blindaje' => $blindajeCobertura['total_orfanas_detectadas'] ?? 0,
             'total_grupos_generados' => $totalesFinales['total_grupos'],
             'total_filas_insertadas_en_mesas_grupos' => $totalesFinales['total_filas_grupo'],
             'total_no_agrupadas' => $totalesFinales['total_no_agrupadas'],
@@ -418,6 +426,97 @@ function mesas_armado_docentes_grupos_csv_a_array(?string $csv): array
 
     return array_values(array_filter(array_map('trim', explode(',', $csv)), static fn ($v) => $v !== ''));
 }
+function mesas_armado_docentes_grupos_es_simple_para_compartir_docente(array $numero): bool
+{
+    return empty($numero['es_taller'])
+        && (int)($numero['prioridad'] ?? 0) === 0
+        && (string)($numero['tipo_mesa'] ?? 'simple') === 'simple';
+}
+
+function mesas_armado_docentes_grupos_comparten_docente(array $a, array $b): bool
+{
+    return count(array_intersect($a['docentes'] ?? [], $b['docentes'] ?? [])) > 0;
+}
+
+function mesas_armado_docentes_grupos_misma_area(array $a, array $b): bool
+{
+    return ($a['id_area'] ?? null) !== null
+        && ($b['id_area'] ?? null) !== null
+        && (int)$a['id_area'] === (int)$b['id_area'];
+}
+
+function mesas_armado_docentes_grupos_docente_compartido_permitido(array $numero, array $actual): bool
+{
+    /*
+     * Caso pedido para Bosio y situaciones similares:
+     * dos números de mesa simples, de la misma área y con el mismo docente
+     * pueden convivir dentro del MISMO grupo/slot. No es choque real: es el
+     * mismo docente tomando varias mesas compatibles el mismo día.
+     */
+    return mesas_armado_docentes_grupos_es_simple_para_compartir_docente($numero)
+        && mesas_armado_docentes_grupos_es_simple_para_compartir_docente($actual)
+        && mesas_armado_docentes_grupos_misma_area($numero, $actual)
+        && mesas_armado_docentes_grupos_comparten_docente($numero, $actual);
+}
+
+
+function mesas_armado_docentes_grupos_cantidad_docentes_distintos(array $numeros): int
+{
+    $docentes = [];
+
+    foreach ($numeros as $numero) {
+        foreach (($numero['docentes'] ?? []) as $idDocente) {
+            $idDocente = (int)$idDocente;
+            if ($idDocente > 0) {
+                $docentes[$idDocente] = true;
+            }
+        }
+    }
+
+    return count($docentes);
+}
+
+function mesas_armado_docentes_grupos_contiene_taller(array $numeros): bool
+{
+    foreach ($numeros as $numero) {
+        if (!empty($numero['es_taller']) || (string)($numero['tipo_mesa'] ?? '') === 'taller' || (int)($numero['prioridad'] ?? 0) === 1) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function mesas_armado_docentes_grupos_cumple_minimo_docentes_distintos(array $numeros, int $minDocentes = 2): bool
+{
+    if (mesas_armado_docentes_grupos_contiene_taller($numeros)) {
+        return true;
+    }
+
+    if (count($numeros) < 2) {
+        return false;
+    }
+
+    return mesas_armado_docentes_grupos_cantidad_docentes_distintos($numeros) >= $minDocentes;
+}
+
+function mesas_armado_docentes_grupos_score_candidato_para_grupo(array $numero, array $grupo): int
+{
+    $score = 0;
+
+    foreach ($grupo as $actual) {
+        if (mesas_armado_docentes_grupos_docente_compartido_permitido($numero, $actual)) {
+            $score += 100000;
+        } elseif (mesas_armado_docentes_grupos_misma_area($numero, $actual)) {
+            $score += 1000;
+        }
+    }
+
+    $score += (int)($numero['prioridad'] ?? 0) * 100;
+    $score += (int)($numero['cantidad_alumnos'] ?? 0);
+
+    return $score;
+}
 
 function mesas_armado_docentes_grupos_motivo_invalido(array $numero, array $disponibilidadDocentes): ?string
 {
@@ -465,6 +564,17 @@ function mesas_armado_docentes_grupos_formar_subgrupos(array $bucket, int $minNu
         $base = array_shift($pendientes);
         $grupo[] = $base;
 
+        usort($pendientes, static function (array $a, array $b) use ($grupo): int {
+            $scoreA = mesas_armado_docentes_grupos_score_candidato_para_grupo($a, $grupo);
+            $scoreB = mesas_armado_docentes_grupos_score_candidato_para_grupo($b, $grupo);
+
+            if ($scoreA !== $scoreB) {
+                return $scoreB <=> $scoreA;
+            }
+
+            return (int)$a['numero_mesa'] <=> (int)$b['numero_mesa'];
+        });
+
         $i = 0;
         while ($i < count($pendientes) && count($grupo) < $maxNumeros) {
             if (mesas_armado_docentes_grupos_es_compatible_con_grupo($pendientes[$i], $grupo)) {
@@ -475,7 +585,7 @@ function mesas_armado_docentes_grupos_formar_subgrupos(array $bucket, int $minNu
             $i++;
         }
 
-        if (count($grupo) >= $minNumeros) {
+        if (count($grupo) >= $minNumeros && mesas_armado_docentes_grupos_cumple_minimo_docentes_distintos($grupo)) {
             $grupos[] = $grupo;
         } else {
             foreach ($grupo as $item) {
@@ -518,7 +628,9 @@ function mesas_armado_docentes_grupos_es_compatible_con_grupo(array $numero, arr
         }
 
         if (count(array_intersect($numero['docentes'], $actual['docentes'])) > 0) {
-            return false;
+            if (!mesas_armado_docentes_grupos_docente_compartido_permitido($numero, $actual)) {
+                return false;
+            }
         }
     }
 
@@ -541,7 +653,9 @@ function mesas_armado_docentes_grupos_rebalancear_sobrantes(array $grupos, array
                 continue;
             }
 
-            if (mesas_armado_docentes_grupos_es_compatible_con_grupo($sobrante, $grupo)) {
+            if (mesas_armado_docentes_grupos_es_compatible_con_grupo($sobrante, $grupo)
+                && mesas_armado_docentes_grupos_cumple_minimo_docentes_distintos(array_merge($grupo, [$sobrante]))
+            ) {
                 $grupo[] = $sobrante;
                 $ubicado = true;
                 break;
@@ -566,6 +680,15 @@ function mesas_armado_docentes_grupos_rebalancear_sobrantes(array $grupos, array
                 $movido = $grupos[$idx][$j];
 
                 if (!mesas_armado_docentes_grupos_es_compatible_con_grupo($movido, [$sobrante])) {
+                    continue;
+                }
+
+                $grupoOrigenRestante = $grupos[$idx];
+                array_splice($grupoOrigenRestante, $j, 1);
+
+                if (!mesas_armado_docentes_grupos_cumple_minimo_docentes_distintos([$sobrante, $movido])
+                    || !mesas_armado_docentes_grupos_cumple_minimo_docentes_distintos($grupoOrigenRestante)
+                ) {
                     continue;
                 }
 
@@ -624,6 +747,78 @@ function mesas_armado_docentes_grupos_insertar_no_agrupada(PDOStatement $stmt, a
         (int)$numero['cantidad_alumnos'],
         $motivo,
     ]);
+}
+
+
+function mesas_armado_docentes_grupos_blindar_cobertura_salida(PDO $pdo, array $horasTurnos = [], ?array $disponibilidadDocentes = null): array
+{
+    $disponibilidadDocentes = $disponibilidadDocentes ?? mesas_armado_docentes_obtener_disponibilidad_docentes($pdo);
+    $numeros = mesas_armado_docentes_grupos_obtener_numeros_mesa($pdo);
+
+    $stmtCubiertos = $pdo->query("
+        SELECT DISTINCT numero_mesa
+        FROM mesas_grupos
+        UNION
+        SELECT DISTINCT numero_mesa
+        FROM mesas_no_agrupadas
+    ");
+
+    $cubiertos = [];
+    foreach ($stmtCubiertos->fetchAll(PDO::FETCH_COLUMN) as $numeroMesa) {
+        $cubiertos[(int)$numeroMesa] = true;
+    }
+
+    $insertNoAgrupada = $pdo->prepare("
+        INSERT INTO mesas_no_agrupadas (
+            numero_mesa,
+            fecha_mesa,
+            id_turno,
+            hora,
+            id_area,
+            tipo_mesa,
+            prioridad,
+            cantidad_alumnos,
+            motivo,
+            estado
+        ) VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente'
+        )
+    ");
+
+    $orfas = [];
+    $motivos = [];
+
+    foreach ($numeros as $numero) {
+        $numeroMesa = (int)$numero['numero_mesa'];
+
+        if (isset($cubiertos[$numeroMesa])) {
+            continue;
+        }
+
+        $motivo = mesas_armado_docentes_grupos_motivo_invalido($numero, $disponibilidadDocentes)
+            ?? 'blindaje_final_numero_mesa_sin_salida_en_grupos_ni_no_agrupadas';
+
+        mesas_armado_docentes_grupos_insertar_no_agrupada($insertNoAgrupada, $numero, $motivo, $horasTurnos);
+
+        $cubiertos[$numeroMesa] = true;
+        $orfas[] = [
+            'numero_mesa' => $numeroMesa,
+            'motivo' => $motivo,
+            'fecha_mesa' => $numero['fecha_mesa'] ?? null,
+            'id_turno' => $numero['id_turno'] ?? null,
+            'id_area' => $numero['id_area'] ?? null,
+            'tipo_mesa' => $numero['tipo_mesa'] ?? 'simple',
+        ];
+        $motivos[$motivo] = ($motivos[$motivo] ?? 0) + 1;
+    }
+
+    return [
+        'ejecutado' => true,
+        'total_numeros_revisados' => count($numeros),
+        'total_orfanas_detectadas' => count($orfas),
+        'numeros_orfanos_enviados_a_no_agrupadas' => $orfas,
+        'motivos' => $motivos,
+    ];
 }
 
 

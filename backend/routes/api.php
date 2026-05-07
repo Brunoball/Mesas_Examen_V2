@@ -28,6 +28,7 @@ $accionesPublicas = [
     'inicio',
     'registro',
     'auth_csrf_token',
+    'debug_saas_login',
 
     // Formulario público de inscripción a mesas.
     'form_obtener_config_inscripcion',
@@ -50,6 +51,20 @@ try {
             'mensaje' => 'Falta el parámetro action.',
         ], 400);
     }
+
+
+/*
+|--------------------------------------------------------------------------
+| Debug SaaS público forzado
+|--------------------------------------------------------------------------
+| Esto va antes del require_auth. Si esta URL devuelve "Sesión expirada",
+| entonces NO se está ejecutando este api.php.
+*/
+if ($action === 'debug_saas_login') {
+    require_once __DIR__ . '/../modules/login/route.php';
+    route_login($action);
+    exit;
+}
 
     if ($action === 'auth_csrf_token') {
         json_response([
@@ -142,8 +157,15 @@ try {
 } catch (Throwable $e) {
     log_error($e, 'router:' . $action);
 
-    json_response([
+    
+    $debug = strtolower((string)(env_value('APP_DEBUG', 'false') ?? 'false')) === 'true';
+    $payload = [
         'exito' => false,
         'mensaje' => 'Error interno del servidor.',
-    ], 500);
+    ];
+    if ($debug) {
+        $payload['detalle'] = $e->getMessage();
+        $payload['archivo'] = basename($e->getFile()) . ':' . $e->getLine();
+    }
+    json_response($payload, 500);
 }

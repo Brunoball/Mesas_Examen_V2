@@ -106,6 +106,12 @@ function auditoria_debe_registrar(string $action, string $metodo): bool
         return false;
     }
 
+    // En SaaS el login/registro se audita en mesas_master.login_auditoria.
+    // No se audita acá porque db() apunta a la DB del tenant.
+    if (in_array($a, ['inicio', 'registro'], true) || strpos($a, 'auth_') === 0) {
+        return false;
+    }
+
     // Nunca auditar acciones de lectura/listado/consulta, aunque vengan por POST.
     $accionesLectura = [
         'listar',
