@@ -98,6 +98,7 @@ export default function Docentes() {
     vista,
     cambiarVista,
     conteo,
+    paginacion,
     obtener,
     guardar,
     darBaja,
@@ -200,6 +201,8 @@ export default function Docentes() {
   }
 
   const totalVisible = Array.isArray(docentes) ? docentes.length : 0;
+  const hayBusquedaActiva = busqueda.trim() !== '';
+  const totalReferencia = hayBusquedaActiva ? conteo.totalFiltrados : conteo.totalRegistros;
 
   const contenido = (
     <div className="docentes-page mov-page">
@@ -219,7 +222,7 @@ export default function Docentes() {
                 Mesas · Docentes
               </div>
               <div className="mov-card__hint">
-                Mostrando <b>{totalVisible}</b> docentes
+                Mostrando <b>{totalVisible}</b> de <b>{totalReferencia}</b> docentes
               </div>
             </div>
 
@@ -394,11 +397,33 @@ export default function Docentes() {
             Registros únicos cargados: <strong>{conteo.totalRegistros}</strong>
           </span>
 
-          {busqueda.trim() !== '' && (
+          {hayBusquedaActiva && (
             <span>
-              Coincidencias visibles: <strong>{conteo.totalFiltrados}</strong>
+              Coincidencias encontradas: <strong>{conteo.totalFiltrados}</strong>
             </span>
           )}
+
+          <div className="docentes-pagination">
+            <button
+              type="button"
+              className="mov-btn mov-btn--ghost docentes-pageBtn"
+              disabled={paginacion.pagina <= 1 || loading}
+              onClick={() => paginacion.setPagina((p) => Math.max(1, p - 1))}
+            >
+              Anterior
+            </button>
+
+            <span>Página {paginacion.pagina} / {paginacion.totalPaginas}</span>
+
+            <button
+              type="button"
+              className="mov-btn mov-btn--ghost docentes-pageBtn"
+              disabled={paginacion.pagina >= paginacion.totalPaginas || loading}
+              onClick={() => paginacion.setPagina((p) => p + 1)}
+            >
+              Siguiente
+            </button>
+          </div>
         </div>
       </section>
 

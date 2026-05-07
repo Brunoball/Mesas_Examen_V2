@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { docentesApi } from '../api/docentesApi.js';
+import { usePaginacion } from '../../_shared/hooks/usePaginacion';
 
 function normalizar(texto) {
   return String(texto || '')
@@ -24,6 +25,9 @@ export function useDocentes() {
   const [mensaje, setMensaje] = useState(null);
   const [busqueda, setBusqueda] = useState('');
   const [vista, setVista] = useState('activos');
+
+  // Igual que Cátedras: se muestran 100 registros por página.
+  const paginacion = usePaginacion(100);
 
   const mostrarMensaje = useCallback((tipo, texto) => {
     setMensaje({ tipo, texto });
@@ -81,18 +85,44 @@ export function useDocentes() {
     ));
   }, [docentesBase, busqueda]);
 
+  useEffect(() => {
+    const totalFiltrados = docentesFiltrados.length;
+    const totalPaginas = Math.max(1, Math.ceil(totalFiltrados / paginacion.porPagina));
+
+    if (paginacion.pagina > totalPaginas) {
+      paginacion.setPagina(totalPaginas);
+      return;
+    }
+
+    paginacion.actualizarPaginacion({
+      pagina: paginacion.pagina,
+      total: totalFiltrados,
+      paginas: totalPaginas,
+    });
+  }, [docentesFiltrados.length, paginacion.pagina, paginacion.porPagina]);
+
+  const docentesPaginados = useMemo(() => {
+    const inicio = (paginacion.pagina - 1) * paginacion.porPagina;
+    const fin = inicio + paginacion.porPagina;
+
+    return docentesFiltrados.slice(inicio, fin);
+  }, [docentesFiltrados, paginacion.pagina, paginacion.porPagina]);
+
   const conteo = useMemo(() => ({
     totalRegistros: docentesBase.length,
     totalFiltrados: docentesFiltrados.length,
-  }), [docentesBase.length, docentesFiltrados.length]);
+    totalMostrados: docentesPaginados.length,
+  }), [docentesBase.length, docentesFiltrados.length, docentesPaginados.length]);
 
   function cambiarVista(nuevaVista) {
     setVista(nuevaVista);
     setBusqueda('');
+    paginacion.setPagina(1);
   }
 
   function actualizarBusqueda(valor) {
     setBusqueda(valor);
+    paginacion.setPagina(1);
   }
 
   async function obtener(idDocente) {
@@ -159,9 +189,11 @@ export function useDocentes() {
   }
 
   return {
-    docentes: docentesFiltrados,
+    docentes: docentesPaginados,
     docentesBase,
+    docentesFiltrados,
     conteo,
+    paginacion,
     catalogos,
     loading,
     error,

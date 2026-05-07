@@ -1,5 +1,6 @@
 // src/components/Materias/modales/ModalCorrelativa.jsx
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faBolt,
@@ -10,6 +11,7 @@ import {
   faDiagramProject,
 } from "@fortawesome/free-solid-svg-icons";
 
+import "../../Global/Global_css/Global_Modals.css";
 import "./ModalCorrelativa.css";
 
 const nuevaRelacionVacia = () => ({
@@ -59,12 +61,18 @@ const ModalCorrelativa = ({
   const esEdicion = !!item?.id_materia_correlativa;
 
   const [modo, setModo] = useState("manual");
-  const [idCursoAnterior, setIdCursoAnterior] = useState(item?.id_curso_relacionada || "");
-  const [idMateriaAnterior, setIdMateriaAnterior] = useState(item?.id_materia_relacionada || "");
+  const [idCursoAnterior, setIdCursoAnterior] = useState(
+    item?.id_curso_relacionada || ""
+  );
+  const [idMateriaAnterior, setIdMateriaAnterior] = useState(
+    item?.id_materia_relacionada || ""
+  );
   const [idMateriaAuto, setIdMateriaAuto] = useState("");
   const [autoBloqueaInscripcion, setAutoBloqueaInscripcion] = useState(1);
   const [autoBloqueaArmado, setAutoBloqueaArmado] = useState(1);
-  const [materiasCursoCache, setMateriasCursoCache] = useState(() => agruparPorCurso(materiasPorCurso));
+  const [materiasCursoCache, setMateriasCursoCache] = useState(() =>
+    agruparPorCurso(materiasPorCurso)
+  );
   const [cursosCargando, setCursosCargando] = useState({});
   const [cargandoAuto, setCargandoAuto] = useState(false);
   const [relaciones, setRelaciones] = useState(() => {
@@ -85,6 +93,26 @@ const ModalCorrelativa = ({
   const [error, setError] = useState("");
 
   useEffect(() => {
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+      onClose?.();
+    };
+
+    document.addEventListener("keydown", handleKeyDown, true);
+
+    return () => {
+      document.body.style.overflow = overflowAnterior;
+      document.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, [onClose]);
+
+  useEffect(() => {
     if (!Array.isArray(materiasPorCurso) || materiasPorCurso.length === 0) return;
 
     setMateriasCursoCache((prev) => {
@@ -92,7 +120,10 @@ const ModalCorrelativa = ({
       const agrupadas = agruparPorCurso(materiasPorCurso);
 
       Object.entries(agrupadas).forEach(([idCurso, lista]) => {
-        siguiente[idCurso] = unificarListaMaterias([...(siguiente[idCurso] || []), ...lista]);
+        siguiente[idCurso] = unificarListaMaterias([
+          ...(siguiente[idCurso] || []),
+          ...lista,
+        ]);
       });
 
       return siguiente;
@@ -116,7 +147,10 @@ const ModalCorrelativa = ({
       if (id <= 0) return [];
 
       const clave = String(id);
-      if (Array.isArray(materiasCursoCache[clave]) && materiasCursoCache[clave].length > 0) {
+      if (
+        Array.isArray(materiasCursoCache[clave]) &&
+        materiasCursoCache[clave].length > 0
+      ) {
         return materiasCursoCache[clave];
       }
 
@@ -153,9 +187,11 @@ const ModalCorrelativa = ({
       ...relaciones.map((rel) => rel.id_curso_posterior),
     ];
 
-    Array.from(new Set(ids.map((id) => Number(id)).filter((id) => id > 0))).forEach((id) => {
-      cargarMateriasCurso(id);
-    });
+    Array.from(new Set(ids.map((id) => Number(id)).filter((id) => id > 0))).forEach(
+      (id) => {
+        cargarMateriasCurso(id);
+      }
+    );
   }, [idCursoAnterior, relaciones, cargarMateriasCurso]);
 
   useEffect(() => {
@@ -164,7 +200,10 @@ const ModalCorrelativa = ({
     const cargarTodosParaAuto = async () => {
       if (modo !== "auto" || esEdicion) return;
 
-      const idsCursos = cursosActivos.map((c) => Number(c.id_curso)).filter((id) => id > 0);
+      const idsCursos = cursosActivos
+        .map((c) => Number(c.id_curso))
+        .filter((id) => id > 0);
+
       if (idsCursos.length === 0) return;
 
       setCargandoAuto(true);
@@ -175,23 +214,36 @@ const ModalCorrelativa = ({
         if (typeof onPrecargarMateriasDeCursos === "function") {
           lista = await onPrecargarMateriasDeCursos(idsCursos);
         } else {
-          const resultados = await Promise.all(idsCursos.map((id) => cargarMateriasCurso(id)));
+          const resultados = await Promise.all(
+            idsCursos.map((id) => cargarMateriasCurso(id))
+          );
           lista = resultados.flat();
         }
 
         if (!cancelado) {
           const agrupadas = agruparPorCurso(lista);
+
           setMateriasCursoCache((prev) => {
             const siguiente = { ...prev };
+
             Object.entries(agrupadas).forEach(([idCurso, materias]) => {
-              siguiente[idCurso] = unificarListaMaterias([...(siguiente[idCurso] || []), ...materias]);
+              siguiente[idCurso] = unificarListaMaterias([
+                ...(siguiente[idCurso] || []),
+                ...materias,
+              ]);
             });
+
             return siguiente;
           });
         }
       } catch (error) {
-        console.error("No se pudieron precargar materias para correlativas automáticas:", error);
-        if (!cancelado) setError("No se pudieron precargar las materias para el modo automático.");
+        console.error(
+          "No se pudieron precargar materias para correlativas automáticas:",
+          error
+        );
+        if (!cancelado) {
+          setError("No se pudieron precargar las materias para el modo automático.");
+        }
       } finally {
         if (!cancelado) setCargandoAuto(false);
       }
@@ -202,7 +254,7 @@ const ModalCorrelativa = ({
     return () => {
       cancelado = true;
     };
-  }, [modo, esEdicion, cursosActivos]);
+  }, [modo, esEdicion, cursosActivos, onPrecargarMateriasDeCursos, cargarMateriasCurso]);
 
   const materiasPorCursoCompletas = useMemo(() => {
     return unificarListaMaterias([
@@ -211,26 +263,36 @@ const ModalCorrelativa = ({
     ]);
   }, [materiasPorCurso, materiasCursoCache]);
 
-  const materiasDeCurso = (idCurso) => {
-    const id = Number(idCurso || 0);
-    if (id <= 0) return [];
+  const materiasDeCurso = useCallback(
+    (idCurso) => {
+      const id = Number(idCurso || 0);
+      if (id <= 0) return [];
 
-    const cache = materiasCursoCache[String(id)] || [];
+      const cache = materiasCursoCache[String(id)] || [];
 
-    return unificarListaMaterias(cache)
-      .filter((m) => Number(m.activo ?? 1) === 1)
-      .sort((a, b) => String(a.materia || "").localeCompare(String(b.materia || ""), "es"));
-  };
+      return unificarListaMaterias(cache)
+        .filter((m) => Number(m.activo ?? 1) === 1)
+        .sort((a, b) =>
+          String(a.materia || "").localeCompare(String(b.materia || ""), "es")
+        );
+    },
+    [materiasCursoCache]
+  );
 
-  const estaCargandoCurso = (idCurso) => Boolean(cursosCargando[String(idCurso || "")]);
+  const estaCargandoCurso = (idCurso) =>
+    Boolean(cursosCargando[String(idCurso || "")]);
 
-  const materiasCursoAnterior = useMemo(() => materiasDeCurso(idCursoAnterior), [idCursoAnterior, materiasCursoCache]);
+  const materiasCursoAnterior = useMemo(
+    () => materiasDeCurso(idCursoAnterior),
+    [idCursoAnterior, materiasDeCurso]
+  );
 
   const materiasAuto = useMemo(() => {
     const map = new Map();
 
     materiasPorCursoCompletas.forEach((m) => {
       if (Number(m.activo ?? 1) !== 1) return;
+
       const id = Number(m.id_materia);
       if (id <= 0) return;
 
@@ -244,8 +306,12 @@ const ModalCorrelativa = ({
 
       const actual = map.get(id);
       const idCurso = Number(m.id_curso);
+
       if (!actual.cursos.some((c) => Number(c.id_curso) === idCurso)) {
-        actual.cursos.push({ id_curso: idCurso, nombre_curso: m.nombre_curso });
+        actual.cursos.push({
+          id_curso: idCurso,
+          nombre_curso: m.nombre_curso,
+        });
       }
     });
 
@@ -255,10 +321,15 @@ const ModalCorrelativa = ({
   }, [materiasPorCursoCompletas]);
 
   const cursosAutoSeleccionados = useMemo(() => {
-    const itemAuto = materiasAuto.find((m) => Number(m.id_materia) === Number(idMateriaAuto));
+    const itemAuto = materiasAuto.find(
+      (m) => Number(m.id_materia) === Number(idMateriaAuto)
+    );
+
     if (!itemAuto) return [];
 
-    return [...itemAuto.cursos].sort((a, b) => Number(a.id_curso) - Number(b.id_curso));
+    return [...itemAuto.cursos].sort(
+      (a, b) => Number(a.id_curso) - Number(b.id_curso)
+    );
   }, [idMateriaAuto, materiasAuto]);
 
   const agregarRelacion = () => {
@@ -305,9 +376,17 @@ const ModalCorrelativa = ({
   };
 
   const validarManual = () => {
-    if (!idCursoAnterior) return "Primero tenés que seleccionar el curso/año anterior.";
-    if (estaCargandoCurso(idCursoAnterior)) return "Esperá a que carguen las materias del curso anterior.";
-    if (!idMateriaAnterior) return "Después tenés que seleccionar una materia de ese curso.";
+    if (!idCursoAnterior) {
+      return "Primero tenés que seleccionar el curso/año anterior.";
+    }
+
+    if (estaCargandoCurso(idCursoAnterior)) {
+      return "Esperá a que carguen las materias del curso anterior.";
+    }
+
+    if (!idMateriaAnterior) {
+      return "Después tenés que seleccionar una materia de ese curso.";
+    }
 
     if (relaciones.length === 0) {
       return "Tenés que agregar al menos una materia posterior.";
@@ -350,23 +429,32 @@ const ModalCorrelativa = ({
   };
 
   const validarAuto = () => {
-    if (cargandoAuto) return "Esperá a que se carguen las materias de todos los cursos.";
-    if (!idMateriaAuto) return "Seleccioná la materia que querés encadenar automáticamente.";
+    if (cargandoAuto) {
+      return "Esperá a que se carguen las materias de todos los cursos.";
+    }
+
+    if (!idMateriaAuto) {
+      return "Seleccioná la materia que querés encadenar automáticamente.";
+    }
+
     if (cursosAutoSeleccionados.length < 2) {
       return "La materia seleccionada tiene que existir en dos o más cursos según cátedras.";
     }
+
     return "";
   };
 
   const guardar = () => {
     if (modo === "auto") {
       const msg = validarAuto();
+
       if (msg) {
         setError(msg);
         return;
       }
 
       setError("");
+
       onSave({
         modo: "auto_por_materia",
         id_materia: Number(idMateriaAuto),
@@ -375,10 +463,12 @@ const ModalCorrelativa = ({
         bloquea_inscripcion: Number(autoBloqueaInscripcion),
         bloquea_armado: Number(autoBloqueaArmado),
       });
+
       return;
     }
 
     const msg = validarManual();
+
     if (msg) {
       setError(msg);
       return;
@@ -421,18 +511,35 @@ const ModalCorrelativa = ({
     });
   };
 
-  return (
-    <div className="modal-corr-overlay">
-      <div className="modal-corr">
+  return createPortal(
+    <div
+      className="gm-modalOverlay modal-corr-overlay"
+      role="presentation"
+      onMouseDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div
+        className="gm-modal gm-modal--materias-xl modal-corr"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="correlativa-modal-title"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-corr-header">
           <div>
-            <h2>
+            <h2 id="correlativa-modal-title">
               <FontAwesomeIcon icon={faDiagramProject} />
               {esEdicion ? "Editar correlatividad" : "Nueva correlatividad"}
             </h2>
 
             <p>
-              Las materias se cargan desde <strong>global_obtener_materias_por_curso</strong> al seleccionar el curso, usando cátedras como fuente real.
+              Las materias se cargan desde{" "}
+              <strong>global_obtener_materias_por_curso</strong> al seleccionar
+              el curso, usando cátedras como fuente real.
             </p>
           </div>
 
@@ -441,260 +548,345 @@ const ModalCorrelativa = ({
           </button>
         </div>
 
-        {!esEdicion && (
-          <div className="modal-corr-mode-tabs">
-            <button
-              type="button"
-              className={modo === "manual" ? "active" : ""}
-              onClick={() => cambiarModo("manual")}
-            >
-              <FontAwesomeIcon icon={faPlus} />
-              Manual / varias juntas
-            </button>
+        <div className="modal-corr-body">
+          {!esEdicion && (
+            <div className="modal-corr-mode-tabs">
+              <button
+                type="button"
+                className={modo === "manual" ? "active" : ""}
+                onClick={() => cambiarModo("manual")}
+              >
+                <FontAwesomeIcon icon={faPlus} />
+                Manual / varias juntas
+              </button>
 
-            <button
-              type="button"
-              className={modo === "auto" ? "active" : ""}
-              onClick={() => cambiarModo("auto")}
-            >
-              <FontAwesomeIcon icon={faBolt} />
-              Autogenerar por materia
-            </button>
-          </div>
-        )}
+              <button
+                type="button"
+                className={modo === "auto" ? "active" : ""}
+                onClick={() => cambiarModo("auto")}
+              >
+                <FontAwesomeIcon icon={faBolt} />
+                Autogenerar por materia
+              </button>
+            </div>
+          )}
 
-        {error && <div className="modal-corr-error">{error}</div>}
+          {error && <div className="modal-corr-error">{error}</div>}
 
-        {modo === "manual" && (
-          <>
-            <div className="modal-corr-section">
-              <div className="modal-corr-section-title">1. Materia anterior / correlativa base</div>
+          {modo === "manual" && (
+            <>
+              <div className="modal-corr-section">
+                <div className="modal-corr-section-title">
+                  1. Materia anterior / correlativa base
+                </div>
+
+                <div className="modal-corr-grid">
+                  <div className="modal-corr-field">
+                    <label>Curso anterior</label>
+                    <select
+                      value={idCursoAnterior}
+                      onChange={(e) => cambiarCursoAnterior(e.target.value)}
+                      disabled={esEdicion}
+                    >
+                      <option value="">Seleccionar curso</option>
+                      {cursosActivos.map((c) => (
+                        <option key={c.id_curso} value={c.id_curso}>
+                          {c.nombre_curso}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="modal-corr-field">
+                    <label>Materia anterior</label>
+                    <select
+                      value={idMateriaAnterior}
+                      onChange={(e) => setIdMateriaAnterior(e.target.value)}
+                      disabled={
+                        esEdicion ||
+                        !idCursoAnterior ||
+                        estaCargandoCurso(idCursoAnterior)
+                      }
+                    >
+                      <option value="">
+                        {!idCursoAnterior
+                          ? "Primero seleccioná curso"
+                          : estaCargandoCurso(idCursoAnterior)
+                          ? "Cargando materias..."
+                          : "Seleccionar materia del curso"}
+                      </option>
+
+                      {materiasCursoAnterior.map((m) => (
+                        <option
+                          key={`${m.id_curso || idCursoAnterior}-${m.id_materia}`}
+                          value={m.id_materia}
+                        >
+                          {m.materia}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-corr-section">
+                <div className="modal-corr-section-title-row">
+                  <div className="modal-corr-section-title">
+                    2. Materias posteriores que dependen de la anterior
+                  </div>
+
+                  {!esEdicion && (
+                    <button
+                      type="button"
+                      className="modal-corr-add"
+                      onClick={agregarRelacion}
+                    >
+                      <FontAwesomeIcon icon={faPlus} />
+                      Agregar otra
+                    </button>
+                  )}
+                </div>
+
+                <div className="modal-corr-relaciones">
+                  {relaciones.map((rel, index) => {
+                    const materiasPosteriores = materiasDeCurso(
+                      rel.id_curso_posterior
+                    );
+                    const cargandoPosteriores = estaCargandoCurso(
+                      rel.id_curso_posterior
+                    );
+
+                    return (
+                      <div className="modal-corr-relacion" key={index}>
+                        <div className="modal-corr-relacion-numero">
+                          #{index + 1}
+                        </div>
+
+                        <div className="modal-corr-grid relacion-grid">
+                          <div className="modal-corr-field">
+                            <label>Curso posterior</label>
+                            <select
+                              value={rel.id_curso_posterior}
+                              onChange={(e) =>
+                                cambiarRelacion(
+                                  index,
+                                  "id_curso_posterior",
+                                  e.target.value
+                                )
+                              }
+                            >
+                              <option value="">Seleccionar curso</option>
+                              {cursosActivos.map((c) => (
+                                <option key={c.id_curso} value={c.id_curso}>
+                                  {c.nombre_curso}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="modal-corr-field">
+                            <label>Materia posterior</label>
+                            <select
+                              value={rel.id_materia_posterior}
+                              onChange={(e) =>
+                                cambiarRelacion(
+                                  index,
+                                  "id_materia_posterior",
+                                  e.target.value
+                                )
+                              }
+                              disabled={!rel.id_curso_posterior || cargandoPosteriores}
+                            >
+                              <option value="">
+                                {!rel.id_curso_posterior
+                                  ? "Primero seleccioná curso"
+                                  : cargandoPosteriores
+                                  ? "Cargando materias..."
+                                  : "Seleccionar materia del curso"}
+                              </option>
+
+                              {materiasPosteriores.map((m) => (
+                                <option
+                                  key={`${m.id_curso}-${m.id_materia}`}
+                                  value={m.id_materia}
+                                >
+                                  {m.materia}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="modal-corr-checks">
+                            <label>
+                              <input
+                                type="checkbox"
+                                checked={Number(rel.bloquea_inscripcion) === 1}
+                                onChange={(e) =>
+                                  cambiarRelacion(
+                                    index,
+                                    "bloquea_inscripcion",
+                                    e.target.checked ? 1 : 0
+                                  )
+                                }
+                              />
+                              Bloquea inscripción
+                            </label>
+
+                            <label>
+                              <input
+                                type="checkbox"
+                                checked={Number(rel.bloquea_armado) === 1}
+                                onChange={(e) =>
+                                  cambiarRelacion(
+                                    index,
+                                    "bloquea_armado",
+                                    e.target.checked ? 1 : 0
+                                  )
+                                }
+                              />
+                              Bloquea armado
+                            </label>
+                          </div>
+                        </div>
+
+                        {!esEdicion && relaciones.length > 1 && (
+                          <button
+                            type="button"
+                            className="modal-corr-remove"
+                            onClick={() => quitarRelacion(index)}
+                            title="Quitar relación"
+                          >
+                            <FontAwesomeIcon icon={faTrash} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="modal-corr-example">
+                Ejemplo: si elegís <strong>1° - MATEMÁTICA</strong> como
+                anterior y agregás <strong>2° - MATEMÁTICA</strong> como
+                posterior, el sistema guarda esa correlatividad. Podés agregar
+                varias relaciones antes de guardar.
+              </div>
+            </>
+          )}
+
+          {modo === "auto" && !esEdicion && (
+            <div className="modal-corr-section auto-section">
+              <div className="modal-corr-section-title">
+                Autogenerar cadena por materia
+              </div>
 
               <div className="modal-corr-grid">
                 <div className="modal-corr-field">
-                  <label>Curso anterior</label>
+                  <label>Materia a encadenar</label>
                   <select
-                    value={idCursoAnterior}
-                    onChange={(e) => cambiarCursoAnterior(e.target.value)}
-                    disabled={esEdicion}
-                  >
-                    <option value="">Seleccionar curso</option>
-                    {cursosActivos.map((c) => (
-                      <option key={c.id_curso} value={c.id_curso}>
-                        {c.nombre_curso}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="modal-corr-field">
-                  <label>Materia anterior</label>
-                  <select
-                    value={idMateriaAnterior}
-                    onChange={(e) => setIdMateriaAnterior(e.target.value)}
-                    disabled={esEdicion || !idCursoAnterior || estaCargandoCurso(idCursoAnterior)}
+                    value={idMateriaAuto}
+                    onChange={(e) => setIdMateriaAuto(e.target.value)}
+                    disabled={cargandoAuto}
                   >
                     <option value="">
-                      {!idCursoAnterior
-                        ? "Primero seleccioná curso"
-                        : estaCargandoCurso(idCursoAnterior)
-                        ? "Cargando materias..."
-                        : "Seleccionar materia del curso"}
+                      {cargandoAuto
+                        ? "Cargando materias de todos los cursos..."
+                        : "Seleccionar materia"}
                     </option>
 
-                    {materiasCursoAnterior.map((m) => (
-                      <option key={`${m.id_curso || idCursoAnterior}-${m.id_materia}`} value={m.id_materia}>
-                        {m.materia}
+                    {materiasAuto.map((m) => (
+                      <option key={m.id_materia} value={m.id_materia}>
+                        {m.materia} ({m.cursos.length} cursos)
                       </option>
                     ))}
                   </select>
                 </div>
+
+                <div className="modal-corr-checks auto-checks">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={Number(autoBloqueaInscripcion) === 1}
+                      onChange={(e) =>
+                        setAutoBloqueaInscripcion(e.target.checked ? 1 : 0)
+                      }
+                    />
+                    Bloquea inscripción
+                  </label>
+
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={Number(autoBloqueaArmado) === 1}
+                      onChange={(e) =>
+                        setAutoBloqueaArmado(e.target.checked ? 1 : 0)
+                      }
+                    />
+                    Bloquea armado
+                  </label>
+                </div>
               </div>
-            </div>
 
-            <div className="modal-corr-section">
-              <div className="modal-corr-section-title-row">
-                <div className="modal-corr-section-title">2. Materias posteriores que dependen de la anterior</div>
+              <div className="modal-corr-auto-preview">
+                {cargandoAuto ? (
+                  <p>
+                    Cargando materias desde cátedras para detectar en qué años
+                    existe cada una...
+                  </p>
+                ) : cursosAutoSeleccionados.length === 0 ? (
+                  <p>
+                    Seleccioná una materia y el sistema va a mostrar los años
+                    encontrados en cátedras.
+                  </p>
+                ) : (
+                  <>
+                    <p>
+                      Se van a crear relaciones consecutivas para los cursos
+                      donde existe esa materia:
+                    </p>
 
-                {!esEdicion && (
-                  <button type="button" className="modal-corr-add" onClick={agregarRelacion}>
-                    <FontAwesomeIcon icon={faPlus} />
-                    Agregar otra
-                  </button>
+                    <div className="auto-course-chain">
+                      {cursosAutoSeleccionados.map((c, index) => (
+                        <React.Fragment key={c.id_curso}>
+                          <span>{c.nombre_curso}</span>
+                          {index < cursosAutoSeleccionados.length - 1 && (
+                            <b>→</b>
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </div>
+
+                    <small>
+                      Ejemplo: 1° → 2°, 2° → 3°, 3° → 4°. No tenés que cargar
+                      una por una.
+                    </small>
+                  </>
                 )}
               </div>
-
-              <div className="modal-corr-relaciones">
-                {relaciones.map((rel, index) => {
-                  const materiasPosteriores = materiasDeCurso(rel.id_curso_posterior);
-                  const cargandoPosteriores = estaCargandoCurso(rel.id_curso_posterior);
-
-                  return (
-                    <div className="modal-corr-relacion" key={index}>
-                      <div className="modal-corr-relacion-numero">#{index + 1}</div>
-
-                      <div className="modal-corr-grid relacion-grid">
-                        <div className="modal-corr-field">
-                          <label>Curso posterior</label>
-                          <select
-                            value={rel.id_curso_posterior}
-                            onChange={(e) => cambiarRelacion(index, "id_curso_posterior", e.target.value)}
-                          >
-                            <option value="">Seleccionar curso</option>
-                            {cursosActivos.map((c) => (
-                              <option key={c.id_curso} value={c.id_curso}>
-                                {c.nombre_curso}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="modal-corr-field">
-                          <label>Materia posterior</label>
-                          <select
-                            value={rel.id_materia_posterior}
-                            onChange={(e) => cambiarRelacion(index, "id_materia_posterior", e.target.value)}
-                            disabled={!rel.id_curso_posterior || cargandoPosteriores}
-                          >
-                            <option value="">
-                              {!rel.id_curso_posterior
-                                ? "Primero seleccioná curso"
-                                : cargandoPosteriores
-                                ? "Cargando materias..."
-                                : "Seleccionar materia del curso"}
-                            </option>
-                            {materiasPosteriores.map((m) => (
-                              <option key={`${m.id_curso}-${m.id_materia}`} value={m.id_materia}>
-                                {m.materia}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="modal-corr-checks">
-                          <label>
-                            <input
-                              type="checkbox"
-                              checked={Number(rel.bloquea_inscripcion) === 1}
-                              onChange={(e) =>
-                                cambiarRelacion(index, "bloquea_inscripcion", e.target.checked ? 1 : 0)
-                              }
-                            />
-                            Bloquea inscripción
-                          </label>
-
-                          <label>
-                            <input
-                              type="checkbox"
-                              checked={Number(rel.bloquea_armado) === 1}
-                              onChange={(e) => cambiarRelacion(index, "bloquea_armado", e.target.checked ? 1 : 0)}
-                            />
-                            Bloquea armado
-                          </label>
-                        </div>
-                      </div>
-
-                      {!esEdicion && relaciones.length > 1 && (
-                        <button
-                          type="button"
-                          className="modal-corr-remove"
-                          onClick={() => quitarRelacion(index)}
-                          title="Quitar relación"
-                        >
-                          <FontAwesomeIcon icon={faTrash} />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
             </div>
+          )}
+        </div>
 
-            <div className="modal-corr-example">
-              Ejemplo: si elegís <strong>1° - MATEMÁTICA</strong> como anterior y agregás <strong>2° - MATEMÁTICA</strong> como posterior, el sistema guarda esa correlatividad. Podés agregar varias relaciones antes de guardar.
-            </div>
-          </>
-        )}
-
-        {modo === "auto" && !esEdicion && (
-          <div className="modal-corr-section auto-section">
-            <div className="modal-corr-section-title">Autogenerar cadena por materia</div>
-
-            <div className="modal-corr-grid">
-              <div className="modal-corr-field">
-                <label>Materia a encadenar</label>
-                <select value={idMateriaAuto} onChange={(e) => setIdMateriaAuto(e.target.value)} disabled={cargandoAuto}>
-                  <option value="">
-                    {cargandoAuto ? "Cargando materias de todos los cursos..." : "Seleccionar materia"}
-                  </option>
-                  {materiasAuto.map((m) => (
-                    <option key={m.id_materia} value={m.id_materia}>
-                      {m.materia} ({m.cursos.length} cursos)
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="modal-corr-checks auto-checks">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={Number(autoBloqueaInscripcion) === 1}
-                    onChange={(e) => setAutoBloqueaInscripcion(e.target.checked ? 1 : 0)}
-                  />
-                  Bloquea inscripción
-                </label>
-
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={Number(autoBloqueaArmado) === 1}
-                    onChange={(e) => setAutoBloqueaArmado(e.target.checked ? 1 : 0)}
-                  />
-                  Bloquea armado
-                </label>
-              </div>
-            </div>
-
-            <div className="modal-corr-auto-preview">
-              {cargandoAuto ? (
-                <p>Cargando materias desde cátedras para detectar en qué años existe cada una...</p>
-              ) : cursosAutoSeleccionados.length === 0 ? (
-                <p>Seleccioná una materia y el sistema va a mostrar los años encontrados en cátedras.</p>
-              ) : (
-                <>
-                  <p>
-                    Se van a crear relaciones consecutivas para los cursos donde existe esa materia:
-                  </p>
-                  <div className="auto-course-chain">
-                    {cursosAutoSeleccionados.map((c, index) => (
-                      <React.Fragment key={c.id_curso}>
-                        <span>{c.nombre_curso}</span>
-                        {index < cursosAutoSeleccionados.length - 1 && <b>→</b>}
-                      </React.Fragment>
-                    ))}
-                  </div>
-                  <small>
-                    Ejemplo: 1° → 2°, 2° → 3°, 3° → 4°. No tenés que cargar una por una.
-                  </small>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className="modal-corr-actions">
+        <div className="gm-modal__actions modal-corr-actions">
           <button type="button" className="btn-corr ghost" onClick={onClose}>
             Cancelar
           </button>
 
-          <button type="button" className="btn-corr primary" onClick={guardar} disabled={cargandoAuto}>
+          <button
+            type="button"
+            className="btn-corr primary"
+            onClick={guardar}
+            disabled={cargandoAuto}
+          >
             <FontAwesomeIcon icon={faSave} />
-            {modo === "auto" ? "Generar correlativas" : "Guardar correlatividades"}
+            {modo === "auto"
+              ? "Generar correlativas"
+              : "Guardar correlatividades"}
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

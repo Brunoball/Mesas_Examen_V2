@@ -242,6 +242,7 @@ background:rgba(0,85,187,.07);
   color:var(--mov-muted);
   font-size:12px;
   font-weight:460;
+  flex-wrap:wrap;
 }
 
 .docentes-footer strong{
@@ -249,6 +250,21 @@ background:rgba(0,85,187,.07);
   font-weight:620;
 }
 
+.docentes-pagination{
+  margin-left:auto;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+  color:var(--mov-muted);
+}
+
+.docentes-pageBtn{
+  height:28px;
+  padding:0 12px;
+  font-size:12px;
+  border-radius:10px;
+}
 
 /* =========================
    Alertas
@@ -761,7 +777,14 @@ background:rgba(0,85,187,.07);
   .docentes-footer{
     flex-direction:column;
     align-items:flex-start;
-    gap:6px;
+    gap:8px;
+  }
+
+  .docentes-pagination{
+    width:100%;
+    margin-left:0;
+    justify-content:flex-start;
+    flex-wrap:wrap;
   }
 
   .docentes-form-grid{

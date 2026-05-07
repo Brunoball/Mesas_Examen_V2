@@ -1,7 +1,15 @@
 // src/components/Materias/modales/ModalArea.jsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faLayerGroup, faPlus, faSave, faTimes } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCheckCircle,
+  faLayerGroup,
+  faPlus,
+  faSave,
+  faTimes,
+} from "@fortawesome/free-solid-svg-icons";
+import "../../Global/Global_css/Global_Modals.css";
 
 const parseIds = (valor) => {
   if (!valor) return [];
@@ -19,6 +27,26 @@ const ModalArea = ({ item, materias = [], onClose, onSave }) => {
   const [idsMaterias, setIdsMaterias] = useState(idsIniciales);
   const [idMateriaSeleccionada, setIdMateriaSeleccionada] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+      onClose?.();
+    };
+
+    document.addEventListener("keydown", handleKeyDown, true);
+
+    return () => {
+      document.body.style.overflow = overflowAnterior;
+      document.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, [onClose]);
 
   const materiasActivas = useMemo(() => {
     return materias
@@ -65,95 +93,165 @@ const ModalArea = ({ item, materias = [], onClose, onSave }) => {
     });
   };
 
-  return (
-    <div className="materias-modal-overlay">
-      <form className="materias-modal large" onSubmit={guardar}>
-        <div className="materias-modal-header">
-          <div className="materias-modal-icon">
+  return createPortal(
+    <div
+      className="gm-modalOverlay materias-modal-overlay"
+      role="presentation"
+      onMouseDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <form
+        className="gm-modal gm-modal--materias-lg materias-modal large"
+        onSubmit={guardar}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="area-modal-title"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="gm-modal__header materias-modal-header">
+          <div className="gm-modal__headIcon materias-modal-icon" aria-hidden="true">
             <FontAwesomeIcon icon={faLayerGroup} />
           </div>
-          <div>
-            <h3>{item ? "Editar área" : "Nueva área"}</h3>
-            <p>Creá el área y agregá las materias desde el desplegable. Podés seleccionar varias.</p>
+
+          <div className="gm-modal__headText">
+            <h2 id="area-modal-title">{item ? "Editar área" : "Nueva área"}</h2>
+            <p>Creá el área y agregá las materias desde el desplegable.</p>
           </div>
-          <button type="button" className="modal-close" onClick={onClose}>
+
+          <button type="button" className="gm-modal__close modal-close" onClick={onClose} aria-label="Cerrar modal">
             <FontAwesomeIcon icon={faTimes} />
           </button>
         </div>
 
-        {error && <div className="modal-inline-error">{error}</div>}
-
-        <div className="form-grid two">
-          <label className="form-label">
-            Nombre del área
-            <input
-              value={area}
-              onChange={(e) => setArea(e.target.value.toUpperCase())}
-              placeholder="EJ: MATEMÁTICAS"
-              autoFocus
-            />
-          </label>
-
-          <label className="check-inline top-check">
-            <input type="checkbox" checked={activo} onChange={(e) => setActivo(e.target.checked)} />
-            Área activa
-          </label>
-        </div>
-
-        <div className="taller-box area-box">
-          <div className="taller-box-title-row">
-            <div>
-              <h4>Materias del área</h4>
-              <p className="muted">Seleccioná una materia y agregala. Las materias agregadas aparecen abajo.</p>
-            </div>
-          </div>
-
-          <div className="area-add-row">
-            <select value={idMateriaSeleccionada} onChange={(e) => setIdMateriaSeleccionada(e.target.value)}>
-              <option value="">Seleccionar materia</option>
-              {materiasDisponibles.map((m) => (
-                <option key={m.id_materia} value={m.id_materia}>
-                  {m.materia}
-                </option>
-              ))}
-            </select>
-
-            <button type="button" className="materias-btn ghost" onClick={agregarMateria} disabled={!idMateriaSeleccionada}>
-              <FontAwesomeIcon icon={faPlus} />
-              Agregar
-            </button>
-          </div>
-
-          {materiasSeleccionadas.length === 0 ? (
-            <div className="asignar-empty">
-              <span className="muted">Todavía no agregaste materias a esta área.</span>
-            </div>
-          ) : (
-            <div className="chip-list area-chip-list">
-              {materiasSeleccionadas.map((m) => (
-                <span className="chip" key={m.id_materia}>
-                  {m.materia}
-                  <button type="button" onClick={() => quitarMateria(m.id_materia)} title="Quitar materia">
-                    <FontAwesomeIcon icon={faTimes} />
-                  </button>
-                </span>
-              ))}
+        <div className="gm-modal__content">
+          {error && (
+            <div className="gm-alert gm-alert--error gm-alert--banner">
+              {error}
             </div>
           )}
+
+          <section className="gm-panel">
+            <div className="gm-panel__head">
+              <div>
+                <span className="gm-panel__eyebrow">Ficha principal</span>
+                <h3>
+                  <FontAwesomeIcon icon={faLayerGroup} />
+                  Datos del área
+                </h3>
+              </div>
+            </div>
+
+            <div className="gm-panel__body">
+              <div className="gm-formRow gm-formRow--split">
+                <label className="gm-field">
+                  <input
+                    className="gm-input"
+                    value={area}
+                    onChange={(e) => setArea(e.target.value.toUpperCase())}
+                    placeholder=" "
+                    autoFocus
+                  />
+                  <span className="gm-label">Nombre del área</span>
+                </label>
+
+                <div className="gm-field gm-field--status">
+                  <div className="gm-statusToggle" role="group" aria-label="Estado del área">
+                    <button
+                      type="button"
+                      className={`gm-statusToggle__btn ${activo ? "is-active" : ""}`}
+                      onClick={() => setActivo(true)}
+                    >
+                      <FontAwesomeIcon icon={faCheckCircle} />
+                      Activa
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`gm-statusToggle__btn gm-statusToggle__btn--danger ${!activo ? "is-active" : ""}`}
+                      onClick={() => setActivo(false)}
+                    >
+                      Inactiva
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="gm-panel">
+            <div className="gm-panel__head gm-panel__head--split">
+              <div>
+                <span className="gm-panel__eyebrow">Materias del área</span>
+                <h3>
+                  <FontAwesomeIcon icon={faLayerGroup} />
+                  Vinculación de materias
+                </h3>
+              </div>
+              <span className="gm-panel__tag">{materiasSeleccionadas.length} agregada{materiasSeleccionadas.length === 1 ? "" : "s"}</span>
+            </div>
+
+            <div className="gm-panel__body">
+              <div className="area-add-row materias-modalAddRow">
+                <label className="gm-field">
+                  <select
+                    className="gm-input gm-select"
+                    value={idMateriaSeleccionada}
+                    onChange={(e) => setIdMateriaSeleccionada(e.target.value)}
+                  >
+                    <option value="">Seleccionar materia</option>
+                    {materiasDisponibles.map((m) => (
+                      <option key={m.id_materia} value={m.id_materia}>
+                        {m.materia}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="gm-label is-up">Materia</span>
+                </label>
+
+                <button type="button" className="gm-btn gm-btn--soft materias-btn ghost" onClick={agregarMateria} disabled={!idMateriaSeleccionada}>
+                  <FontAwesomeIcon icon={faPlus} />
+                  Agregar
+                </button>
+              </div>
+
+              {materiasSeleccionadas.length === 0 ? (
+                <div className="gm-emptySchedule materias-modalEmpty">
+                  <strong>Todavía no agregaste materias.</strong>
+                  <span>Seleccioná una materia del listado y presioná Agregar.</span>
+                </div>
+              ) : (
+                <div className="chip-list area-chip-list materias-modalChipList">
+                  {materiasSeleccionadas.map((m) => (
+                    <span className="chip materias-modalChip" key={m.id_materia}>
+                      {m.materia}
+                      <button type="button" onClick={() => quitarMateria(m.id_materia)} title="Quitar materia">
+                        <FontAwesomeIcon icon={faTimes} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
         </div>
 
-        <div className="modal-actions">
-          <button type="button" className="materias-btn ghost" onClick={onClose}>
+        <div className="gm-modal__actions modal-actions">
+          <button type="button" className="gm-btn gm-btn--ghost materias-btn ghost" onClick={onClose}>
             Cancelar
           </button>
 
-          <button type="submit" className="materias-btn primary">
+          <button type="submit" className="gm-btn gm-btn--primary materias-btn primary">
             <FontAwesomeIcon icon={faSave} />
             Guardar área
           </button>
         </div>
       </form>
-    </div>
+    </div>,
+    document.body
   );
 };
 

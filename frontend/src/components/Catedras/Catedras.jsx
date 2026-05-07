@@ -92,7 +92,6 @@ export default function Catedras() {
     setBusqueda,
     filtros,
     actualizarFiltro,
-    limpiarTodosFiltros,
     paginacion,
     reload,
     asignarDocente,
@@ -176,17 +175,6 @@ export default function Catedras() {
                 </select>
               </div>
 
-              <div className="catedras-filterTabs catedras-selectFilter catedras-selectFilter--estado">
-                <span className="catedras-filterTabs__label">Docente</span>
-                <select
-                  className="catedras-filterSelect"
-                  value={filtros.sin_docente}
-                  onChange={(e) => actualizarFiltro('sin_docente', e.target.value)}
-                >
-                  <option value="">Todos</option>
-                  <option value="1">Solo sin docente</option>
-                </select>
-              </div>
 
               <div className="cc-filter catedras-searchFilter">
                 <div className={`cc-floatingField cc-floatingField--search ${busqueda.trim() ? 'is-active' : ''}`}>
@@ -222,14 +210,7 @@ export default function Catedras() {
           <div className="mov-card__actions catedras-actionsHead">
 
 
-            <button
-              type="button"
-              className="mov-btn mov-btn--ghost"
-              onClick={limpiarTodosFiltros}
-              disabled={!hayFiltrosActivos || loading}
-            >
-              Limpiar
-            </button>
+
 
           </div>
         </div>

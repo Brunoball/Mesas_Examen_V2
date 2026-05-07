@@ -5,9 +5,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faBook,
   faBoxOpen,
+  faDiagramProject,
   faEdit,
   faMagnifyingGlass,
   faPlus,
+  faFlask,
+  faLayerGroup,
   faPowerOff,
   faTimes,
   faTrash,
@@ -21,6 +24,7 @@ import ModalMateria from "./modales/ModalMateria";
 import ModalCorrelativa from "./modales/ModalCorrelativa";
 import ModalTaller from "./modales/ModalTaller";
 import ModalArea from "./modales/ModalArea";
+import ModalEliminarGlobal from "../Global/Modales/ModalEliminarGlobal";
 import SeccionCorrelativas from "./secciones/SeccionCorrelativas";
 import SeccionTalleres from "./secciones/SeccionTalleres";
 import SeccionAreas from "./secciones/SeccionAreas";
@@ -125,6 +129,9 @@ const Materias = () => {
     setModalTaller,
     modalArea,
     setModalArea,
+    confirmacion,
+    cerrarConfirmacion,
+    confirmarAccion,
     guardarMateria,
     eliminarMateria,
     cambiarEstadoMateria,
@@ -153,6 +160,108 @@ const Materias = () => {
   const listaMaterias = Array.isArray(materias) ? materias : [];
   const listaMateriasFiltradas = Array.isArray(materiasFiltradas) ? materiasFiltradas : [];
   const totalActivas = listaMaterias.filter((m) => Number(m.activo) === 1).length;
+
+  const getConfirmacionConfig = () => {
+    const item = confirmacion?.item || {};
+    const tipo = confirmacion?.tipo || '';
+
+    if (tipo === 'estado_materia') {
+      const activa = Number(item?.activo) === 1;
+      return {
+        operacion: activa ? 'baja' : 'alta',
+        icon: faPowerOff,
+        title: activa ? 'Desactivar materia' : 'Activar materia',
+        message: activa
+          ? 'La materia dejará de figurar como activa, pero se conservará en el sistema.'
+          : 'La materia volverá a figurar como activa.',
+        confirmLabel: activa ? 'Desactivar' : 'Activar',
+        loadingLabel: 'Procesando...',
+        successMessage: activa ? 'Materia desactivada correctamente.' : 'Materia activada correctamente.',
+        errorMessage: 'No se pudo cambiar el estado de la materia.',
+        details: [
+          { label: 'Materia', value: item?.materia },
+          { label: 'Estado actual', value: activa ? 'Activa' : 'Inactiva' },
+        ],
+      };
+    }
+
+    if (tipo === 'eliminar_correlativa') {
+      return {
+        operacion: 'eliminar',
+        icon: faDiagramProject,
+        title: 'Eliminar correlatividad',
+        message: 'Se eliminará esta relación de correlatividad.',
+        warning: 'Esta acción puede afectar inscripciones o armado de mesas si esa relación estaba en uso.',
+        confirmLabel: 'Eliminar',
+        loadingLabel: 'Eliminando...',
+        successMessage: 'Correlatividad eliminada correctamente.',
+        errorMessage: 'No se pudo eliminar la correlatividad.',
+        details: [
+          { label: 'Materia', value: item?.materia },
+          { label: 'Curso', value: item?.curso },
+          { label: 'Correlativa', value: item?.materia_relacionada },
+        ],
+      };
+    }
+
+    if (tipo === 'eliminar_taller') {
+      return {
+        operacion: 'eliminar',
+        icon: faFlask,
+        title: 'Eliminar taller',
+        message: 'Se eliminará o desactivará el taller según las reglas del backend.',
+        warning: 'Revisá que no tenga materias asignadas que todavía necesites conservar.',
+        confirmLabel: 'Eliminar',
+        loadingLabel: 'Eliminando...',
+        successMessage: 'Taller eliminado correctamente.',
+        errorMessage: 'No se pudo eliminar el taller.',
+        details: [
+          { label: 'Taller', value: item?.taller },
+          { label: 'Curso', value: item?.curso },
+          { label: 'División', value: item?.division },
+        ],
+      };
+    }
+
+    if (tipo === 'eliminar_area') {
+      return {
+        operacion: 'eliminar',
+        icon: faLayerGroup,
+        title: 'Eliminar área',
+        message: 'Se eliminará o desactivará el área según las reglas del backend.',
+        warning: 'Las materias asociadas pueden quedar sin esta agrupación.',
+        confirmLabel: 'Eliminar',
+        loadingLabel: 'Eliminando...',
+        successMessage: 'Área eliminada correctamente.',
+        errorMessage: 'No se pudo eliminar el área.',
+        details: [
+          { label: 'Área', value: item?.area },
+          { label: 'Materias', value: item?.materias },
+          { label: 'Estado', value: Number(item?.activo) === 1 ? 'Activa' : 'Inactiva' },
+        ],
+      };
+    }
+
+    return {
+      operacion: 'eliminar',
+      icon: faBook,
+      title: 'Eliminar materia',
+      message: 'Se eliminará o desactivará la materia según las reglas del backend.',
+      warning: 'Si la materia está relacionada con cátedras, talleres o correlatividades, revisá el impacto antes de continuar.',
+      confirmLabel: 'Eliminar',
+      loadingLabel: 'Eliminando...',
+      successMessage: 'Materia eliminada correctamente.',
+      errorMessage: 'No se pudo eliminar la materia.',
+      details: [
+        { label: 'Materia', value: item?.materia },
+        { label: 'Área', value: item?.areas },
+        { label: 'Estado', value: Number(item?.activo) === 1 ? 'Activa' : 'Inactiva' },
+      ],
+    };
+  };
+
+  const confirmacionConfig = getConfirmacionConfig();
+
 
   const renderFiltrosGlobales = () => (
     <div className="mov-headFilters materias-headFilters materias-globalFilters materias-integratedFilters">
@@ -183,18 +292,7 @@ const Materias = () => {
         </div>
       </div>
 
-      <div className="catedras-filterTabs catedras-selectFilter catedras-selectFilter--estado">
-        <span className="catedras-filterTabs__label">Estado</span>
-        <select
-          className="catedras-filterSelect"
-          id="materias-estado"
-          value={soloActivas ? "activas" : "todas"}
-          onChange={(e) => setSoloActivas(e.target.value === "activas")}
-        >
-          <option value="activas">Solo activas</option>
-          <option value="todas">Todas</option>
-        </select>
-      </div>
+
     </div>
   );
 
@@ -447,6 +545,23 @@ const Materias = () => {
           onSave={guardarArea}
         />
       )}
+
+      <ModalEliminarGlobal
+        open={Boolean(confirmacion?.abierto)}
+        operacion={confirmacionConfig.operacion}
+        row={confirmacion?.item}
+        icon={confirmacionConfig.icon}
+        title={confirmacionConfig.title}
+        message={confirmacionConfig.message}
+        warning={confirmacionConfig.warning}
+        confirmLabel={confirmacionConfig.confirmLabel}
+        loadingLabel={confirmacionConfig.loadingLabel}
+        successMessage={confirmacionConfig.successMessage}
+        errorMessage={confirmacionConfig.errorMessage}
+        details={confirmacionConfig.details}
+        onClose={cerrarConfirmacion}
+        onConfirm={confirmarAccion}
+      />
     </div>
   );
 

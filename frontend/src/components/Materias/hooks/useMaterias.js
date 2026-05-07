@@ -66,11 +66,38 @@ export function useMaterias() {
   const [modalCorrelativa, setModalCorrelativa] = useState({ abierto: false, item: null });
   const [modalTaller, setModalTaller] = useState({ abierto: false, item: null });
   const [modalArea, setModalArea] = useState({ abierto: false, item: null });
+  const [confirmacion, setConfirmacion] = useState({
+    abierto: false,
+    tipo: '',
+    item: null,
+    operacion: 'eliminar',
+    nuevoEstado: null,
+  });
 
   const mostrarMensaje = useCallback((tipo, texto) => {
     setMensaje({ tipo, texto });
     window.clearTimeout(window.__materiasMsgTimer);
     window.__materiasMsgTimer = window.setTimeout(() => setMensaje(null), 3800);
+  }, []);
+
+  const cerrarConfirmacion = useCallback(() => {
+    setConfirmacion({
+      abierto: false,
+      tipo: '',
+      item: null,
+      operacion: 'eliminar',
+      nuevoEstado: null,
+    });
+  }, []);
+
+  const abrirConfirmacion = useCallback((config) => {
+    setConfirmacion({
+      abierto: true,
+      tipo: config?.tipo || '',
+      item: config?.item || null,
+      operacion: config?.operacion || 'eliminar',
+      nuevoEstado: config?.nuevoEstado ?? null,
+    });
   }, []);
 
   const obtenerMateriasPorCurso = useCallback(
@@ -287,30 +314,23 @@ export function useMaterias() {
     }
   };
 
-  const eliminarMateria = async (item) => {
-    if (!window.confirm(`¿Eliminar o desactivar la materia ${item.materia}?`)) return;
-
-    try {
-      const res = await materiasApi.eliminar(item.id_materia);
-      mostrarMensaje(res.exito ? 'ok' : 'error', res.mensaje || 'Operación realizada.');
-      if (res.exito) await cargarTodo();
-    } catch (error) {
-      console.error(error);
-      mostrarMensaje('error', 'No se pudo eliminar la materia.');
-    }
+  const eliminarMateria = (item) => {
+    abrirConfirmacion({
+      tipo: 'eliminar_materia',
+      operacion: 'eliminar',
+      item,
+    });
   };
 
-  const cambiarEstadoMateria = async (item) => {
-    const nuevo = Number(item.activo) === 1 ? 0 : 1;
+  const cambiarEstadoMateria = (item) => {
+    const nuevo = Number(item?.activo) === 1 ? 0 : 1;
 
-    try {
-      const res = await materiasApi.cambiarEstado(item.id_materia, nuevo);
-      mostrarMensaje(res.exito ? 'ok' : 'error', res.mensaje || 'Operación realizada.');
-      if (res.exito) await cargarTodo();
-    } catch (error) {
-      console.error(error);
-      mostrarMensaje('error', 'No se pudo cambiar el estado de la materia.');
-    }
+    abrirConfirmacion({
+      tipo: 'estado_materia',
+      operacion: nuevo === 1 ? 'alta' : 'baja',
+      item,
+      nuevoEstado: nuevo,
+    });
   };
 
   const guardarCorrelativa = async (payload) => {
@@ -333,17 +353,12 @@ export function useMaterias() {
     }
   };
 
-  const eliminarCorrelativa = async (item) => {
-    if (!window.confirm('¿Eliminar esta correlatividad?')) return;
-
-    try {
-      const res = await materiasApi.correlativaEliminar(item.id_materia_correlativa);
-      mostrarMensaje(res.exito ? 'ok' : 'error', res.mensaje || 'Operación realizada.');
-      if (res.exito) await cargarTodo();
-    } catch (error) {
-      console.error(error);
-      mostrarMensaje('error', 'No se pudo eliminar la correlatividad.');
-    }
+  const eliminarCorrelativa = (item) => {
+    abrirConfirmacion({
+      tipo: 'eliminar_correlativa',
+      operacion: 'eliminar',
+      item,
+    });
   };
 
   const guardarTaller = async (payload) => {
@@ -364,17 +379,12 @@ export function useMaterias() {
     }
   };
 
-  const eliminarTaller = async (item) => {
-    if (!window.confirm(`¿Eliminar el taller ${item.taller}?`)) return;
-
-    try {
-      const res = await materiasApi.tallerEliminar(item.id_taller);
-      mostrarMensaje(res.exito ? 'ok' : 'error', res.mensaje || 'Operación realizada.');
-      if (res.exito) await cargarTodo();
-    } catch (error) {
-      console.error(error);
-      mostrarMensaje('error', 'No se pudo eliminar el taller.');
-    }
+  const eliminarTaller = (item) => {
+    abrirConfirmacion({
+      tipo: 'eliminar_taller',
+      operacion: 'eliminar',
+      item,
+    });
   };
 
   const agregarMateriaTaller = async (payload) => {
@@ -421,16 +431,56 @@ export function useMaterias() {
     }
   };
 
-  const eliminarArea = async (item) => {
-    if (!window.confirm(`¿Eliminar o desactivar el área ${item.area}?`)) return;
+  const eliminarArea = (item) => {
+    abrirConfirmacion({
+      tipo: 'eliminar_area',
+      operacion: 'eliminar',
+      item,
+    });
+  };
+
+
+  const confirmarAccion = async () => {
+    const { tipo, item, nuevoEstado } = confirmacion;
+
+    if (!tipo || !item) {
+      return { ok: false, mensaje: 'No hay una acción seleccionada.' };
+    }
 
     try {
-      const res = await materiasApi.areaEliminar(item.id_area);
-      mostrarMensaje(res.exito ? 'ok' : 'error', res.mensaje || 'Operación realizada.');
-      if (res.exito) await cargarTodo();
+      let res = null;
+
+      if (tipo === 'eliminar_materia') {
+        res = await materiasApi.eliminar(item.id_materia);
+      } else if (tipo === 'estado_materia') {
+        const estado = Number(nuevoEstado ?? (Number(item.activo) === 1 ? 0 : 1));
+        res = await materiasApi.cambiarEstado(item.id_materia, estado);
+      } else if (tipo === 'eliminar_correlativa') {
+        res = await materiasApi.correlativaEliminar(item.id_materia_correlativa);
+      } else if (tipo === 'eliminar_taller') {
+        res = await materiasApi.tallerEliminar(item.id_taller);
+      } else if (tipo === 'eliminar_area') {
+        res = await materiasApi.areaEliminar(item.id_area);
+      } else {
+        return { ok: false, mensaje: 'La acción no está configurada.' };
+      }
+
+      const ok = Boolean(res?.exito ?? res?.ok);
+      const mensajeAccion = res?.mensaje || (ok ? 'Operación realizada.' : 'No se pudo completar la operación.');
+
+      mostrarMensaje(ok ? 'ok' : 'error', mensajeAccion);
+
+      if (ok) {
+        cerrarConfirmacion();
+        await cargarTodo();
+      }
+
+      return { ok, mensaje: mensajeAccion };
     } catch (error) {
       console.error(error);
-      mostrarMensaje('error', 'No se pudo eliminar el área.');
+      const mensajeError = 'No se pudo completar la operación.';
+      mostrarMensaje('error', mensajeError);
+      return { ok: false, mensaje: mensajeError };
     }
   };
 
@@ -461,6 +511,9 @@ export function useMaterias() {
     setModalTaller,
     modalArea,
     setModalArea,
+    confirmacion,
+    cerrarConfirmacion,
+    confirmarAccion,
     cargarTodo,
     obtenerMateriasPorCurso,
     obtenerCatedrasTaller,
