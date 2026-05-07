@@ -6,3 +6,6 @@ backend/.env
 vendor/
 dist/
 build/
+
+backend/logs/app.log
+backend/logs/*.log
