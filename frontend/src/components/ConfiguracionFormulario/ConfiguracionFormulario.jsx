@@ -29,8 +29,17 @@ function fieldClass(value = "") {
 
 function openNativePicker(event) {
   const input = event.currentTarget;
-  if (typeof input.showPicker === "function") {
+
+  if (!input || typeof input.showPicker !== "function") return;
+
+  try {
     input.showPicker();
+  } catch (error) {
+    // Chrome exige que showPicker() se ejecute por un gesto real del usuario.
+    // Si el navegador no lo permite, no rompemos la pantalla: el input sigue funcionando normal.
+    if (error?.name !== "NotAllowedError" && error?.name !== "InvalidStateError") {
+      console.warn("No se pudo abrir el calendario nativo:", error);
+    }
   }
 }
 
@@ -175,7 +184,6 @@ export default function ConfiguracionFormulario() {
                           value={inicioFecha}
                           onChange={(e) => setInicioFecha(e.target.value)}
                           onClick={openNativePicker}
-                          onFocus={openNativePicker}
                           placeholder=" "
                         />
                         <span className="cc-floatingLabel">Fecha</span>
@@ -228,7 +236,6 @@ export default function ConfiguracionFormulario() {
                           value={finFecha}
                           onChange={(e) => setFinFecha(e.target.value)}
                           onClick={openNativePicker}
-                          onFocus={openNativePicker}
                           placeholder=" "
                         />
                         <span className="cc-floatingLabel">Fecha</span>
