@@ -1,388 +1,587 @@
-/* src/components/ConfiguracionFormulario/ConfiguracionFormulario.css */
+/* =========================================================
+   CONFIGURACION FORMULARIO — estética replicada desde Docentes
+   Usa Global_Section.css para base mov-page / mov-card / mov-btn / floating fields.
+   Sin modo oscuro.
+========================================================= */
 
-.cfgFormPage {
-  min-height: 100vh;
-  width: 100%;
-  padding: 34px 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #243044;
-  background:
-    linear-gradient(135deg, rgba(14, 42, 86, .30), rgba(255, 255, 255, .20)),
-    radial-gradient(circle at top left, rgba(50, 93, 176, .20), transparent 34%),
-    #eef2f7;
-  box-sizing: border-box;
+.cfgFormPage.mov-page{
+  min-height:100%;
+  height:100%;
+  padding:0;
+  background:transparent;
+  color:var(--balto-ink);
 }
 
-.cfgFormPage * {
-  box-sizing: border-box;
+.cfgFormPage *{
+  box-sizing:border-box;
 }
 
-.cfgFormShell {
-  width: min(1100px, 100%);
-  border-radius: 20px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, .82);
-  box-shadow: 0 28px 80px rgba(15, 23, 42, .28);
-  border: 1px solid rgba(255, 255, 255, .65);
-  backdrop-filter: blur(10px);
+.cfgFormCardRoot.mov-card{
+  width:100%;
+  height:100%;
+  min-height:0;
+  margin:0;
+  padding:0;
+  border-radius:var(--mov-radius);
+  overflow:hidden;
+  background:#fff;
 }
 
-.cfgFormHeader {
-  background: #244b96;
-  color: #fff;
-  min-height: 110px;
-  padding: 26px 24px;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 18px;
+.cfgFormHead{
+  border-bottom:1px solid color-mix(in srgb, var(--mov-border) 65%, #fff);
+  align-items:flex-end;
 }
 
-.cfgFormHeader h1 {
-  margin: 0 0 8px;
-  font-size: clamp(24px, 3vw, 31px);
-  line-height: 1.05;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+.cfgFormHeadLeft{
+  align-items:flex-end;
 }
 
-.cfgFormHeader p {
-  margin: 0;
-  font-size: 15.5px;
-  color: rgba(255, 255, 255, .94);
+.cfgFormTitleBox{
+  gap:0;
+  flex:1 1 auto;
+  min-width:220px;
 }
 
-.cfgFormStatusPill {
-  flex: 0 0 auto;
-  min-height: 45px;
-  padding: 0 18px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 800;
-  font-size: 14px;
-  color: #394151;
-  background: #edf3ff;
-  box-shadow: 0 16px 30px rgba(0, 0, 0, .14);
+.cfgFormSectionTitle{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:var(--balto-ink);
 }
 
-.cfgFormStatusPill i {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  display: block;
+.cfgFormSectionTitle svg{
+  color:var(--balto-action);
 }
 
-.cfgFormStatusPill.is-closed i {
-  background: #dc2f3a;
+.cfgFormHeadFilters{
+  flex:0 0 auto;
+  justify-content:flex-end;
 }
 
-.cfgFormStatusPill.is-open i {
-  background: #16a34a;
+.cfgFormHeadActions{
+  align-items:center;
 }
 
-.cfgFormBody {
-  padding: 22px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
-  gap: 20px;
+.cfgFormHeadBtn{
+  height:42px;
 }
 
-.cfgFormCard {
-  background: rgba(255, 255, 255, .92);
-  border: 1px solid rgba(226, 232, 240, .95);
-  border-radius: 17px;
-  box-shadow: 0 14px 30px rgba(15, 23, 42, .10);
+.cfgFormStatusPill{
+  height:44px;
+  padding:0 14px;
+  border-radius:10px;
+  border:1.5px solid rgba(10,37,64,.14);
+  background:#fff;
+  color:color-mix(in srgb, var(--balto-ink) 84%, #000);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:9px;
+  font-size:13px;
+  font-weight:620;
+  white-space:nowrap;
 }
 
-.cfgFormCard--main {
-  padding: 22px 18px 18px;
+.cfgFormStatusPill i{
+  width:9px;
+  height:9px;
+  border-radius:999px;
+  display:block;
+  box-shadow:0 0 0 4px rgba(148,163,184,.14);
 }
 
-.cfgFormField {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
+.cfgFormStatusPill.is-open{
+  border-color:rgba(34,173,92,.28);
+  background:rgba(34,173,92,.08);
+  color:#16864a;
 }
 
-.cfgFormField span,
-.cfgFormGroupTitle {
-  font-size: 14.5px;
-  color: #405068;
-  font-weight: 700;
+.cfgFormStatusPill.is-open i{
+  background:#22ad5c;
+  box-shadow:0 0 0 4px rgba(34,173,92,.13);
 }
 
-.cfgFormField--full {
-  width: 100%;
+.cfgFormStatusPill.is-closed{
+  border-color:rgba(225,61,69,.26);
+  background:rgba(225,61,69,.08);
+  color:color-mix(in srgb, var(--balto-danger) 72%, #000);
 }
 
-.cfgFormField input,
-.cfgFormDateRow input,
-.cfgFormDateRow select {
-  border: 1px solid #dce5f1;
-  background: #fff;
-  color: #263244;
-  height: 45px;
-  border-radius: 14px;
-  outline: none;
-  box-shadow: 0 3px 10px rgba(15, 23, 42, .06);
-  font-size: 15px;
-  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+.cfgFormStatusPill.is-closed i{
+  background:var(--balto-danger);
+  box-shadow:0 0 0 4px rgba(225,61,69,.12);
 }
 
-.cfgFormField input {
-  padding: 0 14px;
+.cfgFormContent{
+  flex:1;
+  min-height:0;
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) 380px;
+  gap:16px;
+  padding:18px 20px 20px;
+  background:linear-gradient(180deg, #fff 0%, color-mix(in srgb, var(--balto-bg) 64%, #fff) 100%);
+  overflow:auto;
 }
 
-.cfgFormField input:focus,
-.cfgFormDateRow input:focus,
-.cfgFormDateRow select:focus {
-  border-color: #244b96;
-  box-shadow: 0 0 0 4px rgba(36, 75, 150, .13);
+.cfgFormPanel{
+  min-width:0;
+  border:1px solid color-mix(in srgb, var(--mov-border) 78%, #fff);
+  background:#fff;
+  border-radius:16px;
+  box-shadow:var(--mov-shadow-sm);
 }
 
-.cfgFormGroupTitle {
-  margin-top: 18px;
-  margin-bottom: 8px;
+.cfgFormPanel--main{
+  padding:0;
+  overflow:hidden;
 }
 
-.cfgFormDateRow {
-  display: grid;
-  grid-template-columns: 180px 86px 12px 86px 36px;
-  gap: 10px;
-  align-items: center;
-  width: 100%;
-  max-width: 430px;
+.cfgFormPanelHead{
+  min-height:70px;
+  padding:16px 18px;
+  border-bottom:1px solid color-mix(in srgb, var(--mov-border) 68%, #fff);
+  background:linear-gradient(180deg, #fff, color-mix(in srgb, var(--balto-bg) 58%, #fff));
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
 }
 
-.cfgFormDateRow input,
-.cfgFormDateRow select {
-  width: 100%;
-  padding: 0 14px;
+.cfgFormPanelHead--compact{
+  min-height:64px;
+  padding:15px 16px;
 }
 
-.cfgFormDateRow strong {
-  color: #405068;
-  text-align: center;
-  font-size: 18px;
+.cfgFormPanelHead h2{
+  margin:0;
+  color:var(--balto-ink);
+  font-size:15px;
+  font-weight:620;
+  letter-spacing:-.01em;
 }
 
-.cfgFormHs {
-  color: #526177;
-  font-weight: 800;
-  font-size: 14px;
+.cfgFormPanelHead p{
+  margin:4px 0 0;
+  color:var(--mov-muted);
+  font-size:12px;
+  font-weight:460;
+  line-height:1.35;
 }
 
-.cfgFormField--message {
-  margin-top: 18px;
+.cfgFormGrid{
+  padding:18px;
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:16px;
 }
 
-.cfgFormActions {
-  margin-top: 15px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
+.cfgFormGridFull{
+  grid-column:1 / -1;
 }
 
-.cfgFormBtn {
-  border: 0;
-  height: 40px;
-  min-width: 86px;
-  padding: 0 18px;
-  border-radius: 999px;
-  font-weight: 800;
-  cursor: pointer;
-  transition: transform .16s ease, box-shadow .16s ease, opacity .16s ease;
+.cfgFormFloating{
+  display:block;
+  min-width:0;
 }
 
-.cfgFormBtn:hover:not(:disabled) {
-  transform: translateY(-1px);
+.cfgFormInput.cc-input{
+  width:100%;
+  height:44px;
+  border-radius:10px;
+  border:1.5px solid rgba(10,37,64,.14);
+  background:#fff;
+  color:rgba(10,37,64,.92);
+  font-size:13px;
+  font-weight:500;
+  font-family:inherit;
 }
 
-.cfgFormBtn:disabled {
-  opacity: .65;
-  cursor: not-allowed;
+.cfgFormInput.cc-input:hover{
+  border-color:rgba(10,37,64,.28);
 }
 
-.cfgFormBtn--ghost {
-  background: #fff;
-  color: #243044;
-  border: 1px solid #d7e1ed;
-  box-shadow: 0 6px 14px rgba(15, 23, 42, .08);
+.cfgFormInput.cc-input:focus{
+  border-color:rgba(0,85,187,.55);
+  box-shadow:0 0 0 3px var(--cc-focus);
+  background:#fafcff;
 }
 
-.cfgFormBtn--primary {
-  background: #244b96;
-  color: #fff;
-  box-shadow: 0 10px 22px rgba(36, 75, 150, .25);
+.cfgFormSelect{
+  cursor:pointer;
+  appearance:auto;
 }
 
-.cfgFormSide {
-  display: grid;
-  gap: 17px;
-  grid-template-rows: auto 1fr;
+.cfgFormDate{
+  cursor:pointer;
 }
 
-.cfgFormPreview {
-  padding: 20px 15px;
+.cfgFormTextareaField .cc-floatingLabel{
+  top:22px;
 }
 
-.cfgFormPreview h2 {
-  margin: 0 0 18px;
-  font-size: 16px;
-  color: #202a3a;
+.cfgFormTextarea{
+  min-height:104px;
+  height:auto !important;
+  padding:16px 14px 12px !important;
+  resize:vertical;
+  line-height:1.45;
 }
 
-.cfgFormPreviewRow {
-  display: grid;
-  grid-template-columns: 90px 1fr;
-  gap: 8px;
-  align-items: start;
-  margin: 14px 0;
-  color: #41506a;
-  font-size: 15px;
-  line-height: 1.45;
+.cfgFormTextareaField.is-active .cc-floatingLabel,
+.cfgFormTextareaField:focus-within .cc-floatingLabel,
+.cfgFormTextarea:not(:placeholder-shown) + .cc-floatingLabel{
+  top:0;
 }
 
-.cfgFormPreviewRow b {
-  color: #42516b;
-  font-size: 15.5px;
+.cfgFormDateBlock{
+  padding:14px;
+  border-radius:15px;
+  border:1px solid color-mix(in srgb, var(--mov-border) 72%, #fff);
+  background:linear-gradient(180deg, #fff, color-mix(in srgb, var(--balto-bg) 55%, #fff));
 }
 
-.cfgFormPreviewRow--estado {
-  align-items: center;
+.cfgFormDateBlockHead{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  margin-bottom:14px;
 }
 
-.cfgFormPreviewRow em {
-  height: 38px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-style: normal;
-  font-weight: 900;
-  font-size: 13px;
-  letter-spacing: .02em;
+.cfgFormDateBlockHead h3{
+  margin:0;
+  color:var(--balto-ink);
+  font-size:14px;
+  font-weight:620;
+  letter-spacing:-.01em;
 }
 
-.cfgFormPreviewRow em.is-closed {
-  color: #8d1f27;
-  background: #fde9ec;
-  border: 1px solid #ffb5bf;
+.cfgFormDateBlockHead p{
+  margin:3px 0 0;
+  color:var(--mov-muted);
+  font-size:12px;
+  font-weight:460;
+  line-height:1.35;
 }
 
-.cfgFormPreviewRow em.is-open {
-  color: #126334;
-  background: #e8f9ef;
-  border: 1px solid #91deb0;
+.cfgFormDateIcon{
+  width:34px;
+  height:34px;
+  border-radius:12px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  color:var(--balto-action);
+  background:rgba(0,85,187,.08);
+  border:1px solid rgba(0,85,187,.16);
 }
 
-.cfgFormTip {
-  min-height: 160px;
-  padding: 30px 15px;
-  display: flex;
-  align-items: flex-start;
-  color: #3b485e;
-  font-size: 15.5px;
-  line-height: 1.75;
-  border-radius: 17px;
-  background: linear-gradient(135deg, rgba(229, 234, 241, .95), rgba(255, 235, 235, .90));
-  box-shadow: 0 14px 30px rgba(15, 23, 42, .08);
+.cfgFormDateIcon--end{
+  color:color-mix(in srgb, var(--balto-ink) 82%, #000);
+  background:rgba(10,37,64,.07);
+  border-color:rgba(10,37,64,.14);
 }
 
-.cfgFormLoading {
-  min-height: 312px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #526177;
-  font-weight: 800;
+.cfgFormDateRow{
+  display:grid;
+  grid-template-columns:minmax(180px, 1fr) 110px 110px;
+  gap:12px;
+  align-items:center;
 }
 
-.cfgFormToast {
-  position: fixed;
-  top: 22px;
-  right: 22px;
-  z-index: 50;
-  max-width: min(420px, calc(100vw - 44px));
-  padding: 13px 16px;
-  border-radius: 14px;
-  font-weight: 800;
-  box-shadow: 0 16px 45px rgba(15, 23, 42, .22);
-  animation: cfgToastIn .2s ease both;
+.cfgFormSide{
+  min-width:0;
+  display:grid;
+  grid-template-rows:auto 1fr;
+  gap:16px;
 }
 
-.cfgFormToast--ok {
-  background: #e8f9ef;
-  color: #126334;
-  border: 1px solid #91deb0;
+.cfgFormPreview{
+  overflow:hidden;
 }
 
-.cfgFormToast--error {
-  background: #fde9ec;
-  color: #8d1f27;
-  border: 1px solid #ffb5bf;
+.cfgFormPreviewList{
+  padding:14px 16px 16px;
+  display:grid;
+  gap:10px;
 }
 
-@keyframes cfgToastIn {
-  from { transform: translateY(-8px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+.cfgFormPreviewRow{
+  display:grid;
+  grid-template-columns:82px minmax(0, 1fr);
+  gap:10px;
+  align-items:start;
+  min-height:42px;
+  padding:10px 0;
+  border-bottom:1px solid color-mix(in srgb, var(--mov-border) 58%, #fff);
+  color:color-mix(in srgb, var(--balto-ink) 76%, #000);
+  font-size:13px;
+  line-height:1.45;
 }
 
-@media (max-width: 900px) {
-  .cfgFormPage {
-    padding: 18px 12px;
-    align-items: flex-start;
+.cfgFormPreviewRow:last-child{
+  border-bottom:0;
+}
+
+.cfgFormPreviewRow b{
+  color:var(--mov-muted);
+  font-size:12px;
+  font-weight:560;
+}
+
+.cfgFormPreviewRow span{
+  min-width:0;
+  color:var(--balto-ink);
+  font-weight:500;
+}
+
+.cfgFormPreviewRow--estado{
+  align-items:center;
+}
+
+.cfgFormPreviewRow em{
+  width:max-content;
+  min-height:30px;
+  padding:0 12px;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-style:normal;
+  font-size:12px;
+  font-weight:680;
+  letter-spacing:.03em;
+}
+
+.cfgFormPreviewRow em.is-open{
+  background:rgba(34,173,92,.12);
+  color:#16864a;
+  border:1px solid rgba(34,173,92,.26);
+}
+
+.cfgFormPreviewRow em.is-closed{
+  background:rgba(225,61,69,.12);
+  color:var(--balto-danger);
+  border:1px solid rgba(225,61,69,.26);
+}
+
+.cfgFormTip{
+  min-height:126px;
+  border:1px solid rgba(0,85,187,.14);
+  border-radius:16px;
+  background:linear-gradient(180deg, rgba(0,85,187,.07), #fff);
+  box-shadow:var(--mov-shadow-sm);
+  color:color-mix(in srgb, var(--balto-ink) 78%, #000);
+  padding:16px;
+  display:flex;
+  align-items:flex-start;
+  gap:11px;
+}
+
+.cfgFormTipIcon{
+  width:34px;
+  height:34px;
+  border-radius:12px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  color:var(--balto-action);
+  background:#fff;
+  border:1px solid rgba(0,85,187,.16);
+}
+
+.cfgFormTip strong{
+  display:block;
+  color:var(--balto-ink);
+  font-size:13px;
+  font-weight:620;
+  margin-bottom:3px;
+}
+
+.cfgFormTip p{
+  margin:0;
+  color:var(--mov-muted);
+  font-size:12.5px;
+  line-height:1.55;
+  font-weight:460;
+}
+
+.cfgFormLoading{
+  grid-column:1 / -1;
+  min-height:280px;
+  border:1px solid color-mix(in srgb, var(--mov-border) 70%, #fff);
+  border-radius:16px;
+  background:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  color:var(--balto-ink);
+}
+
+.cfgFormLoading strong{
+  display:block;
+  font-size:14px;
+  font-weight:620;
+}
+
+.cfgFormLoading p{
+  margin:4px 0 0;
+  color:var(--mov-muted);
+  font-size:12px;
+  font-weight:460;
+}
+
+.cfgFormLoadingIcon{
+  width:38px;
+  height:38px;
+  border-radius:999px;
+  border:3px solid color-mix(in srgb, var(--balto-action) 16%, #fff);
+  border-top-color:var(--balto-action);
+  animation:cfgFormSpin .85s linear infinite;
+}
+
+.cfgFormToast.mov-alert{
+  position:fixed;
+  top:22px;
+  right:22px;
+  z-index:1300;
+  margin:0;
+  min-height:44px;
+  max-width:min(420px, calc(100vw - 44px));
+  display:flex;
+  align-items:center;
+  gap:9px;
+  font-size:13px;
+  font-weight:560;
+  box-shadow:0 18px 48px rgba(10,37,64,.18);
+  animation:cfgToastIn .18s ease both;
+}
+
+.cfgFormToast--ok{
+  background:color-mix(in srgb, var(--balto-success) 10%, #fff) !important;
+  border-color:color-mix(in srgb, var(--balto-success) 24%, #fff) !important;
+  color:color-mix(in srgb, var(--balto-success) 58%, var(--balto-ink)) !important;
+}
+
+.cfgFormToast--error{
+  background:color-mix(in srgb, var(--balto-danger) 10%, #fff) !important;
+  border-color:color-mix(in srgb, var(--balto-danger) 24%, #fff) !important;
+  color:color-mix(in srgb, var(--balto-danger) 60%, var(--balto-ink)) !important;
+}
+
+.cfgFormActionsMobile{
+  display:none;
+}
+
+@keyframes cfgFormSpin{
+  to{ transform:rotate(360deg); }
+}
+
+@keyframes cfgToastIn{
+  from{ transform:translateY(-8px); opacity:0; }
+  to{ transform:translateY(0); opacity:1; }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .cfgFormLoadingIcon,
+  .cfgFormToast{
+    animation:none !important;
+  }
+}
+
+@media (max-width:1100px){
+  .cfgFormContent{
+    grid-template-columns:1fr;
   }
 
-  .cfgFormHeader {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .cfgFormStatusPill {
-    align-self: flex-start;
-  }
-
-  .cfgFormBody {
-    grid-template-columns: 1fr;
-  }
-
-  .cfgFormDateRow {
-    grid-template-columns: 1fr 74px 10px 74px 32px;
-    max-width: none;
+  .cfgFormSide{
+    grid-template-columns:1fr 1fr;
+    grid-template-rows:auto;
   }
 }
 
-@media (max-width: 560px) {
-  .cfgFormHeader,
-  .cfgFormBody,
-  .cfgFormCard--main {
-    padding-left: 14px;
-    padding-right: 14px;
+@media (max-width:860px){
+  .cfgFormHead,
+  .cfgFormHeadLeft{
+    align-items:stretch;
   }
 
-  .cfgFormDateRow {
-    grid-template-columns: 1fr 1fr;
+  .cfgFormHead{
+    flex-direction:column;
   }
 
-  .cfgFormDate {
-    grid-column: 1 / -1;
+  .cfgFormHeadLeft{
+    flex-direction:column;
   }
 
-  .cfgFormDateRow strong,
-  .cfgFormHs {
-    display: none;
+  .cfgFormHeadFilters,
+  .cfgFormHeadActions{
+    width:100%;
+    justify-content:stretch;
   }
 
-  .cfgFormActions {
-    justify-content: stretch;
+  .cfgFormStatusPill,
+  .cfgFormHeadBtn{
+    width:100%;
   }
 
-  .cfgFormBtn {
-    flex: 1;
+  .cfgFormContent{
+    padding:14px;
+  }
+
+  .cfgFormDateRow{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .cfgFormDateRow .cfgFormFloating:first-child{
+    grid-column:1 / -1;
+  }
+}
+
+@media (max-width:680px){
+  .cfgFormGrid{
+    grid-template-columns:1fr;
+    padding:14px;
+    gap:14px;
+  }
+
+  .cfgFormSide{
+    grid-template-columns:1fr;
+  }
+
+  .cfgFormHeadActions{
+    display:none;
+  }
+
+  .cfgFormActionsMobile{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:10px;
+    padding:0 18px 18px;
+  }
+
+  .cfgFormDateBlock{
+    padding:12px;
+  }
+}
+
+@media (max-width:460px){
+  .cfgFormContent{
+    padding:10px;
+  }
+
+  .cfgFormPanelHead{
+    padding:14px;
+  }
+
+  .cfgFormDateRow{
+    grid-template-columns:1fr;
+  }
+
+  .cfgFormPreviewRow{
+    grid-template-columns:1fr;
+    gap:4px;
   }
 }

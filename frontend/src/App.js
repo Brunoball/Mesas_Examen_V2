@@ -11,6 +11,7 @@ import Materias from "./components/Materias/Materias";
 import Catedras from "./components/Catedras/Catedras";
 import Docentes from "./components/Docentes/Docentes";
 import Previas from "./components/Previas/Previas.jsx";
+import Configuracion from "./components/Configuracion/Configuracion";
 import ConfiguracionFormulario from "./components/ConfiguracionFormulario/ConfiguracionFormulario";
 
 function isAuthenticated() {
@@ -101,10 +102,23 @@ export default function App() {
         />
 
         <Route
+          path="/configuracion"
+          element={
+            <RutaProtegida>
+              <Principal>
+                <Configuracion />
+              </Principal>
+            </RutaProtegida>
+          }
+        />
+
+        <Route
           path="/configuracion-formulario"
           element={
             <RutaProtegida>
-              <ConfiguracionFormulario />
+              <Principal>
+                <ConfiguracionFormulario />
+              </Principal>
             </RutaProtegida>
           }
         />

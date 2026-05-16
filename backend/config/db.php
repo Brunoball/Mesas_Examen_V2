@@ -1,5 +1,6 @@
 <?php
 // backend/config/db.php
+//php -S 127.0.0.1:3001 -t .
 // SaaS multitenant: mesas_master guarda usuarios/sesiones/tenants y db() conecta a la DB del tenant logueado.
 declare(strict_types=1);
 

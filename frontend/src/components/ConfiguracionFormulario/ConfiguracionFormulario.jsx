@@ -1,16 +1,42 @@
 // src/components/ConfiguracionFormulario/ConfiguracionFormulario.jsx
-import React from "react";
+import React, { useContext } from "react";
 import { useNavigate } from "react-router-dom";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faArrowLeft,
+  faCalendarAlt,
+  faCheckCircle,
+  faClock,
+  faCog,
+  faExclamationTriangle,
+  faInfoCircle,
+  faSave,
+} from "@fortawesome/free-solid-svg-icons";
 import {
   formatoFechaLarga,
   HORAS,
   MINUTOS,
   useConfiguracionFormulario,
 } from "./hooks/useConfiguracionFormulario";
+import Principal, { MesasShellContext } from "../Principal/Principal";
+import "../Global/Global_css/roots.css";
+import "../Global/Global_css/Global_Section.css";
 import "./ConfiguracionFormulario.css";
+
+function fieldClass(value = "") {
+  return `cc-floatingField cfgFormFloating ${String(value).trim() ? "is-active" : ""}`;
+}
+
+function openNativePicker(event) {
+  const input = event.currentTarget;
+  if (typeof input.showPicker === "function") {
+    input.showPicker();
+  }
+}
 
 export default function ConfiguracionFormulario() {
   const navigate = useNavigate();
+  const dentroDeShell = useContext(MesasShellContext);
 
   const {
     titulo,
@@ -41,149 +67,278 @@ export default function ConfiguracionFormulario() {
     await guardar();
   }
 
-  return (
-    <section className="cfgFormPage">
+  const contenido = (
+    <div className="cfgFormPage mov-page">
       {toast && (
-        <div className={`cfgFormToast cfgFormToast--${toast.tipo}`}>
-          {toast.texto}
+        <div
+          className={`mov-alert cfgFormToast cfgFormToast--${toast.tipo}`}
+          role="status"
+          aria-live="polite"
+        >
+          <FontAwesomeIcon icon={toast.tipo === "ok" ? faCheckCircle : faExclamationTriangle} />
+          <span>{toast.texto}</span>
         </div>
       )}
 
-      <div className="cfgFormShell">
-        <header className="cfgFormHeader">
-          <div>
-            <h1>Configurar Formulario</h1>
-            <p>Definí el período de inscripción y el mensaje de cierre.</p>
+      <section className="cfgFormCardRoot mov-card mov-card--table">
+        <div className="mov-card__head cfgFormHead">
+          <div className="mov-card__headLeft cfgFormHeadLeft">
+            <div className="title-mov cfgFormTitleBox">
+              <div className="mov-card__title cfgFormSectionTitle">
+                <FontAwesomeIcon icon={faCog} />
+                Mesas · Configuración del formulario
+              </div>
+              <div className="mov-card__hint">
+                Definí el período de inscripción y el mensaje que verá el alumno cuando esté cerrado.
+              </div>
+            </div>
+
+            <div className="mov-headFilters cfgFormHeadFilters">
+              <span className={`cfgFormStatusPill ${estaAbierta ? "is-open" : "is-closed"}`}>
+                <i aria-hidden="true" />
+                {estaAbierta ? "Inscripción abierta" : "Inscripción cerrada"}
+              </span>
+            </div>
           </div>
 
-          <span className={`cfgFormStatusPill ${estaAbierta ? "is-open" : "is-closed"}`}>
-            <i aria-hidden="true" />
-            {estaAbierta ? "Inscripción abierta" : "Inscripción cerrada"}
-          </span>
-        </header>
+          <div className="mov-card__actions cfgFormHeadActions">
+            <button
+              type="button"
+              className="mov-btn mov-btn--ghost cfgFormHeadBtn"
+              onClick={() => navigate("/configuracion")}
+              disabled={guardando}
+            >
+              <FontAwesomeIcon icon={faArrowLeft} />
+              Volver
+            </button>
 
-        <div className="cfgFormBody">
-          <form className="cfgFormCard cfgFormCard--main" onSubmit={handleGuardar}>
-            {cargando ? (
-              <div className="cfgFormLoading">Cargando configuración...</div>
-            ) : (
-              <>
-                <label className="cfgFormField cfgFormField--full">
-                  <span>Título</span>
-                  <input
-                    type="text"
-                    value={titulo}
-                    onChange={(e) => setTitulo(e.target.value)}
-                    placeholder="Mesas Examen Abril 2026"
-                    maxLength={80}
-                  />
-                </label>
+            <button
+              type="submit"
+              form="cfgFormMainForm"
+              className="mov-btn mov-btn--primary cfgFormHeadBtn"
+              disabled={guardando || cargando}
+            >
+              <FontAwesomeIcon icon={faSave} />
+              {guardando ? "Guardando..." : "Guardar"}
+            </button>
+          </div>
+        </div>
 
-                <div className="cfgFormGroupTitle">Inicio</div>
-                <div className="cfgFormDateRow">
-                  <input
-                    className="cfgFormDate"
-                    type="date"
-                    value={inicioFecha}
-                    onChange={(e) => setInicioFecha(e.target.value)}
-                  />
-
-                  <select value={inicioHora} onChange={(e) => setInicioHora(e.target.value)}>
-                    {HORAS.map((h) => (
-                      <option key={h} value={h}>{h}</option>
-                    ))}
-                  </select>
-                  <strong>:</strong>
-                  <select value={inicioMinuto} onChange={(e) => setInicioMinuto(e.target.value)}>
-                    {MINUTOS.map((m) => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
-                  <span className="cfgFormHs">hs</span>
+        <div className="cfgFormContent">
+          {cargando ? (
+            <div className="cfgFormLoading" aria-busy="true">
+              <span className="cfgFormLoadingIcon" />
+              <div>
+                <strong>Cargando configuración</strong>
+                <p>Estamos preparando los datos del formulario.</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <form id="cfgFormMainForm" className="cfgFormPanel cfgFormPanel--main" onSubmit={handleGuardar}>
+                <div className="cfgFormPanelHead">
+                  <div>
+                    <h2>Datos principales</h2>
+                    <p>Configurá el título público y el rango habilitado para la inscripción.</p>
+                  </div>
                 </div>
 
-                <div className="cfgFormGroupTitle">Fin</div>
-                <div className="cfgFormDateRow">
-                  <input
-                    className="cfgFormDate"
-                    type="date"
-                    value={finFecha}
-                    onChange={(e) => setFinFecha(e.target.value)}
-                  />
+                <div className="cfgFormGrid">
+                  <label className={`${fieldClass(titulo)} cfgFormGridFull`}>
+                    <input
+                      className="cc-input cc-input--floating cfgFormInput"
+                      type="text"
+                      value={titulo}
+                      onChange={(e) => setTitulo(e.target.value)}
+                      placeholder=" "
+                      maxLength={80}
+                    />
+                    <span className="cc-floatingLabel">Título del formulario</span>
+                  </label>
 
-                  <select value={finHora} onChange={(e) => setFinHora(e.target.value)}>
-                    {HORAS.map((h) => (
-                      <option key={h} value={h}>{h}</option>
-                    ))}
-                  </select>
-                  <strong>:</strong>
-                  <select value={finMinuto} onChange={(e) => setFinMinuto(e.target.value)}>
-                    {MINUTOS.map((m) => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
-                  <span className="cfgFormHs">hs</span>
+                  <div className="cfgFormDateBlock cfgFormGridFull">
+                    <div className="cfgFormDateBlockHead">
+                      <span className="cfgFormDateIcon">
+                        <FontAwesomeIcon icon={faCalendarAlt} />
+                      </span>
+                      <div>
+                        <h3>Inicio</h3>
+                        <p>Momento desde el que el formulario queda habilitado.</p>
+                      </div>
+                    </div>
+
+                    <div className="cfgFormDateRow">
+                      <label className={fieldClass(inicioFecha)}>
+                        <input
+                          className="cc-input cc-input--floating cfgFormInput cfgFormDate"
+                          type="date"
+                          value={inicioFecha}
+                          onChange={(e) => setInicioFecha(e.target.value)}
+                          onClick={openNativePicker}
+                          onFocus={openNativePicker}
+                          placeholder=" "
+                        />
+                        <span className="cc-floatingLabel">Fecha</span>
+                      </label>
+
+                      <label className={fieldClass(inicioHora)}>
+                        <select
+                          className="cc-input cc-input--floating cfgFormInput cfgFormSelect"
+                          value={inicioHora}
+                          onChange={(e) => setInicioHora(e.target.value)}
+                        >
+                          {HORAS.map((h) => (
+                            <option key={h} value={h}>{h}</option>
+                          ))}
+                        </select>
+                        <span className="cc-floatingLabel">Hora</span>
+                      </label>
+
+                      <label className={fieldClass(inicioMinuto)}>
+                        <select
+                          className="cc-input cc-input--floating cfgFormInput cfgFormSelect"
+                          value={inicioMinuto}
+                          onChange={(e) => setInicioMinuto(e.target.value)}
+                        >
+                          {MINUTOS.map((m) => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                        <span className="cc-floatingLabel">Min.</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="cfgFormDateBlock cfgFormGridFull">
+                    <div className="cfgFormDateBlockHead">
+                      <span className="cfgFormDateIcon cfgFormDateIcon--end">
+                        <FontAwesomeIcon icon={faClock} />
+                      </span>
+                      <div>
+                        <h3>Fin</h3>
+                        <p>Momento exacto en el que se cierra la inscripción.</p>
+                      </div>
+                    </div>
+
+                    <div className="cfgFormDateRow">
+                      <label className={fieldClass(finFecha)}>
+                        <input
+                          className="cc-input cc-input--floating cfgFormInput cfgFormDate"
+                          type="date"
+                          value={finFecha}
+                          onChange={(e) => setFinFecha(e.target.value)}
+                          onClick={openNativePicker}
+                          onFocus={openNativePicker}
+                          placeholder=" "
+                        />
+                        <span className="cc-floatingLabel">Fecha</span>
+                      </label>
+
+                      <label className={fieldClass(finHora)}>
+                        <select
+                          className="cc-input cc-input--floating cfgFormInput cfgFormSelect"
+                          value={finHora}
+                          onChange={(e) => setFinHora(e.target.value)}
+                        >
+                          {HORAS.map((h) => (
+                            <option key={h} value={h}>{h}</option>
+                          ))}
+                        </select>
+                        <span className="cc-floatingLabel">Hora</span>
+                      </label>
+
+                      <label className={fieldClass(finMinuto)}>
+                        <select
+                          className="cc-input cc-input--floating cfgFormInput cfgFormSelect"
+                          value={finMinuto}
+                          onChange={(e) => setFinMinuto(e.target.value)}
+                        >
+                          {MINUTOS.map((m) => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                        <span className="cc-floatingLabel">Min.</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <label className={`${fieldClass(mensajeCerrado)} cfgFormGridFull cfgFormTextareaField`}>
+                    <textarea
+                      className="cc-input cc-input--floating cfgFormInput cfgFormTextarea"
+                      value={mensajeCerrado}
+                      onChange={(e) => setMensajeCerrado(e.target.value)}
+                      placeholder=" "
+                      maxLength={255}
+                      rows={4}
+                    />
+                    <span className="cc-floatingLabel">Mensaje cuando está cerrado</span>
+                  </label>
                 </div>
 
-                <label className="cfgFormField cfgFormField--full cfgFormField--message">
-                  <span>Mensaje cuando está cerrado</span>
-                  <input
-                    type="text"
-                    value={mensajeCerrado}
-                    onChange={(e) => setMensajeCerrado(e.target.value)}
-                    maxLength={255}
-                  />
-                </label>
-
-                <div className="cfgFormActions">
+                <div className="cfgFormActionsMobile">
                   <button
                     type="button"
-                    className="cfgFormBtn cfgFormBtn--ghost"
-                    onClick={() => navigate("/panel")}
+                    className="mov-btn mov-btn--ghost"
+                    onClick={() => navigate("/configuracion")}
                     disabled={guardando}
                   >
+                    <FontAwesomeIcon icon={faArrowLeft} />
                     Volver
                   </button>
-                  <button
-                    type="submit"
-                    className="cfgFormBtn cfgFormBtn--primary"
-                    disabled={guardando}
-                  >
+                  <button type="submit" className="mov-btn mov-btn--primary" disabled={guardando}>
+                    <FontAwesomeIcon icon={faSave} />
                     {guardando ? "Guardando..." : "Guardar"}
                   </button>
                 </div>
-              </>
-            )}
-          </form>
+              </form>
 
-          <aside className="cfgFormSide">
-            <div className="cfgFormCard cfgFormPreview">
-              <h2>Previsualización</h2>
+              <aside className="cfgFormSide">
+                <div className="cfgFormPanel cfgFormPreview">
+                  <div className="cfgFormPanelHead cfgFormPanelHead--compact">
+                    <div>
+                      <h2>Previsualización</h2>
+                      <p>Resumen del estado actual.</p>
+                    </div>
+                  </div>
 
-              <div className="cfgFormPreviewRow">
-                <b>Desde</b>
-                <span>{formatoFechaLarga(inicioFecha, inicioHora, inicioMinuto)}</span>
-              </div>
+                  <div className="cfgFormPreviewList">
+                    <div className="cfgFormPreviewRow">
+                      <b>Desde</b>
+                      <span>{formatoFechaLarga(inicioFecha, inicioHora, inicioMinuto)}</span>
+                    </div>
 
-              <div className="cfgFormPreviewRow">
-                <b>Hasta</b>
-                <span>{formatoFechaLarga(finFecha, finHora, finMinuto)}</span>
-              </div>
+                    <div className="cfgFormPreviewRow">
+                      <b>Hasta</b>
+                      <span>{formatoFechaLarga(finFecha, finHora, finMinuto)}</span>
+                    </div>
 
-              <div className="cfgFormPreviewRow cfgFormPreviewRow--estado">
-                <b>Estado</b>
-                <em className={estaAbierta ? "is-open" : "is-closed"}>
-                  {estaAbierta ? "ABIERTA" : "CERRADA"}
-                </em>
-              </div>
-            </div>
+                    <div className="cfgFormPreviewRow cfgFormPreviewRow--estado">
+                      <b>Estado</b>
+                      <em className={estaAbierta ? "is-open" : "is-closed"}>
+                        {estaAbierta ? "ABIERTA" : "CERRADA"}
+                      </em>
+                    </div>
+                  </div>
+                </div>
 
-            <div className="cfgFormTip">
-              Consejo: usá rangos de fechas claros. El formulario queda abierto solo entre inicio y fin.
-            </div>
-          </aside>
+                <div className="cfgFormTip">
+                  <span className="cfgFormTipIcon">
+                    <FontAwesomeIcon icon={faInfoCircle} />
+                  </span>
+                  <div>
+                    <strong>Consejo</strong>
+                    <p>
+                      Usá rangos claros. El formulario queda abierto únicamente entre la fecha de inicio y la fecha de fin configuradas.
+                    </p>
+                  </div>
+                </div>
+              </aside>
+            </>
+          )}
         </div>
-      </div>
-    </section>
+      </section>
+    </div>
   );
+
+  return dentroDeShell ? contenido : <Principal>{contenido}</Principal>;
 }
