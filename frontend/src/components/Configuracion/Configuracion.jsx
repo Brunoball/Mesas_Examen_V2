@@ -1,13 +1,15 @@
 // src/components/Configuracion/Configuracion.jsx
-import React, { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faChevronRight,
   faClipboardList,
   faSliders,
+  faUserGear,
 } from "@fortawesome/free-solid-svg-icons";
 
+import ConfiguracionFormulario from "./Formulario/ConfiguracionFormulario";
+import ConfiguracionUsuarios from "./Usuarios/ConfiguracionUsuarios";
 import "./configuracion.css";
 
 function StatusPill({ type = "neutral", children }) {
@@ -23,24 +25,43 @@ function CardVisual({ icon }) {
 }
 
 export default function Configuracion() {
-  const navigate = useNavigate();
+  const [seccionActiva, setSeccionActiva] = useState("inicio");
 
   const cards = useMemo(
     () => [
       {
         id: "formulario",
-        title: "Formulario público",
+        title: "Configuración del formulario",
         description:
           "Definí cuándo abre y cierra la inscripción del formulario público de mesas.",
-        route: "/configuracion-formulario",
-        status: { text: "Principal", type: "success" },
-        metaTop: "Inscripción",
+        status: { text: "Inscripción", type: "success" },
+        metaTop: "Formulario público",
         metaBottom: "Apertura, cierre y mensaje de aviso",
         icon: faClipboardList,
+        onClick: () => setSeccionActiva("formulario"),
+      },
+      {
+        id: "usuarios",
+        title: "Configuración de usuarios",
+        description:
+          "Administrá usuarios del sistema desde la base master: altas, bajas, roles y contraseña.",
+        status: { text: "Master DB", type: "neutral" },
+        metaTop: "Usuarios",
+        metaBottom: "Crear, editar, eliminar y activar",
+        icon: faUserGear,
+        onClick: () => setSeccionActiva("usuarios"),
       },
     ],
     []
   );
+
+  if (seccionActiva === "formulario") {
+    return <ConfiguracionFormulario onVolver={() => setSeccionActiva("inicio")} />;
+  }
+
+  if (seccionActiva === "usuarios") {
+    return <ConfiguracionUsuarios onVolver={() => setSeccionActiva("inicio")} />;
+  }
 
   return (
     <section className="cfg-page">
@@ -53,19 +74,19 @@ export default function Configuracion() {
           <p className="cfg-kicker">Panel de configuración</p>
           <h1>Configuración de Mesas</h1>
           <p>
-            Desde esta sección se centraliza la configuración general del sistema.
-            Por ahora queda disponible únicamente la configuración del formulario público.
+            Desde esta sección se centraliza la configuración general del sistema:
+            formulario público y usuarios habilitados para entrar al panel.
           </p>
         </div>
       </header>
 
-      <div className="cfg-cards cfg-cards--single">
+      <div className="cfg-cards">
         {cards.map((card) => (
           <div key={card.id} className="cfg-cardWrap">
             <button
               type="button"
               className="cfg-card"
-              onClick={() => navigate(card.route)}
+              onClick={card.onClick}
             >
               <div className="cfg-cardMain">
                 <CardVisual icon={card.icon} />

@@ -4,6 +4,20 @@
 
 import { apiGet, apiPost } from "../../_shared/api/apiClient";
 
+const limpiarParams = (params = {}) => {
+  const limpio = {};
+
+  Object.entries(params).forEach(([clave, valor]) => {
+    if (valor === undefined || valor === null || valor === "" || valor === "undefined" || valor === "null") {
+      return;
+    }
+
+    limpio[clave] = valor;
+  });
+
+  return limpio;
+};
+
 export const listarMesasExamen = ({ pagina = 1, porPagina = 100, busqueda = "" } = {}) => {
   return apiGet("mesas_examen_listar", {
     pagina,
@@ -67,3 +81,116 @@ export const crearGruposFinalesMesas = ({
 export const eliminarBorradorMesas = () => {
   return apiPost("mesas_armado_eliminar_borrador", {});
 };
+
+export const obtenerMesaEdicion = ({ tipo = "grupo", id_grupo, numero_grupo, id_no_agrupada, numero_mesa } = {}) => {
+  return apiGet("mesas_editar_obtener", {
+    tipo,
+    id_grupo,
+    numero_grupo,
+    id_no_agrupada,
+    numero_mesa,
+  });
+};
+
+export const guardarProgramacionMesa = ({
+  tipo = "grupo",
+  id_grupo,
+  numero_grupo,
+  id_no_agrupada,
+  numero_mesa,
+  fecha_mesa,
+  id_turno,
+  hora,
+} = {}) => {
+  return apiPost("mesas_editar_guardar_programacion", {
+    tipo,
+    id_grupo,
+    numero_grupo,
+    id_no_agrupada,
+    numero_mesa,
+    fecha_mesa,
+    id_turno,
+    hora,
+  });
+};
+
+export const eliminarMesaEdicion = ({ tipo = "grupo", id_grupo, numero_grupo, id_no_agrupada, numero_mesa } = {}) => {
+  return apiPost("mesas_editar_eliminar", {
+    tipo,
+    id_grupo,
+    numero_grupo,
+    id_no_agrupada,
+    numero_mesa,
+  });
+};
+
+export const validarProgramacionMesa = ({
+  tipo = "grupo",
+  id_grupo,
+  numero_grupo,
+  id_no_agrupada,
+  numero_mesa,
+  fecha_mesa,
+  id_turno,
+  hora,
+} = {}) => {
+  return apiPost("mesas_editar_validar_programacion", {
+    tipo,
+    id_grupo,
+    numero_grupo,
+    id_no_agrupada,
+    numero_mesa,
+    fecha_mesa,
+    id_turno,
+    hora,
+  });
+};
+
+export const obtenerSlotsValidosMesa = ({
+  tipo = "grupo",
+  id_grupo,
+  numero_grupo,
+  id_no_agrupada,
+  numero_mesa,
+  anio,
+  mes,
+  fecha_inicio,
+  fecha_fin,
+} = {}) => {
+  return apiGet("mesas_editar_slots_validos", limpiarParams({
+    tipo,
+    id_grupo,
+    numero_grupo,
+    id_no_agrupada,
+    numero_mesa,
+    anio,
+    mes,
+    fecha_inicio,
+    fecha_fin,
+  }));
+};
+
+export const obtenerPreviasNumeroMesa = ({ numero_mesa } = {}) => {
+  return apiGet("mesas_editar_persona_previas_numero", limpiarParams({ numero_mesa }));
+};
+
+export const obtenerDestinosMoverPrevia = ({ numero_mesa, id_previa } = {}) => {
+  return apiGet("mesas_editar_persona_destinos_mover", limpiarParams({ numero_mesa, id_previa }));
+};
+
+export const moverPreviaMesa = ({ numero_origen, numero_mesa, id_previa, numero_destino } = {}) => {
+  return apiPost("mesas_editar_persona_mover", {
+    numero_origen,
+    numero_mesa,
+    id_previa,
+    numero_destino,
+  });
+};
+
+export const eliminarPreviaMesa = ({ numero_mesa, id_previa } = {}) => {
+  return apiPost("mesas_editar_persona_eliminar", {
+    numero_mesa,
+    id_previa,
+  });
+};
+

@@ -19,7 +19,33 @@ function login_registro(): void
     $email = trim((string)($data['email_recuperacion'] ?? $data['email'] ?? ''));
     $contrasena = (string)($data['contrasena'] ?? $data['password'] ?? '');
     $rol = strtolower(trim((string)($data['rol'] ?? 'vista')));
-    $idTenant = (int)($data['idTenant'] ?? env_value('DEFAULT_TENANT_ID', '1'));
+
+    $registroPublico = function_exists('env_bool') ? env_bool('ALLOW_PUBLIC_REGISTRATION', false) : false;
+    if ($registroPublico) {
+        $idTenant = (int)($data['idTenant'] ?? env_value('DEFAULT_TENANT_ID', '1'));
+    } else {
+        $ctx = auth_context();
+        if (!$ctx) {
+            json_response(['exito' => false, 'mensaje' => 'Sesión expirada.'], 401);
+        }
+
+        if (strtolower((string)($ctx['rol'] ?? '')) !== 'admin') {
+            json_response(['exito' => false, 'mensaje' => 'No tenés permisos para crear usuarios.'], 403);
+        }
+
+        if (function_exists('assert_request_tenant_matches_context')) {
+            try {
+                assert_request_tenant_matches_context($ctx);
+            } catch (RuntimeException $e) {
+                if ($e->getMessage() === 'TENANT_MISMATCH') {
+                    json_response(['exito' => false, 'mensaje' => 'El tenant enviado no coincide con la sesión activa.'], 403);
+                }
+                throw $e;
+            }
+        }
+
+        $idTenant = (int)$ctx['idTenant'];
+    }
 
     if ($nombre === '' || $contrasena === '' || $rol === '' || $idTenant <= 0) {
         json_response(['exito' => false, 'mensaje' => 'Faltan datos.']);

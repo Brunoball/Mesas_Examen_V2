@@ -1,0 +1,530 @@
+/* src/components/Mesas_examen/modales/ModalEditarMesa.css */
+
+.editar-mesa-overlay,
+.editar-mesa-overlay * {
+  box-sizing: border-box;
+}
+
+.editar-mesa-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 46px;
+  background: linear-gradient(135deg, rgba(228, 236, 249, 0.92), rgba(39, 80, 145, 0.88));
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  color: #081a3a;
+}
+
+.editar-mesa-panel {
+  width: min(1350px, 100%);
+  max-height: calc(100dvh - 60px);
+  overflow: hidden;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 30px 70px rgba(10, 37, 64, 0.24);
+  display: flex;
+  flex-direction: column;
+}
+
+.editar-mesa-header {
+  min-height: 135px;
+  padding: 34px 40px 22px;
+  background: linear-gradient(135deg, #234c93, #102f71);
+  color: #ffffff;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.editar-mesa-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  min-width: 0;
+}
+
+.editar-mesa-title > svg {
+  margin-top: 15px;
+  font-size: 31px;
+  flex-shrink: 0;
+}
+
+.editar-mesa-title h2 {
+  margin: 0;
+  font-size: clamp(30px, 3vw, 41px);
+  line-height: 1.05;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+
+.editar-mesa-title p {
+  margin: 14px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  opacity: 0.96;
+}
+
+.editar-mesa-back {
+  height: 45px;
+  padding: 0 20px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.editar-mesa-back:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.editar-mesa-body {
+  flex: 1;
+  min-height: 0;
+  padding: 14px 18px 24px;
+  display: grid;
+  grid-template-columns: minmax(380px, 510px) minmax(580px, 1fr);
+  gap: 30px;
+  overflow: auto;
+}
+
+.editar-mesa-loading {
+  grid-column: 1 / -1;
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #102f71;
+}
+
+.editar-mesa-programacion {
+  padding: 8px 2px 0;
+}
+
+.editar-mesa-programacion h3,
+.editar-mesa-slots-card h3 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.1;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  color: #081a3a;
+}
+
+.editar-mesa-section-line {
+  width: 100px;
+  height: 4px;
+  border-radius: 999px;
+  background: #5b7fc0;
+  margin: 8px 0 14px;
+}
+
+.editar-mesa-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 11px;
+}
+
+.editar-mesa-fields label {
+  position: relative;
+  display: block;
+}
+
+.editar-mesa-fields label > span {
+  position: absolute;
+  top: -8px;
+  left: 18px;
+  z-index: 2;
+  padding: 0 6px;
+  background: #ffffff;
+  color: #0c2d6f;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.editar-mesa-fields select,
+.editar-mesa-time-input {
+  width: 100%;
+  height: 65px;
+  border: 1px solid #dbe5f2;
+  border-radius: 15px;
+  background: #ffffff;
+  padding: 0 24px;
+  color: #081a3a;
+  font-size: 18px;
+  font-weight: 500;
+  outline: none;
+}
+
+.editar-mesa-fields select:focus,
+.editar-mesa-time-input:focus-within {
+  border-color: #244f95;
+  box-shadow: 0 0 0 4px rgba(36, 79, 149, 0.12);
+}
+
+.editar-mesa-time-input {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.editar-mesa-time-input input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #081a3a;
+  font: inherit;
+}
+
+.editar-mesa-time-input svg {
+  font-size: 18px;
+  color: #111827;
+}
+
+.editar-mesa-calendar-card {
+  width: min(400px, 100%);
+  margin: 0 auto;
+  padding: 13px;
+  background: #ffffff;
+  border: 1px solid #dbe5f2;
+  border-radius: 16px;
+  box-shadow: 0 12px 22px rgba(10, 37, 64, 0.1);
+}
+
+.editar-mesa-calendar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 11px;
+}
+
+.editar-mesa-calendar-head strong {
+  font-size: 19px;
+  font-weight: 900;
+  text-transform: capitalize;
+}
+
+.editar-mesa-calendar-head button {
+  width: 43px;
+  height: 43px;
+  border: 1px solid #dbe5f2;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #102f71;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.editar-mesa-calendar-weekdays,
+.editar-mesa-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+}
+
+.editar-mesa-calendar-weekdays span {
+  padding: 8px 0;
+  color: #46566f;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.editar-mesa-day {
+  width: 100%;
+  aspect-ratio: 1 / 0.78;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #07152f;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+.editar-mesa-day:hover:not(:disabled) {
+  background: #edf3ff;
+  transform: translateY(-1px);
+}
+
+.editar-mesa-day.muted {
+  color: #8792a3;
+}
+
+.editar-mesa-day.weekend {
+  color: #9aa5b5;
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.editar-mesa-day.active {
+  background: #183e88;
+  color: #ffffff;
+  box-shadow: 0 8px 16px rgba(24, 62, 136, 0.24);
+}
+
+.editar-mesa-slots-wrap {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.editar-mesa-slots-card {
+  border: 1px solid #dbe5f2;
+  border-radius: 14px;
+  padding: 23px 18px 20px;
+  min-height: 420px;
+}
+
+.editar-mesa-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.editar-mesa-slot-card,
+.editar-mesa-slot-empty {
+  min-height: 168px;
+  border: 1px solid #dbe5f2;
+  border-radius: 19px;
+  background: #ffffff;
+  box-shadow: 0 7px 13px rgba(10, 37, 64, 0.08);
+  padding: 16px 18px;
+}
+
+.editar-mesa-slot-card h3 {
+  margin: 10px 0 12px;
+  color: #081a3a;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.editar-mesa-slot-card p {
+  margin: 0;
+  color: #081a3a;
+  font-size: 17px;
+  line-height: 1.6;
+  font-weight: 500;
+}
+
+.editar-mesa-slot-actions {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.editar-mesa-numero-chip {
+  min-width: 58px;
+  height: 39px;
+  border-radius: 999px;
+  background: #f5f7fb;
+  color: #d2131d;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.editar-mesa-slot-actions button {
+  width: 43px;
+  height: 43px;
+  border: 1px solid #d5e5fb;
+  border-radius: 50%;
+  background: #f8fbff;
+  color: #123a82;
+  font-size: 17px;
+  cursor: pointer;
+  transition: background 140ms ease, transform 140ms ease;
+}
+
+.editar-mesa-slot-actions button:hover {
+  background: #edf4ff;
+  transform: translateY(-1px);
+}
+
+.editar-mesa-slot-empty {
+  border-style: dashed;
+  background: #fbfcfe;
+  color: #46566f;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.editar-mesa-slot-empty svg {
+  font-size: 23px;
+}
+
+.editar-mesa-error {
+  padding: 12px 16px;
+  border: 1px solid rgba(225, 61, 69, 0.22);
+  border-radius: 14px;
+  background: rgba(225, 61, 69, 0.1);
+  color: #b4232b;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.editar-mesa-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 25px;
+}
+
+.editar-mesa-btn {
+  min-width: 157px;
+  height: 54px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  font-size: 18px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+}
+
+.editar-mesa-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(10, 37, 64, 0.16);
+}
+
+.editar-mesa-btn:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
+.editar-mesa-btn.eliminar {
+  background: #ffffff;
+  border: 1px solid #153b84;
+  color: #11377e;
+}
+
+.editar-mesa-btn.guardar {
+  background: #10377f;
+  border: 1px solid #10377f;
+  color: #ffffff;
+  min-width: 245px;
+}
+
+@media (max-width: 1100px) {
+  .editar-mesa-overlay {
+    padding: 18px;
+  }
+
+  .editar-mesa-body {
+    grid-template-columns: 1fr;
+  }
+
+  .editar-mesa-calendar-card {
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .editar-mesa-header,
+  .editar-mesa-footer,
+  .editar-mesa-fields,
+  .editar-mesa-slots-grid {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .editar-mesa-header {
+    padding: 24px;
+  }
+
+  .editar-mesa-title h2 {
+    font-size: 28px;
+  }
+
+  .editar-mesa-back,
+  .editar-mesa-btn {
+    width: 100%;
+  }
+}
+
+.editar-mesa-help {
+  display: block;
+  margin-top: 6px;
+  color: #52627a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.editar-mesa-day.available:not(.active) {
+  background: #eef6ff;
+  border-color: #c9defc;
+  color: #123a78;
+}
+
+.editar-mesa-day.blocked:not(.active),
+.editar-mesa-day:disabled.blocked {
+  background: #f5f7fb;
+  color: #a1adbd;
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.editar-mesa-day.active.available,
+.editar-mesa-day.active {
+  background: #163b82;
+  color: #fff;
+  border-color: #163b82;
+}
+
+.editar-mesa-disponibilidad-info,
+.editar-mesa-disponibilidad-error {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editar-mesa-disponibilidad-info {
+  background: #eef6ff;
+  color: #173f82;
+  border: 1px solid #c9defc;
+}
+
+.editar-mesa-disponibilidad-error {
+  background: #fff2f2;
+  color: #a51f1f;
+  border: 1px solid #ffd0d0;
+}

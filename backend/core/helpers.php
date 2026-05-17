@@ -202,6 +202,7 @@ function auditoria_modulo_desde_action(string $action): string
         'previas_' => 'previas',
         'mesas_' => 'mesas',
         'auditoria_' => 'auditoria',
+        'configuracion_' => 'configuracion',
         'global_' => 'global',
     ];
 

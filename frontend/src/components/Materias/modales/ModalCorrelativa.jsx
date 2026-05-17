@@ -1,5 +1,5 @@
 // src/components/Materias/modales/ModalCorrelativa.jsx
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -93,6 +93,31 @@ const ModalCorrelativa = ({
   });
   const [error, setError] = useState("");
 
+  const mountedRef = useRef(false);
+  const cacheRef = useRef(materiasCursoCache);
+  const cursosCargandoRef = useRef({});
+  const cursosPrecargadosRef = useRef(
+    new Set(Object.keys(materiasCursoCache || {}))
+  );
+  const peticionesCursoRef = useRef({});
+  const autoRequestIdRef = useRef(0);
+  const autoPrecargaRef = useRef({ clave: "", promesa: null });
+
+  useEffect(() => {
+    mountedRef.current = true;
+
+    return () => {
+      mountedRef.current = false;
+      autoRequestIdRef.current += 1;
+      peticionesCursoRef.current = {};
+      autoPrecargaRef.current = { clave: "", promesa: null };
+    };
+  }, []);
+
+  useEffect(() => {
+    cacheRef.current = materiasCursoCache;
+  }, [materiasCursoCache]);
+
   useEffect(() => {
     const overflowAnterior = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -125,8 +150,10 @@ const ModalCorrelativa = ({
           ...(siguiente[idCurso] || []),
           ...lista,
         ]);
+        cursosPrecargadosRef.current.add(String(idCurso));
       });
 
+      cacheRef.current = siguiente;
       return siguiente;
     });
   }, [materiasPorCurso]);
@@ -135,12 +162,28 @@ const ModalCorrelativa = ({
     return cursos.filter((c) => Number(c.activo ?? 1) === 1);
   }, [cursos]);
 
-  const marcarCursoCargando = (idCurso, valor) => {
-    setCursosCargando((prev) => ({
-      ...prev,
-      [String(idCurso)]: valor,
-    }));
-  };
+  const marcarCursoCargando = useCallback((idCurso, valor) => {
+    const clave = String(idCurso || "");
+    if (!clave) return;
+
+    if (cursosCargandoRef.current[clave] === valor) return;
+
+    cursosCargandoRef.current = {
+      ...cursosCargandoRef.current,
+      [clave]: valor,
+    };
+
+    if (!mountedRef.current) return;
+
+    setCursosCargando((prev) => {
+      if (prev[clave] === valor) return prev;
+
+      return {
+        ...prev,
+        [clave]: valor,
+      };
+    });
+  }, []);
 
   const cargarMateriasCurso = useCallback(
     async (idCurso) => {
@@ -148,64 +191,116 @@ const ModalCorrelativa = ({
       if (id <= 0) return [];
 
       const clave = String(id);
-      if (
-        Array.isArray(materiasCursoCache[clave]) &&
-        materiasCursoCache[clave].length > 0
-      ) {
-        return materiasCursoCache[clave];
+      const cacheActual = cacheRef.current[clave] || [];
+
+      if (cursosPrecargadosRef.current.has(clave)) {
+        return cacheActual;
+      }
+
+      if (Array.isArray(cacheActual) && cacheActual.length > 0) {
+        cursosPrecargadosRef.current.add(clave);
+        return cacheActual;
+      }
+
+      if (peticionesCursoRef.current[clave]) {
+        return peticionesCursoRef.current[clave];
       }
 
       if (typeof onObtenerMateriasPorCurso !== "function") {
+        cursosPrecargadosRef.current.add(clave);
         return [];
       }
 
       marcarCursoCargando(clave, true);
 
-      try {
-        const lista = await onObtenerMateriasPorCurso(id);
-        const normalizada = unificarListaMaterias(Array.isArray(lista) ? lista : []);
+      const promesa = (async () => {
+        try {
+          const lista = await onObtenerMateriasPorCurso(id);
+          const normalizada = unificarListaMaterias(
+            Array.isArray(lista) ? lista : []
+          );
 
-        setMateriasCursoCache((prev) => ({
-          ...prev,
-          [clave]: normalizada,
-        }));
+          cursosPrecargadosRef.current.add(clave);
 
-        return normalizada;
-      } catch (error) {
-        console.error(`No se pudieron obtener materias del curso ${id}:`, error);
-        setError("No se pudieron cargar las materias del curso seleccionado.");
-        return [];
-      } finally {
-        marcarCursoCargando(clave, false);
-      }
+          const siguienteCache = {
+            ...cacheRef.current,
+            [clave]: normalizada,
+          };
+
+          cacheRef.current = siguienteCache;
+
+          if (mountedRef.current) {
+            setMateriasCursoCache(siguienteCache);
+          }
+
+          return normalizada;
+        } catch (error) {
+          console.error(`No se pudieron obtener materias del curso ${id}:`, error);
+
+          if (mountedRef.current) {
+            setError("No se pudieron cargar las materias del curso seleccionado.");
+          }
+
+          return [];
+        } finally {
+          delete peticionesCursoRef.current[clave];
+          marcarCursoCargando(clave, false);
+        }
+      })();
+
+      peticionesCursoRef.current[clave] = promesa;
+      return promesa;
     },
-    [materiasCursoCache, onObtenerMateriasPorCurso]
+    [marcarCursoCargando, onObtenerMateriasPorCurso]
   );
 
-  useEffect(() => {
+  const idsCursosNecesarios = useMemo(() => {
     const ids = [
       idCursoAnterior,
       ...relaciones.map((rel) => rel.id_curso_posterior),
     ];
 
-    Array.from(new Set(ids.map((id) => Number(id)).filter((id) => id > 0))).forEach(
-      (id) => {
-        cargarMateriasCurso(id);
-      }
+    return Array.from(
+      new Set(ids.map((id) => Number(id)).filter((id) => id > 0))
     );
-  }, [idCursoAnterior, relaciones, cargarMateriasCurso]);
+  }, [idCursoAnterior, relaciones]);
 
   useEffect(() => {
+    if (modo !== "manual") return;
+
+    idsCursosNecesarios.forEach((id) => {
+      cargarMateriasCurso(id);
+    });
+  }, [modo, idsCursosNecesarios, cargarMateriasCurso]);
+
+  const idsCursosAuto = useMemo(() => {
+    return cursosActivos
+      .map((c) => Number(c.id_curso))
+      .filter((id) => id > 0);
+  }, [cursosActivos]);
+
+  useEffect(() => {
+    if (modo !== "auto" || esEdicion) {
+      autoRequestIdRef.current += 1;
+      setCargandoAuto(false);
+      return;
+    }
+
+    if (idsCursosAuto.length === 0) return;
+
     let cancelado = false;
+    const requestId = autoRequestIdRef.current + 1;
+    autoRequestIdRef.current = requestId;
 
     const cargarTodosParaAuto = async () => {
-      if (modo !== "auto" || esEdicion) return;
+      const idsFaltantes = idsCursosAuto.filter(
+        (id) => !cursosPrecargadosRef.current.has(String(id))
+      );
 
-      const idsCursos = cursosActivos
-        .map((c) => Number(c.id_curso))
-        .filter((id) => id > 0);
-
-      if (idsCursos.length === 0) return;
+      if (idsFaltantes.length === 0) {
+        setCargandoAuto(false);
+        return;
+      }
 
       setCargandoAuto(true);
 
@@ -213,40 +308,82 @@ const ModalCorrelativa = ({
         let lista = [];
 
         if (typeof onPrecargarMateriasDeCursos === "function") {
-          lista = await onPrecargarMateriasDeCursos(idsCursos);
+          const clave = idsFaltantes.join("|");
+          let promesa = null;
+
+          if (
+            autoPrecargaRef.current.clave === clave &&
+            autoPrecargaRef.current.promesa
+          ) {
+            promesa = autoPrecargaRef.current.promesa;
+          } else {
+            promesa = onPrecargarMateriasDeCursos(idsFaltantes);
+            autoPrecargaRef.current = { clave, promesa };
+          }
+
+          try {
+            lista = await promesa;
+          } finally {
+            if (autoPrecargaRef.current.promesa === promesa) {
+              autoPrecargaRef.current = { clave: "", promesa: null };
+            }
+          }
+
+          idsFaltantes.forEach((id) =>
+            cursosPrecargadosRef.current.add(String(id))
+          );
         } else {
           const resultados = await Promise.all(
-            idsCursos.map((id) => cargarMateriasCurso(id))
+            idsFaltantes.map((id) => cargarMateriasCurso(id))
           );
           lista = resultados.flat();
         }
 
-        if (!cancelado) {
-          const agrupadas = agruparPorCurso(lista);
-
-          setMateriasCursoCache((prev) => {
-            const siguiente = { ...prev };
-
-            Object.entries(agrupadas).forEach(([idCurso, materias]) => {
-              siguiente[idCurso] = unificarListaMaterias([
-                ...(siguiente[idCurso] || []),
-                ...materias,
-              ]);
-            });
-
-            return siguiente;
-          });
+        if (
+          cancelado ||
+          !mountedRef.current ||
+          autoRequestIdRef.current !== requestId
+        ) {
+          return;
         }
+
+        const agrupadas = agruparPorCurso(Array.isArray(lista) ? lista : []);
+
+        setMateriasCursoCache((prev) => {
+          const siguiente = { ...prev };
+
+          Object.entries(agrupadas).forEach(([idCurso, materias]) => {
+            siguiente[idCurso] = unificarListaMaterias([
+              ...(siguiente[idCurso] || []),
+              ...materias,
+            ]);
+            cursosPrecargadosRef.current.add(String(idCurso));
+          });
+
+          cacheRef.current = siguiente;
+          return siguiente;
+        });
       } catch (error) {
         console.error(
           "No se pudieron precargar materias para correlativas automáticas:",
           error
         );
-        if (!cancelado) {
+
+        if (
+          !cancelado &&
+          mountedRef.current &&
+          autoRequestIdRef.current === requestId
+        ) {
           setError("No se pudieron precargar las materias para el modo automático.");
         }
       } finally {
-        if (!cancelado) setCargandoAuto(false);
+        if (
+          !cancelado &&
+          mountedRef.current &&
+          autoRequestIdRef.current === requestId
+        ) {
+          setCargandoAuto(false);
+        }
       }
     };
 
@@ -254,15 +391,24 @@ const ModalCorrelativa = ({
 
     return () => {
       cancelado = true;
+      autoRequestIdRef.current += 1;
     };
-  }, [modo, esEdicion, cursosActivos, onPrecargarMateriasDeCursos, cargarMateriasCurso]);
+  }, [
+    modo,
+    esEdicion,
+    idsCursosAuto,
+    onPrecargarMateriasDeCursos,
+    cargarMateriasCurso,
+  ]);
 
   const materiasPorCursoCompletas = useMemo(() => {
+    if (modo !== "auto" || esEdicion) return [];
+
     return unificarListaMaterias([
       ...materiasPorCurso,
       ...Object.values(materiasCursoCache).flat(),
     ]);
-  }, [materiasPorCurso, materiasCursoCache]);
+  }, [modo, esEdicion, materiasPorCurso, materiasCursoCache]);
 
   const materiasDeCurso = useCallback(
     (idCurso) => {
@@ -289,6 +435,8 @@ const ModalCorrelativa = ({
   );
 
   const materiasAuto = useMemo(() => {
+    if (modo !== "auto" || esEdicion) return [];
+
     const map = new Map();
 
     materiasPorCursoCompletas.forEach((m) => {
@@ -319,7 +467,7 @@ const ModalCorrelativa = ({
     return Array.from(map.values())
       .filter((m) => m.cursos.length >= 2)
       .sort((a, b) => String(a.materia).localeCompare(String(b.materia), "es"));
-  }, [materiasPorCursoCompletas]);
+  }, [modo, esEdicion, materiasPorCursoCompletas]);
 
   const cursosAutoSeleccionados = useMemo(() => {
     const itemAuto = materiasAuto.find(
@@ -372,7 +520,12 @@ const ModalCorrelativa = ({
 
   const cambiarModo = (nuevoModo) => {
     if (esEdicion) return;
-    setModo(nuevoModo);
+
+    setModo((prev) => {
+      if (prev === nuevoModo) return prev;
+      return nuevoModo;
+    });
+
     setError("");
   };
 
@@ -538,8 +691,7 @@ const ModalCorrelativa = ({
             </h2>
 
             <p>
-              Las materias se cargan desde{" "}
-              <strong>global_obtener_materias_por_curso</strong> al seleccionar
+              Las materias se cargan desde al seleccionar
               el curso, usando cátedras como fuente real.
             </p>
           </div>

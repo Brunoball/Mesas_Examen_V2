@@ -12,7 +12,31 @@ if (!function_exists('formulario_pdo')) {
             throw new RuntimeException('La función db() no está disponible. Revisar backend/config/db.php.');
         }
 
-        $pdo = db();
+        $action = trim((string)($_GET['action'] ?? $_POST['action'] ?? (request_body()['action'] ?? '')));
+        $accionesPublicasFormulario = [
+            'form_obtener_config_inscripcion',
+            'obtener_config_inscripcion',
+            'formulario_obtener_config_inscripcion',
+            'form_buscar_previas',
+            'buscar_previas',
+            'formulario_buscar_previas',
+            'form_registrar_inscripcion',
+            'registrar_inscripcion',
+            'formulario_registrar_inscripcion',
+        ];
+
+        $script = basename((string)($_SERVER['SCRIPT_FILENAME'] ?? ''));
+        $archivosPublicosFormulario = [
+            'obtener_config_inscripcion.php',
+            'buscar_previas.php',
+            'registrar_inscripcion.php',
+        ];
+
+        if ((in_array($action, $accionesPublicasFormulario, true) || in_array($script, $archivosPublicosFormulario, true)) && function_exists('public_tenant_db')) {
+            $pdo = public_tenant_db();
+        } else {
+            $pdo = db();
+        }
 
         if (!($pdo instanceof PDO)) {
             throw new RuntimeException('La conexión obtenida no es una instancia válida de PDO.');

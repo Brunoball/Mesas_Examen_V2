@@ -1,28 +1,26 @@
 // src/components/Mesas_examen/Mesas_examen.jsx
 import React, { useContext, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faArrowLeft,
   faLayerGroup,
   faMagnifyingGlass,
   faTrash,
-  faUsers,
   faUserPlus,
   faLinkSlash,
   faChevronDown,
   faChevronRight,
   faSpinner,
-  faRotateRight,
   faTriangleExclamation,
   faCheckCircle,
   faPrint,
+  faEdit,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "./Mesas_examen.css";
 import Principal, { MesasShellContext } from "../Principal/Principal";
 import { useMesasExamen } from "./hooks/useMesasExamen";
 import ModalCrearMesa from "./modales/ModalCrearMesa";
+import ModalEditarMesa from "./modales/ModalEditarMesa";
 import logo from "../../imagenes/Escudo.png";
 
 const textoCorto = (valor, fallback = "-") => {
@@ -37,69 +35,41 @@ const textoCursoDivision = (curso, division) => {
 
 const obtenerIdGrupo = (item) => item.id || item.id_grupo || item.id_no_agrupada || item.numero_mesa;
 
-
 const MESES_ES = [
-  "ENERO",
-  "FEBRERO",
-  "MARZO",
-  "ABRIL",
-  "MAYO",
-  "JUNIO",
-  "JULIO",
-  "AGOSTO",
-  "SEPTIEMBRE",
-  "OCTUBRE",
-  "NOVIEMBRE",
-  "DICIEMBRE",
+  "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
+  "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE",
 ];
 
 const DIAS_ES = ["DOMINGO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO"];
 
 const parseFechaMesa = (valor) => {
   const texto = String(valor || "").trim();
+  if (!texto) return null;
 
-  if (!texto) {
-    return null;
-  }
-
-  let dia = null;
-  let mes = null;
-  let anio = null;
+  let dia = null, mes = null, anio = null;
 
   if (/^\d{4}-\d{2}-\d{2}/.test(texto)) {
     const [y, m, d] = texto.slice(0, 10).split("-").map(Number);
-    anio = y;
-    mes = m;
-    dia = d;
+    anio = y; mes = m; dia = d;
   } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(texto)) {
     const [d, m, y] = texto.split("/").map(Number);
-    anio = y;
-    mes = m;
-    dia = d;
+    anio = y; mes = m; dia = d;
   }
 
-  if (!dia || !mes || !anio) {
-    return null;
-  }
+  if (!dia || !mes || !anio) return null;
 
   const fecha = new Date(anio, mes - 1, dia);
-
-  if (Number.isNaN(fecha.getTime())) {
-    return null;
-  }
+  if (Number.isNaN(fecha.getTime())) return null;
 
   return {
-    dia,
-    mes,
-    anio,
+    dia, mes, anio,
     diaSemana: DIAS_ES[fecha.getDay()],
     mesTexto: MESES_ES[mes - 1] || "",
   };
 };
 
-const obtenerPartesFechaMesa = (item) => {
-  return parseFechaMesa(item?.fecha_mesa) || parseFechaMesa(item?.fecha) || null;
-};
+const obtenerPartesFechaMesa = (item) =>
+  parseFechaMesa(item?.fecha_mesa) || parseFechaMesa(item?.fecha) || null;
 
 const obtenerTituloVistaPdf = (item) => {
   const partes = obtenerPartesFechaMesa(item);
@@ -108,34 +78,17 @@ const obtenerTituloVistaPdf = (item) => {
 
 const normalizarHora = (valor) => {
   const texto = String(valor || "").trim();
-
-  if (!texto) {
-    return "";
-  }
-
-  if (/hs\.?$/i.test(texto)) {
-    return texto.toUpperCase();
-  }
-
+  if (!texto) return "";
+  if (/hs\.?$/i.test(texto)) return texto.toUpperCase();
   return `${texto.slice(0, 5)} HS.`.toUpperCase();
 };
 
 const obtenerHoraMesa = (item) => {
   const turno = String(item?.turno || "").toLowerCase();
   const hora = normalizarHora(item?.hora);
-
-  if (hora) {
-    return hora;
-  }
-
-  if (turno.includes("mañana") || turno.includes("manana")) {
-    return "07:30 HS.";
-  }
-
-  if (turno.includes("tarde")) {
-    return "13:30 HS.";
-  }
-
+  if (hora) return hora;
+  if (turno.includes("mañana") || turno.includes("manana")) return "07:30 HS.";
+  if (turno.includes("tarde")) return "13:30 HS.";
   return "-";
 };
 
@@ -145,24 +98,8 @@ const obtenerFechaResumenPdf = (item) => {
   const partes = obtenerPartesFechaMesa(item);
   const turno = obtenerTurnoMesa(item);
   const hora = obtenerHoraMesa(item);
-
-  if (!partes) {
-    return `${turno} · ${hora}`;
-  }
-
+  if (!partes) return `${turno} · ${hora}`;
   return `${partes.diaSemana} ${partes.dia} · ${turno} · ${hora}`;
-};
-
-const obtenerHoraBloquePdf = (item) => {
-  const partes = obtenerPartesFechaMesa(item);
-  const turno = obtenerTurnoMesa(item);
-  const hora = obtenerHoraMesa(item);
-
-  if (!partes) {
-    return [turno, hora].filter(Boolean);
-  }
-
-  return [partes.diaSemana, partes.dia, partes.mesTexto, turno, hora].filter(Boolean);
 };
 
 const obtenerTextoNumerosMesa = (grupo) => {
@@ -171,45 +108,28 @@ const obtenerTextoNumerosMesa = (grupo) => {
     .map((numero) => numero?.numero_mesa)
     .filter((numero) => numero !== undefined && numero !== null && numero !== "")
     .join(" · ");
-
-  if (desdeNumeros) {
-    return desdeNumeros;
-  }
-
+  if (desdeNumeros) return desdeNumeros;
   return String(grupo?.numeros_mesa_texto || grupo?.numero_mesa || "-").replace(/,/g, " · ");
 };
 
 const obtenerCursoAlumno = (alumno) => {
-  if (!alumno) {
-    return "-";
-  }
-
+  if (!alumno) return "-";
   const cursoAlumno = textoCursoDivision(alumno.curso_alumno, alumno.division_alumno);
-
-  if (cursoAlumno !== "-") {
-    return cursoAlumno;
-  }
-
+  if (cursoAlumno !== "-") return cursoAlumno;
   const cursoCursando = textoCursoDivision(alumno.cursando_curso, alumno.cursando_division);
-
-  if (cursoCursando !== "-") {
-    return cursoCursando;
-  }
-
+  if (cursoCursando !== "-") return cursoCursando;
   return textoCorto(alumno.curso);
 };
 
-const obtenerMateriaAlumno = (alumno, numero) => textoCorto(alumno?.materia || numero?.materia, "Sin materia");
+const obtenerMateriaAlumno = (alumno, numero) =>
+  textoCorto(alumno?.materia || numero?.materia, "Sin materia");
 
-const obtenerDocenteAlumno = (alumno, numero) => textoCorto(alumno?.docente || numero?.docente, "Sin docente");
+const obtenerDocenteAlumno = (alumno, numero) =>
+  textoCorto(alumno?.docente || numero?.docente, "Sin docente");
 
 const obtenerNotaAlumno = (alumno) => {
   const nota = alumno?.nota;
-
-  if (nota === undefined || nota === null || nota === "") {
-    return "-";
-  }
-
+  if (nota === undefined || nota === null || nota === "") return "-";
   return String(nota);
 };
 
@@ -217,67 +137,39 @@ const agruparAlumnosParaVistaPdf = (numero) => {
   const alumnos = Array.isArray(numero?.alumnos) ? numero.alumnos : [];
 
   if (alumnos.length === 0) {
-    return [
-      {
-        id: `numero-${numero?.numero_mesa || "sin-numero"}-vacio`,
-        materia: textoCorto(numero?.materia, "Sin registros"),
-        docente: textoCorto(numero?.docente, "Sin docente"),
-        alumnos: [null],
-      },
-    ];
+    return [{
+      id: `numero-${numero?.numero_mesa || "sin-numero"}-vacio`,
+      materia: textoCorto(numero?.materia, "Sin registros"),
+      docente: textoCorto(numero?.docente, "Sin docente"),
+      alumnos: [null],
+    }];
   }
 
   const grupos = new Map();
-
   alumnos.forEach((alumno) => {
     const materia = obtenerMateriaAlumno(alumno, numero);
     const docente = obtenerDocenteAlumno(alumno, numero);
     const key = `${materia.toLowerCase()}__${docente.toLowerCase()}`;
-
     if (!grupos.has(key)) {
-      grupos.set(key, {
-        id: key,
-        materia,
-        docente,
-        alumnos: [],
-      });
+      grupos.set(key, { id: key, materia, docente, alumnos: [] });
     }
-
     grupos.get(key).alumnos.push(alumno);
   });
 
   return Array.from(grupos.values());
 };
 
-const obtenerSeccionesVistaPdf = (grupo) => {
-  const numeros = Array.isArray(grupo?.numeros) ? grupo.numeros : [];
-  const base = numeros.length > 0 ? numeros : [{ numero_mesa: grupo?.numero_mesa, alumnos: grupo?.alumnos || [] }];
-
-  return base.flatMap((numero) =>
-    agruparAlumnosParaVistaPdf(numero).map((seccion) => ({
-      ...seccion,
-      numero,
-    }))
-  );
-};
-
 const obtenerNumerosVistaPdf = (grupo) => {
   const numeros = Array.isArray(grupo?.numeros) ? grupo.numeros : [];
-
-  if (numeros.length > 0) {
-    return numeros;
-  }
-
-  return [
-    {
-      numero_mesa: grupo?.numero_mesa || grupo?.numeros_mesa_texto || grupo?.id_grupo || "-",
-      tipo_mesa: grupo?.tipo_mesa || grupo?.tipos_mesa_texto || "",
-      prioridad: grupo?.prioridad_max ?? grupo?.prioridad ?? 0,
-      materia: grupo?.materia || "",
-      docente: grupo?.docente || "",
-      alumnos: Array.isArray(grupo?.alumnos) ? grupo.alumnos : [],
-    },
-  ];
+  if (numeros.length > 0) return numeros;
+  return [{
+    numero_mesa: grupo?.numero_mesa || grupo?.numeros_mesa_texto || grupo?.id_grupo || "-",
+    tipo_mesa: grupo?.tipo_mesa || grupo?.tipos_mesa_texto || "",
+    prioridad: grupo?.prioridad_max ?? grupo?.prioridad ?? 0,
+    materia: grupo?.materia || "",
+    docente: grupo?.docente || "",
+    alumnos: Array.isArray(grupo?.alumnos) ? grupo.alumnos : [],
+  }];
 };
 
 const obtenerFilasVistaPdf = (grupo) => {
@@ -289,21 +181,19 @@ const obtenerFilasVistaPdf = (grupo) => {
     const docenteNumero = textoCorto(numero?.docente || grupo?.docente, "Sin docente");
 
     if (alumnos.length === 0) {
-      return [
-        {
-          id: `fila-vacia-${numeroIndex}-${numero?.numero_mesa || "sin-numero"}`,
-          numeroMesa: textoCorto(numero?.numero_mesa),
-          tipoMesa: textoCorto(numero?.tipo_mesa, "-"),
-          prioridad: numero?.prioridad ?? grupo?.prioridad_max ?? 0,
-          materia: materiaNumero,
-          docente: docenteNumero,
-          estudiante: "Sin alumnos vinculados",
-          dni: "-",
-          curso: "-",
-          nota: "-",
-          observacion: textoCorto(numero?.observacion || grupo?.motivo || grupo?.observacion, ""),
-        },
-      ];
+      return [{
+        id: `fila-vacia-${numeroIndex}-${numero?.numero_mesa || "sin-numero"}`,
+        numeroMesa: textoCorto(numero?.numero_mesa),
+        tipoMesa: textoCorto(numero?.tipo_mesa, "-"),
+        prioridad: numero?.prioridad ?? grupo?.prioridad_max ?? 0,
+        materia: materiaNumero,
+        docente: docenteNumero,
+        estudiante: "Sin alumnos vinculados",
+        dni: "-",
+        curso: "-",
+        nota: "-",
+        observacion: textoCorto(numero?.observacion || grupo?.motivo || grupo?.observacion, ""),
+      }];
     }
 
     return alumnos.map((alumno, alumnoIndex) => ({
@@ -336,7 +226,6 @@ const MesaPdfCard = ({ grupo, esNoAgrupada = false }) => {
             <p>IPET N° 50 "Ing. Emilio F. Olmos"</p>
           </div>
         </div>
-
         <div className="mesas-pdf-meta">
           <span>{obtenerFechaResumenPdf(grupo)}</span>
           <strong>
@@ -400,7 +289,6 @@ const MesaPdfCard = ({ grupo, esNoAgrupada = false }) => {
 };
 
 const MesasExamen = () => {
-  const navigate = useNavigate();
   const dentroDeShell = useContext(MesasShellContext);
   const [gruposAbiertos, setGruposAbiertos] = useState({});
   const [numerosAbiertos, setNumerosAbiertos] = useState({});
@@ -411,41 +299,41 @@ const MesasExamen = () => {
     setBusqueda,
     tab,
     setTab,
-
     gruposFinales,
     noAgrupadas,
     mesasFiltradas,
-
     totalGrupos,
     totalNoAgrupadas,
-    totalNumerosAgrupados,
     totalAlumnos,
-
     parametrosArmado,
     resumenArmado,
-
     modalCrearAbierto,
     abrirModalCrear,
     cerrarModalCrear,
-
+    modalEditarAbierto,
+    grupoEdicion,
+    tipoEdicion,
+    cargandoEdicion,
+    guardandoEdicion,
+    errorEdicion,
+    slotsEdicion,
+    cargandoSlotsEdicion,
+    cargarSlotsEdicion,
+    abrirModalEditar,
+    cerrarModalEditar,
+    guardarEdicionProgramacion,
+    eliminarMesaDesdeEdicion,
+    personaEdicion,
     crearMesas,
     eliminarBorrador,
-    generarGruposFinales,
-    cargarMesas,
-
     cargando,
     armando,
     agrupando,
     error,
   } = useMesasExamen();
 
-  const volver = () => {
-    navigate("/panel");
-  };
-
-  const toggleModoVista = () => {
+  const toggleModoVista = () =>
     setModoVista((actual) => (actual === "pdf" ? "tabla" : "pdf"));
-  };
 
   const imprimirVistaPdf = () => {
     if (modoVista !== "pdf") {
@@ -453,23 +341,14 @@ const MesasExamen = () => {
       setTimeout(() => window.print(), 180);
       return;
     }
-
     window.print();
   };
 
-  const toggleGrupo = (grupoId) => {
-    setGruposAbiertos((actual) => ({
-      ...actual,
-      [grupoId]: !actual[grupoId],
-    }));
-  };
+  const toggleGrupo = (grupoId) =>
+    setGruposAbiertos((actual) => ({ ...actual, [grupoId]: !actual[grupoId] }));
 
-  const toggleNumero = (numeroId) => {
-    setNumerosAbiertos((actual) => ({
-      ...actual,
-      [numeroId]: !actual[numeroId],
-    }));
-  };
+  const toggleNumero = (numeroId) =>
+    setNumerosAbiertos((actual) => ({ ...actual, [numeroId]: !actual[numeroId] }));
 
   const gruposVisibles = tab === "no-agrupadas" ? noAgrupadas.length : gruposFinales.length;
   const tituloVista = tab === "no-agrupadas" ? "Números no agrupados" : "Mesas finales agrupadas";
@@ -507,20 +386,6 @@ const MesasExamen = () => {
           </button>
 
           <button
-            className="btn-action btn-group-final"
-            type="button"
-            onClick={generarGruposFinales}
-            disabled={armando || agrupando}
-          >
-            {agrupando ? (
-              <FontAwesomeIcon icon={faSpinner} spin />
-            ) : (
-              <FontAwesomeIcon icon={faLayerGroup} />
-            )}
-            Agrupar Finales
-          </button>
-
-          <button
             className="btn-action btn-delete"
             type="button"
             onClick={eliminarBorrador}
@@ -542,16 +407,6 @@ const MesasExamen = () => {
           <button className="btn-action btn-print" type="button" onClick={imprimirVistaPdf}>
             <FontAwesomeIcon icon={faPrint} />
             Imprimir / PDF
-          </button>
-
-          <button className="btn-action btn-reload" type="button" onClick={cargarMesas}>
-            {cargando ? (
-              <FontAwesomeIcon icon={faSpinner} spin />
-            ) : (
-              <FontAwesomeIcon icon={faRotateRight} />
-            )}
-            Recargar
-            <FontAwesomeIcon icon={faChevronDown} />
           </button>
         </div>
       </header>
@@ -590,15 +445,6 @@ const MesasExamen = () => {
           </button>
 
           <button
-            className={`mesas-tab ${tab === "resumen" ? "active" : ""}`}
-            type="button"
-            onClick={() => setTab("grupos-finales")}
-          >
-            <FontAwesomeIcon icon={faUsers} />
-            Números agrupados: {totalNumerosAgrupados}
-          </button>
-
-          <button
             className={`mesas-tab mesas-tab-link ${tab === "no-agrupadas" ? "active" : ""}`}
             type="button"
             onClick={() => setTab("no-agrupadas")}
@@ -612,13 +458,11 @@ const MesasExamen = () => {
           <div className="mesas-card-header">
             <div className="mesas-card-brand">
               <img src={logo} alt="IPET 50" />
-
               <div>
                 <h2>{tituloVista}</h2>
                 <p>IPET N° 50 "Ing. Emilio F. Olmos"</p>
               </div>
             </div>
-
             <div className="mesas-card-meta">
               <p>
                 {cargando
@@ -627,7 +471,11 @@ const MesasExamen = () => {
                     ? `${gruposVisibles} registros visibles · ${totalAlumnos} previas/alumnos`
                     : "Sin grupos finales cargados"}
               </p>
-              <strong>{modoVista === "pdf" ? "Vista tipo PDF para revisar agrupación, alumnos y docentes" : "Vista por mesa final, números agrupados y previas"}</strong>
+              <strong>
+                {modoVista === "pdf"
+                  ? "Vista tipo PDF para revisar agrupación, alumnos y docentes"
+                  : "Vista por mesa final, números agrupados y previas"}
+              </strong>
             </div>
           </div>
 
@@ -654,242 +502,255 @@ const MesasExamen = () => {
               )}
             </div>
           ) : (
-          <div className="mesas-table-wrap">
-            <table className="mesas-table mesas-table-grupos-finales">
-              <thead>
-                <tr>
-                  <th className="col-numero-mesa">Mesa final</th>
-                  <th className="col-hora">Fecha / Turno</th>
-                  <th>Área</th>
-                  <th>Números de mesa</th>
-                  <th>Alumnos / previas</th>
-                  <th>Prioridad</th>
-                  <th className="col-acciones">Detalle</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {cargando ? (
+            <div className="mesas-table-wrap">
+              <table className="mesas-table mesas-table-grupos-finales">
+                <thead>
                   <tr>
-                    <td colSpan="7" className="mesas-empty">
-                      <FontAwesomeIcon icon={faSpinner} spin /> Cargando mesas finales...
-                    </td>
+                    <th className="col-numero-mesa">Mesa final</th>
+                    <th className="col-hora">Fecha / Turno</th>
+                    <th>Área</th>
+                    <th>Números de mesa</th>
+                    <th>Alumnos / previas</th>
+                    <th>Prioridad</th>
+                    <th className="col-acciones">Acciones</th>
                   </tr>
-                ) : mesasFiltradas.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" className="mesas-empty">
-                      {tab === "no-agrupadas"
-                        ? "No hay números pendientes sin agrupar."
-                        : "No hay grupos finales cargados. Presioná Agrupar Finales después de crear mesas."}
-                    </td>
-                  </tr>
-                ) : (
-                  mesasFiltradas.map((item) => {
-                    const grupoId = obtenerIdGrupo(item);
-                    const grupoAbierto = !!gruposAbiertos[grupoId];
-                    const numeros = Array.isArray(item.numeros) ? item.numeros : [];
+                </thead>
+                <tbody>
+                  {cargando ? (
+                    <tr>
+                      <td colSpan="7" className="mesas-empty">
+                        <FontAwesomeIcon icon={faSpinner} spin /> Cargando mesas finales...
+                      </td>
+                    </tr>
+                  ) : mesasFiltradas.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="mesas-empty">
+                        {tab === "no-agrupadas"
+                          ? "No hay números pendientes sin agrupar."
+                          : "No hay grupos finales cargados. Presioná Crear Mesas para generar el armado."}
+                      </td>
+                    </tr>
+                  ) : (
+                    mesasFiltradas.map((item) => {
+                      const grupoId = obtenerIdGrupo(item);
+                      const grupoAbierto = !!gruposAbiertos[grupoId];
+                      const numeros = Array.isArray(item.numeros) ? item.numeros : [];
 
-                    return (
-                      <React.Fragment key={grupoId}>
-                        <tr className={tab === "no-agrupadas" ? "fila-observada" : ""}>
-                          <td className="numero-mesa-cell">
-                            <span className="numero-mesa-badge mesa-final-badge">
-                              {tab === "no-agrupadas"
-                                ? "S/A"
-                                : item.id_grupo ?? "-"}
-                            </span>
-                            <small>{item.estado || "borrador"}</small>
-                          </td>
+                      return (
+                        <React.Fragment key={grupoId}>
+                          <tr className={tab === "no-agrupadas" ? "fila-observada" : ""}>
+                            <td className="numero-mesa-cell">
+                              <span className="numero-mesa-badge mesa-final-badge">
+                                {tab === "no-agrupadas" ? "S/A" : item.id_grupo ?? "-"}
+                              </span>
+                              <small>{item.estado || "borrador"}</small>
+                            </td>
 
-                          <td className="hora-cell">
-                            <div className="hora-box mesa-hora-box">
-                              {textoCorto(item.fecha)}
-                              <br />
-                              {textoCorto(item.turno)}
-                            </div>
-                          </td>
+                            <td className="hora-cell">
+                              <div className="hora-box mesa-hora-box">
+                                {textoCorto(item.fecha)}
+                                <br />
+                                {textoCorto(item.turno)}
+                              </div>
+                            </td>
 
-                          <td className="materia-cell">
-                            <strong>{textoCorto(item.area, "Sin área")}</strong>
-                            {item.observacion && (
-                              <small className="observacion-mesa">{item.observacion}</small>
-                            )}
-                            {item.motivo && (
-                              <small className="observacion-mesa">{item.motivo}</small>
-                            )}
-                          </td>
-
-                          <td>
-                            <div className="numeros-mesa-pills">
-                              {numeros.length > 0 ? (
-                                numeros.map((numero) => (
-                                  <span
-                                    key={`${grupoId}-num-pill-${numero.numero_mesa}`}
-                                    className={`numero-pill tipo-${numero.tipo_mesa || "simple"}`}
-                                  >
-                                    N° {numero.numero_mesa}
-                                  </span>
-                                ))
-                              ) : (
-                                <span className="numero-pill">{textoCorto(item.numeros_mesa_texto)}</span>
+                            <td className="materia-cell">
+                              <strong>{textoCorto(item.area, "Sin área")}</strong>
+                              {item.observacion && (
+                                <small className="observacion-mesa">{item.observacion}</small>
                               )}
-                            </div>
-                          </td>
-
-                          <td>
-                            <div className="mesa-alumnos-resumen">
-                              <strong>{item.cantidad_previas || item.cantidad_alumnos || 0}</strong>
-                              <span>previas</span>
-                              {Number(item.cantidad_alumnos_distintos || 0) > 0 && (
-                                <small>{item.cantidad_alumnos_distintos} DNI distintos</small>
+                              {item.motivo && (
+                                <small className="observacion-mesa">{item.motivo}</small>
                               )}
-                            </div>
-                          </td>
+                            </td>
 
-                          <td>
-                            <span className="prioridad-badge">{item.prioridad_max ?? 0}</span>
-                          </td>
-
-                          <td className="acciones-cell">
-                            <button
-                              type="button"
-                              className="btn-ver-alumnos"
-                              onClick={() => toggleGrupo(grupoId)}
-                            >
-                              <FontAwesomeIcon icon={grupoAbierto ? faChevronDown : faChevronRight} />
-                              {grupoAbierto ? "Ocultar" : "Ver mesa"}
-                            </button>
-                          </td>
-                        </tr>
-
-                        {grupoAbierto && (
-                          <tr className="fila-detalle-alumnos">
-                            <td colSpan="7">
-                              <div className="alumnos-panel grupos-finales-panel">
-                                <div className="alumnos-panel-header">
-                                  <div>
-                                    <strong>
-                                      {tab === "no-agrupadas"
-                                        ? `Número de mesa ${item.numeros_mesa_texto}`
-                                        : item.mesa_final_texto || `Mesa final N° ${item.id_grupo}`}
-                                    </strong>
-                                    <span>
-                                      {numeros.length} número/s de mesa · {item.cantidad_previas || item.cantidad_alumnos || 0} previas
+                            <td>
+                              <div className="numeros-mesa-pills">
+                                {numeros.length > 0 ? (
+                                  numeros.map((numero) => (
+                                    <span
+                                      key={`${grupoId}-num-pill-${numero.numero_mesa}`}
+                                      className={`numero-pill tipo-${numero.tipo_mesa || "simple"}`}
+                                    >
+                                      N° {numero.numero_mesa}
                                     </span>
+                                  ))
+                                ) : (
+                                  <span className="numero-pill">{textoCorto(item.numeros_mesa_texto)}</span>
+                                )}
+                              </div>
+                            </td>
+
+                            <td>
+                              <div className="mesa-alumnos-resumen">
+                                <strong>{item.cantidad_previas || item.cantidad_alumnos || 0}</strong>
+                                <span>previas</span>
+                                {Number(item.cantidad_alumnos_distintos || 0) > 0 && (
+                                  <small>{item.cantidad_alumnos_distintos} DNI distintos</small>
+                                )}
+                              </div>
+                            </td>
+
+                            <td>
+                              <span className="prioridad-badge">{item.prioridad_max ?? 0}</span>
+                            </td>
+
+                            <td className="acciones-cell acciones-cell-mesa">
+                              <button
+                                type="button"
+                                className="btn-ver-alumnos"
+                                onClick={() => toggleGrupo(grupoId)}
+                              >
+                                <FontAwesomeIcon icon={grupoAbierto ? faChevronDown : faChevronRight} />
+                                {grupoAbierto ? "Ocultar" : "Ver"}
+                              </button>
+
+                              <button
+                                type="button"
+                                className="btn-editar-mesa"
+                                onClick={() => abrirModalEditar(item, tab === "no-agrupadas" ? "no_agrupada" : "grupo")}
+                              >
+                                <FontAwesomeIcon icon={faEdit} />
+                                Editar
+                              </button>
+
+                              <button
+                                type="button"
+                                className="btn-eliminar-mesa"
+                                onClick={() => eliminarMesaDesdeEdicion({
+                                  tipo: tab === "no-agrupadas" ? "no_agrupada" : "grupo",
+                                  id_grupo: item.id_grupo || item.numero_grupo || null,
+                                  numero_grupo: item.numero_grupo || item.id_grupo || null,
+                                  id_no_agrupada: item.id_no_agrupada || null,
+                                  numero_mesa: item.numero_mesa || item.numeros?.[0]?.numero_mesa || null,
+                                })}
+                              >
+                                <FontAwesomeIcon icon={faTrash} />
+                                Eliminar
+                              </button>
+                            </td>
+                          </tr>
+
+                          {grupoAbierto && (
+                            <tr className="fila-detalle-alumnos">
+                              <td colSpan="7">
+                                <div className="alumnos-panel grupos-finales-panel">
+                                  <div className="alumnos-panel-header">
+                                    <div>
+                                      <strong>
+                                        {tab === "no-agrupadas"
+                                          ? `Número de mesa ${item.numeros_mesa_texto}`
+                                          : item.mesa_final_texto || `Mesa final N° ${item.id_grupo}`}
+                                      </strong>
+                                      <span>
+                                        {numeros.length} número/s de mesa ·{" "}
+                                        {item.cantidad_previas || item.cantidad_alumnos || 0} previas
+                                      </span>
+                                    </div>
+                                    <div className="mesa-final-meta-mini">
+                                      <span>{textoCorto(item.fecha)}</span>
+                                      <span>{textoCorto(item.turno)}</span>
+                                      <span>{textoCorto(item.area, "Sin área")}</span>
+                                    </div>
                                   </div>
 
-                                  <div className="mesa-final-meta-mini">
-                                    <span>{textoCorto(item.fecha)}</span>
-                                    <span>{textoCorto(item.turno)}</span>
-                                    <span>{textoCorto(item.area, "Sin área")}</span>
-                                  </div>
-                                </div>
+                                  <div className="numeros-finales-list">
+                                    {numeros.map((numero) => {
+                                      const numeroId = `${grupoId}-${numero.numero_mesa}`;
+                                      const numeroAbierto = numerosAbiertos[numeroId] !== false;
+                                      const alumnos = Array.isArray(numero.alumnos) ? numero.alumnos : [];
 
-                                <div className="numeros-finales-list">
-                                  {numeros.map((numero) => {
-                                    const numeroId = `${grupoId}-${numero.numero_mesa}`;
-                                    const numeroAbierto = numerosAbiertos[numeroId] !== false;
-                                    const alumnos = Array.isArray(numero.alumnos) ? numero.alumnos : [];
+                                      return (
+                                        <article className="numero-final-card" key={numeroId}>
+                                          <button
+                                            type="button"
+                                            className="numero-final-header"
+                                            onClick={() => toggleNumero(numeroId)}
+                                          >
+                                            <div>
+                                              <strong>Mesa N° {numero.numero_mesa}</strong>
+                                              <span>
+                                                {numero.tipo_mesa || "simple"} · Prioridad{" "}
+                                                {numero.prioridad ?? 0} · {alumnos.length} previas
+                                              </span>
+                                            </div>
+                                            <FontAwesomeIcon icon={numeroAbierto ? faChevronDown : faChevronRight} />
+                                          </button>
 
-                                    return (
-                                      <article className="numero-final-card" key={numeroId}>
-                                        <button
-                                          type="button"
-                                          className="numero-final-header"
-                                          onClick={() => toggleNumero(numeroId)}
-                                        >
-                                          <div>
-                                            <strong>Mesa N° {numero.numero_mesa}</strong>
+                                          <div className="numero-final-info">
                                             <span>
-                                              {numero.tipo_mesa || "simple"} · Prioridad {numero.prioridad ?? 0} · {alumnos.length} previas
+                                              <b>Materia/s:</b> {textoCorto(numero.materia)}
+                                            </span>
+                                            <span>
+                                              <b>Docente/s:</b> {textoCorto(numero.docente)}
                                             </span>
                                           </div>
 
-                                          <FontAwesomeIcon icon={numeroAbierto ? faChevronDown : faChevronRight} />
-                                        </button>
-
-                                        <div className="numero-final-info">
-                                          <span>
-                                            <b>Materia/s:</b> {textoCorto(numero.materia)}
-                                          </span>
-                                          <span>
-                                            <b>Docente/s:</b> {textoCorto(numero.docente)}
-                                          </span>
-                                        </div>
-
-                                        {numeroAbierto && (
-                                          <div className="alumnos-grid alumnos-grid-final">
-                                            {alumnos.length === 0 ? (
-                                              <div className="mesas-empty-mini">Sin previas vinculadas a este número.</div>
-                                            ) : (
-                                              alumnos.map((alumno) => (
-                                                <article
-                                                  className={`alumno-card ${
-                                                    alumno.estado === "observada" ? "alumno-card-observada" : ""
-                                                  }`}
-                                                  key={`${numeroId}-${alumno.id_mesa}-${alumno.id_previa}`}
-                                                >
-                                                  <div className="alumno-card-top">
-                                                    <strong>{textoCorto(alumno.estudiante || alumno.alumno)}</strong>
-                                                    <span>DNI: {textoCorto(alumno.dni)}</span>
-                                                  </div>
-
-                                                  <div className="alumno-card-data">
-                                                    <span>
-                                                      <b>Materia:</b> {textoCorto(alumno.materia)}
-                                                    </span>
-                                                    <span>
-                                                      <b>Curso alumno:</b>{" "}
-                                                      {textoCursoDivision(alumno.curso_alumno, alumno.division_alumno)}
-                                                    </span>
-                                                    <span>
-                                                      <b>Curso materia:</b>{" "}
-                                                      {textoCursoDivision(alumno.curso_materia, alumno.division_materia)}
-                                                    </span>
-                                                    <span>
-                                                      <b>Condición:</b> {textoCorto(alumno.condicion)}
-                                                    </span>
-                                                    <span>
-                                                      <b>Docente:</b> {textoCorto(alumno.docente)}
-                                                    </span>
-                                                    <span>
-                                                      <b>N° mesa:</b> {textoCorto(alumno.numero_mesa)}
-                                                    </span>
-                                                  </div>
-
-                                                  {alumno.observacion && (
-                                                    <p className="alumno-observacion">{alumno.observacion}</p>
-                                                  )}
-                                                </article>
-                                              ))
-                                            )}
-                                          </div>
-                                        )}
-                                      </article>
-                                    );
-                                  })}
+                                          {numeroAbierto && (
+                                            <div className="alumnos-grid alumnos-grid-final">
+                                              {alumnos.length === 0 ? (
+                                                <div className="mesas-empty-mini">
+                                                  Sin previas vinculadas a este número.
+                                                </div>
+                                              ) : (
+                                                alumnos.map((alumno) => (
+                                                  <article
+                                                    className={`alumno-card ${
+                                                      alumno.estado === "observada" ? "alumno-card-observada" : ""
+                                                    }`}
+                                                    key={`${numeroId}-${alumno.id_mesa}-${alumno.id_previa}`}
+                                                  >
+                                                    <div className="alumno-card-top">
+                                                      <strong>{textoCorto(alumno.estudiante || alumno.alumno)}</strong>
+                                                      <span>DNI: {textoCorto(alumno.dni)}</span>
+                                                    </div>
+                                                    <div className="alumno-card-data">
+                                                      <span>
+                                                        <b>Materia:</b> {textoCorto(alumno.materia)}
+                                                      </span>
+                                                      <span>
+                                                        <b>Curso alumno:</b>{" "}
+                                                        {textoCursoDivision(alumno.curso_alumno, alumno.division_alumno)}
+                                                      </span>
+                                                      <span>
+                                                        <b>Curso materia:</b>{" "}
+                                                        {textoCursoDivision(alumno.curso_materia, alumno.division_materia)}
+                                                      </span>
+                                                      <span>
+                                                        <b>Condición:</b> {textoCorto(alumno.condicion)}
+                                                      </span>
+                                                      <span>
+                                                        <b>Docente:</b> {textoCorto(alumno.docente)}
+                                                      </span>
+                                                      <span>
+                                                        <b>N° mesa:</b> {textoCorto(alumno.numero_mesa)}
+                                                      </span>
+                                                    </div>
+                                                    {alumno.observacion && (
+                                                      <p className="alumno-observacion">{alumno.observacion}</p>
+                                                    )}
+                                                  </article>
+                                                ))
+                                              )}
+                                            </div>
+                                          )}
+                                        </article>
+                                      );
+                                    })}
+                                  </div>
                                 </div>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           )}
-
         </section>
-
-        <div className="mesas-footer-actions">
-          <button className="btn-action btn-back" type="button" onClick={volver}>
-            <FontAwesomeIcon icon={faArrowLeft} />
-            Volver Atrás
-          </button>
-        </div>
       </main>
 
       <ModalCrearMesa
@@ -898,6 +759,23 @@ const MesasExamen = () => {
         cargando={armando}
         onClose={cerrarModalCrear}
         onConfirm={crearMesas}
+      />
+
+      <ModalEditarMesa
+        abierto={modalEditarAbierto}
+        grupo={grupoEdicion}
+        tipo={tipoEdicion}
+        turnos={parametrosArmado?.turnos || []}
+        cargando={cargandoEdicion}
+        guardando={guardandoEdicion}
+        slotsDisponibles={slotsEdicion}
+        cargandoSlots={cargandoSlotsEdicion}
+        onLoadSlots={cargarSlotsEdicion}
+        error={errorEdicion}
+        onClose={cerrarModalEditar}
+        onSave={guardarEdicionProgramacion}
+        onDelete={eliminarMesaDesdeEdicion}
+        persona={personaEdicion}
       />
     </div>
   );

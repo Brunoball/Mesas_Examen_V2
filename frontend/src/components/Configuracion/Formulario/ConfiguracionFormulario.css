@@ -1,0 +1,587 @@
+/* =========================================================
+   CONFIGURACION FORMULARIO — estética replicada desde Docentes
+   Usa Global_Section.css para base mov-page / mov-card / mov-btn / floating fields.
+   Sin modo oscuro.
+========================================================= */
+
+.cfgFormPage.mov-page{
+  min-height:100%;
+  height:100%;
+  padding:0;
+  background:transparent;
+  color:var(--balto-ink);
+}
+
+.cfgFormPage *{
+  box-sizing:border-box;
+}
+
+.cfgFormCardRoot.mov-card{
+  width:100%;
+  height:100%;
+  min-height:0;
+  margin:0;
+  padding:0;
+  border-radius:var(--mov-radius);
+  overflow:hidden;
+  background:#fff;
+}
+
+.cfgFormHead{
+  border-bottom:1px solid color-mix(in srgb, var(--mov-border) 65%, #fff);
+  align-items:flex-end;
+}
+
+.cfgFormHeadLeft{
+  align-items:flex-end;
+}
+
+.cfgFormTitleBox{
+  gap:0;
+  flex:1 1 auto;
+  min-width:220px;
+}
+
+.cfgFormSectionTitle{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:var(--balto-ink);
+}
+
+.cfgFormSectionTitle svg{
+  color:var(--balto-action);
+}
+
+.cfgFormHeadFilters{
+  flex:0 0 auto;
+  justify-content:flex-end;
+}
+
+.cfgFormHeadActions{
+  align-items:center;
+}
+
+.cfgFormHeadBtn{
+  height:42px;
+}
+
+.cfgFormStatusPill{
+  height:44px;
+  padding:0 14px;
+  border-radius:10px;
+  border:1.5px solid rgba(10,37,64,.14);
+  background:#fff;
+  color:color-mix(in srgb, var(--balto-ink) 84%, #000);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:9px;
+  font-size:13px;
+  font-weight:620;
+  white-space:nowrap;
+}
+
+.cfgFormStatusPill i{
+  width:9px;
+  height:9px;
+  border-radius:999px;
+  display:block;
+  box-shadow:0 0 0 4px rgba(148,163,184,.14);
+}
+
+.cfgFormStatusPill.is-open{
+  border-color:rgba(34,173,92,.28);
+  background:rgba(34,173,92,.08);
+  color:#16864a;
+}
+
+.cfgFormStatusPill.is-open i{
+  background:#22ad5c;
+  box-shadow:0 0 0 4px rgba(34,173,92,.13);
+}
+
+.cfgFormStatusPill.is-closed{
+  border-color:rgba(225,61,69,.26);
+  background:rgba(225,61,69,.08);
+  color:color-mix(in srgb, var(--balto-danger) 72%, #000);
+}
+
+.cfgFormStatusPill.is-closed i{
+  background:var(--balto-danger);
+  box-shadow:0 0 0 4px rgba(225,61,69,.12);
+}
+
+.cfgFormContent{
+  flex:1;
+  min-height:0;
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) 380px;
+  gap:16px;
+  padding:18px 20px 20px;
+  background:linear-gradient(180deg, #fff 0%, color-mix(in srgb, var(--balto-bg) 64%, #fff) 100%);
+  overflow:auto;
+}
+
+.cfgFormPanel{
+  min-width:0;
+  border:1px solid color-mix(in srgb, var(--mov-border) 78%, #fff);
+  background:#fff;
+  border-radius:16px;
+  box-shadow:var(--mov-shadow-sm);
+}
+
+.cfgFormPanel--main{
+  padding:0;
+  overflow:hidden;
+}
+
+.cfgFormPanelHead{
+  min-height:70px;
+  padding:16px 18px;
+  border-bottom:1px solid color-mix(in srgb, var(--mov-border) 68%, #fff);
+  background:linear-gradient(180deg, #fff, color-mix(in srgb, var(--balto-bg) 58%, #fff));
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.cfgFormPanelHead--compact{
+  min-height:64px;
+  padding:15px 16px;
+}
+
+.cfgFormPanelHead h2{
+  margin:0;
+  color:var(--balto-ink);
+  font-size:15px;
+  font-weight:620;
+  letter-spacing:-.01em;
+}
+
+.cfgFormPanelHead p{
+  margin:4px 0 0;
+  color:var(--mov-muted);
+  font-size:12px;
+  font-weight:460;
+  line-height:1.35;
+}
+
+.cfgFormGrid{
+  padding:18px;
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:16px;
+}
+
+.cfgFormGridFull{
+  grid-column:1 / -1;
+}
+
+.cfgFormFloating{
+  display:block;
+  min-width:0;
+}
+
+.cfgFormInput.cc-input{
+  width:100%;
+  height:44px;
+  border-radius:10px;
+  border:1.5px solid rgba(10,37,64,.14);
+  background:#fff;
+  color:rgba(10,37,64,.92);
+  font-size:13px;
+  font-weight:500;
+  font-family:inherit;
+}
+
+.cfgFormInput.cc-input:hover{
+  border-color:rgba(10,37,64,.28);
+}
+
+.cfgFormInput.cc-input:focus{
+  border-color:rgba(0,85,187,.55);
+  box-shadow:0 0 0 3px var(--cc-focus);
+  background:#fafcff;
+}
+
+.cfgFormSelect{
+  cursor:pointer;
+  appearance:auto;
+}
+
+.cfgFormDate{
+  cursor:pointer;
+}
+
+.cfgFormTextareaField .cc-floatingLabel{
+  top:22px;
+}
+
+.cfgFormTextarea{
+  min-height:104px;
+  height:auto !important;
+  padding:16px 14px 12px !important;
+  resize:vertical;
+  line-height:1.45;
+}
+
+.cfgFormTextareaField.is-active .cc-floatingLabel,
+.cfgFormTextareaField:focus-within .cc-floatingLabel,
+.cfgFormTextarea:not(:placeholder-shown) + .cc-floatingLabel{
+  top:0;
+}
+
+.cfgFormDateBlock{
+  padding:14px;
+  border-radius:15px;
+  border:1px solid color-mix(in srgb, var(--mov-border) 72%, #fff);
+  background:linear-gradient(180deg, #fff, color-mix(in srgb, var(--balto-bg) 55%, #fff));
+}
+
+.cfgFormDateBlockHead{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  margin-bottom:14px;
+}
+
+.cfgFormDateBlockHead h3{
+  margin:0;
+  color:var(--balto-ink);
+  font-size:14px;
+  font-weight:620;
+  letter-spacing:-.01em;
+}
+
+.cfgFormDateBlockHead p{
+  margin:3px 0 0;
+  color:var(--mov-muted);
+  font-size:12px;
+  font-weight:460;
+  line-height:1.35;
+}
+
+.cfgFormDateIcon{
+  width:34px;
+  height:34px;
+  border-radius:12px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  color:var(--balto-action);
+  background:rgba(0,85,187,.08);
+  border:1px solid rgba(0,85,187,.16);
+}
+
+.cfgFormDateIcon--end{
+  color:color-mix(in srgb, var(--balto-ink) 82%, #000);
+  background:rgba(10,37,64,.07);
+  border-color:rgba(10,37,64,.14);
+}
+
+.cfgFormDateRow{
+  display:grid;
+  grid-template-columns:minmax(180px, 1fr) 110px 110px;
+  gap:12px;
+  align-items:center;
+}
+
+.cfgFormSide{
+  min-width:0;
+  display:grid;
+  grid-template-rows:auto 1fr;
+  gap:16px;
+}
+
+.cfgFormPreview{
+  overflow:hidden;
+}
+
+.cfgFormPreviewList{
+  padding:14px 16px 16px;
+  display:grid;
+  gap:10px;
+}
+
+.cfgFormPreviewRow{
+  display:grid;
+  grid-template-columns:82px minmax(0, 1fr);
+  gap:10px;
+  align-items:start;
+  min-height:42px;
+  padding:10px 0;
+  border-bottom:1px solid color-mix(in srgb, var(--mov-border) 58%, #fff);
+  color:color-mix(in srgb, var(--balto-ink) 76%, #000);
+  font-size:13px;
+  line-height:1.45;
+}
+
+.cfgFormPreviewRow:last-child{
+  border-bottom:0;
+}
+
+.cfgFormPreviewRow b{
+  color:var(--mov-muted);
+  font-size:12px;
+  font-weight:560;
+}
+
+.cfgFormPreviewRow span{
+  min-width:0;
+  color:var(--balto-ink);
+  font-weight:500;
+}
+
+.cfgFormPreviewRow--estado{
+  align-items:center;
+}
+
+.cfgFormPreviewRow em{
+  width:max-content;
+  min-height:30px;
+  padding:0 12px;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-style:normal;
+  font-size:12px;
+  font-weight:680;
+  letter-spacing:.03em;
+}
+
+.cfgFormPreviewRow em.is-open{
+  background:rgba(34,173,92,.12);
+  color:#16864a;
+  border:1px solid rgba(34,173,92,.26);
+}
+
+.cfgFormPreviewRow em.is-closed{
+  background:rgba(225,61,69,.12);
+  color:var(--balto-danger);
+  border:1px solid rgba(225,61,69,.26);
+}
+
+.cfgFormTip{
+  min-height:126px;
+  border:1px solid rgba(0,85,187,.14);
+  border-radius:16px;
+  background:linear-gradient(180deg, rgba(0,85,187,.07), #fff);
+  box-shadow:var(--mov-shadow-sm);
+  color:color-mix(in srgb, var(--balto-ink) 78%, #000);
+  padding:16px;
+  display:flex;
+  align-items:flex-start;
+  gap:11px;
+}
+
+.cfgFormTipIcon{
+  width:34px;
+  height:34px;
+  border-radius:12px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  color:var(--balto-action);
+  background:#fff;
+  border:1px solid rgba(0,85,187,.16);
+}
+
+.cfgFormTip strong{
+  display:block;
+  color:var(--balto-ink);
+  font-size:13px;
+  font-weight:620;
+  margin-bottom:3px;
+}
+
+.cfgFormTip p{
+  margin:0;
+  color:var(--mov-muted);
+  font-size:12.5px;
+  line-height:1.55;
+  font-weight:460;
+}
+
+.cfgFormLoading{
+  grid-column:1 / -1;
+  min-height:280px;
+  border:1px solid color-mix(in srgb, var(--mov-border) 70%, #fff);
+  border-radius:16px;
+  background:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  color:var(--balto-ink);
+}
+
+.cfgFormLoading strong{
+  display:block;
+  font-size:14px;
+  font-weight:620;
+}
+
+.cfgFormLoading p{
+  margin:4px 0 0;
+  color:var(--mov-muted);
+  font-size:12px;
+  font-weight:460;
+}
+
+.cfgFormLoadingIcon{
+  width:38px;
+  height:38px;
+  border-radius:999px;
+  border:3px solid color-mix(in srgb, var(--balto-action) 16%, #fff);
+  border-top-color:var(--balto-action);
+  animation:cfgFormSpin .85s linear infinite;
+}
+
+.cfgFormToast.mov-alert{
+  position:fixed;
+  top:22px;
+  right:22px;
+  z-index:1300;
+  margin:0;
+  min-height:44px;
+  max-width:min(420px, calc(100vw - 44px));
+  display:flex;
+  align-items:center;
+  gap:9px;
+  font-size:13px;
+  font-weight:560;
+  box-shadow:0 18px 48px rgba(10,37,64,.18);
+  animation:cfgToastIn .18s ease both;
+}
+
+.cfgFormToast--ok{
+  background:color-mix(in srgb, var(--balto-success) 10%, #fff) !important;
+  border-color:color-mix(in srgb, var(--balto-success) 24%, #fff) !important;
+  color:color-mix(in srgb, var(--balto-success) 58%, var(--balto-ink)) !important;
+}
+
+.cfgFormToast--error{
+  background:color-mix(in srgb, var(--balto-danger) 10%, #fff) !important;
+  border-color:color-mix(in srgb, var(--balto-danger) 24%, #fff) !important;
+  color:color-mix(in srgb, var(--balto-danger) 60%, var(--balto-ink)) !important;
+}
+
+.cfgFormActionsMobile{
+  display:none;
+}
+
+@keyframes cfgFormSpin{
+  to{ transform:rotate(360deg); }
+}
+
+@keyframes cfgToastIn{
+  from{ transform:translateY(-8px); opacity:0; }
+  to{ transform:translateY(0); opacity:1; }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .cfgFormLoadingIcon,
+  .cfgFormToast{
+    animation:none !important;
+  }
+}
+
+@media (max-width:1100px){
+  .cfgFormContent{
+    grid-template-columns:1fr;
+  }
+
+  .cfgFormSide{
+    grid-template-columns:1fr 1fr;
+    grid-template-rows:auto;
+  }
+}
+
+@media (max-width:860px){
+  .cfgFormHead,
+  .cfgFormHeadLeft{
+    align-items:stretch;
+  }
+
+  .cfgFormHead{
+    flex-direction:column;
+  }
+
+  .cfgFormHeadLeft{
+    flex-direction:column;
+  }
+
+  .cfgFormHeadFilters,
+  .cfgFormHeadActions{
+    width:100%;
+    justify-content:stretch;
+  }
+
+  .cfgFormStatusPill,
+  .cfgFormHeadBtn{
+    width:100%;
+  }
+
+  .cfgFormContent{
+    padding:14px;
+  }
+
+  .cfgFormDateRow{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .cfgFormDateRow .cfgFormFloating:first-child{
+    grid-column:1 / -1;
+  }
+}
+
+@media (max-width:680px){
+  .cfgFormGrid{
+    grid-template-columns:1fr;
+    padding:14px;
+    gap:14px;
+  }
+
+  .cfgFormSide{
+    grid-template-columns:1fr;
+  }
+
+  .cfgFormHeadActions{
+    display:none;
+  }
+
+  .cfgFormActionsMobile{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:10px;
+    padding:0 18px 18px;
+  }
+
+  .cfgFormDateBlock{
+    padding:12px;
+  }
+}
+
+@media (max-width:460px){
+  .cfgFormContent{
+    padding:10px;
+  }
+
+  .cfgFormPanelHead{
+    padding:14px;
+  }
+
+  .cfgFormDateRow{
+    grid-template-columns:1fr;
+  }
+
+  .cfgFormPreviewRow{
+    grid-template-columns:1fr;
+    gap:4px;
+  }
+}

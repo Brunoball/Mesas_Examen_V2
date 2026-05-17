@@ -2148,3 +2148,48 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* =========================================================
+   ACCIONES DE EDICIÓN POR MESA
+========================================================= */
+
+.acciones-cell-mesa {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-editar-mesa,
+.btn-eliminar-mesa {
+  min-height: 38px;
+  border-radius: 10px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.btn-editar-mesa:hover,
+.btn-eliminar-mesa:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(10, 37, 64, 0.12);
+}
+
+.btn-editar-mesa {
+  border: 1px solid rgba(0, 85, 187, 0.22);
+  background: rgba(0, 85, 187, 0.08);
+  color: var(--mesas-blue);
+}
+
+.btn-eliminar-mesa {
+  border: 1px solid rgba(225, 61, 69, 0.24);
+  background: rgba(225, 61, 69, 0.08);
+  color: var(--mesas-danger);
+}

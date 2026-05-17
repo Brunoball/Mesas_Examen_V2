@@ -26,9 +26,7 @@ $action = trim((string)(
 
 $accionesPublicas = [
     'inicio',
-    'registro',
     'auth_csrf_token',
-    'debug_saas_login',
 
     // Formulario público de inscripción a mesas.
     'form_obtener_config_inscripcion',
@@ -44,6 +42,14 @@ $accionesPublicas = [
     'formulario_registrar_inscripcion',
 ];
 
+if (env_bool('ALLOW_PUBLIC_REGISTRATION', false)) {
+    $accionesPublicas[] = 'registro';
+}
+
+if (env_bool('ALLOW_DEBUG_SAAS_LOGIN', false)) {
+    $accionesPublicas[] = 'debug_saas_login';
+}
+
 try {
     if ($action === '') {
         json_response([
@@ -51,20 +57,6 @@ try {
             'mensaje' => 'Falta el parámetro action.',
         ], 400);
     }
-
-
-/*
-|--------------------------------------------------------------------------
-| Debug SaaS público forzado
-|--------------------------------------------------------------------------
-| Esto va antes del require_auth. Si esta URL devuelve "Sesión expirada",
-| entonces NO se está ejecutando este api.php.
-*/
-if ($action === 'debug_saas_login') {
-    require_once __DIR__ . '/../modules/login/route.php';
-    route_login($action);
-    exit;
-}
 
     if ($action === 'auth_csrf_token') {
         json_response([
@@ -95,6 +87,8 @@ if ($action === 'debug_saas_login') {
     */
     require_once __DIR__ . '/../modules/login/route.php';
     require_once __DIR__ . '/../modules/global/route.php';
+    require_once __DIR__ . '/../modules/dashbord/route.php';
+    require_once __DIR__ . '/../modules/configuracion/route.php';
     require_once __DIR__ . '/../modules/formulario/route.php';
     require_once __DIR__ . '/../modules/materias/route.php';
     require_once __DIR__ . '/../modules/catedras/route.php';
@@ -114,6 +108,14 @@ if ($action === 'debug_saas_login') {
     }
 
     if (route_global($action)) {
+        exit;
+    }
+
+    if (route_dashbord($action)) {
+        exit;
+    }
+
+    if (route_configuracion($action)) {
         exit;
     }
 

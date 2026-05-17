@@ -21,10 +21,12 @@ import {
   faGraduationCap,
   faUserCircle,
   faGear,
+  faChartLine,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "./principal.css";
 import logoRH from "../../imagenes/Escudo.png";
+import Dashbord from "../Dashbord/Dashbord";
 
 export const MesasShellContext = createContext(false);
 
@@ -106,6 +108,13 @@ const ConfirmLogoutModal = memo(function ConfirmLogoutModal({
    Configuración de navegación
 ========================================================= */
 const NAV_ITEMS = [
+  {
+    key: "dashbord",
+    label: "Dashboard",
+    icon: faChartLine,
+    ruta: "/panel",
+    description: "Vista general de previas, mesas, grupos y pendientes.",
+  },
   {
     key: "mesas",
     label: "Mesas de Examen",
@@ -236,6 +245,14 @@ const Principal = ({ children = null }) => {
 
   const activeKey = useMemo(() => {
     if (
+      location.pathname === "/panel" ||
+      location.pathname === "/dashbord" ||
+      location.pathname === "/dashboard"
+    ) {
+      return "dashbord";
+    }
+
+    if (
       location.pathname === "/configuracion" ||
       location.pathname.startsWith("/configuracion/") ||
       location.pathname === "/configuracion-formulario" ||
@@ -274,6 +291,11 @@ const Principal = ({ children = null }) => {
 
   const hasChildren = React.Children.count(children) > 0;
 
+  const esPanelInicio = useMemo(() => {
+    const path = String(location.pathname || "").replace(/\/+$/, "") || "/";
+    return path === "/panel" || path === "/dashbord" || path === "/dashboard";
+  }, [location.pathname]);
+
   const handleNavigate = useCallback(
     (ruta) => {
       navigate(ruta);
@@ -283,7 +305,7 @@ const Principal = ({ children = null }) => {
   );
 
   const handleLogoClick = useCallback(() => {
-    handleNavigate("/mesas-examen");
+    handleNavigate("/panel");
   }, [handleNavigate]);
 
   const toggleSubmenu = useCallback((itemKey) => {
@@ -510,7 +532,7 @@ const Principal = ({ children = null }) => {
 
         <main className="pp-content">
           <div className="pp-content__inner">
-            {hasChildren ? children : <StableOutlet />}
+            {hasChildren ? children : esPanelInicio ? <Dashbord /> : <StableOutlet />}
           </div>
         </main>
 

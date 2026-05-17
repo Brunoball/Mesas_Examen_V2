@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/armado_mesas/armado_mesas_controller.php';
 require_once __DIR__ . '/armado_mesas_docentes/armado_mesas_docentes_controller.php';
+require_once __DIR__ . '/editar_mesas/route.php';
 
 function route_mesas(string $action): bool
 {
+    if (route_mesas_editar($action)) {
+        return true;
+    }
+
     switch ($action) {
         case 'mesas_examen_listar':
             mesas_examen_listar();

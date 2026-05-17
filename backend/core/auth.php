@@ -54,6 +54,21 @@ function require_auth(): void
 
     $ctx = auth_context();
     if ($ctx) {
+        try {
+            if (function_exists('assert_request_tenant_matches_context')) {
+                assert_request_tenant_matches_context($ctx);
+            }
+        } catch (RuntimeException $e) {
+            if ($e->getMessage() === 'TENANT_MISMATCH') {
+                json_response([
+                    'exito' => false,
+                    'mensaje' => 'El tenant enviado no coincide con la sesión activa.',
+                ], 403);
+            }
+
+            throw $e;
+        }
+
         $_SESSION['usuario_id'] = (int)$ctx['idUsuarioMaster'];
         $_SESSION['idUsuarioMaster'] = (int)$ctx['idUsuarioMaster'];
         $_SESSION['idTenant'] = (int)$ctx['idTenant'];
