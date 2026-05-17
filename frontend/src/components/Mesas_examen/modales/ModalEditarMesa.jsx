@@ -6,6 +6,7 @@ import {
   faChevronLeft,
   faChevronRight,
   faClock,
+  faExchangeAlt,
   faSave,
   faEdit,
   faPlus,
@@ -18,6 +19,8 @@ import "./ModalEditarMesa.css";
 import ModalPreviasMesa from "./persona/ModalPreviasMesa";
 import ModalMoverPreviaMesa from "./persona/ModalMoverPreviaMesa";
 import ModalConfirmarEliminarPrevia from "./persona/ModalConfirmarEliminarPrevia";
+import ModalAgregarPreviaMesa from "./mas/ModalAgregarPreviaMesa";
+import ModalMoverNumeroMesa from "./flechas/ModalMoverNumeroMesa";
 
 const MESES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -218,18 +221,18 @@ const CalendarMesa = ({ fechaSeleccionada, idTurno, slotsDisponibles = [], carga
   );
 };
 
-const SlotNumero = ({ numero, onVerPrevias }) => (
+const SlotNumero = ({ numero, onVerPrevias, onAgregarPrevia, onMoverNumero }) => (
   <article className="editar-mesa-slot-card">
     <div className="editar-mesa-slot-actions">
       <span className="editar-mesa-numero-chip">N° {texto(numero?.numero_mesa)}</span>
       <button type="button" title="Ver previas / alumnos" onClick={() => onVerPrevias && onVerPrevias(numero)}>
         <FontAwesomeIcon icon={faUser} />
       </button>
-      <button type="button" title="Agregar número">
+      <button type="button" title="Agregar previa / alumno" onClick={() => onAgregarPrevia && onAgregarPrevia(numero)}>
         <FontAwesomeIcon icon={faPlus} />
       </button>
-      <button type="button" title="Mover / cambiar grupo">
-        <FontAwesomeIcon icon={faChevronRight} />
+      <button type="button" title="Mover número a otro grupo" onClick={() => onMoverNumero && onMoverNumero(numero)}>
+        <FontAwesomeIcon icon={faExchangeAlt} />
       </button>
       <button type="button" title="Eliminar número">
         <FontAwesomeIcon icon={faTrash} />
@@ -248,7 +251,7 @@ const SlotVacio = () => (
   </button>
 );
 
-const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardando, slotsDisponibles, cargandoSlots = false, error, onClose, onSave, onDelete, onLoadSlots, persona = {} }) => {
+const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardando, slotsDisponibles, cargandoSlots = false, error, onClose, onSave, onDelete, onLoadSlots, persona = {}, mas = {}, flechas = {} }) => {
   const [fechaMesa, setFechaMesa] = useState("");
   const [idTurno, setIdTurno] = useState("");
   const [hora, setHora] = useState("07:30");
@@ -439,7 +442,7 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
 
                   <div className="editar-mesa-slots-grid">
                     {slots.map((slot, index) => (
-                      slot ? <SlotNumero key={slot.numero_mesa || index} numero={slot} onVerPrevias={persona.abrirPreviasNumero} /> : <SlotVacio key={`vacio-${index}`} />
+                      slot ? <SlotNumero key={slot.numero_mesa || index} numero={slot} onVerPrevias={persona.abrirPreviasNumero} onAgregarPrevia={mas.abrirAgregarNumero} onMoverNumero={flechas.abrirMoverNumero} /> : <SlotVacio key={`vacio-${index}`} />
                     ))}
                   </div>
                 </div>
@@ -491,6 +494,28 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
         eliminando={persona.eliminando}
         onCancel={persona.cerrarEliminar}
         onConfirm={persona.confirmarEliminar}
+      />
+
+      <ModalAgregarPreviaMesa
+        abierto={mas.modalAbierto}
+        numero={mas.numeroMas}
+        data={mas.previasMas}
+        cargando={mas.cargando}
+        agregando={mas.agregando}
+        error={mas.error}
+        onClose={mas.cerrar}
+        onConfirm={mas.confirmarAgregar}
+      />
+
+      <ModalMoverNumeroMesa
+        abierto={flechas.modalAbierto}
+        numero={flechas.numeroFlechas}
+        destinosData={flechas.destinosFlechas}
+        cargando={flechas.cargando}
+        moviendo={flechas.moviendo}
+        error={flechas.error}
+        onClose={flechas.cerrar}
+        onConfirm={flechas.confirmarMover}
       />
     </div>
   );

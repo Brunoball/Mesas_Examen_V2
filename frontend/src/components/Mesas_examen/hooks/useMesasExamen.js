@@ -1,18 +1,22 @@
 // src/components/Mesas_examen/hooks/useMesasExamen.js
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  agregarPreviaMas,
   crearArmadoInicialMesas,
   crearGruposFinalesMesas,
   eliminarBorradorMesas,
   eliminarMesaEdicion,
+  eliminarPreviaMesa,
   guardarProgramacionMesa,
   listarMesasGruposFinales,
   listarMesasNoAgrupadas,
+  moverNumeroMesaGrupo,
   moverPreviaMesa,
-  eliminarPreviaMesa,
+  obtenerDestinosMoverNumero,
   obtenerDestinosMoverPrevia,
   obtenerMesaEdicion,
   obtenerParametrosArmadoMesas,
+  obtenerPreviasDisponiblesMas,
   obtenerPreviasNumeroMesa,
   obtenerSlotsValidosMesa,
 } from "../api/mesasExamenApi";
@@ -149,22 +153,36 @@ export const useMesasExamen = () => {
   const [slotsEdicion, setSlotsEdicion] = useState(null);
   const [cargandoSlotsEdicion, setCargandoSlotsEdicion] = useState(false);
 
-  const [modalPreviasAbierto, setModalPreviasAbierto] = useState(false);
+  const [modalPreviasPersonaAbierto, setModalPreviasPersonaAbierto] = useState(false);
   const [numeroPersona, setNumeroPersona] = useState(null);
   const [previasPersona, setPreviasPersona] = useState(null);
-  const [cargandoPrevias, setCargandoPrevias] = useState(false);
+  const [cargandoPreviasPersona, setCargandoPreviasPersona] = useState(false);
   const [errorPersona, setErrorPersona] = useState("");
 
-  const [modalMoverAbierto, setModalMoverAbierto] = useState(false);
-  const [previaMover, setPreviaMover] = useState(null);
-  const [destinosMover, setDestinosMover] = useState(null);
-  const [cargandoDestinos, setCargandoDestinos] = useState(false);
-  const [errorMover, setErrorMover] = useState("");
-  const [moviendo, setMoviendo] = useState(false);
+  const [modalMoverPersonaAbierto, setModalMoverPersonaAbierto] = useState(false);
+  const [previaPersonaSeleccionada, setPreviaPersonaSeleccionada] = useState(null);
+  const [destinosPersona, setDestinosPersona] = useState(null);
+  const [cargandoDestinosPersona, setCargandoDestinosPersona] = useState(false);
+  const [moviendoPersona, setMoviendoPersona] = useState(false);
+  const [errorMoverPersona, setErrorMoverPersona] = useState("");
 
-  const [modalEliminarAbierto, setModalEliminarAbierto] = useState(false);
-  const [previaEliminar, setPreviaEliminar] = useState(null);
-  const [eliminando, setEliminando] = useState(false);
+  const [modalEliminarPersonaAbierto, setModalEliminarPersonaAbierto] = useState(false);
+  const [previaPersonaEliminar, setPreviaPersonaEliminar] = useState(null);
+  const [eliminandoPersona, setEliminandoPersona] = useState(false);
+
+  const [modalMasAbierto, setModalMasAbierto] = useState(false);
+  const [numeroMas, setNumeroMas] = useState(null);
+  const [previasMas, setPreviasMas] = useState(null);
+  const [cargandoMas, setCargandoMas] = useState(false);
+  const [agregandoMas, setAgregandoMas] = useState(false);
+  const [errorMas, setErrorMas] = useState("");
+
+  const [modalFlechasAbierto, setModalFlechasAbierto] = useState(false);
+  const [numeroFlechas, setNumeroFlechas] = useState(null);
+  const [destinosFlechas, setDestinosFlechas] = useState(null);
+  const [cargandoDestinosFlechas, setCargandoDestinosFlechas] = useState(false);
+  const [moviendoFlechas, setMoviendoFlechas] = useState(false);
+  const [errorFlechas, setErrorFlechas] = useState("");
 
   const [cargando, setCargando] = useState(false);
   const [armando, setArmando] = useState(false);
@@ -385,226 +403,317 @@ export const useMesasExamen = () => {
     setGrupoEdicion(null);
     setErrorEdicion("");
     setSlotsEdicion(null);
-    setModalPreviasAbierto(false);
+    setModalPreviasPersonaAbierto(false);
+    setModalMoverPersonaAbierto(false);
+    setModalEliminarPersonaAbierto(false);
+    setModalMasAbierto(false);
     setNumeroPersona(null);
     setPreviasPersona(null);
-    setModalMoverAbierto(false);
-    setPreviaMover(null);
-    setDestinosMover(null);
-    setModalEliminarAbierto(false);
-    setPreviaEliminar(null);
+    setPreviaPersonaSeleccionada(null);
+    setPreviaPersonaEliminar(null);
+    setNumeroMas(null);
+    setPreviasMas(null);
+    setErrorMas("");
+    setModalFlechasAbierto(false);
+    setNumeroFlechas(null);
+    setDestinosFlechas(null);
+    setErrorFlechas("");
   }, [guardandoEdicion]);
 
-  const refrescarGrupoEdicionActual = useCallback(async ({ item = grupoEdicion, tipo = tipoEdicion } = {}) => {
-    if (!item) return null;
 
-    const tipoReal = tipo === "no_agrupada" ? "no_agrupada" : "grupo";
-    const response = await obtenerMesaEdicion({
-      tipo: tipoReal,
-      id_grupo: item?.id_grupo || item?.numero_grupo || null,
-      numero_grupo: item?.numero_grupo || item?.id_grupo || null,
-      id_no_agrupada: item?.id_no_agrupada || null,
-      numero_mesa: item?.numero_mesa || item?.numeros?.[0]?.numero_mesa || null,
-    });
+  const recargarGrupoEdicion = useCallback(async () => {
+    if (!grupoEdicion) return null;
 
-    const grupoRecibido = response?.data?.grupo || item || null;
-    const tipoRecibido = response?.data?.tipo || tipoReal;
-    setGrupoEdicion(grupoRecibido);
-    setTipoEdicion(tipoRecibido);
+    const tipoReal = tipoEdicion === "no_agrupada" ? "no_agrupada" : "grupo";
 
-    if (grupoRecibido) {
-      await cargarSlotsEdicion({ item: grupoRecibido, tipo: tipoRecibido });
-    }
+    try {
+      const response = await obtenerMesaEdicion({
+        tipo: tipoReal,
+        id_grupo: grupoEdicion?.id_grupo || grupoEdicion?.numero_grupo || null,
+        numero_grupo: grupoEdicion?.numero_grupo || grupoEdicion?.id_grupo || null,
+        id_no_agrupada: grupoEdicion?.id_no_agrupada || null,
+        numero_mesa: grupoEdicion?.numero_mesa || grupoEdicion?.numeros?.[0]?.numero_mesa || null,
+      });
 
-    return grupoRecibido;
-  }, [grupoEdicion, tipoEdicion, cargarSlotsEdicion]);
-
-  const cargarPreviasNumero = useCallback(async (numero) => {
-    const numeroMesa = Number(numero?.numero_mesa || numero);
-    if (!numeroMesa) {
-      setErrorPersona("No se pudo identificar el número de mesa.");
+      const grupoActualizado = response?.data?.grupo || grupoEdicion;
+      const tipoActualizado = response?.data?.tipo || tipoReal;
+      setGrupoEdicion(grupoActualizado);
+      setTipoEdicion(tipoActualizado);
+      await cargarSlotsEdicion({ item: grupoActualizado, tipo: tipoActualizado });
+      await cargarMesas();
+      return grupoActualizado;
+    } catch (_) {
+      await cargarMesas();
       return null;
     }
+  }, [grupoEdicion, tipoEdicion, cargarSlotsEdicion, cargarMesas]);
 
-    setCargandoPrevias(true);
+  const cargarPreviasPersona = useCallback(async (numeroMesa) => {
+    const numero = Number(numeroMesa || numeroPersona?.numero_mesa || numeroPersona);
+    if (!numero) return null;
+
+    setCargandoPreviasPersona(true);
     setErrorPersona("");
 
     try {
-      const response = await obtenerPreviasNumeroMesa({ numero_mesa: numeroMesa });
+      const response = await obtenerPreviasNumeroMesa({ numero_mesa: numero });
       const data = response?.data || null;
       setPreviasPersona(data);
+      setNumeroPersona(data?.meta || { numero_mesa: numero });
       return data;
     } catch (err) {
       setPreviasPersona(null);
       setErrorPersona(err.message || "Error al obtener las previas de la mesa.");
       return null;
     } finally {
-      setCargandoPrevias(false);
-    }
-  }, []);
-
-  const abrirPreviasNumero = useCallback(async (numero) => {
-    setNumeroPersona(numero || null);
-    setPreviasPersona(null);
-    setErrorPersona("");
-    setModalPreviasAbierto(true);
-    await cargarPreviasNumero(numero);
-  }, [cargarPreviasNumero]);
-
-  const cerrarPrevias = useCallback(() => {
-    if (moviendo || eliminando) return;
-    setModalPreviasAbierto(false);
-    setNumeroPersona(null);
-    setPreviasPersona(null);
-    setErrorPersona("");
-    setModalMoverAbierto(false);
-    setPreviaMover(null);
-    setDestinosMover(null);
-    setModalEliminarAbierto(false);
-    setPreviaEliminar(null);
-  }, [moviendo, eliminando]);
-
-  const abrirMover = useCallback(async (previa) => {
-    const numeroMesa = Number(previa?.numero_mesa || numeroPersona?.numero_mesa || 0);
-    const idPrevia = Number(previa?.id_previa || 0);
-
-    setPreviaMover(previa || null);
-    setDestinosMover(null);
-    setErrorMover("");
-    setModalMoverAbierto(true);
-
-    if (!numeroMesa || !idPrevia) {
-      setErrorMover("No se pudo identificar la previa a mover.");
-      return;
-    }
-
-    setCargandoDestinos(true);
-    try {
-      const response = await obtenerDestinosMoverPrevia({
-        numero_mesa: numeroMesa,
-        id_previa: idPrevia,
-      });
-      setDestinosMover(response?.data || null);
-    } catch (err) {
-      setDestinosMover(null);
-      setErrorMover(err.message || "Error al obtener los destinos disponibles.");
-    } finally {
-      setCargandoDestinos(false);
+      setCargandoPreviasPersona(false);
     }
   }, [numeroPersona]);
 
-  const cerrarMover = useCallback(() => {
-    if (moviendo) return;
-    setModalMoverAbierto(false);
-    setPreviaMover(null);
-    setDestinosMover(null);
-    setErrorMover("");
-  }, [moviendo]);
+  const abrirPreviasPersona = useCallback(async (numero) => {
+    const numeroMesa = Number(numero?.numero_mesa || numero);
+    if (!numeroMesa) return;
 
-  const confirmarMover = useCallback(async (destino) => {
-    const numeroOrigen = Number(previaMover?.numero_mesa || numeroPersona?.numero_mesa || 0);
-    const idPrevia = Number(previaMover?.id_previa || 0);
-    const numeroDestino = Number(destino?.numero_mesa || 0);
+    setModalPreviasPersonaAbierto(true);
+    setNumeroPersona({ ...(numero || {}), numero_mesa: numeroMesa });
+    setPreviasPersona(null);
+    setErrorPersona("");
+    await cargarPreviasPersona(numeroMesa);
+  }, [cargarPreviasPersona]);
 
-    if (!numeroOrigen || !idPrevia || !numeroDestino) {
-      setErrorMover("No se pudo identificar el movimiento solicitado.");
-      return;
-    }
+  const cerrarPreviasPersona = useCallback(() => {
+    if (moviendoPersona || eliminandoPersona) return;
+    setModalPreviasPersonaAbierto(false);
+    setNumeroPersona(null);
+    setPreviasPersona(null);
+    setErrorPersona("");
+  }, [moviendoPersona, eliminandoPersona]);
 
-    setMoviendo(true);
-    setErrorMover("");
+  const abrirMoverPersona = useCallback(async (previa) => {
+    const numeroMesa = Number(previa?.numero_mesa || numeroPersona?.numero_mesa || numeroPersona);
+    const idPrevia = Number(previa?.id_previa);
+    if (!numeroMesa || !idPrevia) return;
+
+    setModalMoverPersonaAbierto(true);
+    setPreviaPersonaSeleccionada({ ...previa, numero_mesa: numeroMesa });
+    setDestinosPersona(null);
+    setErrorMoverPersona("");
+    setCargandoDestinosPersona(true);
 
     try {
-      await moverPreviaMesa({
+      const response = await obtenerDestinosMoverPrevia({ numero_mesa: numeroMesa, id_previa: idPrevia });
+      setDestinosPersona(response?.data || null);
+    } catch (err) {
+      setErrorMoverPersona(err.message || "Error al obtener destinos disponibles.");
+    } finally {
+      setCargandoDestinosPersona(false);
+    }
+  }, [numeroPersona]);
+
+  const cerrarMoverPersona = useCallback(() => {
+    if (moviendoPersona) return;
+    setModalMoverPersonaAbierto(false);
+    setPreviaPersonaSeleccionada(null);
+    setDestinosPersona(null);
+    setErrorMoverPersona("");
+  }, [moviendoPersona]);
+
+  const confirmarMoverPersona = useCallback(async (destino) => {
+    const numeroOrigen = Number(previaPersonaSeleccionada?.numero_mesa || numeroPersona?.numero_mesa || numeroPersona);
+    const idPrevia = Number(previaPersonaSeleccionada?.id_previa);
+    const numeroDestino = Number(destino?.numero_mesa || destino);
+
+    if (!numeroOrigen || !idPrevia || !numeroDestino) return;
+
+    setMoviendoPersona(true);
+    setErrorMoverPersona("");
+
+    try {
+      const response = await moverPreviaMesa({
         numero_origen: numeroOrigen,
-        numero_mesa: numeroOrigen,
         id_previa: idPrevia,
         numero_destino: numeroDestino,
       });
 
-      setModalMoverAbierto(false);
-      setPreviaMover(null);
-      setDestinosMover(null);
-
-      await cargarPreviasNumero(numeroOrigen);
-      await refrescarGrupoEdicionActual();
-      await cargarMesas();
+      setModalMoverPersonaAbierto(false);
+      setPreviaPersonaSeleccionada(null);
+      setDestinosPersona(null);
+      await cargarPreviasPersona(numeroOrigen);
+      await recargarGrupoEdicion();
+      return response;
     } catch (err) {
-      const errores = Array.isArray(err?.errores) ? err.errores.join(" ") : "";
-      setErrorMover(errores || err.message || "No se pudo mover la previa.");
+      setErrorMoverPersona(err.message || "No se pudo mover la previa.");
+      throw err;
     } finally {
-      setMoviendo(false);
+      setMoviendoPersona(false);
     }
-  }, [previaMover, numeroPersona, cargarPreviasNumero, refrescarGrupoEdicionActual, cargarMesas]);
+  }, [previaPersonaSeleccionada, numeroPersona, cargarPreviasPersona, recargarGrupoEdicion]);
 
-  const abrirEliminar = useCallback((previa) => {
-    setPreviaEliminar(previa || null);
-    setModalEliminarAbierto(true);
-  }, []);
+  const abrirEliminarPersona = useCallback((previa) => {
+    const numeroMesa = Number(previa?.numero_mesa || numeroPersona?.numero_mesa || numeroPersona);
+    if (!numeroMesa || !previa?.id_previa) return;
 
-  const cerrarEliminar = useCallback(() => {
-    if (eliminando) return;
-    setModalEliminarAbierto(false);
-    setPreviaEliminar(null);
-  }, [eliminando]);
+    setPreviaPersonaEliminar({ ...previa, numero_mesa: numeroMesa });
+    setModalEliminarPersonaAbierto(true);
+  }, [numeroPersona]);
 
-  const confirmarEliminar = useCallback(async () => {
-    const numeroMesa = Number(previaEliminar?.numero_mesa || numeroPersona?.numero_mesa || 0);
-    const idPrevia = Number(previaEliminar?.id_previa || 0);
+  const cerrarEliminarPersona = useCallback(() => {
+    if (eliminandoPersona) return;
+    setModalEliminarPersonaAbierto(false);
+    setPreviaPersonaEliminar(null);
+  }, [eliminandoPersona]);
 
-    if (!numeroMesa || !idPrevia) {
-      setErrorPersona("No se pudo identificar la previa a eliminar.");
-      return;
-    }
+  const confirmarEliminarPersona = useCallback(async () => {
+    const numeroMesa = Number(previaPersonaEliminar?.numero_mesa || numeroPersona?.numero_mesa || numeroPersona);
+    const idPrevia = Number(previaPersonaEliminar?.id_previa);
 
-    setEliminando(true);
+    if (!numeroMesa || !idPrevia) return;
+
+    setEliminandoPersona(true);
     setErrorPersona("");
 
     try {
-      await eliminarPreviaMesa({ numero_mesa: numeroMesa, id_previa: idPrevia });
-      setModalEliminarAbierto(false);
-      setPreviaEliminar(null);
-
-      await cargarPreviasNumero(numeroMesa);
-      await refrescarGrupoEdicionActual();
-      await cargarMesas();
+      const response = await eliminarPreviaMesa({ numero_mesa: numeroMesa, id_previa: idPrevia });
+      setModalEliminarPersonaAbierto(false);
+      setPreviaPersonaEliminar(null);
+      await cargarPreviasPersona(numeroMesa);
+      await recargarGrupoEdicion();
+      return response;
     } catch (err) {
-      setErrorPersona(err.message || "No se pudo eliminar la previa de la mesa.");
+      setErrorPersona(err.message || "No se pudo quitar la previa del número de mesa.");
+      throw err;
     } finally {
-      setEliminando(false);
+      setEliminandoPersona(false);
     }
-  }, [previaEliminar, numeroPersona, cargarPreviasNumero, refrescarGrupoEdicionActual, cargarMesas]);
+  }, [previaPersonaEliminar, numeroPersona, cargarPreviasPersona, recargarGrupoEdicion]);
 
-  const personaEdicion = useMemo(() => ({
-    modalPreviasAbierto,
-    numeroPersona,
-    previasPersona,
-    cargandoPrevias,
-    errorPersona,
-    abrirPreviasNumero,
-    cerrarPrevias,
 
-    modalMoverAbierto,
-    previaMover,
-    destinosMover,
-    cargandoDestinos,
-    errorMover,
-    moviendo,
-    abrirMover,
-    cerrarMover,
-    confirmarMover,
+  const cargarPreviasMas = useCallback(async (numeroMesa) => {
+    const numero = Number(numeroMesa?.numero_mesa || numeroMesa || numeroMas?.numero_mesa || numeroMas);
+    if (!numero) return null;
 
-    modalEliminarAbierto,
-    previaEliminar,
-    eliminando,
-    abrirEliminar,
-    cerrarEliminar,
-    confirmarEliminar,
-  }), [
-    modalPreviasAbierto, numeroPersona, previasPersona, cargandoPrevias, errorPersona, abrirPreviasNumero, cerrarPrevias,
-    modalMoverAbierto, previaMover, destinosMover, cargandoDestinos, errorMover, moviendo, abrirMover, cerrarMover, confirmarMover,
-    modalEliminarAbierto, previaEliminar, eliminando, abrirEliminar, cerrarEliminar, confirmarEliminar,
-  ]);
+    setCargandoMas(true);
+    setErrorMas("");
+
+    try {
+      const response = await obtenerPreviasDisponiblesMas({ numero_mesa: numero });
+      const data = response?.data || null;
+      setPreviasMas(data);
+      setNumeroMas(data?.meta || { numero_mesa: numero });
+      return data;
+    } catch (err) {
+      setPreviasMas(null);
+      setErrorMas(err.message || "Error al obtener previas disponibles para agregar.");
+      return null;
+    } finally {
+      setCargandoMas(false);
+    }
+  }, [numeroMas]);
+
+  const abrirMasNumero = useCallback(async (numero) => {
+    const numeroMesa = Number(numero?.numero_mesa || numero);
+    if (!numeroMesa) return;
+
+    setModalMasAbierto(true);
+    setNumeroMas({ ...(typeof numero === "object" ? numero : {}), numero_mesa: numeroMesa });
+    setPreviasMas(null);
+    setErrorMas("");
+    await cargarPreviasMas(numeroMesa);
+  }, [cargarPreviasMas]);
+
+  const cerrarMasNumero = useCallback(() => {
+    if (agregandoMas) return;
+    setModalMasAbierto(false);
+    setNumeroMas(null);
+    setPreviasMas(null);
+    setErrorMas("");
+  }, [agregandoMas]);
+
+  const confirmarAgregarMas = useCallback(async (previa) => {
+    const numeroMesa = Number(numeroMas?.numero_mesa || numeroMas);
+    const idPrevia = Number(previa?.id_previa);
+
+    if (!numeroMesa || !idPrevia) return;
+
+    setAgregandoMas(true);
+    setErrorMas("");
+
+    try {
+      const response = await agregarPreviaMas({ numero_mesa: numeroMesa, id_previa: idPrevia });
+      await cargarPreviasMas(numeroMesa);
+      await recargarGrupoEdicion();
+      return response;
+    } catch (err) {
+      setErrorMas(err.message || "No se pudo agregar la previa a la mesa.");
+      throw err;
+    } finally {
+      setAgregandoMas(false);
+    }
+  }, [numeroMas, cargarPreviasMas, recargarGrupoEdicion]);
+
+  const abrirMoverNumeroFlechas = useCallback(async (numero) => {
+    const numeroMesa = Number(numero?.numero_mesa || numero);
+    if (!numeroMesa) return;
+
+    setModalFlechasAbierto(true);
+    setNumeroFlechas({ ...(typeof numero === "object" ? numero : {}), numero_mesa: numeroMesa });
+    setDestinosFlechas(null);
+    setErrorFlechas("");
+    setCargandoDestinosFlechas(true);
+
+    try {
+      const response = await obtenerDestinosMoverNumero({ numero_mesa: numeroMesa });
+      setDestinosFlechas(response?.data || null);
+      setNumeroFlechas(response?.data?.meta || { ...(typeof numero === "object" ? numero : {}), numero_mesa: numeroMesa });
+    } catch (err) {
+      setErrorFlechas(err.message || "Error al obtener grupos destino disponibles.");
+    } finally {
+      setCargandoDestinosFlechas(false);
+    }
+  }, []);
+
+  const cerrarMoverNumeroFlechas = useCallback(() => {
+    if (moviendoFlechas) return;
+    setModalFlechasAbierto(false);
+    setNumeroFlechas(null);
+    setDestinosFlechas(null);
+    setErrorFlechas("");
+  }, [moviendoFlechas]);
+
+  const confirmarMoverNumeroFlechas = useCallback(async (destino) => {
+    const numeroMesa = Number(numeroFlechas?.numero_mesa || numeroFlechas);
+    const numeroGrupoDestino = Number(destino?.numero_grupo || destino?.id_grupo || destino);
+
+    if (!numeroMesa || !numeroGrupoDestino) return;
+
+    setMoviendoFlechas(true);
+    setErrorFlechas("");
+
+    try {
+      const response = await moverNumeroMesaGrupo({
+        numero_mesa: numeroMesa,
+        numero_grupo_destino: numeroGrupoDestino,
+      });
+
+      setModalFlechasAbierto(false);
+      setNumeroFlechas(null);
+      setDestinosFlechas(null);
+
+      const grupoActualizado = await recargarGrupoEdicion();
+      if (!grupoActualizado) {
+        setModalEditarAbierto(false);
+        setGrupoEdicion(null);
+      }
+
+      return response;
+    } catch (err) {
+      setErrorFlechas(err.message || "No se pudo mover el número de mesa.");
+      throw err;
+    } finally {
+      setMoviendoFlechas(false);
+    }
+  }, [numeroFlechas, recargarGrupoEdicion]);
+
 
   const guardarEdicionProgramacion = useCallback(async (payload) => {
     setGuardandoEdicion(true);
@@ -714,7 +823,57 @@ export const useMesasExamen = () => {
     cerrarModalEditar,
     guardarEdicionProgramacion,
     eliminarMesaDesdeEdicion,
-    personaEdicion,
+
+    personaEdicion: {
+      modalPreviasAbierto: modalPreviasPersonaAbierto,
+      numeroPersona,
+      previasPersona,
+      cargandoPrevias: cargandoPreviasPersona,
+      errorPersona,
+      abrirPreviasNumero: abrirPreviasPersona,
+      cerrarPrevias: cerrarPreviasPersona,
+
+      modalMoverAbierto: modalMoverPersonaAbierto,
+      previaMover: previaPersonaSeleccionada,
+      destinosMover: destinosPersona,
+      cargandoDestinos: cargandoDestinosPersona,
+      moviendo: moviendoPersona,
+      errorMover: errorMoverPersona,
+      abrirMover: abrirMoverPersona,
+      cerrarMover: cerrarMoverPersona,
+      confirmarMover: confirmarMoverPersona,
+
+      modalEliminarAbierto: modalEliminarPersonaAbierto,
+      previaEliminar: previaPersonaEliminar,
+      eliminando: eliminandoPersona,
+      abrirEliminar: abrirEliminarPersona,
+      cerrarEliminar: cerrarEliminarPersona,
+      confirmarEliminar: confirmarEliminarPersona,
+    },
+
+    masEdicion: {
+      modalAbierto: modalMasAbierto,
+      numeroMas,
+      previasMas,
+      cargando: cargandoMas,
+      agregando: agregandoMas,
+      error: errorMas,
+      abrirAgregarNumero: abrirMasNumero,
+      cerrar: cerrarMasNumero,
+      confirmarAgregar: confirmarAgregarMas,
+    },
+
+    flechasEdicion: {
+      modalAbierto: modalFlechasAbierto,
+      numeroFlechas,
+      destinosFlechas,
+      cargando: cargandoDestinosFlechas,
+      moviendo: moviendoFlechas,
+      error: errorFlechas,
+      abrirMoverNumero: abrirMoverNumeroFlechas,
+      cerrar: cerrarMoverNumeroFlechas,
+      confirmarMover: confirmarMoverNumeroFlechas,
+    },
 
     crearMesas,
     eliminarBorrador,

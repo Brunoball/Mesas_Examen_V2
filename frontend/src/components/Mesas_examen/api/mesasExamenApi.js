@@ -174,8 +174,12 @@ export const obtenerPreviasNumeroMesa = ({ numero_mesa } = {}) => {
   return apiGet("mesas_editar_persona_previas_numero", limpiarParams({ numero_mesa }));
 };
 
-export const obtenerDestinosMoverPrevia = ({ numero_mesa, id_previa } = {}) => {
-  return apiGet("mesas_editar_persona_destinos_mover", limpiarParams({ numero_mesa, id_previa }));
+export const obtenerDestinosMoverPrevia = ({ numero_mesa, numero_origen, id_previa } = {}) => {
+  return apiGet("mesas_editar_persona_destinos_mover", limpiarParams({
+    numero_mesa,
+    numero_origen,
+    id_previa,
+  }));
 };
 
 export const moverPreviaMesa = ({ numero_origen, numero_mesa, id_previa, numero_destino } = {}) => {
@@ -194,3 +198,24 @@ export const eliminarPreviaMesa = ({ numero_mesa, id_previa } = {}) => {
   });
 };
 
+export const obtenerPreviasDisponiblesMas = ({ numero_mesa } = {}) => {
+  return apiGet("mesas_editar_mas_previas_disponibles", limpiarParams({ numero_mesa }));
+};
+
+export const agregarPreviaMas = ({ numero_mesa, id_previa } = {}) => {
+  return apiPost("mesas_editar_mas_agregar", {
+    numero_mesa,
+    id_previa,
+  });
+};
+
+export const obtenerDestinosMoverNumero = ({ numero_mesa } = {}) => {
+  return apiGet("mesas_editar_flechas_destinos", limpiarParams({ numero_mesa }));
+};
+
+export const moverNumeroMesaGrupo = ({ numero_mesa, numero_grupo_destino } = {}) => {
+  return apiPost("mesas_editar_flechas_mover", {
+    numero_mesa,
+    numero_grupo_destino,
+  });
+};

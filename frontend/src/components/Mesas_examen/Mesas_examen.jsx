@@ -324,6 +324,8 @@ const MesasExamen = () => {
     guardarEdicionProgramacion,
     eliminarMesaDesdeEdicion,
     personaEdicion,
+    masEdicion,
+    flechasEdicion,
     crearMesas,
     eliminarBorrador,
     cargando,
@@ -776,6 +778,8 @@ const MesasExamen = () => {
         onSave={guardarEdicionProgramacion}
         onDelete={eliminarMesaDesdeEdicion}
         persona={personaEdicion}
+        mas={masEdicion}
+        flechas={flechasEdicion}
       />
     </div>
   );

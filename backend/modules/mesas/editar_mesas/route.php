@@ -4,10 +4,20 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/editar_mesas_controller.php';
 require_once __DIR__ . '/persona/route_persona.php';
+require_once __DIR__ . '/mas/route_mas.php';
+require_once __DIR__ . '/flechas/route_flechas.php';
 
 function route_mesas_editar(string $action): bool
 {
     if (route_mesas_editar_persona($action)) {
+        return true;
+    }
+
+    if (route_mesas_editar_mas($action)) {
+        return true;
+    }
+
+    if (route_mesas_editar_flechas($action)) {
         return true;
     }
 
@@ -23,7 +33,6 @@ function route_mesas_editar(string $action): bool
         case 'mesas_edicion_actualizar_programacion':
             mesas_editar_guardar_programacion();
             return true;
-
 
         case 'mesas_editar_validar_programacion':
         case 'mesas_edicion_validar_programacion':

@@ -1,0 +1,244 @@
+/* src/components/Mesas_examen/modales/mas/mas.css */
+.mas-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(2px);
+}
+
+.mas-modal-panel {
+  width: min(1120px, 96vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #f8fafc;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
+}
+
+.mas-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 26px;
+  background: #163f86;
+  color: #fff;
+}
+
+.mas-modal-header h3 {
+  margin: 0;
+  font-size: 23px;
+  font-weight: 800;
+}
+
+.mas-modal-header p {
+  margin: 8px 0 0;
+  font-size: 15px;
+  opacity: 0.92;
+}
+
+.mas-modal-header button {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.mas-modal-header button:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.mas-modal-body {
+  flex: 1;
+  min-height: 330px;
+  overflow: auto;
+  padding: 20px 26px 28px;
+}
+
+.mas-buscador {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #fff;
+  color: #64748b;
+}
+
+.mas-buscador input {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #0f172a;
+  font-size: 16px;
+}
+
+.mas-alerta-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.mas-empty {
+  min-height: 210px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #64748b;
+  font-size: 17px;
+}
+
+.mas-tabla-wrap {
+  margin-top: 18px;
+  overflow: auto;
+  border: 1px solid #dbe3ed;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.mas-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 880px;
+}
+
+.mas-tabla th,
+.mas-tabla td {
+  padding: 14px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.mas-tabla th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.mas-tabla td {
+  color: #0f172a;
+  font-size: 15px;
+}
+
+.mas-tabla tr.seleccionada td {
+  background: #eff6ff;
+}
+
+.mas-radio {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #94a3b8;
+  border-radius: 50%;
+  background: #fff;
+  color: #fff;
+  cursor: pointer;
+}
+
+.mas-radio.activo {
+  border-color: #2563eb;
+  background: #2563eb;
+}
+
+.mas-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  padding: 14px 24px;
+  border-top: 1px solid #e2e8f0;
+  background: #f1f5f9;
+}
+
+.mas-btn {
+  min-width: 150px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 12px 20px;
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.mas-btn.cancelar {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0f172a;
+}
+
+.mas-btn.confirmar {
+  border: 1px solid #1d4ed8;
+  background: #2563eb;
+  color: #fff;
+}
+
+.mas-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (max-width: 720px) {
+  .mas-modal-overlay {
+    padding: 10px;
+  }
+
+  .mas-modal-panel {
+    width: 100%;
+    max-height: 94vh;
+  }
+
+  .mas-modal-header {
+    padding: 16px;
+  }
+
+  .mas-modal-header h3 {
+    font-size: 19px;
+  }
+
+  .mas-modal-body {
+    padding: 16px;
+  }
+
+  .mas-modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .mas-btn {
+    width: 100%;
+  }
+}
