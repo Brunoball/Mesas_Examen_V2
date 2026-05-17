@@ -1,0 +1,625 @@
+/* =========================================================
+   MATERIAS — estilos propios para modales
+   Usa Global_Modals.css como base y agrega ajustes visuales
+   específicos para Materias / Áreas / Talleres / Correlativas.
+   Sin modo oscuro.
+========================================================= */
+
+.materias-editor-modal.gm-modal,
+.materias-modal--taller.gm-modal{
+  overflow:hidden !important;
+  background:linear-gradient(180deg, #fff 0%, var(--gm-bg, #F6F9FC) 100%) !important;
+}
+
+.materias-editor-modal.gm-modal .materias-modal-header,
+.materias-modal--taller.gm-modal .materias-modal-header{
+  background:linear-gradient(135deg, var(--gm-ink, #0A2540) 0%, #10365F 58%, color-mix(in srgb, var(--gm-action, #0055BB) 70%, var(--gm-ink, #0A2540)) 100%) !important;
+}
+
+.materias-editor-modal.gm-modal .materias-modal-header p,
+.materias-modal--taller.gm-modal .materias-modal-header p{
+  max-width:620px;
+}
+
+.materias-editor-content.gm-modal__content,
+.materias-modal--taller.gm-modal .materias-modal-scroll{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:auto;
+  padding:14px 16px 16px !important;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  background:linear-gradient(180deg, #FFFFFF 0%, #F7FAFD 100%) !important;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(10,37,64,.22) transparent;
+}
+
+.materias-editor-content.gm-modal__content::-webkit-scrollbar,
+.materias-modal--taller.gm-modal .materias-modal-scroll::-webkit-scrollbar{
+  width:8px;
+}
+
+.materias-editor-content.gm-modal__content::-webkit-scrollbar-track,
+.materias-modal--taller.gm-modal .materias-modal-scroll::-webkit-scrollbar-track{
+  background:transparent;
+}
+
+.materias-editor-content.gm-modal__content::-webkit-scrollbar-thumb,
+.materias-modal--taller.gm-modal .materias-modal-scroll::-webkit-scrollbar-thumb{
+  background:rgba(10,37,64,.22);
+  border-radius:999px;
+}
+
+.materias-editor-alert{
+  margin:0 !important;
+}
+
+/* Pestañas minimalistas tipo Google */
+.materias-modal-tabs.gm-tabs--google,
+.modal-corr.gm-modal .modal-corr-mode-tabs.gm-tabs--google{
+  min-height:44px !important;
+  width:100% !important;
+  margin:0 2px 2px !important;
+  padding:0 !important;
+  display:flex !important;
+  align-items:flex-end !important;
+  gap:22px !important;
+  border:0 !important;
+  border-bottom:1px solid rgba(10,37,64,.12) !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  overflow:visible !important;
+}
+
+.materias-modal-tabs.gm-tabs--google .gm-tab,
+.modal-corr.gm-modal .modal-corr-mode-tabs.gm-tabs--google .gm-tab{
+  position:relative !important;
+  min-height:44px !important;
+  width:auto !important;
+  padding:0 2px !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  color:color-mix(in srgb, var(--gm-text, #425466) 88%, #000) !important;
+  box-shadow:none !important;
+  transform:none !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:8px !important;
+  font:inherit !important;
+  font-size:13px !important;
+  font-weight:650 !important;
+  letter-spacing:-.01em !important;
+  cursor:pointer;
+}
+
+.materias-modal-tabs.gm-tabs--google .gm-tab::after,
+.modal-corr.gm-modal .modal-corr-mode-tabs.gm-tabs--google .gm-tab::after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:-1px;
+  height:2px;
+  border-radius:999px 999px 0 0;
+  background:transparent;
+  transform:scaleX(.55);
+  transition:background var(--gm-trans, 160ms ease), transform var(--gm-trans, 160ms ease);
+}
+
+.materias-modal-tabs.gm-tabs--google .gm-tab:hover,
+.modal-corr.gm-modal .modal-corr-mode-tabs.gm-tabs--google .gm-tab:hover{
+  color:var(--gm-action, #0055BB) !important;
+  background:transparent !important;
+}
+
+.materias-modal-tabs.gm-tabs--google .gm-tab.is-active,
+.modal-corr.gm-modal .modal-corr-mode-tabs.gm-tabs--google .gm-tab.is-active{
+  color:var(--gm-action, #0055BB) !important;
+  background:transparent !important;
+  border-color:transparent !important;
+  box-shadow:none !important;
+}
+
+.materias-modal-tabs.gm-tabs--google .gm-tab.is-active::after,
+.modal-corr.gm-modal .modal-corr-mode-tabs.gm-tabs--google .gm-tab.is-active::after{
+  background:var(--gm-action, #0055BB);
+  transform:scaleX(1);
+}
+
+.materias-modal-tabs.gm-tabs--google .gm-tab:disabled,
+.modal-corr.gm-modal .modal-corr-mode-tabs.gm-tabs--google .gm-tab:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+
+.materias-modal-tabs.gm-tabs--google .gm-tab > svg,
+.modal-corr.gm-modal .modal-corr-mode-tabs.gm-tabs--google .gm-tab > svg{
+  width:15px;
+  min-width:15px;
+}
+
+.materias-modal-tabs.gm-tabs--google .gm-tab > span:not(.gm-tab__badge),
+.modal-corr.gm-modal .modal-corr-mode-tabs.gm-tabs--google .gm-tab > span:not(.gm-tab__badge){
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  line-height:1;
+}
+
+.materias-modal-tabs.gm-tabs--google .gm-tab__badge,
+.modal-corr.gm-modal .modal-corr-mode-tabs.gm-tabs--google .gm-tab__badge{
+  min-width:18px;
+  height:18px;
+  padding:0 5px;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,85,187,.10);
+  color:var(--gm-action, #0055BB);
+  font-size:10px;
+  font-weight:720;
+}
+
+.materias-editor-panel.gm-panel,
+.materias-modal--taller.gm-modal .taller-box,
+.modal-corr.gm-modal .modal-corr-section,
+.modal-corr.gm-modal .modal-corr-example,
+.modal-corr.gm-modal .modal-corr-auto-preview{
+  border-color:rgba(10,37,64,.09) !important;
+  box-shadow:0 12px 30px -26px rgba(10,37,64,.38) !important;
+}
+
+.materias-editor-panel.gm-panel .gm-panel__head,
+.materias-modal--taller.gm-modal .taller-box-title-row{
+  min-height:50px;
+  background:rgba(255,255,255,.82) !important;
+}
+
+.materias-editor-mainRow.gm-formRow--split{
+  grid-template-columns:minmax(0, 1fr) 230px;
+}
+
+.materias-editor-status .gm-statusToggle{
+  background:rgba(246,249,252,.92);
+}
+
+.materias-editor-addRow{
+  display:grid !important;
+  grid-template-columns:minmax(0, 1fr) auto;
+  gap:10px;
+  align-items:end !important;
+}
+
+.materias-editor-chipList{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:flex-start;
+  gap:8px;
+  max-height:240px;
+  overflow:auto;
+}
+
+.materias-modalChip{
+  min-height:32px;
+  padding:5px 5px 5px 11px !important;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  border-radius:999px !important;
+  font-size:12px;
+  font-weight:650;
+}
+
+.materias-modalChip button{
+  border:0;
+  background:rgba(255,255,255,.78);
+  color:inherit;
+  cursor:pointer;
+  transition:background var(--gm-trans, 160ms ease), transform var(--gm-trans, 160ms ease);
+}
+
+.materias-modalChip button:hover{
+  background:#fff;
+  transform:translateY(-1px);
+}
+
+.materias-editor-checkGrid{
+  max-height:min(46vh, 360px);
+  overflow:auto;
+  padding:2px 4px 2px 2px;
+}
+
+.materias-modalCheck,
+.materia-check{
+  box-shadow:0 1px 0 rgba(10,37,64,.03);
+}
+
+.materias-modalCheck input,
+.materia-check input,
+.modal-corr-checks input,
+.check-inline input,
+.check-item input{
+  accent-color:var(--gm-action, #0055BB);
+}
+
+/* Taller */
+.materias-modal--taller.gm-modal{
+  width:min(1040px, 96vw) !important;
+  max-height:94dvh !important;
+}
+
+.materias-modal--taller.gm-modal .materias-modal-scroll{
+  padding:14px 16px 16px !important;
+}
+
+.materias-modal--taller.gm-modal .taller-main-grid{
+  margin:0 !important;
+  padding:14px !important;
+  display:grid !important;
+  grid-template-columns:minmax(0, 1.1fr) minmax(220px, .9fr) 180px !important;
+  gap:12px !important;
+  align-items:end !important;
+  border:1px solid rgba(10,37,64,.09) !important;
+  border-radius:16px !important;
+  background:#fff !important;
+  box-shadow:0 12px 30px -26px rgba(10,37,64,.38) !important;
+}
+
+.materias-modal--taller.gm-modal .form-label{
+  gap:7px;
+  color:var(--gm-ink, #0A2540) !important;
+  font-size:12px !important;
+  font-weight:700 !important;
+  letter-spacing:-.01em;
+}
+
+.materias-modal--taller.gm-modal .form-label input,
+.materias-modal--taller.gm-modal .form-label select,
+.materias-modal--taller.gm-modal .taller-search-wrap input{
+  height:45px !important;
+  border:1.5px solid rgba(10,37,64,.12) !important;
+  border-radius:12px !important;
+  background:#fff !important;
+  color:var(--gm-ink, #0A2540) !important;
+  font-size:13.5px !important;
+  font-weight:520 !important;
+  box-shadow:0 1px 0 rgba(10,37,64,.03) !important;
+}
+
+.materias-modal--taller.gm-modal .form-label input:focus,
+.materias-modal--taller.gm-modal .form-label select:focus,
+.materias-modal--taller.gm-modal .taller-search-wrap input:focus{
+  border-color:rgba(0,85,187,.36) !important;
+  box-shadow:0 0 0 4px rgba(0,85,187,.10), 0 8px 18px -18px rgba(10,37,64,.46) !important;
+}
+
+.materias-modal--taller.gm-modal .top-check{
+  min-height:45px !important;
+  border-color:rgba(10,37,64,.12) !important;
+  background:rgba(246,249,252,.62) !important;
+}
+
+.materias-taller-tabs{
+  margin-top:0 !important;
+}
+
+.materias-taller-panel{
+  margin:0 !important;
+}
+
+.materias-modal--taller.gm-modal .taller-toolbar{
+  padding:14px 14px 0;
+  display:grid;
+  grid-template-columns:minmax(180px, 240px) minmax(0, 1fr);
+  gap:12px;
+}
+
+.materias-modal--taller.gm-modal .taller-bulk-actions{
+  padding:12px 14px 0;
+}
+
+.materias-modal--taller.gm-modal .taller-box-title-row + .taller-bulk-actions{
+  padding-top:0;
+}
+
+.materias-modal--taller.gm-modal .compact-actions{
+  padding:0;
+}
+
+.materias-modal--taller.gm-modal .asignar-empty{
+  margin:14px !important;
+  min-height:132px;
+  border:1.5px dashed rgba(10,37,64,.14);
+  border-radius:14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  background:linear-gradient(180deg, #fff, color-mix(in srgb, var(--gm-bg, #F6F9FC) 70%, #fff));
+  color:var(--gm-muted, #718096) !important;
+  font-size:13px;
+  font-weight:520;
+}
+
+.materias-modal--taller.gm-modal .materias-check-grid{
+  padding:14px;
+}
+
+.materias-modal--taller.gm-modal .taller-catedras-groups{
+  padding:14px;
+}
+
+/* Correlativas */
+.modal-corr.gm-modal{
+  overflow:hidden !important;
+}
+
+.modal-corr.gm-modal .modal-corr-body{
+  background:linear-gradient(180deg, #FFFFFF 0%, #F7FAFD 100%) !important;
+}
+
+.modal-corr.gm-modal .modal-corr-mode-tabs.gm-tabs--google{
+  margin:14px 16px 0 !important;
+  width:calc(100% - 32px) !important;
+}
+
+.modal-corr.gm-modal .modal-corr-section,
+.modal-corr.gm-modal .modal-corr-example,
+.modal-corr.gm-modal .modal-corr-auto-preview{
+  border-radius:16px !important;
+}
+
+.modal-corr.gm-modal .modal-corr-section-title,
+.modal-corr.gm-modal .modal-corr-section-title-row{
+  background:rgba(255,255,255,.82) !important;
+}
+
+.modal-corr.gm-modal .modal-corr-actions,
+.materias-editor-actions,
+.materias-modal--taller.gm-modal .modal-actions{
+  padding:13px 16px !important;
+  background:rgba(255,255,255,.96) !important;
+}
+
+@media (max-width:720px){
+  .materias-editor-content.gm-modal__content,
+  .materias-modal--taller.gm-modal .materias-modal-scroll{
+    padding:12px !important;
+  }
+
+  .materias-modal-tabs.gm-tabs--google,
+  .modal-corr.gm-modal .modal-corr-mode-tabs.gm-tabs--google{
+    gap:18px !important;
+    overflow-x:auto !important;
+    overflow-y:hidden !important;
+    scrollbar-width:thin;
+    padding-inline:2px !important;
+  }
+
+  .materias-modal-tabs.gm-tabs--google .gm-tab,
+  .modal-corr.gm-modal .modal-corr-mode-tabs.gm-tabs--google .gm-tab{
+    flex:0 0 auto;
+    min-width:max-content !important;
+  }
+
+  .materias-editor-mainRow.gm-formRow--split,
+  .materias-editor-addRow,
+  .materias-modal--taller.gm-modal .taller-main-grid,
+  .materias-modal--taller.gm-modal .taller-toolbar{
+    grid-template-columns:1fr !important;
+  }
+
+  .materias-editor-addRow .materias-btn,
+  .materias-modal--taller.gm-modal .taller-bulk-actions .materias-btn{
+    width:100%;
+  }
+
+  .materias-modal--taller.gm-modal .taller-bulk-actions{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+}
+
+/* =========================================================
+   FIX MODALES MATERIAS — sin scroll horizontal + checklist
+   propio. Mantiene el scroll solamente en el contenido/listas.
+========================================================= */
+.materias-modal-overlay.gm-modalOverlay,
+.modal-corr-overlay.gm-modalOverlay{
+  overflow-x:hidden !important;
+}
+
+.materias-modal.gm-modal,
+.modal-corr.gm-modal,
+.materias-editor-modal.gm-modal,
+.materias-modal--taller.gm-modal{
+  max-width:calc(100vw - 24px) !important;
+  overflow:hidden !important;
+  display:flex !important;
+  flex-direction:column !important;
+  box-sizing:border-box !important;
+}
+
+.materias-modal.gm-modal *,
+.modal-corr.gm-modal *{
+  box-sizing:border-box !important;
+  min-width:0;
+}
+
+.materias-modal.gm-modal .gm-modal__header,
+.materias-modal.gm-modal .materias-modal-header,
+.modal-corr.gm-modal .modal-corr-header{
+  flex:0 0 auto !important;
+}
+
+.materias-editor-content.gm-modal__content,
+.materias-modal.gm-modal .gm-modal__content,
+.materias-modal--taller.gm-modal .materias-modal-scroll,
+.modal-corr.gm-modal .modal-corr-body{
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  overflow-x:hidden !important;
+  overflow-y:auto !important;
+  overscroll-behavior:contain;
+}
+
+.materias-editor-actions,
+.materias-modal.gm-modal .modal-actions,
+.modal-corr.gm-modal .modal-corr-actions{
+  flex:0 0 auto !important;
+  position:relative !important;
+  z-index:3 !important;
+}
+
+.materias-editor-panel.gm-panel,
+.materias-editor-panel.gm-panel .gm-panel__body{
+  overflow:hidden !important;
+}
+
+.materias-modalCheckGrid,
+.materias-editor-checkGrid{
+  width:100% !important;
+  max-width:100% !important;
+  overflow-x:hidden !important;
+}
+
+.materias-editor-checkGrid{
+  max-height:calc(94dvh - 330px) !important;
+  min-height:210px;
+  overflow-y:auto !important;
+  padding:8px 10px 20px 2px !important;
+  scrollbar-gutter:stable;
+}
+
+/* Checklist más limpio/moderno para Materias y Áreas */
+.materias-modalCheck{
+  position:relative;
+  min-height:56px !important;
+  padding:12px 14px 12px 48px !important;
+  border:1px solid rgba(10,37,64,.10) !important;
+  border-radius:16px !important;
+  background:linear-gradient(180deg, #FFFFFF 0%, #FBFDFF 100%) !important;
+  color:var(--gm-ink, #0A2540) !important;
+  box-shadow:0 10px 22px -20px rgba(10,37,64,.34), 0 1px 0 rgba(10,37,64,.04) !important;
+  transition:border-color 160ms ease, background 160ms ease, box-shadow 160ms ease, transform 160ms ease !important;
+}
+
+.materias-modalCheck input{
+  position:absolute;
+  left:16px;
+  top:50%;
+  width:18px;
+  height:18px;
+  margin:0;
+  transform:translateY(-50%);
+  appearance:none;
+  -webkit-appearance:none;
+  border:2px solid rgba(10,37,64,.38);
+  border-radius:5px;
+  background:#fff;
+  cursor:pointer;
+  display:grid;
+  place-items:center;
+  transition:border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.materias-modalCheck input::after{
+  content:"";
+  width:8px;
+  height:4px;
+  border-left:2px solid #fff;
+  border-bottom:2px solid #fff;
+  transform:rotate(-45deg) scale(.65);
+  opacity:0;
+  margin-top:-1px;
+  transition:opacity 120ms ease, transform 120ms ease;
+}
+
+.materias-modalCheck span{
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  line-height:1.15;
+  font-size:13.5px;
+  font-weight:720;
+  letter-spacing:.01em;
+}
+
+.materias-modalCheck:hover{
+  transform:translateY(-1px) !important;
+  border-color:rgba(0,85,187,.22) !important;
+  background:linear-gradient(180deg, #FFFFFF 0%, rgba(0,85,187,.035) 100%) !important;
+  box-shadow:0 14px 26px -20px rgba(10,37,64,.42), 0 0 0 4px rgba(0,85,187,.045) !important;
+}
+
+.materias-modalCheck:hover input{
+  border-color:rgba(0,85,187,.60);
+}
+
+.materias-modalCheck.is-checked{
+  border-color:rgba(0,85,187,.34) !important;
+  background:linear-gradient(180deg, rgba(0,85,187,.075) 0%, rgba(0,85,187,.035) 100%) !important;
+  color:var(--gm-action, #0055BB) !important;
+  box-shadow:0 14px 28px -22px rgba(0,85,187,.42), inset 0 0 0 1px rgba(0,85,187,.06) !important;
+}
+
+.materias-modalCheck.is-checked input{
+  border-color:var(--gm-action, #0055BB);
+  background:var(--gm-action, #0055BB);
+  box-shadow:0 0 0 4px rgba(0,85,187,.12);
+}
+
+.materias-modalCheck.is-checked input::after{
+  opacity:1;
+  transform:rotate(-45deg) scale(1);
+}
+
+/* Evita que las pestañas generen scroll X en mobile: se acomodan en dos columnas */
+@media (max-width:720px){
+  .materias-modal-tabs.gm-tabs--google,
+  .modal-corr.gm-modal .modal-corr-mode-tabs.gm-tabs--google{
+    display:grid !important;
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+    gap:8px !important;
+    overflow:hidden !important;
+    border-bottom:0 !important;
+  }
+
+  .materias-modal-tabs.gm-tabs--google .gm-tab,
+  .modal-corr.gm-modal .modal-corr-mode-tabs.gm-tabs--google .gm-tab{
+    min-width:0 !important;
+    width:100% !important;
+    min-height:40px !important;
+    padding:0 10px !important;
+    border-radius:12px !important;
+    background:rgba(10,37,64,.045) !important;
+  }
+
+  .materias-modal-tabs.gm-tabs--google .gm-tab.is-active,
+  .modal-corr.gm-modal .modal-corr-mode-tabs.gm-tabs--google .gm-tab.is-active{
+    background:rgba(0,85,187,.09) !important;
+  }
+
+  .materias-modal-tabs.gm-tabs--google .gm-tab::after,
+  .modal-corr.gm-modal .modal-corr-mode-tabs.gm-tabs--google .gm-tab::after{
+    display:none !important;
+  }
+
+  .materias-editor-checkGrid{
+    max-height:calc(94dvh - 355px) !important;
+    min-height:180px;
+    padding-right:4px !important;
+  }
+
+  .materias-modalCheck{
+    min-height:52px !important;
+  }
+}

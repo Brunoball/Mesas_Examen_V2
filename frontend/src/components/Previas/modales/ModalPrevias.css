@@ -1,0 +1,652 @@
+/* =========================================================
+   PREVIAS — estilos propios para modales
+   Base: Global_Modals.css. Este archivo deja los modales de
+   Previas con pestañas minimalistas, detalles propios y sin
+   scroll horizontal.
+========================================================= */
+
+.previas-editor-overlay.gm-modalOverlay,
+.previas-confirm-overlay.gm-modalOverlay,
+.previas-modal-overlay{
+  overflow-x:hidden !important;
+  padding:18px !important;
+}
+
+.previas-editor-overlay.gm-modalOverlay,
+.previas-modal-overlay-full.previas-editor-overlay{
+  align-items:center !important;
+  justify-content:center !important;
+  overflow:hidden !important;
+}
+
+.gm-modal--previas.previas-editor-modal,
+.previas-detail-confirm.gm-modal{
+  max-width:calc(100vw - 24px) !important;
+  overflow:hidden !important;
+  display:flex !important;
+  flex-direction:column !important;
+  box-sizing:border-box !important;
+  background:linear-gradient(180deg, #fff 0%, var(--gm-bg, #F6F9FC) 100%) !important;
+  color:var(--gm-ink, #0A2540) !important;
+}
+
+.gm-modal--previas.previas-editor-modal{
+  width:min(1140px, 96vw) !important;
+  max-height:94dvh !important;
+  border-radius:24px !important;
+  border:1px solid rgba(10,37,64,.11) !important;
+  box-shadow:0 28px 78px rgba(10,37,64,.28) !important;
+}
+
+.previas-detail-confirm.gm-modal{
+  width:min(500px, 94vw) !important;
+  border-radius:22px !important;
+  border:1px solid rgba(10,37,64,.11) !important;
+  box-shadow:0 24px 70px rgba(10,37,64,.24) !important;
+}
+
+.gm-modal--previas.previas-editor-modal *,
+.previas-detail-confirm.gm-modal *{
+  box-sizing:border-box !important;
+  min-width:0;
+}
+
+.previas-modal-header.gm-modal__header{
+  flex:0 0 auto !important;
+  padding:18px 20px !important;
+  min-height:84px !important;
+  background:linear-gradient(135deg, var(--gm-ink, #0A2540) 0%, #10365F 58%, color-mix(in srgb, var(--gm-action, #0055BB) 72%, var(--gm-ink, #0A2540)) 100%) !important;
+  color:#fff !important;
+  border-bottom:0 !important;
+}
+
+.previas-modal-icon.gm-modal__headIcon{
+  width:56px !important;
+  height:56px !important;
+  min-width:56px !important;
+  border-radius:18px !important;
+  background:rgba(255,255,255,.12) !important;
+  color:#fff !important;
+  border:1px solid rgba(255,255,255,.18) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16) !important;
+}
+
+.previas-form-title.gm-modal__headText{
+  flex:1 1 auto !important;
+}
+
+.previas-form-title.gm-modal__headText h2,
+.previas-form-title h2{
+  margin:0 !important;
+  color:#fff !important;
+  font-size:24px !important;
+  font-weight:650 !important;
+  letter-spacing:-.035em !important;
+}
+
+.previas-form-title.gm-modal__headText p,
+.previas-form-title p{
+  max-width:680px;
+  margin:6px 0 0 !important;
+  color:rgba(255,255,255,.78) !important;
+  font-size:14px !important;
+  font-weight:520 !important;
+  line-height:1.35 !important;
+}
+
+.previas-modal-closeTop.gm-modal__close,
+.previas-modal-close.gm-modal__close,
+.previas-back-btn{
+  flex:0 0 auto !important;
+  width:44px !important;
+  height:44px !important;
+  min-width:44px !important;
+  padding:0 !important;
+  border-radius:16px !important;
+  border:1px solid rgba(255,255,255,.20) !important;
+  background:rgba(255,255,255,.10) !important;
+  color:#fff !important;
+  box-shadow:none !important;
+}
+
+.previas-modal-close.gm-modal__close{
+  border-color:rgba(10,37,64,.10) !important;
+  background:#fff !important;
+  color:var(--gm-ink, #0A2540) !important;
+}
+
+.previas-modal-closeTop.gm-modal__close:hover,
+.previas-modal-close.gm-modal__close:hover,
+.previas-back-btn:hover{
+  transform:translateY(-1px) !important;
+  background:rgba(255,255,255,.18) !important;
+  border-color:rgba(255,255,255,.34) !important;
+  color:#fff !important;
+}
+
+.previas-modal-close.gm-modal__close:hover{
+  background:rgba(0,85,187,.08) !important;
+  border-color:rgba(0,85,187,.22) !important;
+  color:var(--gm-action, #0055BB) !important;
+}
+
+.previas-editor-content.gm-modal__content,
+.previas-form-body{
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  overflow-x:hidden !important;
+  overflow-y:auto !important;
+  overscroll-behavior:contain;
+  padding:14px 18px 18px !important;
+  background:linear-gradient(180deg, #FFFFFF 0%, #F7FAFD 100%) !important;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(10,37,64,.22) transparent;
+}
+
+.previas-editor-content.gm-modal__content::-webkit-scrollbar{
+  width:8px;
+}
+
+.previas-editor-content.gm-modal__content::-webkit-scrollbar-track{
+  background:transparent;
+}
+
+.previas-editor-content.gm-modal__content::-webkit-scrollbar-thumb{
+  background:rgba(10,37,64,.22);
+  border-radius:999px;
+}
+
+/* Pestañas minimalistas tipo Google */
+.previas-modal-tabs.gm-tabs--google,
+.previas-form-tabs,
+.previas-materia-tabs{
+  width:100% !important;
+  min-height:44px !important;
+  margin:0 0 16px !important;
+  padding:0 !important;
+  display:flex !important;
+  flex-wrap:wrap !important;
+  align-items:flex-end !important;
+  gap:22px !important;
+  border:0 !important;
+  border-bottom:1px solid rgba(10,37,64,.12) !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  overflow:visible !important;
+}
+
+.previas-modal-tabs.gm-tabs--google .gm-tab,
+.previas-form-tab,
+.previas-materia-tab{
+  position:relative !important;
+  min-height:44px !important;
+  width:auto !important;
+  padding:0 2px !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  color:color-mix(in srgb, var(--gm-text, #425466) 88%, #000) !important;
+  box-shadow:none !important;
+  transform:none !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:8px !important;
+  font:inherit !important;
+  font-size:13.5px !important;
+  font-weight:680 !important;
+  letter-spacing:-.01em !important;
+  cursor:pointer;
+  white-space:nowrap !important;
+}
+
+.previas-modal-tabs.gm-tabs--google .gm-tab::after,
+.previas-form-tab::after,
+.previas-materia-tab::after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:-1px;
+  height:2px;
+  border-radius:999px 999px 0 0;
+  background:transparent;
+  transform:scaleX(.55);
+  transition:background var(--gm-trans, 160ms ease), transform var(--gm-trans, 160ms ease);
+}
+
+.previas-modal-tabs.gm-tabs--google .gm-tab:hover,
+.previas-form-tab:hover,
+.previas-materia-tab:hover{
+  color:var(--gm-action, #0055BB) !important;
+  background:transparent !important;
+}
+
+.previas-modal-tabs.gm-tabs--google .gm-tab.is-active,
+.previas-form-tab.is-active,
+.previas-materia-tab.is-active,
+.previas-form-tab.active,
+.previas-materia-tab.active{
+  color:var(--gm-action, #0055BB) !important;
+  background:transparent !important;
+  border-color:transparent !important;
+  box-shadow:none !important;
+}
+
+.previas-modal-tabs.gm-tabs--google .gm-tab.is-active::after,
+.previas-form-tab.is-active::after,
+.previas-materia-tab.is-active::after,
+.previas-form-tab.active::after,
+.previas-materia-tab.active::after{
+  background:var(--gm-action, #0055BB);
+  transform:scaleX(1);
+}
+
+.previas-modal-tabs.gm-tabs--google .gm-tab > svg,
+.previas-form-tab > svg,
+.previas-materia-tab > svg{
+  width:15px;
+  min-width:15px;
+}
+
+.previas-modal-tabs.gm-tabs--google .gm-tab > span:not(.gm-tab__badge),
+.previas-form-tab > span:not(.gm-tab__badge),
+.previas-materia-tab > span:not(.gm-tab__badge){
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  line-height:1;
+}
+
+.previas-modal-tabs.gm-tabs--google .gm-tab__badge,
+.previas-form-tab .gm-tab__badge,
+.previas-materia-tab .gm-tab__badge{
+  min-width:18px;
+  height:18px;
+  padding:0 6px;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,85,187,.10);
+  color:var(--gm-action, #0055BB);
+  font-size:10px;
+  font-weight:760;
+}
+
+.previas-materia-tab-add{
+  color:var(--gm-action, #0055BB) !important;
+}
+
+/* Paneles / detalles propios */
+.previas-form-grid,
+.previas-form-grid-two,
+.previas-form-grid-edit{
+  min-width:0 !important;
+  gap:14px !important;
+}
+
+.previas-detail-panel.previas-form-card{
+  min-width:0 !important;
+  min-height:0 !important;
+  padding:16px !important;
+  border:1px solid rgba(10,37,64,.09) !important;
+  border-radius:18px !important;
+  background:rgba(255,255,255,.94) !important;
+  box-shadow:0 12px 30px -26px rgba(10,37,64,.42), 0 1px 0 rgba(10,37,64,.04) !important;
+  overflow:hidden !important;
+}
+
+.previas-detail-panel h3{
+  margin:0 !important;
+  color:var(--gm-ink, #0A2540) !important;
+  font-size:15px !important;
+  font-weight:720 !important;
+  letter-spacing:-.02em !important;
+}
+
+.previas-section-line{
+  width:46px !important;
+  height:2px !important;
+  margin:8px 0 18px !important;
+  border-radius:999px !important;
+  background:var(--gm-action, #0055BB) !important;
+}
+
+.previas-card-title-row{
+  align-items:flex-start !important;
+  gap:12px !important;
+}
+
+.previas-two-cols{
+  min-width:0 !important;
+  gap:12px !important;
+}
+
+.previas-field{
+  margin-bottom:15px !important;
+}
+
+.previas-field span{
+  top:-7px !important;
+  left:12px !important;
+  padding:0 6px !important;
+  background:#fff !important;
+  color:var(--gm-action, #0055BB) !important;
+  font-size:10.5px !important;
+  font-weight:760 !important;
+  letter-spacing:.025em !important;
+  text-transform:uppercase;
+}
+
+.previas-field input,
+.previas-field select,
+.previas-confirm-label textarea{
+  min-height:45px !important;
+  width:100% !important;
+  border:1.5px solid rgba(10,37,64,.12) !important;
+  border-radius:13px !important;
+  background:#fff !important;
+  color:var(--gm-ink, #0A2540) !important;
+  font-size:13.5px !important;
+  font-weight:550 !important;
+  box-shadow:0 1px 0 rgba(10,37,64,.03) !important;
+}
+
+.previas-field input:focus,
+.previas-field select:focus,
+.previas-confirm-label textarea:focus{
+  border-color:rgba(0,85,187,.38) !important;
+  box-shadow:0 0 0 4px rgba(0,85,187,.10), 0 8px 18px -18px rgba(10,37,64,.48) !important;
+  background:#fff !important;
+}
+
+.previas-field select:disabled,
+.previas-field input:disabled{
+  background:rgba(246,249,252,.88) !important;
+  color:#94a3b8 !important;
+}
+
+.previas-detail-danger.previas-mini-danger{
+  height:34px !important;
+  padding:0 11px !important;
+  border-radius:12px !important;
+  border-color:rgba(220,53,69,.22) !important;
+  background:rgba(220,53,69,.075) !important;
+  color:var(--gm-danger, #DC3545) !important;
+  font-size:12px !important;
+  font-weight:680 !important;
+  box-shadow:none !important;
+}
+
+.previas-detail-danger.previas-mini-danger:hover{
+  transform:translateY(-1px) !important;
+  background:rgba(220,53,69,.11) !important;
+  border-color:rgba(220,53,69,.34) !important;
+}
+
+.previas-alerta.previas-form-error,
+.previas-alerta-error{
+  border-radius:14px !important;
+}
+
+.previas-form-footer.gm-modal__actions,
+.previas-form-footer{
+  position:sticky !important;
+  bottom:-18px !important;
+  z-index:4 !important;
+  flex:0 0 auto !important;
+  margin:16px -18px -18px !important;
+  padding:13px 18px !important;
+  border-top:1px solid rgba(10,37,64,.10) !important;
+  background:rgba(255,255,255,.96) !important;
+  backdrop-filter:blur(10px);
+  display:flex !important;
+  flex-direction:row-reverse !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+  gap:10px !important;
+}
+
+.previas-btn.gm-btn,
+.previas-btn{
+  min-height:44px !important;
+  border-radius:14px !important;
+  padding:0 18px !important;
+  font-weight:700 !important;
+}
+
+.previas-btn-primary.gm-btn,
+.previas-btn-primary{
+  background:var(--gm-action, #0055BB) !important;
+  border-color:color-mix(in srgb, var(--gm-action, #0055BB) 64%, #fff) !important;
+  color:#fff !important;
+  box-shadow:0 12px 28px rgba(0,85,187,.20) !important;
+}
+
+.previas-btn-light.gm-btn,
+.previas-btn-light{
+  background:#fff !important;
+  color:var(--gm-ink, #0A2540) !important;
+  border-color:rgba(10,37,64,.12) !important;
+}
+
+.previas-btn-warning{
+  background:var(--gm-warning, #F59E0B) !important;
+  border-color:rgba(245,158,11,.36) !important;
+  color:#fff !important;
+}
+
+.previas-btn-success{
+  background:var(--gm-success, #22AD5C) !important;
+  border-color:rgba(34,173,92,.36) !important;
+  color:#fff !important;
+}
+
+.previas-btn-danger{
+  background:var(--gm-danger, #DC3545) !important;
+  border-color:rgba(220,53,69,.36) !important;
+  color:#fff !important;
+}
+
+/* Confirmación y tarjeta de detalle */
+.previas-detail-confirm.previas-confirm{
+  position:relative !important;
+  padding:24px !important;
+  background:linear-gradient(180deg, #FFFFFF 0%, #F8FBFE 100%) !important;
+}
+
+.previas-confirm-icon{
+  width:54px !important;
+  height:54px !important;
+  border-radius:18px !important;
+  background:rgba(0,85,187,.10) !important;
+  color:var(--gm-action, #0055BB) !important;
+  display:grid !important;
+  place-items:center !important;
+  font-size:21px !important;
+}
+
+.previas-detail-confirm h3{
+  margin:16px 48px 8px 0 !important;
+  color:var(--gm-ink, #0A2540) !important;
+  font-size:19px !important;
+  font-weight:740 !important;
+  letter-spacing:-.02em !important;
+}
+
+.previas-detail-confirm p{
+  margin:0 !important;
+  color:var(--gm-muted, #718096) !important;
+  line-height:1.5 !important;
+  font-size:13.5px !important;
+  font-weight:500 !important;
+}
+
+.previas-detail-summary.previas-confirm-item{
+  margin:18px 0 !important;
+  padding:14px !important;
+  border:1px solid rgba(10,37,64,.09) !important;
+  border-radius:16px !important;
+  background:#fff !important;
+  box-shadow:0 12px 28px -24px rgba(10,37,64,.40) !important;
+}
+
+.previas-detail-summary strong{
+  color:var(--gm-ink, #0A2540) !important;
+  font-size:14px !important;
+  font-weight:760 !important;
+}
+
+.previas-detail-summary span{
+  color:var(--gm-action, #0055BB) !important;
+  font-size:12px !important;
+  font-weight:620 !important;
+}
+
+.previas-confirm-label{
+  color:var(--gm-ink, #0A2540) !important;
+  font-size:13px !important;
+  font-weight:720 !important;
+}
+
+.previas-confirm-label textarea{
+  min-height:104px !important;
+  margin-top:9px !important;
+  padding:12px !important;
+  resize:vertical !important;
+}
+
+.previas-confirm-actions{
+  display:flex !important;
+  justify-content:flex-end !important;
+  gap:10px !important;
+  margin-top:20px !important;
+}
+
+@media (max-width:960px){
+  .gm-modal--previas.previas-editor-modal{
+    width:96vw !important;
+  }
+
+  .previas-form-grid,
+  .previas-form-grid-edit,
+  .previas-form-grid-two{
+    grid-template-columns:1fr !important;
+  }
+}
+
+@media (max-width:720px){
+  .previas-editor-overlay.gm-modalOverlay,
+  .previas-confirm-overlay.gm-modalOverlay,
+  .previas-modal-overlay{
+    padding:10px !important;
+  }
+
+  .gm-modal--previas.previas-editor-modal{
+    width:100% !important;
+    max-width:100% !important;
+    max-height:94dvh !important;
+    border-radius:20px !important;
+  }
+
+  .previas-modal-header.gm-modal__header{
+    min-height:76px !important;
+    padding:14px !important;
+    gap:10px !important;
+  }
+
+  .previas-modal-icon.gm-modal__headIcon{
+    width:46px !important;
+    height:46px !important;
+    min-width:46px !important;
+    border-radius:15px !important;
+  }
+
+  .previas-form-title.gm-modal__headText h2,
+  .previas-form-title h2{
+    font-size:20px !important;
+  }
+
+  .previas-form-title.gm-modal__headText p,
+  .previas-form-title p{
+    font-size:12.5px !important;
+  }
+
+  .previas-editor-content.gm-modal__content,
+  .previas-form-body{
+    padding:12px !important;
+  }
+
+  .previas-modal-tabs.gm-tabs--google,
+  .previas-form-tabs,
+  .previas-materia-tabs{
+    display:grid !important;
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+    gap:8px !important;
+    overflow:hidden !important;
+    border-bottom:0 !important;
+    margin-bottom:12px !important;
+  }
+
+  .previas-materia-tabs{
+    grid-template-columns:repeat(auto-fit, minmax(118px, 1fr)) !important;
+  }
+
+  .previas-modal-tabs.gm-tabs--google .gm-tab,
+  .previas-form-tab,
+  .previas-materia-tab{
+    min-width:0 !important;
+    width:100% !important;
+    min-height:40px !important;
+    padding:0 10px !important;
+    border-radius:13px !important;
+    background:rgba(10,37,64,.045) !important;
+  }
+
+  .previas-modal-tabs.gm-tabs--google .gm-tab.is-active,
+  .previas-form-tab.is-active,
+  .previas-materia-tab.is-active,
+  .previas-form-tab.active,
+  .previas-materia-tab.active{
+    background:rgba(0,85,187,.09) !important;
+  }
+
+  .previas-modal-tabs.gm-tabs--google .gm-tab::after,
+  .previas-form-tab::after,
+  .previas-materia-tab::after{
+    display:none !important;
+  }
+
+  .previas-two-cols{
+    grid-template-columns:1fr !important;
+    gap:0 !important;
+  }
+
+  .previas-detail-panel.previas-form-card{
+    padding:14px !important;
+    border-radius:16px !important;
+  }
+
+  .previas-form-footer.gm-modal__actions,
+  .previas-form-footer{
+    margin:14px -12px -12px !important;
+    bottom:-12px !important;
+    padding:12px !important;
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    flex-direction:column !important;
+  }
+
+  .previas-form-footer .previas-btn,
+  .previas-confirm-actions .previas-btn{
+    width:100% !important;
+  }
+
+  .previas-confirm-actions{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+  }
+}

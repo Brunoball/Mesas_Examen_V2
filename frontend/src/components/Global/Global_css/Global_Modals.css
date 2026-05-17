@@ -1066,3 +1066,227 @@
     max-height: min(46vh, 360px);
   }
 }
+
+/* =========================================================
+   DOCENTES — refinamiento visual minimalista del modal agregar/editar
+   Pestañas estilo Google Material, sin tarjetas de resumen superiores.
+   ========================================================= */
+.gm-modal--docente {
+  width: min(820px, 96vw);
+  max-height: min(94vh, 800px);
+  background: #F8FAFC;
+  border: 1px solid rgba(255, 255, 255, .32);
+}
+
+.gm-modal--docente .gm-modal__header {
+  min-height: 72px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, var(--gm-ink) 0%, #10365F 58%, color-mix(in srgb, var(--gm-action) 70%, var(--gm-ink)) 100%);
+}
+
+.gm-modal--docente .gm-modal__headIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+}
+
+.gm-modal--docente .gm-modal__headText h2 {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.gm-modal--docente .gm-modal__headText p {
+  max-width: 540px;
+  color: rgba(255, 255, 255, .68);
+}
+
+.gm-modal--docente .gm-modal__content {
+  padding: 14px 16px 16px;
+  gap: 12px;
+  background: linear-gradient(180deg, #FFFFFF 0%, #F7FAFD 100%);
+}
+
+/* Por si queda alguna referencia vieja, no se muestran los carteles superiores. */
+.gm-docenteResume,
+.gm-resumeChip {
+  display: none !important;
+}
+
+.gm-tabs--google {
+  min-height: 44px;
+  padding: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 22px;
+  border: 0;
+  border-bottom: 1px solid rgba(10, 37, 64, .12);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+  position: relative;
+  margin: 0 2px;
+}
+
+.gm-tabs--google .gm-tab {
+  min-height: 44px;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--gm-text) 88%, #000);
+  justify-content: center;
+  gap: 8px;
+  box-shadow: none;
+  transform: none;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -.01em;
+}
+
+.gm-tabs--google .gm-tab::before {
+  display: none;
+}
+
+.gm-tabs--google .gm-tab::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 999px 999px 0 0;
+  background: transparent;
+  transition: background var(--gm-trans), transform var(--gm-trans);
+  transform: scaleX(.55);
+}
+
+.gm-tabs--google .gm-tab:hover {
+  color: var(--gm-action);
+  background: transparent;
+}
+
+.gm-tabs--google .gm-tab.is-active {
+  transform: none;
+  background: transparent;
+  border-color: transparent;
+  color: var(--gm-action);
+  box-shadow: none;
+}
+
+.gm-tabs--google .gm-tab.is-active::after {
+  background: var(--gm-action);
+  transform: scaleX(1);
+}
+
+.gm-tabs--google .gm-tab > svg {
+  width: 15px;
+  min-width: 15px;
+}
+
+.gm-tabs--google .gm-tab > span:not(.gm-tab__badge) {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gm-tabs--google .gm-tab small {
+  display: none;
+}
+
+.gm-tabs--google .gm-tab__badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 720;
+  background: rgba(0, 85, 187, .10);
+  color: var(--gm-action);
+}
+
+.gm-tabs--google + .gm-panel {
+  border-top-left-radius: 15px;
+  border-top-right-radius: 15px;
+  border-top-color: rgba(10, 37, 64, .09);
+}
+
+.gm-modal--docente .gm-panel,
+.gm-modal--docente .gm-sideCard,
+.gm-modal--docente .gm-sideHint {
+  border-color: rgba(10, 37, 64, .09);
+  box-shadow: 0 12px 30px -26px rgba(10, 37, 64, .38);
+}
+
+.gm-modal--docente .gm-panel__head {
+  min-height: 48px;
+  background: rgba(255, 255, 255, .78);
+}
+
+.gm-modal--docente .gm-panel__eyebrow {
+  font-size: 9.5px;
+  letter-spacing: .08em;
+}
+
+.gm-modal--docente .gm-panel__head h3 {
+  font-size: 13.5px;
+  font-weight: 660;
+}
+
+.gm-modal--docente .gm-panel__tag {
+  padding: 4px 9px;
+  font-size: 10.5px;
+  font-weight: 700;
+  background: rgba(0, 85, 187, .07);
+}
+
+.gm-modal--docente .gm-panel__body {
+  padding: 14px;
+}
+
+.gm-modal--docente .gm-input {
+  border-color: rgba(10, 37, 64, .12);
+  box-shadow: 0 1px 0 rgba(10, 37, 64, .03);
+}
+
+.gm-modal--docente .gm-input:focus {
+  border-color: rgba(0, 85, 187, .36);
+  box-shadow: 0 0 0 4px rgba(0, 85, 187, .10), 0 8px 18px -18px rgba(10, 37, 64, .46);
+}
+
+.gm-modal--docente .gm-statusToggle {
+  background: rgba(246, 249, 252, .92);
+}
+
+.gm-modal--docente .gm-scheduleCard {
+  border-color: rgba(10, 37, 64, .09);
+}
+
+.gm-modal--docente .gm-modal__actions {
+  padding: 13px 16px;
+  background: rgba(255, 255, 255, .96);
+}
+
+@media (max-width: 720px) {
+  .gm-modal--docente .gm-modal__header {
+    padding: 14px;
+  }
+
+  .gm-tabs--google {
+    gap: 18px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    padding-inline: 2px;
+  }
+
+  .gm-tabs--google .gm-tab {
+    flex: 0 0 auto;
+    min-width: max-content;
+  }
+}
+

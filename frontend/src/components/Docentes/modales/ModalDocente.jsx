@@ -2,10 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faBriefcase,
   faCalendarDays,
-  faCheckCircle,
-  faClock,
   faInfoCircle,
   faPlus,
   faSave,
@@ -46,13 +43,6 @@ function normalizarDisponibilidad(bloque) {
     id_turno: bloque?.id_turno ? String(bloque.id_turno) : '',
     fecha: bloque?.fecha || '',
   };
-}
-
-function obtenerNombrePorId(lista, id, campoId, campoNombre, fallback = 'Sin seleccionar') {
-  const encontrado = (lista || []).find(
-    (item) => String(item?.[campoId]) === String(id)
-  );
-  return encontrado?.[campoNombre] || fallback;
 }
 
 function intentarAbrirSelectorFecha(e) {
@@ -162,11 +152,6 @@ export default function ModalDocente({
       ? catalogos.dias_semana
       : DIAS_SEMANA_DEFAULT;
   }, [catalogos?.dias_semana]);
-
-  const cargoSeleccionado = useMemo(
-    () => obtenerNombrePorId(catalogos?.cargos, idCargo, 'id_cargo', 'cargo'),
-    [catalogos?.cargos, idCargo]
-  );
 
   const reglasConDatos = useMemo(
     () => disponibilidades.filter(reglaTieneDatos),
@@ -286,7 +271,7 @@ export default function ModalDocente({
           </div>
           <div className="gm-modal__headText">
             <h2 id="gm-docente-title">{titulo}</h2>
-            <p>Completá la ficha principal y organizá hasta {MAX_REGLAS_DISPONIBILIDAD} reglas de disponibilidad.</p>
+            <p>{editando ? 'Actualizá la ficha del docente sin perder su organización.' : 'Cargá la ficha del docente y su disponibilidad en pasos claros.'}</p>
           </div>
           <button
             type="button"
@@ -317,10 +302,12 @@ export default function ModalDocente({
             )}
 
             {/* TABS */}
-            <div className="gm-tabs" role="tablist" aria-label="Secciones del docente">
+            <div className="gm-tabs gm-tabs--google" role="tablist" aria-label="Secciones del docente">
               <button
                 type="button"
                 role="tab"
+                id="gm-tab-ficha"
+                aria-controls="gm-panel-ficha"
                 aria-selected={pestaniaActiva === TAB_FICHA}
                 className={`gm-tab${pestaniaActiva === TAB_FICHA ? ' is-active' : ''}`}
                 onClick={() => setPestaniaActiva(TAB_FICHA)}
@@ -331,6 +318,8 @@ export default function ModalDocente({
               <button
                 type="button"
                 role="tab"
+                id="gm-tab-organizacion"
+                aria-controls="gm-panel-organizacion"
                 aria-selected={pestaniaActiva === TAB_ORGANIZACION}
                 className={`gm-tab${pestaniaActiva === TAB_ORGANIZACION ? ' is-active' : ''}`}
                 onClick={() => setPestaniaActiva(TAB_ORGANIZACION)}
@@ -345,7 +334,7 @@ export default function ModalDocente({
 
             {/* TAB: FICHA */}
             {pestaniaActiva === TAB_FICHA && (
-              <section className="gm-panel" role="tabpanel">
+              <section className="gm-panel" id="gm-panel-ficha" role="tabpanel" aria-labelledby="gm-tab-ficha">
                 <div className="gm-panel__head">
                   <div>
                     <span className="gm-panel__eyebrow">Ficha principal</span>
@@ -435,7 +424,7 @@ export default function ModalDocente({
 
             {/* TAB: ORGANIZACIÓN */}
             {pestaniaActiva === TAB_ORGANIZACION && (
-              <section className="gm-panel gm-panel--schedule" role="tabpanel">
+              <section className="gm-panel gm-panel--schedule" id="gm-panel-organizacion" role="tabpanel" aria-labelledby="gm-tab-organizacion">
                 <div className="gm-panel__head gm-panel__head--split">
                   <div>
                     <span className="gm-panel__eyebrow">Organización semanal</span>

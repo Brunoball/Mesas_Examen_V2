@@ -1,14 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faArrowLeft,
   faBookOpen,
   faEdit,
+  faLayerGroup,
   faPlus,
   faSave,
   faTimes,
   faTrash,
+  faUserGraduate,
 } from '@fortawesome/free-solid-svg-icons';
+import '../../Global/Global_css/Global_Modals.css';
+import './ModalPrevias.css';
 
 function hoyISO() {
   return new Date().toISOString().slice(0, 10);
@@ -138,12 +142,22 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
   }, [condicionPreviaId, editando, materias]);
 
   useEffect(() => {
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
     const onKeyDown = (e) => {
-      if (e.key === 'Escape') onCerrar();
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (!guardando) onCerrar();
     };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [onCerrar]);
+
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => {
+      document.body.style.overflow = overflowAnterior;
+      document.removeEventListener('keydown', onKeyDown, true);
+    };
+  }, [guardando, onCerrar]);
 
   const esEgresado = useMemo(() => {
     const curso = cursos.find((c) => String(c.id_curso) === String(datosAlumno.cursando_id_curso));
@@ -340,46 +354,73 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
   const titulo = editando ? 'Editar Previa' : 'Agregar Previa(s)';
   const subtitulo = editando ? 'Modificá los datos de la previa' : 'Cargá los datos del alumno y las materias previas';
 
-  return (
-    <div className="previas-modal-overlay previas-modal-overlay-full" role="dialog" aria-modal="true">
-      <div className="previas-form-shell">
-        <header className="previas-form-hero">
-          <div className="previas-form-title">
+  const modal = (
+    <div
+      className="gm-modalOverlay previas-modal-overlay previas-modal-overlay-full previas-editor-overlay"
+      role="presentation"
+      onMouseDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+    >
+      <div
+        className="gm-modal gm-modal--previas previas-form-shell previas-editor-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="previas-modal-title"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <header className="gm-modal__header previas-form-hero previas-modal-header">
+          <div className="gm-modal__headIcon previas-modal-icon" aria-hidden="true">
             <FontAwesomeIcon icon={editando ? faEdit : faBookOpen} />
-            <div>
-              <h2>{titulo}</h2>
-              <p>{subtitulo}</p>
-            </div>
           </div>
 
-          <button type="button" className="previas-back-btn" onClick={onCerrar}>
-            <FontAwesomeIcon icon={faArrowLeft} /> Volver
+          <div className="gm-modal__headText previas-form-title">
+            <h2 id="previas-modal-title">{titulo}</h2>
+            <p>{subtitulo}</p>
+          </div>
+
+          <button
+            type="button"
+            className="gm-modal__close previas-back-btn previas-modal-closeTop"
+            onClick={onCerrar}
+            disabled={guardando}
+            aria-label="Cerrar modal"
+          >
+            <FontAwesomeIcon icon={faTimes} />
           </button>
         </header>
 
-        <div className="previas-form-body">
+        <div className="gm-modal__content previas-form-body previas-editor-content">
           {!editando && (
-            <div className="previas-form-tabs">
+            <div className="gm-tabs gm-tabs--google previas-modal-tabs previas-form-tabs" role="tablist" aria-label="Secciones de previas">
               <button
                 type="button"
-                className={`previas-form-tab ${tabPrincipal === 'alumno' ? 'active' : ''}`}
+                role="tab"
+                aria-selected={tabPrincipal === 'alumno'}
+                className={`gm-tab previas-form-tab ${tabPrincipal === 'alumno' ? 'active is-active' : ''}`}
                 onClick={() => setTabPrincipal('alumno')}
               >
-                Datos del alumno
+                <FontAwesomeIcon icon={faUserGraduate} />
+                <span>Datos del alumno</span>
               </button>
               <button
                 type="button"
-                className={`previas-form-tab ${tabPrincipal === 'materias' ? 'active' : ''}`}
+                role="tab"
+                aria-selected={tabPrincipal === 'materias'}
+                className={`gm-tab previas-form-tab ${tabPrincipal === 'materias' ? 'active is-active' : ''}`}
                 onClick={() => setTabPrincipal('materias')}
               >
-                Materias previas
+                <FontAwesomeIcon icon={faLayerGroup} />
+                <span>Materias previas</span>
+                <span className="gm-tab__badge">{materias.length}</span>
               </button>
             </div>
           )}
 
           {(editando || tabPrincipal === 'alumno') && (
             <div className={`previas-form-grid ${editando ? 'previas-form-grid-edit' : ''}`}>
-              <section className="previas-form-card">
+              <section className="previas-form-card previas-detail-panel">
                 <h3>Datos del alumno</h3>
                 <div className="previas-section-line" />
                 <InputField
@@ -402,7 +443,7 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
                 />
               </section>
 
-              <section className="previas-form-card">
+              <section className="previas-form-card previas-detail-panel">
                 <h3>{editando ? 'Cursado' : 'Cursado Actual'}</h3>
                 <div className="previas-section-line" />
                 <div className="previas-two-cols">
@@ -473,7 +514,7 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
               </section>
 
               {editando && materiaActual && (
-                <section className="previas-form-card">
+                <section className="previas-form-card previas-detail-panel">
                   <h3>Administrativo</h3>
                   <div className="previas-section-line" />
                   <SelectField
@@ -513,26 +554,30 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
 
           {!editando && tabPrincipal === 'materias' && (
             <>
-              <div className="previas-materia-tabs">
+              <div className="gm-tabs gm-tabs--google previas-modal-tabs previas-materia-tabs" role="tablist" aria-label="Materias previas cargadas">
                 {materias.map((m, index) => (
                   <button
                     key={m.uid}
                     type="button"
-                    className={`previas-materia-tab ${tabMateria === index ? 'active' : ''}`}
+                    role="tab"
+                    aria-selected={tabMateria === index}
+                    className={`gm-tab previas-materia-tab ${tabMateria === index ? 'active is-active' : ''}`}
                     onClick={() => setTabMateria(index)}
                   >
-                    Materia {index + 1}
+                    <FontAwesomeIcon icon={faBookOpen} />
+                    <span>Materia {index + 1}</span>
                   </button>
                 ))}
 
-                <button type="button" className="previas-materia-tab previas-materia-tab-add" onClick={agregarMateria}>
-                  <FontAwesomeIcon icon={faPlus} /> Otra
+                <button type="button" className="gm-tab previas-materia-tab previas-materia-tab-add" onClick={agregarMateria}>
+                  <FontAwesomeIcon icon={faPlus} />
+                  <span>Otra</span>
                 </button>
               </div>
 
               {materiaActual && (
                 <div className="previas-form-grid previas-form-grid-two">
-                  <section className="previas-form-card">
+                  <section className="previas-form-card previas-detail-panel">
                     <div className="previas-card-title-row">
                       <div>
                         <h3>Materia Previa (Materia {tabMateria + 1})</h3>
@@ -540,7 +585,7 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
                       </div>
 
                       {materias.length > 1 && (
-                        <button type="button" className="previas-mini-danger" onClick={() => quitarMateria(tabMateria)}>
+                        <button type="button" className="previas-mini-danger previas-detail-danger" onClick={() => quitarMateria(tabMateria)}>
                           <FontAwesomeIcon icon={faTrash} /> Quitar
                         </button>
                       )}
@@ -584,7 +629,7 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
                     {errorMateriasActuales && <div className="previas-alerta previas-alerta-error previas-form-error">{errorMateriasActuales}</div>}
                   </section>
 
-                  <section className="previas-form-card">
+                  <section className="previas-form-card previas-detail-panel">
                     <h3>Administrativo</h3>
                     <div className="previas-section-line" />
                     <SelectField
@@ -629,19 +674,19 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
 
           {error && <div className="previas-alerta previas-alerta-error previas-form-error">{error}</div>}
 
-          <div className="previas-form-footer">
+          <div className="gm-modal__actions previas-form-footer">
             {!editando && tabPrincipal === 'alumno' ? (
-              <button type="button" className="previas-btn previas-btn-primary" onClick={() => setTabPrincipal('materias')}>
+              <button type="button" className="gm-btn gm-btn--primary previas-btn previas-btn-primary" onClick={() => setTabPrincipal('materias')}>
                 Continuar a materias
               </button>
             ) : (
-              <button type="button" className="previas-btn previas-btn-primary" onClick={guardar} disabled={guardando}>
+              <button type="button" className="gm-btn gm-btn--primary previas-btn previas-btn-primary" onClick={guardar} disabled={guardando}>
                 <FontAwesomeIcon icon={faSave} />
                 {guardando ? 'Guardando...' : editando ? 'Guardar Cambios' : `Guardar ${materias.length === 1 ? 'Previa' : `${materias.length} Previas`}`}
               </button>
             )}
 
-            <button type="button" className="previas-btn previas-btn-light" onClick={onCerrar} disabled={guardando}>
+            <button type="button" className="gm-btn gm-btn--ghost previas-btn previas-btn-light" onClick={onCerrar} disabled={guardando}>
               <FontAwesomeIcon icon={faTimes} /> Cancelar
             </button>
           </div>
@@ -649,4 +694,6 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }

@@ -13,6 +13,7 @@ import {
 
 import "../../Global/Global_css/Global_Modals.css";
 import "./ModalCorrelativa.css";
+import "./ModalMaterias.css";
 
 const nuevaRelacionVacia = () => ({
   id_curso_posterior: "",
@@ -550,23 +551,27 @@ const ModalCorrelativa = ({
 
         <div className="modal-corr-body">
           {!esEdicion && (
-            <div className="modal-corr-mode-tabs">
+            <div className="gm-tabs gm-tabs--google modal-corr-mode-tabs materias-modal-tabs" role="tablist" aria-label="Modo de carga de correlativas">
               <button
                 type="button"
-                className={modo === "manual" ? "active" : ""}
+                role="tab"
+                aria-selected={modo === "manual"}
+                className={`gm-tab${modo === "manual" ? " is-active" : ""}`}
                 onClick={() => cambiarModo("manual")}
               >
                 <FontAwesomeIcon icon={faPlus} />
-                Manual / varias juntas
+                <span>Manual / varias juntas</span>
               </button>
 
               <button
                 type="button"
-                className={modo === "auto" ? "active" : ""}
+                role="tab"
+                aria-selected={modo === "auto"}
+                className={`gm-tab${modo === "auto" ? " is-active" : ""}`}
                 onClick={() => cambiarModo("auto")}
               >
                 <FontAwesomeIcon icon={faBolt} />
-                Autogenerar por materia
+                <span>Autogenerar por materia</span>
               </button>
             </div>
           )}

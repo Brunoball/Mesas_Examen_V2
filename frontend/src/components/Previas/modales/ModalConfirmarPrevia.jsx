@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faTriangleExclamation,
@@ -7,6 +8,8 @@ import {
   faTrash,
   faTimes,
 } from '@fortawesome/free-solid-svg-icons';
+import '../../Global/Global_css/Global_Modals.css';
+import './ModalPrevias.css';
 
 export default function ModalConfirmarPrevia({ tipo, item, onConfirmar, onCerrar }) {
   const [motivo, setMotivo] = useState('');
@@ -15,13 +18,23 @@ export default function ModalConfirmarPrevia({ tipo, item, onConfirmar, onCerrar
   const cancelRef = useRef(null);
 
   useEffect(() => {
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     cancelRef.current?.focus();
+
     const onKeyDown = (e) => {
-      if (e.key === 'Escape') onCerrar();
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (!guardando) onCerrar();
     };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [onCerrar]);
+
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => {
+      document.body.style.overflow = overflowAnterior;
+      document.removeEventListener('keydown', onKeyDown, true);
+    };
+  }, [guardando, onCerrar]);
 
   const config = {
     baja: {
@@ -72,10 +85,24 @@ export default function ModalConfirmarPrevia({ tipo, item, onConfirmar, onCerrar
     setError(res?.mensaje || 'No se pudo completar la operación.');
   }
 
-  return (
-    <div className="previas-modal-overlay" role="dialog" aria-modal="true" onMouseDown={onCerrar}>
-      <div className="previas-confirm" onMouseDown={(e) => e.stopPropagation()}>
-        <button type="button" className="previas-modal-close" onClick={onCerrar} aria-label="Cerrar">
+  const modal = (
+    <div
+      className="gm-modalOverlay previas-modal-overlay previas-confirm-overlay"
+      role="presentation"
+      onMouseDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!guardando) onCerrar();
+      }}
+    >
+      <div
+        className="gm-modal previas-confirm previas-detail-confirm"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="previas-confirm-title"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <button type="button" className="gm-modal__close previas-modal-close" onClick={onCerrar} aria-label="Cerrar" disabled={guardando}>
           <FontAwesomeIcon icon={faTimes} />
         </button>
 
@@ -83,11 +110,11 @@ export default function ModalConfirmarPrevia({ tipo, item, onConfirmar, onCerrar
           <FontAwesomeIcon icon={config.icono} />
         </div>
 
-        <h3>{config.titulo}</h3>
+        <h3 id="previas-confirm-title">{config.titulo}</h3>
         <p>{config.texto}</p>
 
         {item && (
-          <div className="previas-confirm-item">
+          <div className="previas-confirm-item previas-detail-summary">
             <strong>{item.alumno}</strong>
             <span>{item.dni} · {item.materia} · {item.curso_materia}</span>
           </div>
@@ -108,14 +135,16 @@ export default function ModalConfirmarPrevia({ tipo, item, onConfirmar, onCerrar
         {error && <div className="previas-alerta previas-alerta-error">{error}</div>}
 
         <div className="previas-confirm-actions">
-          <button type="button" className="previas-btn previas-btn-light" onClick={onCerrar} ref={cancelRef} disabled={guardando}>
+          <button type="button" className="gm-btn gm-btn--ghost previas-btn previas-btn-light" onClick={onCerrar} ref={cancelRef} disabled={guardando}>
             Cancelar
           </button>
-          <button type="button" className={`previas-btn ${config.clase}`} onClick={confirmar} disabled={guardando}>
+          <button type="button" className={`gm-btn previas-btn ${config.clase}`} onClick={confirmar} disabled={guardando}>
             {guardando ? 'Procesando...' : config.btn}
           </button>
         </div>
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }

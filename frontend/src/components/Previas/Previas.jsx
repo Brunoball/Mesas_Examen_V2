@@ -12,11 +12,12 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { usePrevias } from './hooks/usePrevias.js';
 import ModalPrevia from './modales/ModalPrevia.jsx';
-import ModalConfirmarPrevia from './modales/ModalConfirmarPrevia.jsx';
+import ModalEliminarGlobal from '../Global/Modales/ModalEliminarGlobal.jsx';
 import '../Global/Global_css/roots.css';
 import '../Global/Global_css/Global_Section.css';
 import '../Global/Global_css/Global_DivTable.css';
 import './Previas.css';
+import './modales/ModalPrevias.css';
 import Principal, { MesasShellContext } from '../Principal/Principal';
 
 const PREVIAS_GRID_COLS = '1.35fr .75fr 1.25fr .85fr .8fr .85fr .9fr';
@@ -111,7 +112,8 @@ export default function Previas() {
   }
 
   async function abrirEditar(item) {
-    setModalPrevia({ abierto: true, modo: 'editar', item: null, cargando: true });
+    // No mostramos un modal intermedio de carga: se abre directamente cuando llega la previa completa.
+    setModalPrevia({ abierto: false, modo: 'editar', item: null, cargando: true });
     const res = await obtener(item.id_previa);
     if (res.ok) {
       setModalPrevia({ abierto: true, modo: 'editar', item: res.data, cargando: false });
@@ -124,7 +126,9 @@ export default function Previas() {
     setModalConfirmar({ abierto: true, tipo, item });
   }
 
-  async function confirmarOperacion(motivo = '') {
+  async function confirmarOperacion(payload = {}) {
+    const motivo = typeof payload === 'string' ? payload : (payload?.motivo || payload?.reason || '');
+
     if (modalConfirmar.tipo === 'baja') return darBaja(modalConfirmar.item, motivo);
     if (modalConfirmar.tipo === 'alta') return darAlta(modalConfirmar.item);
     if (modalConfirmar.tipo === 'eliminar') return eliminar(modalConfirmar.item);
@@ -133,6 +137,65 @@ export default function Previas() {
 
   const totalVisible = Array.isArray(previas) ? previas.length : 0;
   const hayBusqueda = busqueda.trim() !== '';
+
+  const modalGlobalConfig = {
+    baja: {
+      operacion: 'baja',
+      title: 'Dar de baja previa',
+      message: 'La previa pasará a dados de baja y vas a poder restaurarla cuando la necesites.',
+      warning: '',
+      confirmLabel: 'Dar de baja',
+      loadingLabel: 'Procesando...',
+      successMessage: 'Previa dada de baja correctamente.',
+      errorMessage: 'No se pudo dar de baja la previa.',
+      tone: 'warning',
+      showReason: true,
+      reasonLabel: 'Motivo de baja',
+      reasonPlaceholder: 'Ej: registro cargado por error, alumno regularizó, etc.',
+    },
+    alta: {
+      operacion: 'alta',
+      title: 'Dar de alta previa',
+      message: 'La previa volverá a mostrarse dentro del listado principal de previas activas.',
+      warning: '',
+      confirmLabel: 'Dar de alta',
+      loadingLabel: 'Procesando...',
+      successMessage: 'Previa dada de alta correctamente.',
+      errorMessage: 'No se pudo dar de alta la previa.',
+      tone: 'success',
+      showReason: false,
+    },
+    eliminar: {
+      operacion: 'eliminar',
+      title: 'Eliminar previa',
+      message: 'Esta acción elimina el registro de forma permanente.',
+      warning: 'Si la previa está vinculada a una mesa, el backend puede bloquear la eliminación.',
+      confirmLabel: 'Eliminar',
+      loadingLabel: 'Eliminando...',
+      successMessage: 'Previa eliminada correctamente.',
+      errorMessage: 'No se pudo eliminar la previa.',
+      tone: 'danger',
+      showReason: false,
+    },
+  }[modalConfirmar.tipo] || {
+    operacion: 'advertencia',
+    title: 'Confirmar acción',
+    message: 'Confirmá la operación seleccionada.',
+    warning: '',
+    confirmLabel: 'Confirmar',
+    loadingLabel: 'Procesando...',
+    successMessage: 'Operación realizada correctamente.',
+    errorMessage: 'No se pudo completar la operación.',
+    tone: 'primary',
+    showReason: false,
+  };
+
+  const detallesModalGlobal = [
+    { label: 'Alumno', value: safeText(modalConfirmar.item?.alumno) },
+    { label: 'DNI', value: safeText(modalConfirmar.item?.dni) },
+    { label: 'Materia', value: safeText(modalConfirmar.item?.materia) },
+    { label: 'Curso', value: safeText(modalConfirmar.item?.curso_materia) },
+  ];
 
   const contenido = (
     <div className="previas-page mov-page">
@@ -371,14 +434,6 @@ export default function Previas() {
         </div>
       </section>
 
-      {modalPrevia.abierto && modalPrevia.cargando && (
-        <div className="previas-modal-overlay">
-          <div className="previas-modal previas-modal-sm">
-            <div className="previas-empty">Cargando previa...</div>
-          </div>
-        </div>
-      )}
-
       {modalPrevia.abierto && !modalPrevia.cargando && (
         <ModalPrevia
           modo={modalPrevia.modo}
@@ -391,11 +446,13 @@ export default function Previas() {
       )}
 
       {modalConfirmar.abierto && (
-        <ModalConfirmarPrevia
-          tipo={modalConfirmar.tipo}
-          item={modalConfirmar.item}
-          onConfirmar={confirmarOperacion}
-          onCerrar={() => setModalConfirmar({ abierto: false, tipo: '', item: null })}
+        <ModalEliminarGlobal
+          open={modalConfirmar.abierto}
+          row={modalConfirmar.item}
+          details={detallesModalGlobal}
+          onClose={() => setModalConfirmar({ abierto: false, tipo: '', item: null })}
+          onConfirm={confirmarOperacion}
+          {...modalGlobalConfig}
         />
       )}
     </div>

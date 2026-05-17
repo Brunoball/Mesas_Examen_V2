@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
+  faBook,
   faCheck,
   faFlask,
   faMagnifyingGlass,
@@ -11,6 +12,10 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import "../../Global/Global_css/Global_Modals.css";
 import "./ModalTaller.css";
+import "./ModalMaterias.css";
+
+const TAB_DIVISIONES = "divisiones";
+const TAB_CATEDRAS = "catedras";
 
 const normalizar = (texto) =>
   String(texto || "")
@@ -66,6 +71,7 @@ const ModalTaller = ({
   const [cargandoCatedras, setCargandoCatedras] = useState(false);
   const [errorCatedras, setErrorCatedras] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [pestaniaActiva, setPestaniaActiva] = useState(TAB_DIVISIONES);
 
   useEffect(() => {
     const overflowAnterior = document.body.style.overflow;
@@ -95,6 +101,7 @@ const ModalTaller = ({
     setSeleccionadas(extraerIdsCatedras(item));
     setIdArea("");
     setBusqueda("");
+    setPestaniaActiva(TAB_DIVISIONES);
   }, [item]);
 
   useEffect(() => {
@@ -263,6 +270,7 @@ const ModalTaller = ({
     setSeleccionadas([]);
     setIdArea("");
     setBusqueda("");
+    setPestaniaActiva(TAB_DIVISIONES);
   };
 
   const toggleDivision = (idDivision) => {
@@ -344,11 +352,13 @@ const ModalTaller = ({
     }
 
     if (idsDivisiones.length === 0) {
+      setPestaniaActiva(TAB_DIVISIONES);
       alert("Tenés que seleccionar al menos una división.");
       return;
     }
 
     if (seleccionadas.length === 0) {
+      setPestaniaActiva(TAB_CATEDRAS);
       alert("Tenés que seleccionar las cátedras específicas de ese taller.");
       return;
     }
@@ -455,10 +465,41 @@ const ModalTaller = ({
             </label>
           </div>
 
-          <div className="taller-box">
-            <div className="taller-box-title-row">
-              <div>
-                <h4>Divisiones del taller</h4>
+          <div className="gm-tabs gm-tabs--google materias-modal-tabs materias-taller-tabs" role="tablist" aria-label="Secciones del taller">
+            <button
+              type="button"
+              role="tab"
+              id="taller-tab-divisiones"
+              aria-controls="taller-panel-divisiones"
+              aria-selected={pestaniaActiva === TAB_DIVISIONES}
+              className={`gm-tab${pestaniaActiva === TAB_DIVISIONES ? " is-active" : ""}`}
+              onClick={() => setPestaniaActiva(TAB_DIVISIONES)}
+            >
+              <FontAwesomeIcon icon={faFlask} />
+              <span>Divisiones</span>
+              {idsDivisiones.length > 0 && <span className="gm-tab__badge">{idsDivisiones.length}</span>}
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              id="taller-tab-catedras"
+              aria-controls="taller-panel-catedras"
+              aria-selected={pestaniaActiva === TAB_CATEDRAS}
+              className={`gm-tab${pestaniaActiva === TAB_CATEDRAS ? " is-active" : ""}`}
+              onClick={() => setPestaniaActiva(TAB_CATEDRAS)}
+            >
+              <FontAwesomeIcon icon={faBook} />
+              <span>Cátedras</span>
+              {seleccionadas.length > 0 && <span className="gm-tab__badge">{seleccionadas.length}</span>}
+            </button>
+          </div>
+
+          {pestaniaActiva === TAB_DIVISIONES && (
+            <div className="taller-box materias-taller-panel" id="taller-panel-divisiones" role="tabpanel" aria-labelledby="taller-tab-divisiones">
+              <div className="taller-box-title-row">
+                <div>
+                  <h4>Divisiones del taller</h4>
                 <p className="muted">{divisionesTexto}</p>
               </div>
 
@@ -511,12 +552,14 @@ const ModalTaller = ({
                 })}
               </div>
             )}
-          </div>
+            </div>
+          )}
 
-          <div className="taller-box">
-            <div className="taller-box-title-row">
-              <div>
-                <h4>Cátedras del taller</h4>
+          {pestaniaActiva === TAB_CATEDRAS && (
+            <div className="taller-box materias-taller-panel" id="taller-panel-catedras" role="tabpanel" aria-labelledby="taller-tab-catedras">
+              <div className="taller-box-title-row">
+                <div>
+                  <h4>Cátedras del taller</h4>
                 <p className="muted">{catedrasSeleccionadasTexto}</p>
               </div>
             </div>
@@ -669,10 +712,11 @@ const ModalTaller = ({
                 ))}
               </div>
             )}
-          </div>
+            </div>
+          )}
         </div>
 
-        <div className="gm-modal__actions modal-actions">
+        <div className="gm-modal__actions modal-actions materias-editor-actions">
           <button type="button" className="materias-btn ghost" onClick={onClose}>
             Cancelar
           </button>
