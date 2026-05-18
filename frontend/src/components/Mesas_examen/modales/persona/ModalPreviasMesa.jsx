@@ -64,7 +64,7 @@ const ModalPreviasMesa = ({ abierto, numero, data, cargando, error, onClose, onM
                           <button
                             type="button"
                             className="persona-btn persona-btn-move"
-                            title="Mover previa"
+                            title="Mover solo esta previa / alumno"
                             onClick={() => onMover(previa)}
                           >
                             <FontAwesomeIcon icon={faExchangeAlt} />

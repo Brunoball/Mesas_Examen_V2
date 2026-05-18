@@ -83,7 +83,7 @@ function mesas_editar_agregar_numero_confirmar_controller(): void
         json_response([
             'exito' => true,
             'mensaje' => $resultado['tipo'] === 'previa_sin_mesa'
-                ? 'Previa convertida en número de mesa y grupo creado correctamente.'
+                ? 'Previa convertida en número de mesa y agregada al grupo correctamente.'
                 : 'Número agregado al grupo correctamente.',
             'data' => $resultado,
         ]);

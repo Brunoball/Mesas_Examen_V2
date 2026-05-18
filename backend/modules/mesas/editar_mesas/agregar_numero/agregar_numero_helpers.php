@@ -319,6 +319,56 @@ function mesas_editar_agregar_numero_detalle_previa(array $previa, int $numeroMe
     return $detalle;
 }
 
+
+function mesas_editar_agregar_numero_combinar_detalles(array $detalleGrupo, array $detallePrevia): array
+{
+    $detalle = [
+        'numeros' => array_values(array_unique(array_merge($detalleGrupo['numeros'] ?? [], $detallePrevia['numeros'] ?? []))),
+        'ids_mesa' => array_values(array_unique(array_merge($detalleGrupo['ids_mesa'] ?? [], $detallePrevia['ids_mesa'] ?? []))),
+        'ids_previa' => array_values(array_unique(array_merge($detalleGrupo['ids_previa'] ?? [], $detallePrevia['ids_previa'] ?? []))),
+        'docentes' => $detalleGrupo['docentes'] ?? [],
+        'dnis' => $detalleGrupo['dnis'] ?? [],
+        'registros' => array_values(array_merge($detalleGrupo['registros'] ?? [], $detallePrevia['registros'] ?? [])),
+        'dni_numeros' => $detalleGrupo['dni_numeros'] ?? [],
+    ];
+
+    foreach (($detallePrevia['docentes'] ?? []) as $idDocente => $nombreDocente) {
+        $detalle['docentes'][(int)$idDocente] = $nombreDocente;
+    }
+
+    foreach (($detallePrevia['dnis'] ?? []) as $dni => $alumno) {
+        $detalle['dnis'][(string)$dni] = $alumno;
+    }
+
+    foreach (($detallePrevia['dni_numeros'] ?? []) as $dni => $numerosMap) {
+        $dni = (string)$dni;
+        if (!isset($detalle['dni_numeros'][$dni]) || !is_array($detalle['dni_numeros'][$dni])) {
+            $detalle['dni_numeros'][$dni] = [];
+        }
+
+        foreach ($numerosMap as $numero => $valor) {
+            $detalle['dni_numeros'][$dni][(int)$numero] = $valor;
+        }
+    }
+
+    return $detalle;
+}
+
+function mesas_editar_agregar_numero_detalle_grupo_mas_previa(PDO $pdo, array $previa, array $grupoDestino, int $numeroMesa): array
+{
+    $detallePrevia = mesas_editar_agregar_numero_detalle_previa($previa, $numeroMesa);
+
+    $numerosGrupo = array_map(static fn ($item) => (int)($item['numero_mesa'] ?? 0), $grupoDestino['numeros'] ?? []);
+    $numerosGrupo = array_values(array_filter($numerosGrupo, static fn ($numero) => $numero > 0));
+
+    if (count($numerosGrupo) === 0) {
+        return $detallePrevia;
+    }
+
+    $detalleGrupo = mesas_editar_obtener_detalle_numeros($pdo, $numerosGrupo);
+    return mesas_editar_agregar_numero_combinar_detalles($detalleGrupo, $detallePrevia);
+}
+
 function mesas_editar_agregar_numero_validar_previa_para_slot(PDO $pdo, array $previa, array $grupoDestino, ?int $numeroMesa = null): array
 {
     $errores = [];
@@ -369,7 +419,10 @@ function mesas_editar_agregar_numero_validar_previa_para_slot(PDO $pdo, array $p
     }
 
     if (count($errores) === 0) {
-        $detalle = mesas_editar_agregar_numero_detalle_previa($previa, $numeroValidacion);
+        // Se valida la previa nueva junto con los números que ya tiene el grupo destino.
+        // Así el comportamiento es el correcto cuando el usuario presiona + desde un slot vacío:
+        // se crea un nuevo número de mesa y se suma al grupo abierto, sin crear un grupo aparte.
+        $detalle = mesas_editar_agregar_numero_detalle_grupo_mas_previa($pdo, $previa, $grupoDestino, $numeroValidacion);
         $errores = array_merge($errores, mesas_editar_validar_docentes($pdo, $detalle, $fechaDestino, $idTurnoDestino));
         $errores = array_merge($errores, mesas_editar_validar_alumnos($pdo, $detalle, $fechaDestino, $idTurnoDestino));
         $errores = array_merge($errores, mesas_editar_validar_correlativas($pdo, $detalle, $fechaDestino, $idTurnoDestino));
@@ -570,7 +623,6 @@ function mesas_editar_agregar_numero_crear_grupo_desde_previa(PDO $pdo, int $num
     $fecha = substr((string)$grupoReferencia['fecha_mesa'], 0, 10);
     $idTurno = (int)$grupoReferencia['id_turno'];
     $hora = $grupoReferencia['hora'] ?? null;
-    $numeroGrupoNuevo = mesas_editar_obtener_numero_siguiente_grupo($pdo);
 
     $stmtMesas = $pdo->prepare(''
         . 'INSERT INTO mesas '
@@ -587,30 +639,38 @@ function mesas_editar_agregar_numero_crear_grupo_desde_previa(PDO $pdo, int $num
         $idTurno,
     ]);
 
+    $stmtOrden = $pdo->prepare('SELECT COALESCE(MAX(orden), 0) + 1 FROM mesas_grupos WHERE numero_grupo = ?');
+    $stmtOrden->execute([$numeroGrupoReferencia]);
+    $orden = max(1, (int)$stmtOrden->fetchColumn());
+
     $stmtGrupo = $pdo->prepare(''
         . 'INSERT INTO mesas_grupos '
         . '    (numero_grupo, numero_mesa, fecha_mesa, id_turno, hora, id_area, orden, tipo_mesa, prioridad, cantidad_alumnos, estado, observacion) '
         . 'VALUES '
-        . '    (?, ?, ?, ?, ?, ?, 1, "simple", 0, 1, "borrador", "Grupo creado manualmente desde previa sin número de mesa.")'
+        . '    (?, ?, ?, ?, ?, ?, ?, "simple", 0, 1, "borrador", "Número creado manualmente desde previa sin número de mesa y agregado al grupo.")'
     );
     $stmtGrupo->execute([
-        $numeroGrupoNuevo,
+        $numeroGrupoReferencia,
         $numeroMesa,
         $fecha,
         $idTurno,
         $hora,
         $previa['id_area'] !== null ? (int)$previa['id_area'] : null,
+        $orden,
     ]);
+
+    if (function_exists('mesas_editar_flechas_reordenar_grupo')) {
+        mesas_editar_flechas_reordenar_grupo($pdo, $numeroGrupoReferencia);
+    }
 
     return [
         'agregado' => true,
         'tipo' => 'previa_sin_mesa',
         'id_previa' => (int)$previa['id_previa'],
         'numero_mesa' => $numeroMesa,
-        'numero_grupo' => $numeroGrupoNuevo,
-        'numero_grupo_referencia' => $numeroGrupoReferencia,
+        'numero_grupo' => $numeroGrupoReferencia,
         'validacion' => $validacion,
-        // No se hidratan grupos dentro de la transacción para evitar COMMIT implícito
-        // por CREATE/ALTER TABLE internos. El frontend recarga el listado y el grupo.
+        // No se hidrata el grupo dentro de la transacción: el frontend recarga el grupo abierto
+        // y lo muestra actualizado después de cerrar el modal interno.
     ];
 }

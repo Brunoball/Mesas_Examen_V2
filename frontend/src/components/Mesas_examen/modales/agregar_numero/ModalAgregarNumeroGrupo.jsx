@@ -49,7 +49,7 @@ const FilaPrevia = ({ item, agregando, onAgregar }) => (
       <button
         type="button"
         className="ag-num-add-btn"
-        title="Crear número y grupo para esta previa"
+        title="Crear número y agregar al grupo"
         disabled={agregando}
         onClick={() => onAgregar(item, "previa_sin_mesa")}
       >

@@ -282,6 +282,143 @@ function mesas_editar_persona_armar_detalle_movimiento(array $filas, int $numero
     return $detalle;
 }
 
+
+function mesas_editar_persona_obtener_modelo_destino(PDO $pdo, int $numeroDestino, array $filasOrigen): array
+{
+    $idsMateriaOrigen = [];
+    $idsCursoOrigen = [];
+
+    foreach ($filasOrigen as $fila) {
+        $idMateria = (int)($fila['id_materia'] ?? 0);
+        $idCurso = (int)($fila['id_curso'] ?? 0);
+
+        if ($idMateria > 0) {
+            $idsMateriaOrigen[$idMateria] = true;
+        }
+
+        if ($idCurso > 0) {
+            $idsCursoOrigen[$idCurso] = true;
+        }
+    }
+
+    $stmt = $pdo->prepare(''
+        . 'SELECT '
+        . '    me.id_mesa, me.numero_mesa, me.id_previa, me.id_docente, me.id_catedra, '
+        . '    me.tipo_mesa, me.prioridad, me.id_taller, '
+        . '    COALESCE(cat.id_materia, p.id_materia) AS id_materia, '
+        . '    COALESCE(cat.id_curso, p.materia_id_curso) AS id_curso, '
+        . '    mat.materia, doc.docente '
+        . 'FROM mesas me '
+        . 'LEFT JOIN previas p ON p.id_previa = me.id_previa '
+        . 'LEFT JOIN catedras cat ON cat.id_catedra = me.id_catedra '
+        . 'LEFT JOIN materias mat ON mat.id_materia = COALESCE(cat.id_materia, p.id_materia) '
+        . 'LEFT JOIN docentes doc ON doc.id_docente = me.id_docente '
+        . 'WHERE me.numero_mesa = ? '
+        . 'ORDER BY me.id_mesa ASC'
+    );
+    $stmt->execute([$numeroDestino]);
+    $filasDestino = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    if (count($filasDestino) === 0) {
+        throw new RuntimeException('No se encontraron registros base dentro del número de mesa destino.');
+    }
+
+    $mejor = null;
+    $mejorScore = PHP_INT_MAX;
+
+    foreach ($filasDestino as $fila) {
+        $idMateria = (int)($fila['id_materia'] ?? 0);
+        $idCurso = (int)($fila['id_curso'] ?? 0);
+        $idDocente = (int)($fila['id_docente'] ?? 0);
+        $idCatedra = (int)($fila['id_catedra'] ?? 0);
+
+        $score = 0;
+
+        if ($idMateria <= 0 || !isset($idsMateriaOrigen[$idMateria])) {
+            $score += 100;
+        }
+
+        if ($idCurso <= 0 || !isset($idsCursoOrigen[$idCurso])) {
+            $score += 10;
+        }
+
+        if ($idDocente <= 0) {
+            $score += 1000;
+        }
+
+        if ($idCatedra <= 0) {
+            $score += 1000;
+        }
+
+        if ($score < $mejorScore) {
+            $mejor = $fila;
+            $mejorScore = $score;
+        }
+    }
+
+    if (!$mejor || (int)($mejor['id_docente'] ?? 0) <= 0 || (int)($mejor['id_catedra'] ?? 0) <= 0) {
+        throw new RuntimeException('El número de mesa destino no tiene docente/cátedra válida para recibir la previa.');
+    }
+
+    $tipoMesa = trim((string)($mejor['tipo_mesa'] ?? 'simple'));
+    if (!in_array($tipoMesa, ['simple', 'taller', 'correlativa'], true)) {
+        $tipoMesa = 'simple';
+    }
+
+    return [
+        'id_mesa_modelo' => (int)($mejor['id_mesa'] ?? 0),
+        'numero_mesa' => $numeroDestino,
+        'id_docente' => (int)$mejor['id_docente'],
+        'docente' => trim((string)($mejor['docente'] ?? ('Docente ' . (int)$mejor['id_docente']))),
+        'id_catedra' => (int)$mejor['id_catedra'],
+        'id_materia' => (int)($mejor['id_materia'] ?? 0),
+        'id_curso' => (int)($mejor['id_curso'] ?? 0),
+        'materia' => trim((string)($mejor['materia'] ?? '')),
+        'tipo_mesa' => $tipoMesa,
+        'prioridad' => (int)($mejor['prioridad'] ?? 0),
+        'id_taller' => $mejor['id_taller'] !== null ? (int)$mejor['id_taller'] : null,
+    ];
+}
+
+function mesas_editar_persona_armar_detalle_movimiento_destino(array $filas, int $numeroOrigen, int $numeroDestino, array $modeloDestino): array
+{
+    $filaBase = $filas[0] ?? [];
+    $idPrevia = (int)($filaBase['id_previa'] ?? 0);
+    $dni = trim((string)($filaBase['dni'] ?? ''));
+    $alumno = trim((string)($filaBase['alumno'] ?? ''));
+    $idDocente = (int)($modeloDestino['id_docente'] ?? 0);
+    $docente = trim((string)($modeloDestino['docente'] ?? ('Docente ' . $idDocente)));
+
+    $detalle = [
+        // Se excluye el número origen porque la previa sale de ahí, y el número destino porque entra dentro de ese mismo número.
+        // Esto evita confundir el movimiento individual de una previa con el movimiento completo del número de mesa.
+        'numeros' => array_values(array_unique([$numeroOrigen, $numeroDestino])),
+        'ids_mesa' => [],
+        'ids_previa' => $idPrevia > 0 ? [$idPrevia] : [],
+        'docentes' => $idDocente > 0 ? [$idDocente => $docente] : [],
+        'dnis' => $dni !== '' ? [$dni => ($alumno ?: $dni)] : [],
+        'registros' => [],
+        'dni_numeros' => $dni !== '' ? [$dni => [$numeroDestino => true]] : [],
+    ];
+
+    $detalle['registros'][] = [
+        'id_mesa' => 0,
+        'numero_mesa' => $numeroDestino,
+        'id_previa' => $idPrevia,
+        'id_docente' => $idDocente,
+        'docente' => $docente,
+        'dni' => $dni,
+        'alumno' => $alumno,
+        'id_materia' => (int)($modeloDestino['id_materia'] ?? 0),
+        'id_curso' => (int)($modeloDestino['id_curso'] ?? 0),
+        'materia' => trim((string)($modeloDestino['materia'] ?? '')),
+        'tipo_mesa' => (string)($modeloDestino['tipo_mesa'] ?? 'simple'),
+        'prioridad' => (int)($modeloDestino['prioridad'] ?? 0),
+    ];
+
+    return $detalle;
+}
+
 function mesas_editar_persona_validar_movimiento(PDO $pdo, int $numeroOrigen, int $idPrevia, int $numeroDestino): array
 {
     if ($numeroOrigen === $numeroDestino) {
@@ -310,7 +447,8 @@ function mesas_editar_persona_validar_movimiento(PDO $pdo, int $numeroOrigen, in
 
     $errores = [];
     $advertencias = [];
-    $detalle = mesas_editar_persona_armar_detalle_movimiento($filas, $numeroOrigen);
+    $modeloDestino = mesas_editar_persona_obtener_modelo_destino($pdo, $numeroDestino, $filas);
+    $detalle = mesas_editar_persona_armar_detalle_movimiento_destino($filas, $numeroOrigen, $numeroDestino, $modeloDestino);
 
     $errores = array_merge($errores, mesas_editar_validar_docentes($pdo, $detalle, $fechaDestino, $idTurnoDestino));
     $errores = array_merge($errores, mesas_editar_validar_correlativas($pdo, $detalle, $fechaDestino, $idTurnoDestino));
@@ -339,11 +477,33 @@ function mesas_editar_persona_validar_movimiento(PDO $pdo, int $numeroOrigen, in
         $errores[] = 'La previa seleccionada ya existe dentro del número de mesa destino.';
     }
 
+    $stmtDuplicadaCatedra = $pdo->prepare(''
+        . 'SELECT COUNT(*) '
+        . 'FROM mesas '
+        . 'WHERE id_previa = ? '
+        . '  AND id_catedra = ? '
+        . '  AND fecha_mesa = ? '
+        . '  AND id_turno = ? '
+        . '  AND NOT (numero_mesa = ? AND id_previa = ?)'
+    );
+    $stmtDuplicadaCatedra->execute([
+        $idPrevia,
+        (int)$modeloDestino['id_catedra'],
+        $fechaDestino,
+        $idTurnoDestino,
+        $numeroOrigen,
+        $idPrevia,
+    ]);
+    if ((int)$stmtDuplicadaCatedra->fetchColumn() > 0) {
+        $errores[] = 'La previa seleccionada ya está vinculada a esa cátedra en la misma fecha y turno.';
+    }
+
     return [
         'valido' => count($errores) === 0,
         'errores' => array_values(array_unique($errores)),
         'advertencias' => $advertencias,
         'meta_destino' => $metaDestino,
+        'modelo_destino' => $modeloDestino,
     ];
 }
 
@@ -475,28 +635,49 @@ function mesas_editar_persona_mover_previa(PDO $pdo, int $numeroOrigen, int $idP
     }
 
     $metaDestino = $validacion['meta_destino'];
-    $stmt = $pdo->prepare(''
-        . 'UPDATE mesas '
-        . 'SET numero_mesa = ?, fecha_mesa = ?, id_turno = ?, estado = IF(estado = "observada", estado, "borrador") '
-        . 'WHERE numero_mesa = ? AND id_previa = ?'
+    $modeloDestino = $validacion['modelo_destino'];
+
+    $stmtDelete = $pdo->prepare('DELETE FROM mesas WHERE numero_mesa = ? AND id_previa = ?');
+    $stmtDelete->execute([$numeroOrigen, $idPrevia]);
+    $eliminadas = $stmtDelete->rowCount();
+
+    if ($eliminadas <= 0) {
+        throw new RuntimeException('No se pudo quitar la previa del número de mesa origen.');
+    }
+
+    $stmtInsert = $pdo->prepare(''
+        . 'INSERT INTO mesas '
+        . '    (numero_mesa, prioridad, tipo_mesa, id_taller, id_catedra, id_previa, id_docente, fecha_mesa, id_turno, estado, observacion) '
+        . 'VALUES '
+        . '    (?, ?, ?, ?, ?, ?, ?, ?, ?, "borrador", NULL)'
     );
-    $stmt->execute([
+    $stmtInsert->execute([
         $numeroDestino,
-        $metaDestino['fecha_mesa'],
-        $metaDestino['id_turno'],
-        $numeroOrigen,
+        (int)$modeloDestino['prioridad'],
+        (string)$modeloDestino['tipo_mesa'],
+        $modeloDestino['id_taller'],
+        (int)$modeloDestino['id_catedra'],
         $idPrevia,
+        (int)$modeloDestino['id_docente'],
+        substr((string)$metaDestino['fecha_mesa'], 0, 10),
+        (int)$metaDestino['id_turno'],
     ]);
 
-    $actualizadas = $stmt->rowCount();
+    $insertadas = $stmtInsert->rowCount();
     mesas_editar_persona_recalcular_numero($pdo, $numeroOrigen);
     mesas_editar_persona_recalcular_numero($pdo, $numeroDestino);
 
     return [
         'movido' => true,
+        'modo' => 'previa_individual',
         'validacion' => $validacion,
-        'filas_actualizadas' => $actualizadas,
+        'filas_eliminadas_origen' => $eliminadas,
+        'filas_insertadas_destino' => $insertadas,
+        'filas_actualizadas' => $insertadas,
         'numero_origen' => $numeroOrigen,
         'numero_destino' => $numeroDestino,
+        'docente_destino' => $modeloDestino['docente'],
+        'id_docente_destino' => $modeloDestino['id_docente'],
+        'id_catedra_destino' => $modeloDestino['id_catedra'],
     ];
 }

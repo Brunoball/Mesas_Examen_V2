@@ -57,6 +57,19 @@
   color: rgba(255, 255, 255, 0.92);
 }
 
+
+.persona-help-line {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 8px !important;
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: #dbeafe !important;
+  background: rgba(255, 255, 255, 0.13);
+  font-size: 13px !important;
+  font-weight: 800;
+}
+
 .persona-close {
   border: 0;
   background: transparent;

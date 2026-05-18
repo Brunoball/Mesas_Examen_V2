@@ -126,11 +126,6 @@ function Dashbord() {
             <span>Año {texto(periodo.anio_actual, new Date().getFullYear())}</span>
             <strong>{texto(periodo.rango_armado?.label, "Sin armado")}</strong>
           </div>
-
-          <button type="button" className="dashbord-btn dashbord-btn--ghost" onClick={recargar}>
-            <FontAwesomeIcon icon={faRotateRight} spin={loading} />
-            Actualizar
-          </button>
         </div>
       </header>
 

@@ -55,7 +55,13 @@ const obtenerMesBaseEdicion = (item, anio, mes) => {
   return { anio: ahora.getFullYear(), mes: ahora.getMonth() + 1 };
 };
 
-const normalizar = (valor) => String(valor || "").toLowerCase().trim();
+const normalizar = (valor) =>
+  String(valor || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 
 const crearClaveSlotsEdicion = ({ tipo, item, anio, mes, fecha_inicio, fecha_fin } = {}) => {
   const tipoReal = tipo === "no_agrupada" ? "no_agrupada" : "grupo";
@@ -145,7 +151,7 @@ const grupoCoincideConBusqueda = (grupo, texto) => {
   });
 };
 
-export const useMesasExamen = () => {
+export const useMesasExamen = ({ onToast } = {}) => {
   const [busqueda, setBusqueda] = useState("");
   const [tab, setTab] = useState("grupos-finales");
 
@@ -214,6 +220,42 @@ export const useMesasExamen = () => {
   const [agrupando, setAgrupando] = useState(false);
   const [error, setError] = useState("");
 
+  const mostrarToast = useCallback((tipo = "exito", mensaje = "Operación realizada con éxito.", duracion = 2800) => {
+    if (typeof onToast === "function") {
+      onToast(tipo, mensaje, duracion);
+    }
+  }, [onToast]);
+
+  const cerrarModalesInternosEdicion = useCallback(() => {
+    setModalPreviasPersonaAbierto(false);
+    setNumeroPersona(null);
+    setPreviasPersona(null);
+    setErrorPersona("");
+
+    setModalMoverPersonaAbierto(false);
+    setPreviaPersonaSeleccionada(null);
+    setDestinosPersona(null);
+    setErrorMoverPersona("");
+
+    setModalEliminarPersonaAbierto(false);
+    setPreviaPersonaEliminar(null);
+
+    setModalMasAbierto(false);
+    setNumeroMas(null);
+    setPreviasMas(null);
+    setErrorMas("");
+
+    setModalFlechasAbierto(false);
+    setNumeroFlechas(null);
+    setDestinosFlechas(null);
+    setErrorFlechas("");
+
+    setModalAgregarNumeroAbierto(false);
+    setGrupoAgregarNumero(null);
+    setOpcionesAgregarNumero(null);
+    setErrorAgregarNumero("");
+  }, []);
+
   const cargarMesas = useCallback(async () => {
     setCargando(true);
     setError("");
@@ -280,6 +322,7 @@ export const useMesasExamen = () => {
 
       await cargarMesas();
       setTab("grupos-finales");
+      mostrarToast("exito", "Grupos finales generados con éxito.");
 
       return response;
     } catch (err) {
@@ -288,7 +331,7 @@ export const useMesasExamen = () => {
     } finally {
       setAgrupando(false);
     }
-  }, [cargarMesas]);
+  }, [cargarMesas, mostrarToast]);
 
   const crearMesas = useCallback(
     async (payload) => {
@@ -314,6 +357,7 @@ export const useMesasExamen = () => {
         setTab("grupos-finales");
 
         await cargarMesas();
+        mostrarToast("exito", "Armado de mesas creado con éxito.");
 
         return response;
       } catch (err) {
@@ -323,7 +367,7 @@ export const useMesasExamen = () => {
         setArmando(false);
       }
     },
-    [cargarMesas]
+    [cargarMesas, mostrarToast]
   );
 
   const eliminarBorrador = useCallback(async () => {
@@ -349,12 +393,13 @@ export const useMesasExamen = () => {
       });
 
       await cargarMesas();
+      mostrarToast("exito", "Armado eliminado con éxito.");
     } catch (err) {
       setError(err.message || "Error al eliminar el armado actual.");
     } finally {
       setArmando(false);
     }
-  }, [cargarMesas]);
+  }, [cargarMesas, mostrarToast]);
 
 
   const cargarSlotsEdicion = useCallback(async ({ item = grupoEdicion, tipo = tipoEdicion, anio, mes, fecha_inicio, fecha_fin } = {}) => {
@@ -595,11 +640,9 @@ export const useMesasExamen = () => {
         numero_destino: numeroDestino,
       });
 
-      setModalMoverPersonaAbierto(false);
-      setPreviaPersonaSeleccionada(null);
-      setDestinosPersona(null);
-      await cargarPreviasPersona(numeroOrigen);
+      cerrarModalesInternosEdicion();
       await recargarGrupoEdicion();
+      mostrarToast("exito", "Previa movida con éxito.");
       return response;
     } catch (err) {
       setErrorMoverPersona(err.message || "No se pudo mover la previa.");
@@ -607,7 +650,7 @@ export const useMesasExamen = () => {
     } finally {
       setMoviendoPersona(false);
     }
-  }, [previaPersonaSeleccionada, numeroPersona, cargarPreviasPersona, recargarGrupoEdicion]);
+  }, [previaPersonaSeleccionada, numeroPersona, recargarGrupoEdicion, cerrarModalesInternosEdicion, mostrarToast]);
 
   const abrirEliminarPersona = useCallback((previa) => {
     const numeroMesa = Number(previa?.numero_mesa || numeroPersona?.numero_mesa || numeroPersona);
@@ -634,10 +677,9 @@ export const useMesasExamen = () => {
 
     try {
       const response = await eliminarPreviaMesa({ numero_mesa: numeroMesa, id_previa: idPrevia });
-      setModalEliminarPersonaAbierto(false);
-      setPreviaPersonaEliminar(null);
-      await cargarPreviasPersona(numeroMesa);
+      cerrarModalesInternosEdicion();
       await recargarGrupoEdicion();
+      mostrarToast("exito", "Estudiante quitado de la mesa con éxito.");
       return response;
     } catch (err) {
       setErrorPersona(err.message || "No se pudo quitar la previa del número de mesa.");
@@ -645,7 +687,7 @@ export const useMesasExamen = () => {
     } finally {
       setEliminandoPersona(false);
     }
-  }, [previaPersonaEliminar, numeroPersona, cargarPreviasPersona, recargarGrupoEdicion]);
+  }, [previaPersonaEliminar, numeroPersona, recargarGrupoEdicion, cerrarModalesInternosEdicion, mostrarToast]);
 
 
   const cargarPreviasMas = useCallback(async (numeroMesa) => {
@@ -700,8 +742,9 @@ export const useMesasExamen = () => {
 
     try {
       const response = await agregarPreviaMas({ numero_mesa: numeroMesa, id_previa: idPrevia });
-      await cargarPreviasMas(numeroMesa);
+      cerrarModalesInternosEdicion();
       await recargarGrupoEdicion();
+      mostrarToast("exito", "Estudiante agregado a la mesa con éxito.");
       return response;
     } catch (err) {
       setErrorMas(err.message || "No se pudo agregar la previa a la mesa.");
@@ -709,7 +752,7 @@ export const useMesasExamen = () => {
     } finally {
       setAgregandoMas(false);
     }
-  }, [numeroMas, cargarPreviasMas, recargarGrupoEdicion]);
+  }, [numeroMas, recargarGrupoEdicion, cerrarModalesInternosEdicion, mostrarToast]);
 
   const abrirMoverNumeroFlechas = useCallback(async (numero) => {
     const numeroMesa = Number(numero?.numero_mesa || numero);
@@ -765,6 +808,7 @@ export const useMesasExamen = () => {
         setGrupoEdicion(null);
       }
 
+      mostrarToast("exito", "Mesa movida con éxito.");
       return response;
     } catch (err) {
       setErrorFlechas(err.message || "No se pudo mover el número de mesa.");
@@ -772,7 +816,7 @@ export const useMesasExamen = () => {
     } finally {
       setMoviendoFlechas(false);
     }
-  }, [numeroFlechas, recargarGrupoEdicion]);
+  }, [numeroFlechas, recargarGrupoEdicion, mostrarToast]);
 
 
   const cargarOpcionesAgregarNumero = useCallback(async (grupoDestino = grupoAgregarNumero) => {
@@ -839,14 +883,12 @@ export const useMesasExamen = () => {
       await cargarMesas();
       await recargarGrupoEdicion();
 
-      if (tipo === "no_agrupada") {
-        await cargarOpcionesAgregarNumero({ numero_grupo: numeroGrupo, id_grupo: numeroGrupo });
-      } else {
-        setModalAgregarNumeroAbierto(false);
-        setGrupoAgregarNumero(null);
-        setOpcionesAgregarNumero(null);
-      }
+      setModalAgregarNumeroAbierto(false);
+      setGrupoAgregarNumero(null);
+      setOpcionesAgregarNumero(null);
+      setErrorAgregarNumero("");
 
+      mostrarToast("exito", tipo === "no_agrupada" ? "Número de mesa agregado al grupo con éxito." : "Previa agregada al grupo con éxito.");
       return response;
     } catch (err) {
       setErrorAgregarNumero(err.message || "No se pudo agregar el número al grupo.");
@@ -854,7 +896,7 @@ export const useMesasExamen = () => {
     } finally {
       setAgregandoNumero(false);
     }
-  }, [grupoAgregarNumero, grupoEdicion, cargarMesas, recargarGrupoEdicion, cargarOpcionesAgregarNumero]);
+  }, [grupoAgregarNumero, grupoEdicion, cargarMesas, recargarGrupoEdicion, mostrarToast]);
 
 
   const guardarEdicionProgramacion = useCallback(async (payload) => {
@@ -866,6 +908,9 @@ export const useMesasExamen = () => {
       setGrupoEdicion(response?.data?.grupo || null);
       await cargarMesas();
       setModalEditarAbierto(false);
+      setGrupoEdicion(null);
+      setSlotsEdicion(null);
+      mostrarToast("exito", "Mesa editada con éxito.");
       return response;
     } catch (err) {
       setErrorEdicion(err.message || "Error al guardar los cambios de la mesa.");
@@ -873,7 +918,7 @@ export const useMesasExamen = () => {
     } finally {
       setGuardandoEdicion(false);
     }
-  }, [cargarMesas]);
+  }, [cargarMesas, mostrarToast]);
 
 
   const crearGrupoUnicoDesdeNoAgrupada = useCallback(async (payload) => {
@@ -887,6 +932,8 @@ export const useMesasExamen = () => {
       setTipoEdicion("grupo");
       setTab("grupos-finales");
       setModalEditarAbierto(false);
+      setSlotsEdicion(null);
+      mostrarToast("exito", "Mesa movida a mesas agrupadas con éxito.");
       return response;
     } catch (err) {
       setErrorEdicion(err.message || "Error al crear el grupo único desde la mesa no agrupada.");
@@ -894,7 +941,7 @@ export const useMesasExamen = () => {
     } finally {
       setGuardandoEdicion(false);
     }
-  }, [cargarMesas]);
+  }, [cargarMesas, mostrarToast]);
 
   const abrirConfirmarEliminarMesa = useCallback((payload = {}) => {
     const esNoAgrupada = payload?.tipo === "no_agrupada";
@@ -995,6 +1042,14 @@ export const useMesasExamen = () => {
 
       setModalEliminarEdicionAbierto(false);
       setTargetEliminarEdicion(null);
+      mostrarToast(
+        "exito",
+        targetEliminarEdicion.modo === "numero_grupo"
+          ? "Número de mesa quitado del grupo con éxito."
+          : targetEliminarEdicion.modo === "no_agrupada"
+            ? "Mesa no agrupada eliminada con éxito."
+            : "Grupo de mesas eliminado con éxito."
+      );
       return response;
     } catch (err) {
       setErrorEdicion(err.message || "Error al eliminar la mesa.");
@@ -1003,7 +1058,7 @@ export const useMesasExamen = () => {
       setEliminandoEdicion(false);
       setGuardandoEdicion(false);
     }
-  }, [targetEliminarEdicion, cargarMesas]);
+  }, [targetEliminarEdicion, cargarMesas, mostrarToast]);
 
   const eliminarMesaDesdeEdicion = abrirConfirmarEliminarMesa;
 
@@ -1014,13 +1069,14 @@ export const useMesasExamen = () => {
 
   const gruposFiltrados = useMemo(() => {
     const texto = normalizar(busqueda);
+    const terminos = texto.split(" ").filter(Boolean);
     const base = tab === "no-agrupadas" ? [...noAgrupadas] : [...gruposFinales];
 
-    if (!texto) {
+    if (terminos.length === 0) {
       return base;
     }
 
-    return base.filter((item) => grupoCoincideConBusqueda(item, texto));
+    return base.filter((item) => terminos.every((termino) => grupoCoincideConBusqueda(item, termino)));
   }, [busqueda, gruposFinales, noAgrupadas, tab]);
 
   const totalGrupos = gruposFinales.length;

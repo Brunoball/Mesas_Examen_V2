@@ -36,9 +36,10 @@ const ModalMoverPreviaMesa = ({ abierto, previa, destinosData, cargando, moviend
       <div className="persona-modal persona-modal-mover">
         <header className="persona-modal-header">
           <div>
-            <h3>Mover previa de {texto(previa?.alumno)}</h3>
+            <h3>Mover solo esta previa de {texto(previa?.alumno)}</h3>
             <p>Materia: <strong>{texto(previa?.materia)}</strong></p>
             <p>Mesa actual: <strong>N° {texto(previa?.numero_mesa)}</strong></p>
+            <p className="persona-help-line">Esta acción mueve únicamente este alumno/previa. No mueve el número de mesa completo.</p>
             {destinosData?.area && <p>Área destino: <strong>{destinosData.area}</strong></p>}
           </div>
           <button type="button" className="persona-close" onClick={onClose} aria-label="Cerrar" disabled={moviendo}>
@@ -120,7 +121,7 @@ const ModalMoverPreviaMesa = ({ abierto, previa, destinosData, cargando, moviend
             onClick={() => onConfirm(destinoSeleccionado)}
           >
             <FontAwesomeIcon icon={moviendo ? faSpinner : faCheck} spin={moviendo} />
-            Mover previa
+            Mover solo esta previa
           </button>
         </footer>
       </div>
