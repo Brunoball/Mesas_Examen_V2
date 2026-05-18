@@ -12,8 +12,8 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 import "../../Global/Global_css/Global_Modals.css";
-import "./ModalCorrelativa.css";
 import "./ModalMaterias.css";
+import "./ModalCorrelativa.css";
 
 const nuevaRelacionVacia = () => ({
   id_curso_posterior: "",
@@ -683,20 +683,23 @@ const ModalCorrelativa = ({
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="modal-corr-header">
-          <div>
+        <div className="gm-modal__header modal-corr-header">
+          <div className="gm-modal__headIcon modal-corr-icon" aria-hidden="true">
+            <FontAwesomeIcon icon={faDiagramProject} />
+          </div>
+
+          <div className="gm-modal__headText">
             <h2 id="correlativa-modal-title">
-              <FontAwesomeIcon icon={faDiagramProject} />
               {esEdicion ? "Editar correlatividad" : "Nueva correlatividad"}
             </h2>
 
             <p>
-              Las materias se cargan desde al seleccionar
-              el curso, usando cátedras como fuente real.
+              Las materias se cargan al seleccionar el curso, usando cátedras
+              como fuente real.
             </p>
           </div>
 
-          <button type="button" className="modal-corr-close" onClick={onClose}>
+          <button type="button" className="gm-modal__close modal-corr-close" onClick={onClose} aria-label="Cerrar modal">
             <FontAwesomeIcon icon={faTimes} />
           </button>
         </div>
@@ -795,7 +798,7 @@ const ModalCorrelativa = ({
                   {!esEdicion && (
                     <button
                       type="button"
-                      className="modal-corr-add"
+                      className="gm-btn gm-btn--soft modal-corr-add"
                       onClick={agregarRelacion}
                     >
                       <FontAwesomeIcon icon={faPlus} />
@@ -1025,13 +1028,13 @@ const ModalCorrelativa = ({
         </div>
 
         <div className="gm-modal__actions modal-corr-actions">
-          <button type="button" className="btn-corr ghost" onClick={onClose}>
+          <button type="button" className="gm-btn gm-btn--ghost btn-corr" onClick={onClose}>
             Cancelar
           </button>
 
           <button
             type="button"
-            className="btn-corr primary"
+            className="gm-btn gm-btn--primary btn-corr"
             onClick={guardar}
             disabled={cargandoAuto}
           >

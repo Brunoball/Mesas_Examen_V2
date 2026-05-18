@@ -231,11 +231,11 @@ const ModalMateria = ({ item, areas = [], onClose, onSave }) => {
         </div>
 
         <div className="gm-modal__actions modal-actions materias-editor-actions">
-          <button type="button" className="gm-btn gm-btn--ghost materias-btn ghost" onClick={onClose}>
+          <button type="button" className="gm-btn gm-btn--ghost" onClick={onClose}>
             Cancelar
           </button>
 
-          <button type="submit" className="gm-btn gm-btn--primary materias-btn primary">
+          <button type="submit" className="gm-btn gm-btn--primary">
             <FontAwesomeIcon icon={faSave} />
             Guardar materia
           </button>

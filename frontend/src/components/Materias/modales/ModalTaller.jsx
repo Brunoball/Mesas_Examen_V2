@@ -11,8 +11,8 @@ import {
   faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 import "../../Global/Global_css/Global_Modals.css";
-import "./ModalTaller.css";
 import "./ModalMaterias.css";
+import "./ModalTaller.css";
 
 const TAB_DIVISIONES = "divisiones";
 const TAB_CATEDRAS = "catedras";
@@ -79,9 +79,11 @@ const ModalTaller = ({
 
     const handleKeyDown = (event) => {
       if (event.key !== "Escape") return;
+
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation?.();
+
       if (!guardando) onClose?.();
     };
 
@@ -145,6 +147,7 @@ const ModalTaller = ({
         }
       } catch (error) {
         console.error(error);
+
         if (!cancelado) {
           setCatedrasCurso([]);
           setErrorCatedras(
@@ -253,11 +256,9 @@ const ModalTaller = ({
 
   const catedrasSeleccionadasTexto = useMemo(() => {
     if (!idCurso) return "Primero seleccioná el curso/año del taller.";
-    if (idsDivisiones.length === 0)
-      return "Ahora seleccioná una o varias divisiones.";
+    if (idsDivisiones.length === 0) return "Ahora seleccioná una o varias divisiones.";
     if (cargandoCatedras) return "Cargando cátedras reales...";
-    if (seleccionadas.length === 0)
-      return "No seleccionaste cátedras todavía.";
+    if (seleccionadas.length === 0) return "No seleccionaste cátedras todavía.";
 
     return `${seleccionadas.length} cátedra${
       seleccionadas.length === 1 ? "" : "s"
@@ -324,12 +325,8 @@ const ModalTaller = ({
   };
 
   const limpiarVisibles = () => {
-    const visibles = new Set(
-      catedrasFiltradas.map((m) => Number(m.id_catedra))
-    );
-    setSeleccionadas((prev) =>
-      prev.filter((id) => !visibles.has(Number(id)))
-    );
+    const visibles = new Set(catedrasFiltradas.map((m) => Number(m.id_catedra)));
+    setSeleccionadas((prev) => prev.filter((id) => !visibles.has(Number(id))));
   };
 
   const limpiarTodo = () => {
@@ -401,17 +398,12 @@ const ModalTaller = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="gm-modal__header materias-modal-header">
-          <div
-            className="gm-modal__headIcon materias-modal-icon"
-            aria-hidden="true"
-          >
+          <div className="gm-modal__headIcon materias-modal-icon" aria-hidden="true">
             <FontAwesomeIcon icon={faFlask} />
           </div>
 
           <div className="gm-modal__headText">
-            <h2 id="taller-modal-title">
-              {item ? "Editar taller" : "Nuevo taller"}
-            </h2>
+            <h2 id="taller-modal-title">{item ? "Editar taller" : "Nuevo taller"}</h2>
             <p>
               El taller se guarda con cátedras reales. La materia, el curso y la
               división se obtienen desde cada cátedra.
@@ -428,302 +420,307 @@ const ModalTaller = ({
           </button>
         </div>
 
-        <div className="materias-modal-scroll">
-          <div className="form-grid three taller-main-grid">
-            <label className="form-label">
-              Nombre del taller
-              <input
-                value={taller}
-                onChange={(e) => setTaller(e.target.value.toUpperCase())}
-                placeholder="EJ: TALLER DIBUJO TÉCNICO"
-                autoFocus
-              />
-            </label>
+        <div className="materias-modal-scroll taller-modal-scroll">
+          <div className="materias-taller-layout">
+            <div className="form-grid three taller-main-grid">
+              <label className="form-label">
+                Nombre del taller
+                <input
+                  value={taller}
+                  onChange={(e) => setTaller(e.target.value.toUpperCase())}
+                  placeholder="EJ: TALLER DIBUJO TÉCNICO"
+                  autoFocus
+                />
+              </label>
 
-            <label className="form-label">
-              Curso / año del taller
-              <select
-                value={idCurso}
-                onChange={(e) => cambiarCurso(e.target.value)}
-              >
-                <option value="">Seleccionar curso</option>
-                {cursosActivos.map((c) => (
-                  <option key={c.id_curso} value={c.id_curso}>
-                    {c.nombre_curso}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="check-inline top-check">
-              <input
-                type="checkbox"
-                checked={activo}
-                onChange={(e) => setActivo(e.target.checked)}
-              />
-              Taller activo
-            </label>
-          </div>
-
-          <div className="gm-tabs gm-tabs--google materias-modal-tabs materias-taller-tabs" role="tablist" aria-label="Secciones del taller">
-            <button
-              type="button"
-              role="tab"
-              id="taller-tab-divisiones"
-              aria-controls="taller-panel-divisiones"
-              aria-selected={pestaniaActiva === TAB_DIVISIONES}
-              className={`gm-tab${pestaniaActiva === TAB_DIVISIONES ? " is-active" : ""}`}
-              onClick={() => setPestaniaActiva(TAB_DIVISIONES)}
-            >
-              <FontAwesomeIcon icon={faFlask} />
-              <span>Divisiones</span>
-              {idsDivisiones.length > 0 && <span className="gm-tab__badge">{idsDivisiones.length}</span>}
-            </button>
-
-            <button
-              type="button"
-              role="tab"
-              id="taller-tab-catedras"
-              aria-controls="taller-panel-catedras"
-              aria-selected={pestaniaActiva === TAB_CATEDRAS}
-              className={`gm-tab${pestaniaActiva === TAB_CATEDRAS ? " is-active" : ""}`}
-              onClick={() => setPestaniaActiva(TAB_CATEDRAS)}
-            >
-              <FontAwesomeIcon icon={faBook} />
-              <span>Cátedras</span>
-              {seleccionadas.length > 0 && <span className="gm-tab__badge">{seleccionadas.length}</span>}
-            </button>
-          </div>
-
-          {pestaniaActiva === TAB_DIVISIONES && (
-            <div className="taller-box materias-taller-panel" id="taller-panel-divisiones" role="tabpanel" aria-labelledby="taller-tab-divisiones">
-              <div className="taller-box-title-row">
-                <div>
-                  <h4>Divisiones del taller</h4>
-                <p className="muted">{divisionesTexto}</p>
-              </div>
-
-              <div className="taller-bulk-actions compact-actions">
-                <button
-                  type="button"
-                  className="materias-btn ghost"
-                  onClick={seleccionarTodasDivisiones}
-                  disabled={!idCurso || divisionesActivas.length === 0}
-                >
-                  Todas
-                </button>
-
-                <button
-                  type="button"
-                  className="materias-btn ghost"
-                  onClick={limpiarDivisiones}
-                  disabled={idsDivisiones.length === 0}
-                >
-                  Limpiar
-                </button>
-              </div>
-            </div>
-
-            {!idCurso ? (
-              <div className="muted asignar-empty">
-                Seleccioná el curso para habilitar las divisiones.
-              </div>
-            ) : (
-              <div className="materias-check-grid divisiones-check-grid">
-                {divisionesActivas.map((d) => {
-                  const id = Number(d.id_division);
-                  const checked = idsDivisiones.map(Number).includes(id);
-
-                  return (
-                    <label
-                      key={d.id_division}
-                      className={`materia-check ${checked ? "checked" : ""}`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleDivision(id)}
-                      />
-                      <span>
-                        <strong>{d.nombre_division}</strong>
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-            )}
-            </div>
-          )}
-
-          {pestaniaActiva === TAB_CATEDRAS && (
-            <div className="taller-box materias-taller-panel" id="taller-panel-catedras" role="tabpanel" aria-labelledby="taller-tab-catedras">
-              <div className="taller-box-title-row">
-                <div>
-                  <h4>Cátedras del taller</h4>
-                <p className="muted">{catedrasSeleccionadasTexto}</p>
-              </div>
-            </div>
-
-            {errorCatedras && (
-              <div className="modal-inline-error">{errorCatedras}</div>
-            )}
-
-            <div className="taller-toolbar">
-              <label className="form-label mini">
-                Filtrar por área
-                <select
-                  value={idArea}
-                  onChange={(e) => setIdArea(e.target.value)}
-                  disabled={
-                    !idCurso ||
-                    idsDivisiones.length === 0 ||
-                    cargandoCatedras
-                  }
-                >
-                  <option value="">Todas las áreas</option>
-                  {areas.map((a) => (
-                    <option key={a.id_area} value={a.id_area}>
-                      {a.area}
+              <label className="form-label">
+                Curso / año del taller
+                <select value={idCurso} onChange={(e) => cambiarCurso(e.target.value)}>
+                  <option value="">Seleccionar curso</option>
+                  {cursosActivos.map((c) => (
+                    <option key={c.id_curso} value={c.id_curso}>
+                      {c.nombre_curso}
                     </option>
                   ))}
                 </select>
               </label>
 
-              <label className="form-label mini taller-search-label">
-                Buscar cátedra
-                <span className="taller-search-wrap">
-                  <input
-                    value={busqueda}
-                    onChange={(e) => setBusqueda(e.target.value)}
-                    placeholder={
-                      idCurso && idsDivisiones.length > 0
-                        ? "Buscar por materia, área, división o docente"
-                        : "Primero seleccioná curso y división"
-                    }
-                    disabled={
-                      !idCurso ||
-                      idsDivisiones.length === 0 ||
-                      cargandoCatedras
-                    }
-                  />
-                  <FontAwesomeIcon icon={faMagnifyingGlass} />
-                </span>
+              <label className="check-inline top-check">
+                <input
+                  type="checkbox"
+                  checked={activo}
+                  onChange={(e) => setActivo(e.target.checked)}
+                />
+                Taller activo
               </label>
             </div>
 
-            <div className="taller-bulk-actions">
+            <div
+              className="gm-tabs gm-tabs--google materias-modal-tabs materias-taller-tabs"
+              role="tablist"
+              aria-label="Secciones del taller"
+            >
               <button
                 type="button"
-                className="materias-btn ghost"
-                onClick={seleccionarVisibles}
-                disabled={
-                  !idCurso ||
-                  idsDivisiones.length === 0 ||
-                  cargandoCatedras ||
-                  catedrasFiltradas.length === 0
-                }
+                role="tab"
+                id="taller-tab-divisiones"
+                aria-controls="taller-panel-divisiones"
+                aria-selected={pestaniaActiva === TAB_DIVISIONES}
+                className={`gm-tab${pestaniaActiva === TAB_DIVISIONES ? " is-active" : ""}`}
+                onClick={() => setPestaniaActiva(TAB_DIVISIONES)}
               >
-                <FontAwesomeIcon icon={faCheck} />
-                Seleccionar visibles
+                <FontAwesomeIcon icon={faFlask} />
+                <span>Divisiones</span>
+                {idsDivisiones.length > 0 && (
+                  <span className="gm-tab__badge">{idsDivisiones.length}</span>
+                )}
               </button>
 
               <button
                 type="button"
-                className="materias-btn ghost"
-                onClick={limpiarVisibles}
-                disabled={
-                  !idCurso ||
-                  idsDivisiones.length === 0 ||
-                  cargandoCatedras ||
-                  catedrasFiltradas.length === 0
-                }
+                role="tab"
+                id="taller-tab-catedras"
+                aria-controls="taller-panel-catedras"
+                aria-selected={pestaniaActiva === TAB_CATEDRAS}
+                className={`gm-tab${pestaniaActiva === TAB_CATEDRAS ? " is-active" : ""}`}
+                onClick={() => setPestaniaActiva(TAB_CATEDRAS)}
               >
-                Limpiar visibles
-              </button>
-
-              <button
-                type="button"
-                className="materias-btn ghost"
-                onClick={limpiarTodo}
-                disabled={seleccionadas.length === 0}
-              >
-                Limpiar todo
+                <FontAwesomeIcon icon={faBook} />
+                <span>Cátedras</span>
+                {seleccionadas.length > 0 && (
+                  <span className="gm-tab__badge">{seleccionadas.length}</span>
+                )}
               </button>
             </div>
 
-            {!idCurso ? (
-              <div className="muted asignar-empty">
-                Seleccioná el curso del taller para cargar las cátedras.
-              </div>
-            ) : idsDivisiones.length === 0 ? (
-              <div className="muted asignar-empty">
-                Seleccioná una o varias divisiones. Después podés seleccionar
-                las cátedras reales de cada división.
-              </div>
-            ) : cargandoCatedras ? (
-              <div className="muted asignar-empty">
-                Cargando cátedras del curso y divisiones seleccionadas...
-              </div>
-            ) : catedrasFiltradas.length === 0 ? (
-              <div className="muted asignar-empty">
-                No hay cátedras para mostrar con ese curso/división/filtro.
-              </div>
-            ) : (
-              <div className="taller-catedras-groups">
-                {catedrasAgrupadas.map((grupo) => (
-                  <div
-                    key={grupo.id_division || grupo.division}
-                    className="taller-catedras-group"
-                  >
-                    <div className="taller-group-title">
-                      División {grupo.division}
-                    </div>
-
-                    <div className="materias-check-grid">
-                      {grupo.catedras.map((m) => {
-                        const id = Number(m.id_catedra);
-                        const checked = seleccionadas.includes(id);
-
-                        return (
-                          <label
-                            key={m.id_catedra}
-                            className={`materia-check ${
-                              checked ? "checked" : ""
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => toggleCatedra(id)}
-                            />
-
-                            <span>
-                              <strong>{m.materia}</strong>
-                              {m.areas ? <small>{m.areas}</small> : null}
-                              {m.docente ? (
-                                <small>Docente: {m.docente}</small>
-                              ) : null}
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
+            {pestaniaActiva === TAB_DIVISIONES && (
+              <div
+                className="taller-box materias-taller-panel"
+                id="taller-panel-divisiones"
+                role="tabpanel"
+                aria-labelledby="taller-tab-divisiones"
+              >
+                <div className="taller-box-title-row">
+                  <div>
+                    <h4>Divisiones del taller</h4>
+                    <p className="muted">{divisionesTexto}</p>
                   </div>
-                ))}
+
+                  <div className="taller-bulk-actions compact-actions">
+                    <button
+                      type="button"
+                      className="gm-btn gm-btn--ghost"
+                      onClick={seleccionarTodasDivisiones}
+                      disabled={!idCurso || divisionesActivas.length === 0}
+                    >
+                      Todas
+                    </button>
+
+                    <button
+                      type="button"
+                      className="gm-btn gm-btn--ghost"
+                      onClick={limpiarDivisiones}
+                      disabled={idsDivisiones.length === 0}
+                    >
+                      Limpiar
+                    </button>
+                  </div>
+                </div>
+
+                {!idCurso ? (
+                  <div className="muted asignar-empty">
+                    Seleccioná el curso para habilitar las divisiones.
+                  </div>
+                ) : (
+                  <div className="materias-check-grid divisiones-check-grid">
+                    {divisionesActivas.map((d) => {
+                      const id = Number(d.id_division);
+                      const checked = idsDivisiones.map(Number).includes(id);
+
+                      return (
+                        <label
+                          key={d.id_division}
+                          className={`materia-check ${checked ? "checked" : ""}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleDivision(id)}
+                          />
+                          <span>
+                            <strong>{d.nombre_division}</strong>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
-            </div>
-          )}
+
+            {pestaniaActiva === TAB_CATEDRAS && (
+              <div
+                className="taller-box materias-taller-panel"
+                id="taller-panel-catedras"
+                role="tabpanel"
+                aria-labelledby="taller-tab-catedras"
+              >
+                <div className="taller-box-title-row">
+                  <div>
+                    <h4>Cátedras del taller</h4>
+                    <p className="muted">{catedrasSeleccionadasTexto}</p>
+                  </div>
+                </div>
+
+                {errorCatedras && (
+                  <div className="modal-inline-error">{errorCatedras}</div>
+                )}
+
+                <div className="taller-toolbar">
+                  <label className="form-label mini">
+                    Filtrar por área
+                    <select
+                      value={idArea}
+                      onChange={(e) => setIdArea(e.target.value)}
+                      disabled={!idCurso || idsDivisiones.length === 0 || cargandoCatedras}
+                    >
+                      <option value="">Todas las áreas</option>
+                      {areas.map((a) => (
+                        <option key={a.id_area} value={a.id_area}>
+                          {a.area}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="form-label mini taller-search-label">
+                    Buscar cátedra
+                    <span className="taller-search-wrap">
+                      <input
+                        value={busqueda}
+                        onChange={(e) => setBusqueda(e.target.value)}
+                        placeholder={
+                          idCurso && idsDivisiones.length > 0
+                            ? "Buscar por materia, área, división o docente"
+                            : "Primero seleccioná curso y división"
+                        }
+                        disabled={!idCurso || idsDivisiones.length === 0 || cargandoCatedras}
+                      />
+                      <FontAwesomeIcon icon={faMagnifyingGlass} />
+                    </span>
+                  </label>
+                </div>
+
+                <div className="taller-bulk-actions">
+                  <button
+                    type="button"
+                    className="gm-btn gm-btn--ghost"
+                    onClick={seleccionarVisibles}
+                    disabled={
+                      !idCurso ||
+                      idsDivisiones.length === 0 ||
+                      cargandoCatedras ||
+                      catedrasFiltradas.length === 0
+                    }
+                  >
+                    <FontAwesomeIcon icon={faCheck} />
+                    Seleccionar visibles
+                  </button>
+
+                  <button
+                    type="button"
+                    className="gm-btn gm-btn--ghost"
+                    onClick={limpiarVisibles}
+                    disabled={
+                      !idCurso ||
+                      idsDivisiones.length === 0 ||
+                      cargandoCatedras ||
+                      catedrasFiltradas.length === 0
+                    }
+                  >
+                    Limpiar visibles
+                  </button>
+
+                  <button
+                    type="button"
+                    className="gm-btn gm-btn--ghost"
+                    onClick={limpiarTodo}
+                    disabled={seleccionadas.length === 0}
+                  >
+                    Limpiar todo
+                  </button>
+                </div>
+
+                {!idCurso ? (
+                  <div className="muted asignar-empty">
+                    Seleccioná el curso del taller para cargar las cátedras.
+                  </div>
+                ) : idsDivisiones.length === 0 ? (
+                  <div className="muted asignar-empty">
+                    Seleccioná una o varias divisiones. Después podés seleccionar
+                    las cátedras reales de cada división.
+                  </div>
+                ) : cargandoCatedras ? (
+                  <div className="muted asignar-empty">
+                    Cargando cátedras del curso y divisiones seleccionadas...
+                  </div>
+                ) : catedrasFiltradas.length === 0 ? (
+                  <div className="muted asignar-empty">
+                    No hay cátedras para mostrar con ese curso/división/filtro.
+                  </div>
+                ) : (
+                  <div className="taller-catedras-groups">
+                    {catedrasAgrupadas.map((grupo) => (
+                      <div
+                        key={grupo.id_division || grupo.division}
+                        className="taller-catedras-group"
+                      >
+                        <div className="taller-group-title">
+                          División {grupo.division}
+                        </div>
+
+                        <div className="materias-check-grid">
+                          {grupo.catedras.map((m) => {
+                            const id = Number(m.id_catedra);
+                            const checked = seleccionadas.includes(id);
+
+                            return (
+                              <label
+                                key={m.id_catedra}
+                                className={`materia-check ${checked ? "checked" : ""}`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => toggleCatedra(id)}
+                                />
+
+                                <span>
+                                  <strong>{m.materia}</strong>
+                                  {m.areas ? <small>{m.areas}</small> : null}
+                                  {m.docente ? <small>Docente: {m.docente}</small> : null}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="gm-modal__actions modal-actions materias-editor-actions">
-          <button type="button" className="materias-btn ghost" onClick={onClose}>
+          <button type="button" className="gm-btn gm-btn--ghost" onClick={onClose}>
             Cancelar
           </button>
 
           <button
             type="submit"
-            className="materias-btn primary"
+            className="gm-btn gm-btn--primary"
             disabled={guardando || cargandoCatedras}
           >
             <FontAwesomeIcon icon={faSave} />

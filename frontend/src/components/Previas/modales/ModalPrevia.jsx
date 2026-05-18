@@ -63,26 +63,33 @@ function claveMaterias(materia) {
 
 function SelectField({ label, value, onChange, children, disabled = false }) {
   return (
-    <label className="previas-field previas-field-select">
-      <span>{label}</span>
-      <select value={value ?? ''} onChange={onChange} disabled={disabled}>
+    <label className="gm-field">
+      <select
+        className="gm-input gm-select"
+        value={value ?? ''}
+        onChange={onChange}
+        disabled={disabled}
+      >
         {children}
       </select>
+      <span className={`gm-label${value ? ' is-up' : ''}`}>{label}</span>
     </label>
   );
 }
 
 function InputField({ label, value, onChange, placeholder, type = 'text', disabled = false }) {
   return (
-    <label className="previas-field">
-      <span>{label}</span>
+    <label className={`gm-field${type === 'date' ? ' gm-field--date' : ''}`}>
       <input
+        className="gm-input"
         type={type}
         value={value ?? ''}
         onChange={onChange}
-        placeholder={placeholder}
+        placeholder=" "
+        title={placeholder || label}
         disabled={disabled}
       />
+      <span className={`gm-label${value ? ' is-up' : ''}`}>{label}</span>
     </label>
   );
 }
@@ -354,9 +361,124 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
   const titulo = editando ? 'Editar Previa' : 'Agregar Previa(s)';
   const subtitulo = editando ? 'Modificá los datos de la previa' : 'Cargá los datos del alumno y las materias previas';
 
+  const materiaPanel = materiaActual && (
+    <section className="gm-panel previas-panel">
+      <div className="gm-panel__head">
+        <div>
+          <span className="gm-panel__eyebrow">Materia previa</span>
+          <h3><FontAwesomeIcon icon={faBookOpen} /> {editando ? 'Materia' : `Materia ${tabMateria + 1}`}</h3>
+        </div>
+        {!editando && materias.length > 1 && (
+          <button
+            type="button"
+            className="gm-iconBtn gm-iconBtn--danger previas-removeMateria"
+            onClick={() => quitarMateria(tabMateria)}
+            title="Quitar materia"
+            aria-label="Quitar materia"
+          >
+            <FontAwesomeIcon icon={faTrash} />
+          </button>
+        )}
+      </div>
+
+      <div className="gm-panel__body">
+        <div className="previas-two-cols">
+          <SelectField
+            label="Materia: curso"
+            value={materiaActual.materia_id_curso}
+            onChange={(e) => actualizarMateria(tabMateria, 'materia_id_curso', e.target.value)}
+          >
+            <option value="">Seleccionar...</option>
+            {cursos.filter((c) => String(c.nombre_curso).toUpperCase() !== 'EGRESADO').map((c) => (
+              <option key={c.id_curso} value={c.id_curso}>{c.nombre_curso}</option>
+            ))}
+          </SelectField>
+
+          <SelectField
+            label="Materia: división"
+            value={materiaActual.materia_id_division}
+            onChange={(e) => actualizarMateria(tabMateria, 'materia_id_division', e.target.value)}
+          >
+            <option value="">Seleccionar...</option>
+            {divisiones.map((d) => (
+              <option key={d.id_division} value={d.id_division}>{d.nombre_division}</option>
+            ))}
+          </SelectField>
+        </div>
+
+        <SelectField
+          label="Materia"
+          value={materiaActual.id_materia}
+          onChange={(e) => actualizarMateria(tabMateria, 'id_materia', e.target.value)}
+          disabled={!materiaActual.materia_id_curso || !materiaActual.materia_id_division || cargandoMateriasActuales}
+        >
+          <option value="">{textoOpcionMateria()}</option>
+          {materiasDisponiblesPara(materiaActual).map((m) => (
+            <option key={m.id_materia} value={m.id_materia}>{m.materia}</option>
+          ))}
+        </SelectField>
+
+        {errorMateriasActuales && (
+          <div className="gm-alert gm-alert--error gm-alert--banner previas-form-error">
+            {errorMateriasActuales}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+
+  const administrativoPanel = materiaActual && (
+    <section className="gm-panel previas-panel">
+      <div className="gm-panel__head">
+        <div>
+          <span className="gm-panel__eyebrow">Administrativo</span>
+          <h3><FontAwesomeIcon icon={faLayerGroup} /> Datos de la previa</h3>
+        </div>
+        <span className="gm-panel__tag">Obligatorio</span>
+      </div>
+
+      <div className="gm-panel__body">
+        <SelectField
+          label="Condición"
+          value={materiaActual.id_condicion}
+          onChange={(e) => actualizarMateria(tabMateria, 'id_condicion', e.target.value)}
+        >
+          <option value="">Seleccionar...</option>
+          {condiciones.map((c) => (
+            <option key={c.id_condicion} value={c.id_condicion}>{c.condicion}</option>
+          ))}
+        </SelectField>
+
+        <div className="previas-two-cols">
+          <InputField
+            label="Año (previa)"
+            type="number"
+            value={materiaActual.anio}
+            onChange={(e) => actualizarMateria(tabMateria, 'anio', e.target.value)}
+          />
+          <InputField
+            label="Fecha carga"
+            type="date"
+            value={materiaActual.fecha_carga}
+            onChange={(e) => actualizarMateria(tabMateria, 'fecha_carga', e.target.value)}
+          />
+        </div>
+
+        <SelectField
+          label="Inscripción"
+          value={materiaActual.inscripcion}
+          onChange={(e) => actualizarMateria(tabMateria, 'inscripcion', e.target.value)}
+        >
+          <option value="0">No</option>
+          <option value="1">Sí</option>
+        </SelectField>
+      </div>
+    </section>
+  );
+
   const modal = (
     <div
-      className="gm-modalOverlay previas-modal-overlay previas-modal-overlay-full previas-editor-overlay"
+      className="gm-modalOverlay"
       role="presentation"
       onMouseDown={(e) => {
         e.preventDefault();
@@ -364,25 +486,25 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
       }}
     >
       <div
-        className="gm-modal gm-modal--previas previas-form-shell previas-editor-modal"
+        className="gm-modal gm-modal--docente gm-modal--previas"
         role="dialog"
         aria-modal="true"
         aria-labelledby="previas-modal-title"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <header className="gm-modal__header previas-form-hero previas-modal-header">
-          <div className="gm-modal__headIcon previas-modal-icon" aria-hidden="true">
+        <header className="gm-modal__header">
+          <div className="gm-modal__headIcon" aria-hidden="true">
             <FontAwesomeIcon icon={editando ? faEdit : faBookOpen} />
           </div>
 
-          <div className="gm-modal__headText previas-form-title">
+          <div className="gm-modal__headText">
             <h2 id="previas-modal-title">{titulo}</h2>
             <p>{subtitulo}</p>
           </div>
 
           <button
             type="button"
-            className="gm-modal__close previas-back-btn previas-modal-closeTop"
+            className="gm-modal__close"
             onClick={onCerrar}
             disabled={guardando}
             aria-label="Cerrar modal"
@@ -391,14 +513,14 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
           </button>
         </header>
 
-        <div className="gm-modal__content previas-form-body previas-editor-content">
+        <div className="gm-modal__content">
           {!editando && (
-            <div className="gm-tabs gm-tabs--google previas-modal-tabs previas-form-tabs" role="tablist" aria-label="Secciones de previas">
+            <div className="gm-tabs gm-tabs--google" role="tablist" aria-label="Secciones de previas">
               <button
                 type="button"
                 role="tab"
                 aria-selected={tabPrincipal === 'alumno'}
-                className={`gm-tab previas-form-tab ${tabPrincipal === 'alumno' ? 'active is-active' : ''}`}
+                className={`gm-tab${tabPrincipal === 'alumno' ? ' is-active' : ''}`}
                 onClick={() => setTabPrincipal('alumno')}
               >
                 <FontAwesomeIcon icon={faUserGraduate} />
@@ -408,7 +530,7 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
                 type="button"
                 role="tab"
                 aria-selected={tabPrincipal === 'materias'}
-                className={`gm-tab previas-form-tab ${tabPrincipal === 'materias' ? 'active is-active' : ''}`}
+                className={`gm-tab${tabPrincipal === 'materias' ? ' is-active' : ''}`}
                 onClick={() => setTabPrincipal('materias')}
               >
                 <FontAwesomeIcon icon={faLayerGroup} />
@@ -419,149 +541,90 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
           )}
 
           {(editando || tabPrincipal === 'alumno') && (
-            <div className={`previas-form-grid ${editando ? 'previas-form-grid-edit' : ''}`}>
-              <section className="previas-form-card previas-detail-panel">
-                <h3>Datos del alumno</h3>
-                <div className="previas-section-line" />
-                <InputField
-                  label="DNI"
-                  value={datosAlumno.dni}
-                  onChange={(e) => actualizarAlumno('dni', e.target.value.replace(/\D/g, ''))}
-                  placeholder="Ej: 40123456"
-                />
-                <InputField
-                  label="Apellido"
-                  value={datosAlumno.apellido}
-                  onChange={(e) => actualizarAlumno('apellido', normalizarMayus(e.target.value))}
-                  placeholder="Ej: PÉREZ"
-                />
-                <InputField
-                  label="Nombre"
-                  value={datosAlumno.nombre}
-                  onChange={(e) => actualizarAlumno('nombre', normalizarMayus(e.target.value))}
-                  placeholder="Ej: ANA MARÍA"
-                />
-              </section>
-
-              <section className="previas-form-card previas-detail-panel">
-                <h3>{editando ? 'Cursado' : 'Cursado Actual'}</h3>
-                <div className="previas-section-line" />
-                <div className="previas-two-cols">
-                  <SelectField
-                    label={editando ? 'Curso' : 'Curso actual'}
-                    value={datosAlumno.cursando_id_curso}
-                    onChange={(e) => actualizarAlumno('cursando_id_curso', e.target.value)}
-                  >
-                    <option value="">Seleccionar...</option>
-                    {cursos.map((c) => (
-                      <option key={c.id_curso} value={c.id_curso}>{c.nombre_curso}</option>
-                    ))}
-                  </SelectField>
-
-                  <SelectField
-                    label={editando ? 'División' : 'División actual'}
-                    value={datosAlumno.cursando_id_division}
-                    onChange={(e) => actualizarAlumno('cursando_id_division', e.target.value)}
-                    disabled={esEgresado}
-                  >
-                    <option value="">{esEgresado ? 'No aplica' : 'Seleccionar...'}</option>
-                    {divisiones.map((d) => (
-                      <option key={d.id_division} value={d.id_division}>{d.nombre_division}</option>
-                    ))}
-                  </SelectField>
+            <div className={`previas-form-grid${editando ? ' previas-form-grid-edit' : ''}`}>
+              <section className="gm-panel previas-panel">
+                <div className="gm-panel__head">
+                  <div>
+                    <span className="gm-panel__eyebrow">Ficha principal</span>
+                    <h3><FontAwesomeIcon icon={faUserGraduate} /> Datos del alumno</h3>
+                  </div>
+                  <span className="gm-panel__tag">Obligatorio</span>
                 </div>
 
-                {editando && materiaActual && (
-                  <>
-                    <div className="previas-two-cols">
-                      <SelectField
-                        label="Materia: curso"
-                        value={materiaActual.materia_id_curso}
-                        onChange={(e) => actualizarMateria(tabMateria, 'materia_id_curso', e.target.value)}
-                      >
-                        <option value="">Seleccionar...</option>
-                        {cursos.filter((c) => String(c.nombre_curso).toUpperCase() !== 'EGRESADO').map((c) => (
-                          <option key={c.id_curso} value={c.id_curso}>{c.nombre_curso}</option>
-                        ))}
-                      </SelectField>
-
-                      <SelectField
-                        label="Materia: división"
-                        value={materiaActual.materia_id_division}
-                        onChange={(e) => actualizarMateria(tabMateria, 'materia_id_division', e.target.value)}
-                      >
-                        <option value="">Seleccionar...</option>
-                        {divisiones.map((d) => (
-                          <option key={d.id_division} value={d.id_division}>{d.nombre_division}</option>
-                        ))}
-                      </SelectField>
-                    </div>
-
-                    <SelectField
-                      label="Materia"
-                      value={materiaActual.id_materia}
-                      onChange={(e) => actualizarMateria(tabMateria, 'id_materia', e.target.value)}
-                      disabled={!materiaActual.materia_id_curso || !materiaActual.materia_id_division || cargandoMateriasActuales}
-                    >
-                      <option value="">{textoOpcionMateria()}</option>
-                      {materiasDisponiblesPara(materiaActual).map((m) => (
-                        <option key={m.id_materia} value={m.id_materia}>{m.materia}</option>
-                      ))}
-                    </SelectField>
-                    {errorMateriasActuales && <div className="previas-alerta previas-alerta-error previas-form-error">{errorMateriasActuales}</div>}
-                  </>
-                )}
+                <div className="gm-panel__body">
+                  <InputField
+                    label="DNI"
+                    value={datosAlumno.dni}
+                    onChange={(e) => actualizarAlumno('dni', e.target.value.replace(/\D/g, ''))}
+                    placeholder="Ej: 40123456"
+                  />
+                  <InputField
+                    label="Apellido"
+                    value={datosAlumno.apellido}
+                    onChange={(e) => actualizarAlumno('apellido', normalizarMayus(e.target.value))}
+                    placeholder="Ej: PÉREZ"
+                  />
+                  <InputField
+                    label="Nombre"
+                    value={datosAlumno.nombre}
+                    onChange={(e) => actualizarAlumno('nombre', normalizarMayus(e.target.value))}
+                    placeholder="Ej: ANA MARÍA"
+                  />
+                </div>
               </section>
 
-              {editando && materiaActual && (
-                <section className="previas-form-card previas-detail-panel">
-                  <h3>Administrativo</h3>
-                  <div className="previas-section-line" />
-                  <SelectField
-                    label="Condición"
-                    value={materiaActual.id_condicion}
-                    onChange={(e) => actualizarMateria(tabMateria, 'id_condicion', e.target.value)}
-                  >
-                    <option value="">Seleccionar...</option>
-                    {condiciones.map((c) => (
-                      <option key={c.id_condicion} value={c.id_condicion}>{c.condicion}</option>
-                    ))}
-                  </SelectField>
-                  <InputField
-                    label="Año (previa)"
-                    type="number"
-                    value={materiaActual.anio}
-                    onChange={(e) => actualizarMateria(tabMateria, 'anio', e.target.value)}
-                  />
-                  <InputField
-                    label="Fecha carga"
-                    type="date"
-                    value={materiaActual.fecha_carga}
-                    onChange={(e) => actualizarMateria(tabMateria, 'fecha_carga', e.target.value)}
-                  />
-                  <SelectField
-                    label="Inscripción"
-                    value={materiaActual.inscripcion}
-                    onChange={(e) => actualizarMateria(tabMateria, 'inscripcion', e.target.value)}
-                  >
-                    <option value="0">No</option>
-                    <option value="1">Sí</option>
-                  </SelectField>
-                </section>
-              )}
+              <section className="gm-panel previas-panel">
+                <div className="gm-panel__head">
+                  <div>
+                    <span className="gm-panel__eyebrow">Cursado</span>
+                    <h3><FontAwesomeIcon icon={faLayerGroup} /> {editando ? 'Cursado' : 'Cursado actual'}</h3>
+                  </div>
+                  <span className="gm-panel__tag">Alumno</span>
+                </div>
+
+                <div className="gm-panel__body">
+                  <div className="previas-two-cols">
+                    <SelectField
+                      label={editando ? 'Curso' : 'Curso actual'}
+                      value={datosAlumno.cursando_id_curso}
+                      onChange={(e) => actualizarAlumno('cursando_id_curso', e.target.value)}
+                    >
+                      <option value="">Seleccionar...</option>
+                      {cursos.map((c) => (
+                        <option key={c.id_curso} value={c.id_curso}>{c.nombre_curso}</option>
+                      ))}
+                    </SelectField>
+
+                    <SelectField
+                      label={editando ? 'División' : 'División actual'}
+                      value={datosAlumno.cursando_id_division}
+                      onChange={(e) => actualizarAlumno('cursando_id_division', e.target.value)}
+                      disabled={esEgresado}
+                    >
+                      <option value="">{esEgresado ? 'No aplica' : 'Seleccionar...'}</option>
+                      {divisiones.map((d) => (
+                        <option key={d.id_division} value={d.id_division}>{d.nombre_division}</option>
+                      ))}
+                    </SelectField>
+                  </div>
+                </div>
+              </section>
+
+              {editando && materiaPanel}
+              {editando && administrativoPanel}
             </div>
           )}
 
           {!editando && tabPrincipal === 'materias' && (
             <>
-              <div className="gm-tabs gm-tabs--google previas-modal-tabs previas-materia-tabs" role="tablist" aria-label="Materias previas cargadas">
+              <div className="gm-tabs gm-tabs--google previas-materia-tabs" role="tablist" aria-label="Materias previas cargadas">
                 {materias.map((m, index) => (
                   <button
                     key={m.uid}
                     type="button"
                     role="tab"
                     aria-selected={tabMateria === index}
-                    className={`gm-tab previas-materia-tab ${tabMateria === index ? 'active is-active' : ''}`}
+                    className={`gm-tab${tabMateria === index ? ' is-active' : ''}`}
                     onClick={() => setTabMateria(index)}
                   >
                     <FontAwesomeIcon icon={faBookOpen} />
@@ -569,7 +632,7 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
                   </button>
                 ))}
 
-                <button type="button" className="gm-tab previas-materia-tab previas-materia-tab-add" onClick={agregarMateria}>
+                <button type="button" className="gm-tab previas-materia-tab-add" onClick={agregarMateria}>
                   <FontAwesomeIcon icon={faPlus} />
                   <span>Otra</span>
                 </button>
@@ -577,119 +640,35 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
 
               {materiaActual && (
                 <div className="previas-form-grid previas-form-grid-two">
-                  <section className="previas-form-card previas-detail-panel">
-                    <div className="previas-card-title-row">
-                      <div>
-                        <h3>Materia Previa (Materia {tabMateria + 1})</h3>
-                        <div className="previas-section-line" />
-                      </div>
-
-                      {materias.length > 1 && (
-                        <button type="button" className="previas-mini-danger previas-detail-danger" onClick={() => quitarMateria(tabMateria)}>
-                          <FontAwesomeIcon icon={faTrash} /> Quitar
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="previas-two-cols">
-                      <SelectField
-                        label="Materia: curso"
-                        value={materiaActual.materia_id_curso}
-                        onChange={(e) => actualizarMateria(tabMateria, 'materia_id_curso', e.target.value)}
-                      >
-                        <option value="">Seleccionar...</option>
-                        {cursos.filter((c) => String(c.nombre_curso).toUpperCase() !== 'EGRESADO').map((c) => (
-                          <option key={c.id_curso} value={c.id_curso}>{c.nombre_curso}</option>
-                        ))}
-                      </SelectField>
-
-                      <SelectField
-                        label="Materia: división"
-                        value={materiaActual.materia_id_division}
-                        onChange={(e) => actualizarMateria(tabMateria, 'materia_id_division', e.target.value)}
-                      >
-                        <option value="">Seleccionar...</option>
-                        {divisiones.map((d) => (
-                          <option key={d.id_division} value={d.id_division}>{d.nombre_division}</option>
-                        ))}
-                      </SelectField>
-                    </div>
-
-                    <SelectField
-                      label="Materia"
-                      value={materiaActual.id_materia}
-                      onChange={(e) => actualizarMateria(tabMateria, 'id_materia', e.target.value)}
-                      disabled={!materiaActual.materia_id_curso || !materiaActual.materia_id_division || cargandoMateriasActuales}
-                    >
-                      <option value="">{textoOpcionMateria()}</option>
-                      {materiasDisponiblesPara(materiaActual).map((m) => (
-                        <option key={m.id_materia} value={m.id_materia}>{m.materia}</option>
-                      ))}
-                    </SelectField>
-                    {errorMateriasActuales && <div className="previas-alerta previas-alerta-error previas-form-error">{errorMateriasActuales}</div>}
-                  </section>
-
-                  <section className="previas-form-card previas-detail-panel">
-                    <h3>Administrativo</h3>
-                    <div className="previas-section-line" />
-                    <SelectField
-                      label="Condición"
-                      value={materiaActual.id_condicion}
-                      onChange={(e) => actualizarMateria(tabMateria, 'id_condicion', e.target.value)}
-                    >
-                      <option value="">Seleccionar...</option>
-                      {condiciones.map((c) => (
-                        <option key={c.id_condicion} value={c.id_condicion}>{c.condicion}</option>
-                      ))}
-                    </SelectField>
-
-                    <div className="previas-two-cols">
-                      <InputField
-                        label="Año (previa)"
-                        type="number"
-                        value={materiaActual.anio}
-                        onChange={(e) => actualizarMateria(tabMateria, 'anio', e.target.value)}
-                      />
-                      <InputField
-                        label="Fecha carga"
-                        type="date"
-                        value={materiaActual.fecha_carga}
-                        onChange={(e) => actualizarMateria(tabMateria, 'fecha_carga', e.target.value)}
-                      />
-                    </div>
-
-                    <SelectField
-                      label="Inscripción (solo PREVIA)"
-                      value={materiaActual.inscripcion}
-                      onChange={(e) => actualizarMateria(tabMateria, 'inscripcion', e.target.value)}
-                    >
-                      <option value="0">No</option>
-                      <option value="1">Sí</option>
-                    </SelectField>
-                  </section>
+                  {materiaPanel}
+                  {administrativoPanel}
                 </div>
               )}
             </>
           )}
 
-          {error && <div className="previas-alerta previas-alerta-error previas-form-error">{error}</div>}
+          {error && (
+            <div className="gm-alert gm-alert--error gm-alert--banner previas-form-error">
+              {error}
+            </div>
+          )}
+        </div>
 
-          <div className="gm-modal__actions previas-form-footer">
-            {!editando && tabPrincipal === 'alumno' ? (
-              <button type="button" className="gm-btn gm-btn--primary previas-btn previas-btn-primary" onClick={() => setTabPrincipal('materias')}>
-                Continuar a materias
-              </button>
-            ) : (
-              <button type="button" className="gm-btn gm-btn--primary previas-btn previas-btn-primary" onClick={guardar} disabled={guardando}>
-                <FontAwesomeIcon icon={faSave} />
-                {guardando ? 'Guardando...' : editando ? 'Guardar Cambios' : `Guardar ${materias.length === 1 ? 'Previa' : `${materias.length} Previas`}`}
-              </button>
-            )}
-
-            <button type="button" className="gm-btn gm-btn--ghost previas-btn previas-btn-light" onClick={onCerrar} disabled={guardando}>
-              <FontAwesomeIcon icon={faTimes} /> Cancelar
+        <div className="gm-modal__actions">
+          {!editando && tabPrincipal === 'alumno' ? (
+            <button type="button" className="gm-btn gm-btn--primary" onClick={() => setTabPrincipal('materias')}>
+              Continuar a materias
             </button>
-          </div>
+          ) : (
+            <button type="button" className="gm-btn gm-btn--primary" onClick={guardar} disabled={guardando}>
+              <FontAwesomeIcon icon={faSave} />
+              {guardando ? 'Guardando...' : editando ? 'Guardar cambios' : `Guardar ${materias.length === 1 ? 'previa' : `${materias.length} previas`}`}
+            </button>
+          )}
+
+          <button type="button" className="gm-btn gm-btn--ghost" onClick={onCerrar} disabled={guardando}>
+            <FontAwesomeIcon icon={faTimes} /> Cancelar
+          </button>
         </div>
       </div>
     </div>
