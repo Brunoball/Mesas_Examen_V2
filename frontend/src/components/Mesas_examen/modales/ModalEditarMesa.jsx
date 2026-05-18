@@ -21,6 +21,7 @@ import ModalMoverPreviaMesa from "./persona/ModalMoverPreviaMesa";
 import ModalConfirmarEliminarPrevia from "./persona/ModalConfirmarEliminarPrevia";
 import ModalAgregarPreviaMesa from "./mas/ModalAgregarPreviaMesa";
 import ModalMoverNumeroMesa from "./flechas/ModalMoverNumeroMesa";
+import ModalAgregarNumeroGrupo from "./agregar_numero/ModalAgregarNumeroGrupo";
 
 const MESES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -128,7 +129,7 @@ const obtenerTituloMesa = (grupo, tipo) => {
   const primerNumero = grupo?.numeros?.[0]?.numero_mesa || grupo?.numero_mesa || grupo?.numeros_mesa_texto;
 
   if (tipo === "no_agrupada") {
-    return `Editar Mesa N° ${texto(primerNumero)}`;
+    return `Editar Mesa N° ${texto(primerNumero)} — Mesa no agrupada`;
   }
 
   return `Editar Mesa N° ${texto(primerNumero)} — Grupo ${texto(grupo?.id_grupo || grupo?.numero_grupo)}`;
@@ -221,7 +222,7 @@ const CalendarMesa = ({ fechaSeleccionada, idTurno, slotsDisponibles = [], carga
   );
 };
 
-const SlotNumero = ({ numero, onVerPrevias, onAgregarPrevia, onMoverNumero }) => (
+const SlotNumero = ({ numero, onVerPrevias, onAgregarPrevia, onMoverNumero, onEliminarNumero }) => (
   <article className="editar-mesa-slot-card">
     <div className="editar-mesa-slot-actions">
       <span className="editar-mesa-numero-chip">N° {texto(numero?.numero_mesa)}</span>
@@ -234,7 +235,7 @@ const SlotNumero = ({ numero, onVerPrevias, onAgregarPrevia, onMoverNumero }) =>
       <button type="button" title="Mover número a otro grupo" onClick={() => onMoverNumero && onMoverNumero(numero)}>
         <FontAwesomeIcon icon={faExchangeAlt} />
       </button>
-      <button type="button" title="Eliminar número">
+      <button type="button" title="Quitar número del grupo" onClick={() => onEliminarNumero && onEliminarNumero(numero)}>
         <FontAwesomeIcon icon={faTrash} />
       </button>
     </div>
@@ -244,17 +245,18 @@ const SlotNumero = ({ numero, onVerPrevias, onAgregarPrevia, onMoverNumero }) =>
   </article>
 );
 
-const SlotVacio = () => (
-  <button type="button" className="editar-mesa-slot-empty">
+const SlotVacio = ({ onClick }) => (
+  <button type="button" className="editar-mesa-slot-empty" onClick={onClick}>
     <FontAwesomeIcon icon={faPlus} />
     <span>Agregar número</span>
   </button>
 );
 
-const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardando, slotsDisponibles, cargandoSlots = false, error, onClose, onSave, onDelete, onLoadSlots, persona = {}, mas = {}, flechas = {} }) => {
+const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardando, slotsDisponibles, cargandoSlots = false, error, onClose, onSave, onCrearGrupoUnico, onDelete, onLoadSlots, persona = {}, mas = {}, flechas = {}, eliminar = {}, agregarNumero = {} }) => {
   const [fechaMesa, setFechaMesa] = useState("");
   const [idTurno, setIdTurno] = useState("");
   const [hora, setHora] = useState("07:30");
+  const esNoAgrupada = tipo === "no_agrupada";
 
   const numeros = useMemo(() => {
     const base = Array.isArray(grupo?.numeros) ? grupo.numeros : [];
@@ -265,6 +267,16 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
     const lista = Array.isArray(slotsDisponibles?.slots) ? slotsDisponibles.slots : [];
     return lista.filter((slot) => slot?.valido);
   }, [slotsDisponibles]);
+
+  const turnosConSlotsValidos = useMemo(() => {
+    const mapa = new Map();
+    slotsValidos.forEach((slot) => {
+      const id = String(slot?.id_turno || "");
+      if (!id) return;
+      mapa.set(id, (mapa.get(id) || 0) + 1);
+    });
+    return mapa;
+  }, [slotsValidos]);
 
   const turnoSeleccionado = useMemo(
     () => turnos.find((item) => String(item.id_turno) === String(idTurno))?.turno || grupo?.turno || "",
@@ -338,6 +350,18 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
     });
   };
 
+  const handleCrearGrupoUnico = () => {
+    if (!grupo || !slotSeleccionadoValido || typeof onCrearGrupoUnico !== "function") return;
+
+    onCrearGrupoUnico({
+      id_no_agrupada: grupo.id_no_agrupada || null,
+      numero_mesa: numeros?.[0]?.numero_mesa || grupo.numero_mesa || null,
+      fecha_mesa: fechaMesa,
+      id_turno: Number(idTurno),
+      hora,
+    });
+  };
+
   const handleDelete = () => {
     if (!grupo) return;
 
@@ -383,11 +407,17 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
                   <label>
                     <span>Turno</span>
                     <select value={idTurno} onChange={(e) => setIdTurno(e.target.value)}>
-                      {turnos.map((turno) => (
-                        <option key={turno.id_turno} value={turno.id_turno}>
-                          {turno.turno}
-                        </option>
-                      ))}
+                      {turnos.map((turno) => {
+                        const id = String(turno.id_turno);
+                        const haySlotsCargados = !!slotsDisponibles && !cargandoSlots;
+                        const sinFechasValidas = haySlotsCargados && slotsValidos.length > 0 && !turnosConSlotsValidos.has(id);
+
+                        return (
+                          <option key={turno.id_turno} value={turno.id_turno} disabled={sinFechasValidas}>
+                            {turno.turno}{sinFechasValidas ? " — sin fechas" : ""}
+                          </option>
+                        );
+                      })}
                     </select>
                   </label>
 
@@ -436,16 +466,67 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
               </div>
 
               <div className="editar-mesa-slots-wrap">
-                <div className="editar-mesa-slots-card">
-                  <h3>Slots del grupo (hasta 4)</h3>
-                  <div className="editar-mesa-section-line" />
+                {esNoAgrupada ? (
+                  <div className="editar-mesa-slots-card editar-mesa-no-agrupada-card">
+                    <h3>Mesa no agrupada (individual)</h3>
+                    <div className="editar-mesa-section-line" />
 
-                  <div className="editar-mesa-slots-grid">
-                    {slots.map((slot, index) => (
-                      slot ? <SlotNumero key={slot.numero_mesa || index} numero={slot} onVerPrevias={persona.abrirPreviasNumero} onAgregarPrevia={mas.abrirAgregarNumero} onMoverNumero={flechas.abrirMoverNumero} /> : <SlotVacio key={`vacio-${index}`} />
-                    ))}
+                    <p className="editar-mesa-no-agrupada-texto">
+                      Esta mesa todavía no forma parte de mesas <strong>agrupadas</strong>. Podés mantenerla así
+                      o crear un grupo nuevo donde será una <strong>mesa única</strong> (un solo número en el grupo).
+                    </p>
+
+                    {numeros[0] && (
+                      <article className="editar-mesa-no-agrupada-numero">
+                        <div>
+                          <span className="editar-mesa-numero-chip">N° {texto(numeros[0]?.numero_mesa)}</span>
+                          <strong>{texto(numeros[0]?.materia || grupo?.materia, "Sin materia")}</strong>
+                        </div>
+                        <p>Docentes: {texto(numeros[0]?.docente || grupo?.docente, "Sin docente")}</p>
+                      </article>
+                    )}
+
+                    <button
+                      type="button"
+                      className="editar-mesa-btn-crear-grupo-unico"
+                      onClick={handleCrearGrupoUnico}
+                      disabled={guardando || cargandoSlots || !fechaMesa || !idTurno || !slotSeleccionadoValido}
+                    >
+                      <FontAwesomeIcon icon={guardando ? faSpinner : faPlus} spin={guardando} />
+                      Mover a mesa única en mesas agrupadas
+                    </button>
+
+                    <div className="editar-mesa-no-agrupada-nota">
+                      El sistema valida antes de crear: disponibilidad docente, bloqueos, choque de alumnos,
+                      choque docente y correlativas.
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="editar-mesa-slots-card">
+                    <h3>Slots del grupo (hasta 4)</h3>
+                    <div className="editar-mesa-section-line" />
+
+                    <div className="editar-mesa-slots-grid">
+                      {slots.map((slot, index) => (
+                        slot ? (
+                          <SlotNumero
+                            key={slot.numero_mesa || index}
+                            numero={slot}
+                            onVerPrevias={persona.abrirPreviasNumero}
+                            onAgregarPrevia={mas.abrirAgregarNumero}
+                            onMoverNumero={flechas.abrirMoverNumero}
+                            onEliminarNumero={eliminar.abrirEliminarNumeroGrupo}
+                          />
+                        ) : (
+                          <SlotVacio
+                            key={`vacio-${index}`}
+                            onClick={() => agregarNumero.abrirAgregarNumeroGrupo && agregarNumero.abrirAgregarNumeroGrupo(grupo)}
+                          />
+                        )
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {error && <div className="editar-mesa-error">{error}</div>}
 
@@ -516,6 +597,16 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
         error={flechas.error}
         onClose={flechas.cerrar}
         onConfirm={flechas.confirmarMover}
+      />
+
+      <ModalAgregarNumeroGrupo
+        abierto={agregarNumero.modalAbierto}
+        data={agregarNumero.opciones}
+        cargando={agregarNumero.cargando}
+        agregando={agregarNumero.agregando}
+        error={agregarNumero.error}
+        onClose={agregarNumero.cerrar}
+        onAgregar={agregarNumero.confirmarAgregar}
       />
     </div>
   );

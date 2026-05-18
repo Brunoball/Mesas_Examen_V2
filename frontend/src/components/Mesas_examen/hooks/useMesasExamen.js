@@ -1,11 +1,14 @@
 // src/components/Mesas_examen/hooks/useMesasExamen.js
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   agregarPreviaMas,
+  confirmarAgregarNumeroGrupo,
   crearArmadoInicialMesas,
   crearGruposFinalesMesas,
+  crearGrupoUnicoNoAgrupada,
   eliminarBorradorMesas,
   eliminarMesaEdicion,
+  eliminarNumeroGrupoEdicion,
   eliminarPreviaMesa,
   guardarProgramacionMesa,
   listarMesasGruposFinales,
@@ -14,6 +17,7 @@ import {
   moverPreviaMesa,
   obtenerDestinosMoverNumero,
   obtenerDestinosMoverPrevia,
+  obtenerOpcionesAgregarNumeroGrupo,
   obtenerMesaEdicion,
   obtenerParametrosArmadoMesas,
   obtenerPreviasDisponiblesMas,
@@ -52,6 +56,14 @@ const obtenerMesBaseEdicion = (item, anio, mes) => {
 };
 
 const normalizar = (valor) => String(valor || "").toLowerCase().trim();
+
+const crearClaveSlotsEdicion = ({ tipo, item, anio, mes, fecha_inicio, fecha_fin } = {}) => {
+  const tipoReal = tipo === "no_agrupada" ? "no_agrupada" : "grupo";
+  const idGrupo = item?.id_grupo || item?.numero_grupo || "";
+  const idNoAgrupada = item?.id_no_agrupada || "";
+  const numeroMesa = item?.numero_mesa || item?.numeros?.[0]?.numero_mesa || "";
+  return [tipoReal, idGrupo, idNoAgrupada, numeroMesa, anio || "", mes || "", fecha_inicio || "", fecha_fin || ""].join("|");
+};
 
 const grupoCoincideConBusqueda = (grupo, texto) => {
   const valoresGrupo = [
@@ -152,6 +164,8 @@ export const useMesasExamen = () => {
   const [errorEdicion, setErrorEdicion] = useState("");
   const [slotsEdicion, setSlotsEdicion] = useState(null);
   const [cargandoSlotsEdicion, setCargandoSlotsEdicion] = useState(false);
+  const slotsInflightKeyRef = useRef("");
+  const slotsInflightPromiseRef = useRef(null);
 
   const [modalPreviasPersonaAbierto, setModalPreviasPersonaAbierto] = useState(false);
   const [numeroPersona, setNumeroPersona] = useState(null);
@@ -183,6 +197,17 @@ export const useMesasExamen = () => {
   const [cargandoDestinosFlechas, setCargandoDestinosFlechas] = useState(false);
   const [moviendoFlechas, setMoviendoFlechas] = useState(false);
   const [errorFlechas, setErrorFlechas] = useState("");
+
+  const [modalEliminarEdicionAbierto, setModalEliminarEdicionAbierto] = useState(false);
+  const [targetEliminarEdicion, setTargetEliminarEdicion] = useState(null);
+  const [eliminandoEdicion, setEliminandoEdicion] = useState(false);
+
+  const [modalAgregarNumeroAbierto, setModalAgregarNumeroAbierto] = useState(false);
+  const [grupoAgregarNumero, setGrupoAgregarNumero] = useState(null);
+  const [opcionesAgregarNumero, setOpcionesAgregarNumero] = useState(null);
+  const [cargandoAgregarNumero, setCargandoAgregarNumero] = useState(false);
+  const [agregandoNumero, setAgregandoNumero] = useState(false);
+  const [errorAgregarNumero, setErrorAgregarNumero] = useState("");
 
   const [cargando, setCargando] = useState(false);
   const [armando, setArmando] = useState(false);
@@ -339,32 +364,60 @@ export const useMesasExamen = () => {
     const mesBase = obtenerMesBaseEdicion(item, anio, mes);
     const fechaInicioValida = normalizarFechaEdicion(fecha_inicio);
     const fechaFinValida = normalizarFechaEdicion(fecha_fin);
+    const claveRequest = crearClaveSlotsEdicion({
+      tipo: tipoReal,
+      item,
+      anio: mesBase.anio,
+      mes: mesBase.mes,
+      fecha_inicio: fechaInicioValida,
+      fecha_fin: fechaFinValida,
+    });
+
+    // Evita duplicar la misma validación cuando React ejecuta efectos dos veces en desarrollo
+    // o cuando el calendario vuelve a pedir el mismo mes antes de que termine la consulta anterior.
+    if (slotsInflightKeyRef.current === claveRequest && slotsInflightPromiseRef.current) {
+      return slotsInflightPromiseRef.current;
+    }
 
     setCargandoSlotsEdicion(true);
 
-    try {
-      const response = await obtenerSlotsValidosMesa({
-        tipo: tipoReal,
-        id_grupo: item?.id_grupo || item?.numero_grupo || null,
-        numero_grupo: item?.numero_grupo || item?.id_grupo || null,
-        id_no_agrupada: item?.id_no_agrupada || null,
-        numero_mesa: item?.numero_mesa || item?.numeros?.[0]?.numero_mesa || null,
-        anio: mesBase.anio,
-        mes: mesBase.mes,
-        fecha_inicio: fechaInicioValida || undefined,
-        fecha_fin: fechaFinValida || undefined,
+    const requestPromise = obtenerSlotsValidosMesa({
+      tipo: tipoReal,
+      id_grupo: item?.id_grupo || item?.numero_grupo || null,
+      numero_grupo: item?.numero_grupo || item?.id_grupo || null,
+      id_no_agrupada: item?.id_no_agrupada || null,
+      numero_mesa: item?.numero_mesa || item?.numeros?.[0]?.numero_mesa || null,
+      anio: mesBase.anio,
+      mes: mesBase.mes,
+      fecha_inicio: fechaInicioValida || undefined,
+      fecha_fin: fechaFinValida || undefined,
+    })
+      .then((response) => {
+        const data = response?.data || null;
+        if (slotsInflightKeyRef.current === claveRequest) {
+          setSlotsEdicion(data);
+        }
+        return data;
+      })
+      .catch((err) => {
+        if (slotsInflightKeyRef.current === claveRequest) {
+          setSlotsEdicion(null);
+          setErrorEdicion(err.message || "Error al obtener fechas y turnos disponibles.");
+        }
+        return null;
+      })
+      .finally(() => {
+        if (slotsInflightKeyRef.current === claveRequest) {
+          slotsInflightKeyRef.current = "";
+          slotsInflightPromiseRef.current = null;
+          setCargandoSlotsEdicion(false);
+        }
       });
 
-      const data = response?.data || null;
-      setSlotsEdicion(data);
-      return data;
-    } catch (err) {
-      setSlotsEdicion(null);
-      setErrorEdicion(err.message || "Error al obtener fechas y turnos disponibles.");
-      return null;
-    } finally {
-      setCargandoSlotsEdicion(false);
-    }
+    slotsInflightKeyRef.current = claveRequest;
+    slotsInflightPromiseRef.current = requestPromise;
+
+    return requestPromise;
   }, [grupoEdicion, tipoEdicion]);
 
   const abrirModalEditar = useCallback(async (item, tipo = "grupo") => {
@@ -389,13 +442,14 @@ export const useMesasExamen = () => {
       const tipoRecibido = response?.data?.tipo || tipoReal;
       setGrupoEdicion(grupoRecibido);
       setTipoEdicion(tipoRecibido);
-      await cargarSlotsEdicion({ item: grupoRecibido, tipo: tipoRecibido });
+      // No se cargan los slots acá para evitar dos validaciones iguales.
+      // El calendario los pide una sola vez al montarse y muestra el análisis en segundo plano.
     } catch (err) {
       setErrorEdicion(err.message || "Error al abrir la mesa para edición.");
     } finally {
       setCargandoEdicion(false);
     }
-  }, [cargarSlotsEdicion]);
+  }, []);
 
   const cerrarModalEditar = useCallback(() => {
     if (guardandoEdicion) return;
@@ -403,6 +457,8 @@ export const useMesasExamen = () => {
     setGrupoEdicion(null);
     setErrorEdicion("");
     setSlotsEdicion(null);
+    slotsInflightKeyRef.current = "";
+    slotsInflightPromiseRef.current = null;
     setModalPreviasPersonaAbierto(false);
     setModalMoverPersonaAbierto(false);
     setModalEliminarPersonaAbierto(false);
@@ -418,6 +474,10 @@ export const useMesasExamen = () => {
     setNumeroFlechas(null);
     setDestinosFlechas(null);
     setErrorFlechas("");
+    setModalAgregarNumeroAbierto(false);
+    setGrupoAgregarNumero(null);
+    setOpcionesAgregarNumero(null);
+    setErrorAgregarNumero("");
   }, [guardandoEdicion]);
 
 
@@ -715,6 +775,88 @@ export const useMesasExamen = () => {
   }, [numeroFlechas, recargarGrupoEdicion]);
 
 
+  const cargarOpcionesAgregarNumero = useCallback(async (grupoDestino = grupoAgregarNumero) => {
+    const numeroGrupo = Number(grupoDestino?.numero_grupo || grupoDestino?.id_grupo || 0);
+    if (!numeroGrupo) return null;
+
+    setCargandoAgregarNumero(true);
+    setErrorAgregarNumero("");
+
+    try {
+      const response = await obtenerOpcionesAgregarNumeroGrupo({
+        numero_grupo: numeroGrupo,
+        id_grupo: numeroGrupo,
+      });
+      const data = response?.data || null;
+      setOpcionesAgregarNumero(data);
+      setGrupoAgregarNumero(data?.meta || { ...(grupoDestino || {}), numero_grupo: numeroGrupo, id_grupo: numeroGrupo });
+      return data;
+    } catch (err) {
+      setOpcionesAgregarNumero(null);
+      setErrorAgregarNumero(err.message || "Error al obtener opciones para agregar un número.");
+      return null;
+    } finally {
+      setCargandoAgregarNumero(false);
+    }
+  }, [grupoAgregarNumero]);
+
+  const abrirAgregarNumeroGrupo = useCallback(async (grupoDestino = grupoEdicion) => {
+    const numeroGrupo = Number(grupoDestino?.numero_grupo || grupoDestino?.id_grupo || grupoEdicion?.numero_grupo || grupoEdicion?.id_grupo || 0);
+    if (!numeroGrupo) return;
+
+    const base = { ...(grupoDestino || grupoEdicion || {}), numero_grupo: numeroGrupo, id_grupo: numeroGrupo };
+    setModalAgregarNumeroAbierto(true);
+    setGrupoAgregarNumero(base);
+    setOpcionesAgregarNumero(null);
+    setErrorAgregarNumero("");
+    await cargarOpcionesAgregarNumero(base);
+  }, [grupoEdicion, cargarOpcionesAgregarNumero]);
+
+  const cerrarAgregarNumeroGrupo = useCallback(() => {
+    if (agregandoNumero) return;
+    setModalAgregarNumeroAbierto(false);
+    setGrupoAgregarNumero(null);
+    setOpcionesAgregarNumero(null);
+    setErrorAgregarNumero("");
+  }, [agregandoNumero]);
+
+  const confirmarAgregarNumero = useCallback(async (item, tipo = "no_agrupada") => {
+    const numeroGrupo = Number(grupoAgregarNumero?.numero_grupo || grupoAgregarNumero?.id_grupo || grupoEdicion?.numero_grupo || grupoEdicion?.id_grupo || 0);
+    if (!numeroGrupo) return;
+
+    setAgregandoNumero(true);
+    setErrorAgregarNumero("");
+
+    try {
+      const response = await confirmarAgregarNumeroGrupo({
+        numero_grupo: numeroGrupo,
+        id_grupo: numeroGrupo,
+        tipo,
+        numero_mesa: tipo === "no_agrupada" ? Number(item?.numero_mesa || item) : undefined,
+        id_previa: tipo !== "no_agrupada" ? Number(item?.id_previa || item) : undefined,
+      });
+
+      await cargarMesas();
+      await recargarGrupoEdicion();
+
+      if (tipo === "no_agrupada") {
+        await cargarOpcionesAgregarNumero({ numero_grupo: numeroGrupo, id_grupo: numeroGrupo });
+      } else {
+        setModalAgregarNumeroAbierto(false);
+        setGrupoAgregarNumero(null);
+        setOpcionesAgregarNumero(null);
+      }
+
+      return response;
+    } catch (err) {
+      setErrorAgregarNumero(err.message || "No se pudo agregar el número al grupo.");
+      throw err;
+    } finally {
+      setAgregandoNumero(false);
+    }
+  }, [grupoAgregarNumero, grupoEdicion, cargarMesas, recargarGrupoEdicion, cargarOpcionesAgregarNumero]);
+
+
   const guardarEdicionProgramacion = useCallback(async (payload) => {
     setGuardandoEdicion(true);
     setErrorEdicion("");
@@ -733,28 +875,137 @@ export const useMesasExamen = () => {
     }
   }, [cargarMesas]);
 
-  const eliminarMesaDesdeEdicion = useCallback(async (payload) => {
-    const tipoTexto = payload?.tipo === "no_agrupada" ? "este número sin agrupar" : "este grupo final";
-    const confirmar = window.confirm(`¿Seguro que querés eliminar ${tipoTexto}?`);
 
-    if (!confirmar) return;
-
+  const crearGrupoUnicoDesdeNoAgrupada = useCallback(async (payload) => {
     setGuardandoEdicion(true);
     setErrorEdicion("");
 
     try {
-      const response = await eliminarMesaEdicion(payload);
+      const response = await crearGrupoUnicoNoAgrupada(payload);
       await cargarMesas();
+      setGrupoEdicion(response?.data?.grupo || null);
+      setTipoEdicion("grupo");
+      setTab("grupos-finales");
       setModalEditarAbierto(false);
-      setGrupoEdicion(null);
       return response;
     } catch (err) {
-      setErrorEdicion(err.message || "Error al eliminar la mesa.");
+      setErrorEdicion(err.message || "Error al crear el grupo único desde la mesa no agrupada.");
       throw err;
     } finally {
       setGuardandoEdicion(false);
     }
   }, [cargarMesas]);
+
+  const abrirConfirmarEliminarMesa = useCallback((payload = {}) => {
+    const esNoAgrupada = payload?.tipo === "no_agrupada";
+    const numeroGrupo = payload?.numero_grupo || payload?.id_grupo || null;
+    const numeroMesa = payload?.numero_mesa || null;
+
+    setTargetEliminarEdicion({
+      modo: esNoAgrupada ? "no_agrupada" : "grupo",
+      tipo: esNoAgrupada ? "no_agrupada" : "grupo",
+      id_grupo: payload?.id_grupo || numeroGrupo,
+      numero_grupo: numeroGrupo,
+      id_no_agrupada: payload?.id_no_agrupada || null,
+      numero_mesa: numeroMesa,
+      titulo: esNoAgrupada ? `Eliminar mesa N° ${numeroMesa || ""}` : `Eliminar grupo ${numeroGrupo || ""}`,
+      mensaje: esNoAgrupada
+        ? `¿Eliminar completamente el número de mesa N° ${numeroMesa || ""} del armado?`
+        : `¿Eliminar completamente el grupo ${numeroGrupo || ""} de mesas?`,
+      advertencia: esNoAgrupada
+        ? "Se quitará este número del armado actual."
+        : "Los números del grupo no se borran de mesas: pasarán a no agrupadas para poder reubicarlos.",
+      details: [
+        { label: "Acción", value: esNoAgrupada ? "Eliminar número sin agrupar" : "Eliminar grupo completo" },
+        { label: "Grupo", value: esNoAgrupada ? "Sin agrupar" : numeroGrupo },
+        { label: "Número de mesa", value: numeroMesa || payload?.numeros_mesa_texto || "Todos los números del grupo" },
+      ],
+    });
+    setModalEliminarEdicionAbierto(true);
+  }, []);
+
+  const abrirConfirmarEliminarNumeroGrupo = useCallback((numero) => {
+    const numeroMesa = Number(numero?.numero_mesa || numero);
+    const numeroGrupo = Number(grupoEdicion?.numero_grupo || grupoEdicion?.id_grupo || 0);
+
+    if (!numeroMesa || !numeroGrupo) return;
+
+    setTargetEliminarEdicion({
+      modo: "numero_grupo",
+      tipo: "grupo",
+      numero_grupo: numeroGrupo,
+      id_grupo: numeroGrupo,
+      numero_mesa: numeroMesa,
+      numero,
+      grupo: grupoEdicion,
+      titulo: `Quitar mesa N° ${numeroMesa}`,
+      mensaje: `¿Quitar el número de mesa N° ${numeroMesa} de este grupo?`,
+      advertencia: "Los registros de la tabla mesas quedan intactos. El número pasará a no agrupadas para poder reubicarlo.",
+      details: [
+        { label: "Acción", value: "Quitar número del grupo" },
+        { label: "Grupo actual", value: numeroGrupo },
+        { label: "Número de mesa", value: numeroMesa },
+        { label: "Materia", value: numero?.materia || "-" },
+        { label: "Docente", value: numero?.docente || "-" },
+      ],
+    });
+    setModalEliminarEdicionAbierto(true);
+  }, [grupoEdicion]);
+
+  const cerrarConfirmarEliminarEdicion = useCallback(() => {
+    if (eliminandoEdicion) return;
+    setModalEliminarEdicionAbierto(false);
+    setTargetEliminarEdicion(null);
+  }, [eliminandoEdicion]);
+
+  const confirmarEliminarEdicion = useCallback(async () => {
+    if (!targetEliminarEdicion) return;
+
+    setEliminandoEdicion(true);
+    setGuardandoEdicion(true);
+    setErrorEdicion("");
+
+    try {
+      let response;
+
+      if (targetEliminarEdicion.modo === "numero_grupo") {
+        response = await eliminarNumeroGrupoEdicion({
+          numero_grupo: targetEliminarEdicion.numero_grupo,
+          id_grupo: targetEliminarEdicion.id_grupo,
+          numero_mesa: targetEliminarEdicion.numero_mesa,
+        });
+
+        await cargarMesas();
+
+        const grupoRespuesta = response?.data?.grupo || null;
+        const grupoEliminado = !!response?.data?.grupo_eliminado;
+
+        if (grupoEliminado || !grupoRespuesta) {
+          setModalEditarAbierto(false);
+          setGrupoEdicion(null);
+        } else {
+          setGrupoEdicion(grupoRespuesta);
+        }
+      } else {
+        response = await eliminarMesaEdicion(targetEliminarEdicion);
+        await cargarMesas();
+        setModalEditarAbierto(false);
+        setGrupoEdicion(null);
+      }
+
+      setModalEliminarEdicionAbierto(false);
+      setTargetEliminarEdicion(null);
+      return response;
+    } catch (err) {
+      setErrorEdicion(err.message || "Error al eliminar la mesa.");
+      throw err;
+    } finally {
+      setEliminandoEdicion(false);
+      setGuardandoEdicion(false);
+    }
+  }, [targetEliminarEdicion, cargarMesas]);
+
+  const eliminarMesaDesdeEdicion = abrirConfirmarEliminarMesa;
 
   useEffect(() => {
     cargarMesas();
@@ -822,7 +1073,17 @@ export const useMesasExamen = () => {
     abrirModalEditar,
     cerrarModalEditar,
     guardarEdicionProgramacion,
+    crearGrupoUnicoDesdeNoAgrupada,
     eliminarMesaDesdeEdicion,
+
+    eliminarEdicion: {
+      modalAbierto: modalEliminarEdicionAbierto,
+      target: targetEliminarEdicion,
+      eliminando: eliminandoEdicion,
+      abrirEliminarNumeroGrupo: abrirConfirmarEliminarNumeroGrupo,
+      cerrar: cerrarConfirmarEliminarEdicion,
+      confirmar: confirmarEliminarEdicion,
+    },
 
     personaEdicion: {
       modalPreviasAbierto: modalPreviasPersonaAbierto,
@@ -873,6 +1134,19 @@ export const useMesasExamen = () => {
       abrirMoverNumero: abrirMoverNumeroFlechas,
       cerrar: cerrarMoverNumeroFlechas,
       confirmarMover: confirmarMoverNumeroFlechas,
+    },
+
+    agregarNumeroEdicion: {
+      modalAbierto: modalAgregarNumeroAbierto,
+      grupo: grupoAgregarNumero,
+      opciones: opcionesAgregarNumero,
+      cargando: cargandoAgregarNumero,
+      agregando: agregandoNumero,
+      error: errorAgregarNumero,
+      abrirAgregarNumeroGrupo,
+      cerrar: cerrarAgregarNumeroGrupo,
+      confirmarAgregar: confirmarAgregarNumero,
+      recargar: cargarOpcionesAgregarNumero,
     },
 
     crearMesas,

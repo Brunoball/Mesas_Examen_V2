@@ -21,6 +21,7 @@ import Principal, { MesasShellContext } from "../Principal/Principal";
 import { useMesasExamen } from "./hooks/useMesasExamen";
 import ModalCrearMesa from "./modales/ModalCrearMesa";
 import ModalEditarMesa from "./modales/ModalEditarMesa";
+import ModalEliminarGlobal from "../Global/Modales/ModalEliminarGlobal";
 import logo from "../../imagenes/Escudo.png";
 
 const textoCorto = (valor, fallback = "-") => {
@@ -322,10 +323,13 @@ const MesasExamen = () => {
     abrirModalEditar,
     cerrarModalEditar,
     guardarEdicionProgramacion,
+    crearGrupoUnicoDesdeNoAgrupada,
     eliminarMesaDesdeEdicion,
+    eliminarEdicion,
     personaEdicion,
     masEdicion,
     flechasEdicion,
+    agregarNumeroEdicion,
     crearMesas,
     eliminarBorrador,
     cargando,
@@ -776,10 +780,30 @@ const MesasExamen = () => {
         error={errorEdicion}
         onClose={cerrarModalEditar}
         onSave={guardarEdicionProgramacion}
+        onCrearGrupoUnico={crearGrupoUnicoDesdeNoAgrupada}
         onDelete={eliminarMesaDesdeEdicion}
         persona={personaEdicion}
         mas={masEdicion}
         flechas={flechasEdicion}
+        eliminar={eliminarEdicion}
+        agregarNumero={agregarNumeroEdicion}
+      />
+
+      <ModalEliminarGlobal
+        open={!!eliminarEdicion?.modalAbierto}
+        operacion="eliminar"
+        loading={!!eliminarEdicion?.eliminando}
+        title={eliminarEdicion?.target?.titulo || "Confirmar eliminación"}
+        message={eliminarEdicion?.target?.mensaje || "¿Seguro que querés eliminar este registro?"}
+        warning={eliminarEdicion?.target?.advertencia || ""}
+        details={eliminarEdicion?.target?.details || []}
+        confirmLabel={eliminarEdicion?.target?.modo === "numero_grupo" ? "Quitar" : "Eliminar"}
+        loadingLabel="Procesando..."
+        loadingMessage="Procesando eliminación..."
+        successMessage={eliminarEdicion?.target?.modo === "numero_grupo" ? "Número quitado correctamente." : "Mesa eliminada correctamente."}
+        errorMessage="No se pudo completar la eliminación."
+        onClose={eliminarEdicion?.cerrar}
+        onConfirm={eliminarEdicion?.confirmar}
       />
     </div>
   );

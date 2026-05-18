@@ -528,3 +528,90 @@
   color: #a51f1f;
   border: 1px solid #ffd0d0;
 }
+
+/* Mesa no agrupada: convertir en grupo único manual */
+.editar-mesa-no-agrupada-card {
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.editar-mesa-no-agrupada-texto {
+  margin: 4px 0 0;
+  color: #081a3a;
+  font-size: 18px;
+  line-height: 1.72;
+  font-weight: 500;
+}
+
+.editar-mesa-no-agrupada-texto strong {
+  font-weight: 900;
+}
+
+.editar-mesa-no-agrupada-numero {
+  border: 1px solid #dbe5f2;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 7px 13px rgba(10, 37, 64, 0.08);
+  padding: 18px;
+}
+
+.editar-mesa-no-agrupada-numero > div {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.editar-mesa-no-agrupada-numero strong {
+  color: #081a3a;
+  font-size: 19px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.editar-mesa-no-agrupada-numero p {
+  margin: 16px 0 0;
+  color: #081a3a;
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.editar-mesa-btn-crear-grupo-unico {
+  width: 100%;
+  min-height: 50px;
+  border: 0;
+  border-radius: 14px;
+  background: #12377d;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+}
+
+.editar-mesa-btn-crear-grupo-unico:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(10, 37, 64, 0.18);
+}
+
+.editar-mesa-btn-crear-grupo-unico:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.editar-mesa-no-agrupada-nota {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #eef6ff;
+  border: 1px solid #c9defc;
+  color: #173f82;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
+}

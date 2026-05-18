@@ -559,6 +559,193 @@ function mesas_editar_obtener_detalle_numeros(PDO $pdo, array $numeros): array
     return $detalle;
 }
 
+
+function mesas_editar_slot_key(string $fechaMesa, int $idTurno): string
+{
+    return $fechaMesa . '|' . $idTurno;
+}
+
+function mesas_editar_precargar_bloqueos_docentes(PDO $pdo, array $idsDocentes, string $fechaInicio, string $fechaFin): array
+{
+    $idsDocentes = array_values(array_filter(array_map('intval', $idsDocentes), static fn ($id) => $id > 0));
+    if (count($idsDocentes) === 0 || !mesas_armado_tabla_existe($pdo, 'docentes_bloques_no')) {
+        return [];
+    }
+
+    $phDocentes = implode(',', array_fill(0, count($idsDocentes), '?'));
+    $stmt = $pdo->prepare(""
+        . "SELECT DISTINCT dbn.fecha, dbn.id_turno, dbn.id_docente, d.docente\n"
+        . "FROM docentes_bloques_no dbn\n"
+        . "LEFT JOIN docentes d ON d.id_docente = dbn.id_docente\n"
+        . "WHERE dbn.id_docente IN ({$phDocentes})\n"
+        . "  AND dbn.fecha BETWEEN ? AND ?"
+    );
+    $stmt->execute(array_merge($idsDocentes, [$fechaInicio, $fechaFin]));
+
+    $mapa = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $fecha = (string)($row['fecha'] ?? '');
+        if ($fecha === '') {
+            continue;
+        }
+
+        $idTurno = $row['id_turno'] !== null ? (int)$row['id_turno'] : 0;
+        $idDocente = (int)($row['id_docente'] ?? 0);
+        if ($idDocente <= 0) {
+            continue;
+        }
+
+        $key = mesas_editar_slot_key($fecha, $idTurno);
+        if (!isset($mapa[$key])) {
+            $mapa[$key] = [];
+        }
+        $mapa[$key][$idDocente] = $row;
+    }
+
+    return $mapa;
+}
+
+function mesas_editar_bloqueos_docentes_desde_contexto(array $contexto, array $idsDocentes, string $fechaMesa, int $idTurno): array
+{
+    if (!isset($contexto['bloqueos_docentes']) || !is_array($contexto['bloqueos_docentes'])) {
+        return [];
+    }
+
+    $idsDocentes = array_values(array_filter(array_map('intval', $idsDocentes), static fn ($id) => $id > 0));
+    if (count($idsDocentes) === 0) {
+        return [];
+    }
+
+    $mapa = $contexto['bloqueos_docentes'];
+    $keys = [
+        mesas_editar_slot_key($fechaMesa, $idTurno),
+        mesas_editar_slot_key($fechaMesa, 0), // bloqueo de día completo, sin turno específico
+    ];
+
+    $out = [];
+    foreach ($keys as $key) {
+        if (!isset($mapa[$key]) || !is_array($mapa[$key])) {
+            continue;
+        }
+
+        foreach ($idsDocentes as $idDocente) {
+            if (isset($mapa[$key][$idDocente])) {
+                $out[$idDocente . '_' . $key] = $mapa[$key][$idDocente];
+            }
+        }
+    }
+
+    return array_values($out);
+}
+
+function mesas_editar_precargar_choques_docentes(PDO $pdo, array $detalle, string $fechaInicio, string $fechaFin): array
+{
+    $idsDocentes = array_keys($detalle['docentes'] ?? []);
+    $idsDocentes = array_values(array_filter(array_map('intval', $idsDocentes), static fn ($id) => $id > 0));
+    $numeros = mesas_editar_normalizar_lista_numeros($detalle['numeros'] ?? []);
+
+    if (count($idsDocentes) === 0 || count($numeros) === 0) {
+        return [];
+    }
+
+    $phDocentes = implode(',', array_fill(0, count($idsDocentes), '?'));
+    $phNumeros = implode(',', array_fill(0, count($numeros), '?'));
+
+    $stmt = $pdo->prepare(""
+        . "SELECT DISTINCT me.fecha_mesa, me.id_turno, me.numero_mesa, me.id_docente, d.docente\n"
+        . "FROM mesas me\n"
+        . "LEFT JOIN docentes d ON d.id_docente = me.id_docente\n"
+        . "WHERE me.fecha_mesa BETWEEN ? AND ?\n"
+        . "  AND me.id_turno IS NOT NULL\n"
+        . "  AND me.id_docente IN ({$phDocentes})\n"
+        . "  AND me.numero_mesa NOT IN ({$phNumeros})\n"
+        . "ORDER BY d.docente ASC, me.numero_mesa ASC"
+    );
+    $stmt->execute(array_merge([$fechaInicio, $fechaFin], $idsDocentes, $numeros));
+
+    $mapa = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $fecha = (string)($row['fecha_mesa'] ?? '');
+        $idTurno = (int)($row['id_turno'] ?? 0);
+        if ($fecha === '' || $idTurno <= 0) {
+            continue;
+        }
+
+        $key = mesas_editar_slot_key($fecha, $idTurno);
+        if (!isset($mapa[$key])) {
+            $mapa[$key] = [];
+        }
+        $mapa[$key][] = $row;
+    }
+
+    return $mapa;
+}
+
+function mesas_editar_precargar_choques_alumnos(PDO $pdo, array $detalle, string $fechaInicio, string $fechaFin): array
+{
+    $dnis = array_keys($detalle['dnis'] ?? []);
+    $dnis = array_values(array_filter(array_map('strval', $dnis), static fn ($dni) => trim($dni) !== ''));
+    $numeros = mesas_editar_normalizar_lista_numeros($detalle['numeros'] ?? []);
+
+    if (count($dnis) === 0 || count($numeros) === 0) {
+        return [];
+    }
+
+    $phDnis = implode(',', array_fill(0, count($dnis), '?'));
+    $phNumeros = implode(',', array_fill(0, count($numeros), '?'));
+
+    $stmt = $pdo->prepare(""
+        . "SELECT DISTINCT me.fecha_mesa, me.id_turno, p.dni, p.alumno, me.numero_mesa\n"
+        . "FROM mesas me\n"
+        . "INNER JOIN previas p ON p.id_previa = me.id_previa\n"
+        . "WHERE me.fecha_mesa BETWEEN ? AND ?\n"
+        . "  AND me.id_turno IS NOT NULL\n"
+        . "  AND p.dni IN ({$phDnis})\n"
+        . "  AND me.numero_mesa NOT IN ({$phNumeros})\n"
+        . "ORDER BY p.alumno ASC, me.numero_mesa ASC"
+    );
+    $stmt->execute(array_merge([$fechaInicio, $fechaFin], $dnis, $numeros));
+
+    $mapa = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $fecha = (string)($row['fecha_mesa'] ?? '');
+        $idTurno = (int)($row['id_turno'] ?? 0);
+        if ($fecha === '' || $idTurno <= 0) {
+            continue;
+        }
+
+        $key = mesas_editar_slot_key($fecha, $idTurno);
+        if (!isset($mapa[$key])) {
+            $mapa[$key] = [];
+        }
+        $mapa[$key][] = $row;
+    }
+
+    return $mapa;
+}
+
+function mesas_editar_preparar_contexto_validacion(PDO $pdo, string $tipo, array $data, ?string $fechaInicio = null, ?string $fechaFin = null): array
+{
+    $numeros = mesas_editar_resolver_numeros_desde_payload($pdo, $tipo, $data);
+    $detalle = mesas_editar_obtener_detalle_numeros($pdo, $numeros);
+
+    $contexto = [
+        'numeros' => $numeros,
+        'detalle' => $detalle,
+        'disponibilidad' => mesas_armado_obtener_disponibilidad_docentes($pdo),
+        'correlativas' => mesas_editar_obtener_correlativas($pdo),
+        'otras_previas' => mesas_editar_obtener_otras_previas_mismos_alumnos($pdo, $detalle),
+    ];
+
+    if ($fechaInicio !== null && $fechaFin !== null) {
+        $contexto['bloqueos_docentes'] = mesas_editar_precargar_bloqueos_docentes($pdo, array_keys($detalle['docentes']), $fechaInicio, $fechaFin);
+        $contexto['choques_docentes'] = mesas_editar_precargar_choques_docentes($pdo, $detalle, $fechaInicio, $fechaFin);
+        $contexto['choques_alumnos'] = mesas_editar_precargar_choques_alumnos($pdo, $detalle, $fechaInicio, $fechaFin);
+    }
+
+    return $contexto;
+}
+
 function mesas_editar_docentes_bloqueados_en_slot(PDO $pdo, array $idsDocentes, string $fechaMesa, int $idTurno): array
 {
     $idsDocentes = array_values(array_filter(array_map('intval', $idsDocentes), static fn ($id) => $id > 0));
@@ -580,10 +767,12 @@ function mesas_editar_docentes_bloqueados_en_slot(PDO $pdo, array $idsDocentes, 
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-function mesas_editar_validar_docentes(PDO $pdo, array $detalle, string $fechaMesa, int $idTurno): array
+function mesas_editar_validar_docentes(PDO $pdo, array $detalle, string $fechaMesa, int $idTurno, array $contexto = []): array
 {
     $errores = [];
-    $disponibilidad = mesas_armado_obtener_disponibilidad_docentes($pdo);
+    $disponibilidad = isset($contexto['disponibilidad']) && is_array($contexto['disponibilidad'])
+        ? $contexto['disponibilidad']
+        : mesas_armado_obtener_disponibilidad_docentes($pdo);
 
     foreach ($detalle['docentes'] as $idDocente => $nombreDocente) {
         $idDocente = (int)$idDocente;
@@ -596,28 +785,37 @@ function mesas_editar_validar_docentes(PDO $pdo, array $detalle, string $fechaMe
         }
     }
 
-    $bloqueados = mesas_editar_docentes_bloqueados_en_slot($pdo, array_keys($detalle['docentes']), $fechaMesa, $idTurno);
+    if (array_key_exists('bloqueos_docentes', $contexto)) {
+        $bloqueados = mesas_editar_bloqueos_docentes_desde_contexto($contexto, array_keys($detalle['docentes']), $fechaMesa, $idTurno);
+    } else {
+        $bloqueados = mesas_editar_docentes_bloqueados_en_slot($pdo, array_keys($detalle['docentes']), $fechaMesa, $idTurno);
+    }
+
     foreach ($bloqueados as $bloqueado) {
         $errores[] = 'El docente ' . trim((string)($bloqueado['docente'] ?? ('ID ' . $bloqueado['id_docente']))) . ' tiene bloqueado ese día/turno.';
     }
 
     if (count($detalle['docentes']) > 0) {
-        $idsDocentes = array_keys($detalle['docentes']);
-        $phDocentes = implode(',', array_fill(0, count($idsDocentes), '?'));
-        $phNumeros = implode(',', array_fill(0, count($detalle['numeros']), '?'));
+        if (array_key_exists('choques_docentes', $contexto) && is_array($contexto['choques_docentes'])) {
+            $choques = $contexto['choques_docentes'][mesas_editar_slot_key($fechaMesa, $idTurno)] ?? [];
+        } else {
+            $idsDocentes = array_keys($detalle['docentes']);
+            $phDocentes = implode(',', array_fill(0, count($idsDocentes), '?'));
+            $phNumeros = implode(',', array_fill(0, count($detalle['numeros']), '?'));
 
-        $stmt = $pdo->prepare(""
-            . "SELECT DISTINCT me.numero_mesa, me.id_docente, d.docente\n"
-            . "FROM mesas me\n"
-            . "LEFT JOIN docentes d ON d.id_docente = me.id_docente\n"
-            . "WHERE me.fecha_mesa = ?\n"
-            . "  AND me.id_turno = ?\n"
-            . "  AND me.id_docente IN ({$phDocentes})\n"
-            . "  AND me.numero_mesa NOT IN ({$phNumeros})\n"
-            . "ORDER BY d.docente ASC, me.numero_mesa ASC"
-        );
-        $stmt->execute(array_merge([$fechaMesa, $idTurno], $idsDocentes, $detalle['numeros']));
-        $choques = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $stmt = $pdo->prepare(""
+                . "SELECT DISTINCT me.numero_mesa, me.id_docente, d.docente\n"
+                . "FROM mesas me\n"
+                . "LEFT JOIN docentes d ON d.id_docente = me.id_docente\n"
+                . "WHERE me.fecha_mesa = ?\n"
+                . "  AND me.id_turno = ?\n"
+                . "  AND me.id_docente IN ({$phDocentes})\n"
+                . "  AND me.numero_mesa NOT IN ({$phNumeros})\n"
+                . "ORDER BY d.docente ASC, me.numero_mesa ASC"
+            );
+            $stmt->execute(array_merge([$fechaMesa, $idTurno], $idsDocentes, $detalle['numeros']));
+            $choques = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
 
         foreach ($choques as $choque) {
             $errores[] = 'El docente ' . trim((string)($choque['docente'] ?? ('ID ' . $choque['id_docente']))) . ' ya está asignado en la mesa N° ' . (int)$choque['numero_mesa'] . ' para ese mismo turno.';
@@ -627,7 +825,7 @@ function mesas_editar_validar_docentes(PDO $pdo, array $detalle, string $fechaMe
     return $errores;
 }
 
-function mesas_editar_validar_alumnos(PDO $pdo, array $detalle, string $fechaMesa, int $idTurno): array
+function mesas_editar_validar_alumnos(PDO $pdo, array $detalle, string $fechaMesa, int $idTurno, array $contexto = []): array
 {
     $errores = [];
 
@@ -643,21 +841,25 @@ function mesas_editar_validar_alumnos(PDO $pdo, array $detalle, string $fechaMes
         return $errores;
     }
 
-    $phDnis = implode(',', array_fill(0, count($dnis), '?'));
-    $phNumeros = implode(',', array_fill(0, count($detalle['numeros']), '?'));
+    if (array_key_exists('choques_alumnos', $contexto) && is_array($contexto['choques_alumnos'])) {
+        $choques = $contexto['choques_alumnos'][mesas_editar_slot_key($fechaMesa, $idTurno)] ?? [];
+    } else {
+        $phDnis = implode(',', array_fill(0, count($dnis), '?'));
+        $phNumeros = implode(',', array_fill(0, count($detalle['numeros']), '?'));
 
-    $stmt = $pdo->prepare(""
-        . "SELECT DISTINCT p.dni, p.alumno, me.numero_mesa\n"
-        . "FROM mesas me\n"
-        . "INNER JOIN previas p ON p.id_previa = me.id_previa\n"
-        . "WHERE me.fecha_mesa = ?\n"
-        . "  AND me.id_turno = ?\n"
-        . "  AND p.dni IN ({$phDnis})\n"
-        . "  AND me.numero_mesa NOT IN ({$phNumeros})\n"
-        . "ORDER BY p.alumno ASC, me.numero_mesa ASC"
-    );
-    $stmt->execute(array_merge([$fechaMesa, $idTurno], $dnis, $detalle['numeros']));
-    $choques = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $pdo->prepare(""
+            . "SELECT DISTINCT p.dni, p.alumno, me.numero_mesa\n"
+            . "FROM mesas me\n"
+            . "INNER JOIN previas p ON p.id_previa = me.id_previa\n"
+            . "WHERE me.fecha_mesa = ?\n"
+            . "  AND me.id_turno = ?\n"
+            . "  AND p.dni IN ({$phDnis})\n"
+            . "  AND me.numero_mesa NOT IN ({$phNumeros})\n"
+            . "ORDER BY p.alumno ASC, me.numero_mesa ASC"
+        );
+        $stmt->execute(array_merge([$fechaMesa, $idTurno], $dnis, $detalle['numeros']));
+        $choques = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
     foreach ($choques as $choque) {
         $errores[] = 'El alumno ' . trim((string)($choque['alumno'] ?? $choque['dni'])) . ' ya tiene la mesa N° ' . (int)$choque['numero_mesa'] . ' en ese mismo turno.';
@@ -724,15 +926,19 @@ function mesas_editar_registro_coincide_materia_curso(array $registro, int $idMa
         && (int)($registro['id_curso'] ?? 0) === $idCurso;
 }
 
-function mesas_editar_validar_correlativas(PDO $pdo, array $detalle, string $fechaMesa, int $idTurno): array
+function mesas_editar_validar_correlativas(PDO $pdo, array $detalle, string $fechaMesa, int $idTurno, array $contexto = []): array
 {
     $errores = [];
-    $correlativas = mesas_editar_obtener_correlativas($pdo);
+    $correlativas = isset($contexto['correlativas']) && is_array($contexto['correlativas'])
+        ? $contexto['correlativas']
+        : mesas_editar_obtener_correlativas($pdo);
     if (count($correlativas) === 0) {
         return $errores;
     }
 
-    $otras = mesas_editar_obtener_otras_previas_mismos_alumnos($pdo, $detalle);
+    $otras = isset($contexto['otras_previas']) && is_array($contexto['otras_previas'])
+        ? $contexto['otras_previas']
+        : mesas_editar_obtener_otras_previas_mismos_alumnos($pdo, $detalle);
     if (count($otras) === 0) {
         return $errores;
     }
@@ -796,16 +1002,56 @@ function mesas_editar_validar_correlativas(PDO $pdo, array $detalle, string $fec
     return array_values(array_unique($errores));
 }
 
-function mesas_editar_validar_programacion_completa(PDO $pdo, string $tipo, array $data, string $fechaMesa, int $idTurno, string $hora, array $turno): array
+
+function mesas_editar_resumen_numero_para_grupo_unico(PDO $pdo, int $numeroMesa): ?array
+{
+    $stmt = $pdo->prepare(''
+        . 'SELECT '
+        . '    me.numero_mesa, '
+        . '    MAX(me.tipo_mesa) AS tipo_mesa, '
+        . '    MAX(me.prioridad) AS prioridad, '
+        . '    COUNT(DISTINCT me.id_previa) AS cantidad_alumnos, '
+        . '    MIN(am.id_area) AS id_area '
+        . 'FROM mesas me '
+        . 'LEFT JOIN previas p ON p.id_previa = me.id_previa '
+        . 'LEFT JOIN catedras cat ON cat.id_catedra = me.id_catedra '
+        . 'LEFT JOIN areas_materias am ON am.id_materia = COALESCE(cat.id_materia, p.id_materia) AND am.activo = 1 '
+        . 'WHERE me.numero_mesa = ? '
+        . 'GROUP BY me.numero_mesa '
+        . 'LIMIT 1'
+    );
+    $stmt->execute([$numeroMesa]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$row) {
+        return null;
+    }
+
+    return [
+        'numero_mesa' => (int)$row['numero_mesa'],
+        'tipo_mesa' => trim((string)($row['tipo_mesa'] ?? 'simple')) ?: 'simple',
+        'prioridad' => (int)($row['prioridad'] ?? 0),
+        'cantidad_alumnos' => (int)($row['cantidad_alumnos'] ?? 0),
+        'id_area' => $row['id_area'] !== null ? (int)$row['id_area'] : null,
+    ];
+}
+
+function mesas_editar_validar_programacion_completa(PDO $pdo, string $tipo, array $data, string $fechaMesa, int $idTurno, string $hora, array $turno, array $contexto = []): array
 {
     $errores = [];
     $advertencias = [];
-    $numeros = mesas_editar_resolver_numeros_desde_payload($pdo, $tipo, $data);
-    $detalle = mesas_editar_obtener_detalle_numeros($pdo, $numeros);
 
-    $errores = array_merge($errores, mesas_editar_validar_docentes($pdo, $detalle, $fechaMesa, $idTurno));
-    $errores = array_merge($errores, mesas_editar_validar_alumnos($pdo, $detalle, $fechaMesa, $idTurno));
-    $errores = array_merge($errores, mesas_editar_validar_correlativas($pdo, $detalle, $fechaMesa, $idTurno));
+    if (isset($contexto['numeros'], $contexto['detalle']) && is_array($contexto['numeros']) && is_array($contexto['detalle'])) {
+        $numeros = $contexto['numeros'];
+        $detalle = $contexto['detalle'];
+    } else {
+        $numeros = mesas_editar_resolver_numeros_desde_payload($pdo, $tipo, $data);
+        $detalle = mesas_editar_obtener_detalle_numeros($pdo, $numeros);
+    }
+
+    $errores = array_merge($errores, mesas_editar_validar_docentes($pdo, $detalle, $fechaMesa, $idTurno, $contexto));
+    $errores = array_merge($errores, mesas_editar_validar_alumnos($pdo, $detalle, $fechaMesa, $idTurno, $contexto));
+    $errores = array_merge($errores, mesas_editar_validar_correlativas($pdo, $detalle, $fechaMesa, $idTurno, $contexto));
 
     return [
         'valido' => count($errores) === 0,
@@ -867,6 +1113,11 @@ function mesas_editar_construir_slots_validos(PDO $pdo, string $tipo, array $dat
         throw new InvalidArgumentException('El rango de fechas para validar no es correcto.');
     }
 
+    // Optimización clave: antes se recalculaban números, alumnos, docentes,
+    // correlativas, disponibilidad y choques para cada día/turno del calendario.
+    // Ahora ese contexto se arma una sola vez por rango y cada slot solo consulta mapas en memoria.
+    $contexto = mesas_editar_preparar_contexto_validacion($pdo, $tipo, $data, $fechaInicio, $fechaFin);
+
     $slots = [];
     $totalValidos = 0;
 
@@ -883,7 +1134,7 @@ function mesas_editar_construir_slots_validos(PDO $pdo, string $tipo, array $dat
             $hora = $rango['default'] . ':00';
 
             try {
-                $validacion = mesas_editar_validar_programacion_completa($pdo, $tipo, $data, $fechaYmd, $idTurno, $hora, $turno);
+                $validacion = mesas_editar_validar_programacion_completa($pdo, $tipo, $data, $fechaYmd, $idTurno, $hora, $turno, $contexto);
                 $valido = (bool)$validacion['valido'];
                 if ($valido) {
                     $totalValidos++;

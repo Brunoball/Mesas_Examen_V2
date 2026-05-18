@@ -114,12 +114,38 @@ export const guardarProgramacionMesa = ({
   });
 };
 
+export const crearGrupoUnicoNoAgrupada = ({
+  id_no_agrupada,
+  numero_mesa,
+  fecha_mesa,
+  id_turno,
+  hora,
+} = {}) => {
+  return apiPost("mesas_editar_no_agrupada_crear_grupo_unico", {
+    tipo: "no_agrupada",
+    id_no_agrupada,
+    numero_mesa,
+    fecha_mesa,
+    id_turno,
+    hora,
+  });
+};
+
 export const eliminarMesaEdicion = ({ tipo = "grupo", id_grupo, numero_grupo, id_no_agrupada, numero_mesa } = {}) => {
-  return apiPost("mesas_editar_eliminar", {
+  return apiPost("mesas_editar_eliminar_grupo", {
     tipo,
     id_grupo,
     numero_grupo,
     id_no_agrupada,
+    numero_mesa,
+  });
+};
+
+export const eliminarNumeroGrupoEdicion = ({ numero_grupo, id_grupo, numero_mesa } = {}) => {
+  return apiPost("mesas_editar_eliminar_numero_grupo", {
+    modo: "numero_grupo",
+    numero_grupo: numero_grupo || id_grupo,
+    id_grupo: id_grupo || numero_grupo,
     numero_mesa,
   });
 };
@@ -217,5 +243,22 @@ export const moverNumeroMesaGrupo = ({ numero_mesa, numero_grupo_destino } = {})
   return apiPost("mesas_editar_flechas_mover", {
     numero_mesa,
     numero_grupo_destino,
+  });
+};
+
+export const obtenerOpcionesAgregarNumeroGrupo = ({ numero_grupo, id_grupo } = {}) => {
+  return apiGet("mesas_editar_agregar_numero_opciones", limpiarParams({
+    numero_grupo: numero_grupo || id_grupo,
+    id_grupo: id_grupo || numero_grupo,
+  }));
+};
+
+export const confirmarAgregarNumeroGrupo = ({ numero_grupo, id_grupo, tipo = "no_agrupada", numero_mesa, id_previa } = {}) => {
+  return apiPost("mesas_editar_agregar_numero_confirmar", {
+    numero_grupo: numero_grupo || id_grupo,
+    id_grupo: id_grupo || numero_grupo,
+    tipo,
+    numero_mesa,
+    id_previa,
   });
 };
