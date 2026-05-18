@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -78,9 +78,37 @@ function SelectField({ label, value, onChange, children, disabled = false }) {
 }
 
 function InputField({ label, value, onChange, placeholder, type = 'text', disabled = false }) {
+  const inputRef = useRef(null);
+  const esFecha = type === 'date';
+
+  function abrirCalendario() {
+    if (!esFecha || disabled) return;
+
+    const input = inputRef.current;
+    if (!input) return;
+
+    try {
+      input.focus({ preventScroll: true });
+    } catch (e) {
+      input.focus();
+    }
+
+    if (typeof input.showPicker !== 'function') return;
+
+    try {
+      input.showPicker();
+    } catch (e) {
+      // Si el navegador bloquea showPicker, al menos queda enfocado el campo.
+    }
+  }
+
   return (
-    <label className={`gm-field${type === 'date' ? ' gm-field--date' : ''}`}>
+    <label
+      className={`gm-field${esFecha ? ' gm-field--date' : ''}`}
+      onPointerDown={abrirCalendario}
+    >
       <input
+        ref={inputRef}
         className="gm-input"
         type={type}
         value={value ?? ''}
@@ -362,7 +390,7 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
   const subtitulo = editando ? 'Modificá los datos de la previa' : 'Cargá los datos del alumno y las materias previas';
 
   const materiaPanel = materiaActual && (
-    <section className="gm-panel previas-panel">
+    <section className="gm-panel previas-panel previas-panel--materia">
       <div className="gm-panel__head">
         <div>
           <span className="gm-panel__eyebrow">Materia previa</span>
@@ -428,7 +456,7 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
   );
 
   const administrativoPanel = materiaActual && (
-    <section className="gm-panel previas-panel">
+    <section className="gm-panel previas-panel previas-panel--administrativo">
       <div className="gm-panel__head">
         <div>
           <span className="gm-panel__eyebrow">Administrativo</span>
@@ -472,6 +500,45 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
           <option value="0">No</option>
           <option value="1">Sí</option>
         </SelectField>
+      </div>
+    </section>
+  );
+
+  const cursadoPanel = (
+    <section className="gm-panel previas-panel previas-panel--cursado">
+      <div className="gm-panel__head">
+        <div>
+          <span className="gm-panel__eyebrow">Cursado</span>
+          <h3><FontAwesomeIcon icon={faLayerGroup} /> {editando ? 'Cursado' : 'Cursado actual'}</h3>
+        </div>
+        <span className="gm-panel__tag">Alumno</span>
+      </div>
+
+      <div className="gm-panel__body">
+        <div className="previas-two-cols">
+          <SelectField
+            label={editando ? 'Curso' : 'Curso actual'}
+            value={datosAlumno.cursando_id_curso}
+            onChange={(e) => actualizarAlumno('cursando_id_curso', e.target.value)}
+          >
+            <option value="">Seleccionar...</option>
+            {cursos.map((c) => (
+              <option key={c.id_curso} value={c.id_curso}>{c.nombre_curso}</option>
+            ))}
+          </SelectField>
+
+          <SelectField
+            label={editando ? 'División' : 'División actual'}
+            value={datosAlumno.cursando_id_division}
+            onChange={(e) => actualizarAlumno('cursando_id_division', e.target.value)}
+            disabled={esEgresado}
+          >
+            <option value="">{esEgresado ? 'No aplica' : 'Seleccionar...'}</option>
+            {divisiones.map((d) => (
+              <option key={d.id_division} value={d.id_division}>{d.nombre_division}</option>
+            ))}
+          </SelectField>
+        </div>
       </div>
     </section>
   );
@@ -573,45 +640,15 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
                 </div>
               </section>
 
-              <section className="gm-panel previas-panel">
-                <div className="gm-panel__head">
-                  <div>
-                    <span className="gm-panel__eyebrow">Cursado</span>
-                    <h3><FontAwesomeIcon icon={faLayerGroup} /> {editando ? 'Cursado' : 'Cursado actual'}</h3>
-                  </div>
-                  <span className="gm-panel__tag">Alumno</span>
-                </div>
-
-                <div className="gm-panel__body">
-                  <div className="previas-two-cols">
-                    <SelectField
-                      label={editando ? 'Curso' : 'Curso actual'}
-                      value={datosAlumno.cursando_id_curso}
-                      onChange={(e) => actualizarAlumno('cursando_id_curso', e.target.value)}
-                    >
-                      <option value="">Seleccionar...</option>
-                      {cursos.map((c) => (
-                        <option key={c.id_curso} value={c.id_curso}>{c.nombre_curso}</option>
-                      ))}
-                    </SelectField>
-
-                    <SelectField
-                      label={editando ? 'División' : 'División actual'}
-                      value={datosAlumno.cursando_id_division}
-                      onChange={(e) => actualizarAlumno('cursando_id_division', e.target.value)}
-                      disabled={esEgresado}
-                    >
-                      <option value="">{esEgresado ? 'No aplica' : 'Seleccionar...'}</option>
-                      {divisiones.map((d) => (
-                        <option key={d.id_division} value={d.id_division}>{d.nombre_division}</option>
-                      ))}
-                    </SelectField>
-                  </div>
-                </div>
-              </section>
-
-              {editando && materiaPanel}
-              {editando && administrativoPanel}
+              {editando ? (
+                <>
+                  {administrativoPanel}
+                  {materiaPanel}
+                  {cursadoPanel}
+                </>
+              ) : (
+                cursadoPanel
+              )}
             </div>
           )}
 
