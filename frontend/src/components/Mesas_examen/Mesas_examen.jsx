@@ -11,8 +11,11 @@ import {
   faTriangleExclamation,
   faCheckCircle,
   faEdit,
+  faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 
+import "../Global/Global_css/roots.css";
+import "../Global/Global_css/Global_Section.css";
 import "./Mesas_examen.css";
 import Principal, { MesasShellContext } from "../Principal/Principal";
 import { useMesasExamen } from "./hooks/useMesasExamen";
@@ -395,121 +398,161 @@ const MesasExamen = () => {
     error,
   } = useMesasExamen({ onToast: mostrarToastGlobal });
 
+  const totalVisible = Array.isArray(mesasFiltradas) ? mesasFiltradas.length : 0;
+  const totalReferencia = tab === "no-agrupadas" ? totalNoAgrupadas : totalGrupos;
+  const hayBusquedaActiva = String(busqueda || "").trim() !== "";
+
   const contenido = (
-    <div className="mesas-page">
-      <header className="mesas-topbar">
-        <div className="mesas-title-wrap">
-          <h1>Mesas de Examen</h1>
-        </div>
+    <div className="mesas-page mov-page">
+      <section className="mesas-shell-card mesas-card-pdf-mode mesas-card-pdf-fijo mov-card mov-card--table">
+        <div className="mov-card__head mesas-card__head mesas-panel-head">
+          <div className="mov-card__headLeft mesas-card__headLeft">
+            <div className="title-mov mesas-titleBox">
+              <div className="mov-card__title mesas-section-title">
+                Mesas de Examen
+              </div>
+              <div className="mov-card__hint">
+                Mostrando <b>{totalVisible}</b> de <b>{totalReferencia}</b> registros
+              </div>
+            </div>
 
-        <div className="mesas-search">
-          <input
-            type="text"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar por grupo, número, docente, alumno, DNI, materia, curso, división, turno o fecha"
-          />
-          <FontAwesomeIcon icon={faMagnifyingGlass} className="mesas-search-icon" />
-        </div>
+            <div className="mov-headFilters mesas-headFilters">
+              <div className="mesas-filterTabs" aria-label="Cambiar vista de mesas">
+                <span className="mesas-filterTabs__label">Vista</span>
+                <div className="mov-tabs mesas-tabsInline">
+                  <button
+                    className={`mov-tab mesas-tab mesas-tab-counter ${tab === "grupos-finales" ? "is-active" : ""}`}
+                    type="button"
+                    onClick={() => setTab("grupos-finales")}
+                  >
+                    <FontAwesomeIcon icon={faLayerGroup} />
+                    Grupos finales: {totalGrupos}
+                  </button>
 
-        <div className="mesas-top-actions">
-          <button
-            className="btn-action btn-create"
-            type="button"
-            onClick={abrirModalCrear}
-            disabled={armando || agrupando}
-          >
-            {armando ? (
-              <FontAwesomeIcon icon={faSpinner} spin />
-            ) : (
-              <FontAwesomeIcon icon={faUserPlus} />
-            )}
-            Crear Mesas
-          </button>
+                  <button
+                    className={`mov-tab mesas-tab mesas-tab-link ${tab === "no-agrupadas" ? "is-active" : ""}`}
+                    type="button"
+                    onClick={() => setTab("no-agrupadas")}
+                  >
+                    <FontAwesomeIcon icon={faLinkSlash} />
+                    No agrupadas: {totalNoAgrupadas}
+                  </button>
+                </div>
+              </div>
 
-          <button
-            className="btn-action btn-delete"
-            type="button"
-            onClick={eliminarBorrador}
-            disabled={armando || agrupando || (gruposFinales.length === 0 && noAgrupadas.length === 0)}
-          >
-            <FontAwesomeIcon icon={faTrash} />
-            Eliminar Armado
-          </button>
-        </div>
-      </header>
-
-      <main className="mesas-content">
-        {error && (
-          <div className="mesas-alert mesas-alert-error">
-            <FontAwesomeIcon icon={faTriangleExclamation} />
-            {error}
-          </div>
-        )}
-
-        {resumenArmado && (
-          <div className="mesas-alert mesas-alert-ok">
-            <FontAwesomeIcon icon={faCheckCircle} />
-            <div>
-              <strong>Resultado del armado</strong>
-              <span>
-                Insertadas: {resumenArmado.insertados ?? 0} | Actualizadas:{" "}
-                {resumenArmado.actualizados ?? 0} | Observadas: {resumenArmado.observados ?? 0} |{" "}
-                Grupos finales: {resumenArmado.grupos_finales?.total_grupos_generados ?? "-"} |{" "}
-                No agrupadas: {resumenArmado.grupos_finales?.total_no_agrupadas ?? "-"}
-              </span>
+              <div className="cc-filter mesas-searchFilter">
+                <div className={`cc-floatingField cc-floatingField--search mesas-floatingSearch ${hayBusquedaActiva ? "is-active" : ""}`}>
+                  <div className="cc-searchInput">
+                    <div className="cc-searchInput__fieldWrap">
+                      <input
+                        className="cc-input cc-input--floating mesas-searchInput"
+                        type="text"
+                        value={busqueda}
+                        onChange={(e) => setBusqueda(e.target.value)}
+                        placeholder="Buscar"
+                      />
+                      <span className="cc-floatingLabel mesas-searchLabel">
+                        <FontAwesomeIcon icon={faMagnifyingGlass} /> Búsqueda
+                      </span>
+                      {hayBusquedaActiva && (
+                        <button
+                          type="button"
+                          className="cc-clearSearch cc-clearSearch--inside mesas-clearSearch"
+                          title="Limpiar búsqueda"
+                          onClick={() => setBusqueda("")}
+                        >
+                          <FontAwesomeIcon icon={faTimes} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        )}
 
-        <div className="mesas-tabs">
-          <button
-            className={`mesas-tab mesas-tab-counter ${tab === "grupos-finales" ? "active" : ""}`}
-            type="button"
-            onClick={() => setTab("grupos-finales")}
-          >
-            <FontAwesomeIcon icon={faLayerGroup} />
-            Grupos finales: {totalGrupos}
-          </button>
+          <div className="mov-card__actions mesas-actionsHead">
+            <button
+              className="mov-btn mov-btn--primary mesas-actionBtn mesas-createBtn"
+              type="button"
+              onClick={abrirModalCrear}
+              disabled={armando || agrupando}
+            >
+              {armando ? (
+                <FontAwesomeIcon icon={faSpinner} spin />
+              ) : (
+                <FontAwesomeIcon icon={faUserPlus} />
+              )}
+              Crear Mesas
+            </button>
 
-          <button
-            className={`mesas-tab mesas-tab-link ${tab === "no-agrupadas" ? "active" : ""}`}
-            type="button"
-            onClick={() => setTab("no-agrupadas")}
-          >
-            <FontAwesomeIcon icon={faLinkSlash} />
-            No agrupadas: {totalNoAgrupadas}
-          </button>
+            <button
+              className="mov-btn mov-btn--danger mesas-actionBtn mesas-deleteBtn"
+              type="button"
+              onClick={eliminarBorrador}
+              disabled={armando || agrupando || (gruposFinales.length === 0 && noAgrupadas.length === 0)}
+            >
+              <FontAwesomeIcon icon={faTrash} />
+              Eliminar Armado
+            </button>
+          </div>
         </div>
 
-        <section className="mesas-card mesas-card-pdf-mode mesas-card-pdf-fijo">
-          <div className="mesas-pdf-view">
-            {cargando ? (
-              <div className="mesas-empty mesas-pdf-empty">
-                <FontAwesomeIcon icon={faSpinner} spin /> Cargando mesas...
+        {(error || resumenArmado) && (
+          <div className="mesas-statusAlerts">
+            {error && (
+              <div className="mov-alert mesas-alert mesas-alert-error">
+                <FontAwesomeIcon icon={faTriangleExclamation} />
+                {error}
               </div>
-            ) : mesasFiltradas.length === 0 ? (
-              <div className="mesas-empty mesas-pdf-empty">
+            )}
+
+            {resumenArmado && (
+              <div className="mov-alert mesas-alert mesas-alert-ok">
+                <FontAwesomeIcon icon={faCheckCircle} />
+                <div>
+                  <strong>Resultado del armado</strong>
+                  <span>
+                    Insertadas: {resumenArmado.insertados ?? 0} | Actualizadas:{" "}
+                    {resumenArmado.actualizados ?? 0} | Observadas: {resumenArmado.observados ?? 0} |{" "}
+                    Grupos finales: {resumenArmado.grupos_finales?.total_grupos_generados ?? "-"} |{" "}
+                    No agrupadas: {resumenArmado.grupos_finales?.total_no_agrupadas ?? "-"}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="mesas-pdf-view">
+          {cargando ? (
+            <div className="cc-emptyState mesas-empty mesas-pdf-empty">
+              <FontAwesomeIcon icon={faSpinner} spin />
+              <div className="cc-emptyText">Cargando mesas...</div>
+            </div>
+          ) : mesasFiltradas.length === 0 ? (
+            <div className="cc-emptyState mesas-empty mesas-pdf-empty">
+              <div className="cc-emptyText">
                 {busqueda
                   ? "No se encontraron mesas que coincidan con la búsqueda."
                   : tab === "no-agrupadas"
                     ? "No hay números pendientes sin agrupar para mostrar."
                     : "No hay grupos finales cargados. Presioná Crear Mesas para generar el armado."}
               </div>
-            ) : (
-              mesasFiltradas.map((item) => (
-                <MesaPdfCard
-                  key={`pdf-${obtenerIdGrupo(item)}`}
-                  grupo={item}
-                  esNoAgrupada={tab === "no-agrupadas"}
-                  onEdit={() => abrirModalEditar(item, tab === "no-agrupadas" ? "no_agrupada" : "grupo")}
-                  onDelete={() => eliminarMesaDesdeEdicion(construirPayloadEliminar(item, tab))}
-                />
-              ))
-            )}
-          </div>
-        </section>
-      </main>
+            </div>
+          ) : (
+            mesasFiltradas.map((item) => (
+              <MesaPdfCard
+                key={`pdf-${obtenerIdGrupo(item)}`}
+                grupo={item}
+                esNoAgrupada={tab === "no-agrupadas"}
+                onEdit={() => abrirModalEditar(item, tab === "no-agrupadas" ? "no_agrupada" : "grupo")}
+                onDelete={() => eliminarMesaDesdeEdicion(construirPayloadEliminar(item, tab))}
+              />
+            ))
+          )}
+        </div>
+      </section>
 
       <ModalCrearMesa
         abierto={modalCrearAbierto}
