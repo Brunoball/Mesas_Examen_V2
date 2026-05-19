@@ -21,8 +21,6 @@ const texto = (valor, fallback = "-") => {
   return limpio || fallback;
 };
 
-const clampPercent = (valor) => Math.max(0, Math.min(100, Number(valor || 0)));
-
 const maximoGrafico = (items) => {
   const max = Math.max(
     1,
@@ -105,6 +103,40 @@ function Dashbord() {
     [tarjetas, indicadores]
   );
 
+  const miniCards = useMemo(
+    () => [
+      {
+        key: "numeracion",
+        label: "Numeración",
+        value: indicadores.porcentaje_numerado,
+        icon: faChartLine,
+        tone: "blue",
+      },
+      {
+        key: "agrupacion",
+        label: "Agrupación",
+        value: indicadores.porcentaje_agrupado,
+        icon: faLayerGroup,
+        tone: "green",
+      },
+      {
+        key: "catedras",
+        label: "Cátedras con docente",
+        value: indicadores.porcentaje_catedras_con_docente,
+        icon: faGraduationCap,
+        tone: "purple",
+      },
+      {
+        key: "disponibilidad",
+        label: "Docentes con disponibilidad",
+        value: indicadores.porcentaje_docentes_con_disponibilidad,
+        icon: faCheckCircle,
+        tone: "orange",
+      },
+    ],
+    [indicadores]
+  );
+
   const maxGrafico = useMemo(() => maximoGrafico(graficoDias), [graficoDias]);
   const estadoCodigo = texto(estadoArmado.codigo, "sin_armado");
 
@@ -126,6 +158,7 @@ function Dashbord() {
             <span>Año {texto(periodo.anio_actual, new Date().getFullYear())}</span>
             <strong>{texto(periodo.rango_armado?.label, "Sin armado")}</strong>
           </div>
+
         </div>
       </header>
 
@@ -213,8 +246,7 @@ function Dashbord() {
             <aside className="dashbord-panel dashbord-panel--status">
               <div className="dashbord-panel__head">
                 <div>
-                  <h2>Indicadores generales</h2>
-                  <p>Estado principal del sistema y del armado actual.</p>
+                  <h2>Estado del armado</h2>
                 </div>
               </div>
 
@@ -223,44 +255,27 @@ function Dashbord() {
                   <FontAwesomeIcon icon={estadoCodigo === "completo" ? faCheckCircle : faChartLine} />
                 </div>
                 <div>
-                  <span>Estado del armado</span>
                   <strong>{texto(estadoArmado.titulo, "Sin información")}</strong>
                   <small>{texto(estadoArmado.detalle, "-")}</small>
                 </div>
               </div>
 
               <div className="dashbord-miniGrid">
-                <div className="dashbord-miniCard">
-                  <span>Numeración</span>
-                  <strong>{numero(indicadores.porcentaje_numerado)}%</strong>
-                  <div className="dashbord-progress">
-                    <i style={{ width: `${clampPercent(indicadores.porcentaje_numerado)}%` }} />
-                  </div>
-                </div>
+                {miniCards.map((item) => (
+                  <div key={item.key} className={`dashbord-miniCard dashbord-miniCard--${item.tone}`}>
+                    <div className="dashbord-miniCard__row">
+                      <div className="dashbord-miniCard__icon">
+                        <FontAwesomeIcon icon={item.icon} />
+                      </div>
 
-                <div className="dashbord-miniCard">
-                  <span>Agrupación</span>
-                  <strong>{numero(indicadores.porcentaje_agrupado)}%</strong>
-                  <div className="dashbord-progress">
-                    <i style={{ width: `${clampPercent(indicadores.porcentaje_agrupado)}%` }} />
-                  </div>
-                </div>
+                      <div className="dashbord-miniCard__info">
+                        <strong>{numero(item.value)}%</strong>
+                      </div>
+                    </div>
 
-                <div className="dashbord-miniCard">
-                  <span>Cátedras con docente</span>
-                  <strong>{numero(indicadores.porcentaje_catedras_con_docente)}%</strong>
-                  <div className="dashbord-progress">
-                    <i style={{ width: `${clampPercent(indicadores.porcentaje_catedras_con_docente)}%` }} />
+                    <span className="dashbord-miniCard__label">{item.label}</span>
                   </div>
-                </div>
-
-                <div className="dashbord-miniCard">
-                  <span>Docentes con disponibilidad</span>
-                  <strong>{numero(indicadores.porcentaje_docentes_con_disponibilidad)}%</strong>
-                  <div className="dashbord-progress">
-                    <i style={{ width: `${clampPercent(indicadores.porcentaje_docentes_con_disponibilidad)}%` }} />
-                  </div>
-                </div>
+                ))}
               </div>
             </aside>
           </div>

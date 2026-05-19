@@ -97,7 +97,7 @@ const ModalMateria = ({ item, areas = [], onClose, onSave }) => {
 
           <div className="gm-modal__headText">
             <h2 id="materia-modal-title">{item ? "Editar materia" : "Nueva materia"}</h2>
-            <p>Completá los datos principales y vinculá las áreas desde una vista ordenada.</p>
+            <p>Definí el nombre, estado y áreas relacionadas desde una vista limpia.</p>
           </div>
 
           <button type="button" className="gm-modal__close modal-close" onClick={onClose} aria-label="Cerrar modal">
@@ -111,6 +111,18 @@ const ModalMateria = ({ item, areas = [], onClose, onSave }) => {
               {error}
             </div>
           )}
+
+          <div className="materias-editor-summary" aria-label="Resumen de la materia">
+            <div className={`materias-editor-summaryItem ${activo ? "is-active" : "is-inactive"}`}>
+              <span>Estado</span>
+              <strong>{activo ? "Activa" : "Inactiva"}</strong>
+            </div>
+
+            <div className="materias-editor-summaryItem">
+              <span>Áreas</span>
+              <strong>{idsAreas.length} seleccionada{idsAreas.length === 1 ? "" : "s"}</strong>
+            </div>
+          </div>
 
           <div className="gm-tabs gm-tabs--google materias-modal-tabs" role="tablist" aria-label="Secciones de la materia">
             <button
@@ -145,7 +157,7 @@ const ModalMateria = ({ item, areas = [], onClose, onSave }) => {
             <section className="gm-panel materias-editor-panel" id="materia-panel-ficha" role="tabpanel" aria-labelledby="materia-tab-ficha">
               <div className="gm-panel__head">
                 <div>
-                  <span className="gm-panel__eyebrow">Ficha principal</span>
+                  <span className="gm-panel__eyebrow">Datos principales</span>
                   <h3>
                     <FontAwesomeIcon icon={faBook} />
                     Datos de la materia
@@ -196,7 +208,7 @@ const ModalMateria = ({ item, areas = [], onClose, onSave }) => {
             <section className="gm-panel materias-editor-panel" id="materia-panel-areas" role="tabpanel" aria-labelledby="materia-tab-areas">
               <div className="gm-panel__head gm-panel__head--split">
                 <div>
-                  <span className="gm-panel__eyebrow">Agrupación</span>
+                  <span className="gm-panel__eyebrow">Vinculación</span>
                   <h3>
                     <FontAwesomeIcon icon={faLayerGroup} />
                     Áreas relacionadas

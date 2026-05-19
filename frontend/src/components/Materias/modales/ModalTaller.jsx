@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faBook,
   faCheck,
+  faCheckCircle,
   faFlask,
   faMagnifyingGlass,
   faSave,
@@ -70,6 +71,7 @@ const ModalTaller = ({
   const [catedrasCurso, setCatedrasCurso] = useState([]);
   const [cargandoCatedras, setCargandoCatedras] = useState(false);
   const [errorCatedras, setErrorCatedras] = useState("");
+  const [errorGeneral, setErrorGeneral] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [pestaniaActiva, setPestaniaActiva] = useState(TAB_DIVISIONES);
 
@@ -103,6 +105,7 @@ const ModalTaller = ({
     setSeleccionadas(extraerIdsCatedras(item));
     setIdArea("");
     setBusqueda("");
+    setErrorGeneral("");
     setPestaniaActiva(TAB_DIVISIONES);
   }, [item]);
 
@@ -254,6 +257,15 @@ const ModalTaller = ({
       : `${idsDivisiones.length} división/es`;
   }, [idsDivisiones, divisionesActivas]);
 
+  const cursoSeleccionadoTexto = useMemo(() => {
+    if (!idCurso) return "Sin curso";
+
+    return (
+      cursosActivos.find((c) => Number(c.id_curso) === Number(idCurso))
+        ?.nombre_curso || "Curso seleccionado"
+    );
+  }, [idCurso, cursosActivos]);
+
   const catedrasSeleccionadasTexto = useMemo(() => {
     if (!idCurso) return "Primero seleccioná el curso/año del taller.";
     if (idsDivisiones.length === 0) return "Ahora seleccioná una o varias divisiones.";
@@ -271,6 +283,7 @@ const ModalTaller = ({
     setSeleccionadas([]);
     setIdArea("");
     setBusqueda("");
+    setErrorGeneral("");
     setPestaniaActiva(TAB_DIVISIONES);
   };
 
@@ -339,27 +352,28 @@ const ModalTaller = ({
     const nombre = taller.trim().toUpperCase();
 
     if (!nombre) {
-      alert("El nombre del taller es obligatorio.");
+      setErrorGeneral("El nombre del taller es obligatorio.");
       return;
     }
 
     if (!idCurso) {
-      alert("Tenés que seleccionar el curso/año al que pertenece el taller.");
+      setErrorGeneral("Tenés que seleccionar el curso/año al que pertenece el taller.");
       return;
     }
 
     if (idsDivisiones.length === 0) {
       setPestaniaActiva(TAB_DIVISIONES);
-      alert("Tenés que seleccionar al menos una división.");
+      setErrorGeneral("Tenés que seleccionar al menos una división.");
       return;
     }
 
     if (seleccionadas.length === 0) {
       setPestaniaActiva(TAB_CATEDRAS);
-      alert("Tenés que seleccionar las cátedras específicas de ese taller.");
+      setErrorGeneral("Tenés que seleccionar las cátedras específicas de ese taller.");
       return;
     }
 
+    setErrorGeneral("");
     setGuardando(true);
 
     try {
@@ -405,8 +419,7 @@ const ModalTaller = ({
           <div className="gm-modal__headText">
             <h2 id="taller-modal-title">{item ? "Editar taller" : "Nuevo taller"}</h2>
             <p>
-              El taller se guarda con cátedras reales. La materia, el curso y la
-              división se obtienen desde cada cátedra.
+              Gestioná curso, divisiones y cátedras reales desde una interfaz ordenada.
             </p>
           </div>
 
@@ -445,14 +458,49 @@ const ModalTaller = ({
                 </select>
               </label>
 
-              <label className="check-inline top-check">
-                <input
-                  type="checkbox"
-                  checked={activo}
-                  onChange={(e) => setActivo(e.target.checked)}
-                />
-                Taller activo
-              </label>
+              <div className="gm-field gm-field--status taller-status-field">
+                <div className="gm-statusToggle" role="group" aria-label="Estado del taller">
+                  <button
+                    type="button"
+                    className={`gm-statusToggle__btn ${activo ? "is-active" : ""}`}
+                    onClick={() => setActivo(true)}
+                  >
+                    <FontAwesomeIcon icon={faCheckCircle} />
+                    Activo
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`gm-statusToggle__btn gm-statusToggle__btn--danger ${!activo ? "is-active" : ""}`}
+                    onClick={() => setActivo(false)}
+                  >
+                    Inactivo
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {errorGeneral && (
+              <div className="gm-alert gm-alert--error gm-alert--banner taller-alert">
+                {errorGeneral}
+              </div>
+            )}
+
+            <div className="taller-summary-strip" aria-label="Resumen del taller">
+              <div className="taller-summary-card">
+                <span>Curso</span>
+                <strong>{cursoSeleccionadoTexto}</strong>
+              </div>
+
+              <div className="taller-summary-card">
+                <span>Divisiones</span>
+                <strong>{idsDivisiones.length}</strong>
+              </div>
+
+              <div className="taller-summary-card">
+                <span>Cátedras</span>
+                <strong>{seleccionadas.length}</strong>
+              </div>
             </div>
 
             <div

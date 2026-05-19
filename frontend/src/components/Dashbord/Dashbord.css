@@ -108,7 +108,7 @@
 }
 
 .dashbord-period strong {
-  font-weight: 700;
+  font-weight: 900;
 }
 
 .dashbord-btn {
@@ -386,7 +386,6 @@
   place-items: center;
   color: var(--dash-blue);
   background: rgba(0, 85, 187, 0.1);
-  margin: auto;
 }
 
 .dashbord-status span,
@@ -398,6 +397,7 @@
 
 .dashbord-status strong {
   display: block;
+  margin-top: 2px;
   color: var(--dash-midnight);
   font-size: 17px;
   font-weight: 900;
@@ -409,7 +409,7 @@
   margin-top: 4px;
   color: var(--dash-muted);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 650;
   line-height: 1.35;
 }
 
@@ -421,7 +421,7 @@
 
 .dashbord-miniCard {
   position: relative;
-  min-height: 64px;
+
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -499,7 +499,8 @@
   z-index: 1;
   display: block;
   width: 100%;
-  padding-top: 4px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(10, 37, 64, 0.08);
   overflow: hidden;
   color: var(--dash-muted);
   font-size: 11px;

@@ -598,6 +598,49 @@ const ModalCorrelativa = ({
     return "";
   };
 
+  const resumenModo = esEdicion
+    ? "Edición"
+    : modo === "auto"
+    ? "Automático"
+    : "Manual";
+
+  const resumenRelaciones = modo === "auto"
+    ? `${cursosAutoSeleccionados.length} curso${cursosAutoSeleccionados.length === 1 ? "" : "s"}`
+    : `${relaciones.length} relación${relaciones.length === 1 ? "" : "es"}`;
+
+  const cursoAnteriorNombre = useMemo(() => {
+    const curso = cursosActivos.find(
+      (c) => String(c.id_curso) === String(idCursoAnterior)
+    );
+    return curso?.nombre_curso || "";
+  }, [cursosActivos, idCursoAnterior]);
+
+  const materiaAnteriorNombre = useMemo(() => {
+    const materia = materiasCursoAnterior.find(
+      (m) => String(m.id_materia) === String(idMateriaAnterior)
+    );
+    return materia?.materia || "";
+  }, [materiasCursoAnterior, idMateriaAnterior]);
+
+  const materiaAutoNombre = useMemo(() => {
+    const materia = materiasAuto.find(
+      (m) => String(m.id_materia) === String(idMateriaAuto)
+    );
+    return materia?.materia || "";
+  }, [materiasAuto, idMateriaAuto]);
+
+  const resumenBase = modo === "auto"
+    ? materiaAutoNombre || "Sin materia base"
+    : materiaAnteriorNombre
+    ? `${cursoAnteriorNombre ? `${cursoAnteriorNombre} · ` : ""}${materiaAnteriorNombre}`
+    : cursoAnteriorNombre || "Sin materia base";
+
+  const resumenSalida = modo === "auto"
+    ? cursosAutoSeleccionados.length > 0
+      ? cursosAutoSeleccionados.map((c) => c.nombre_curso).join(" → ")
+      : resumenRelaciones
+    : resumenRelaciones;
+
   const guardar = () => {
     if (modo === "auto") {
       const msg = validarAuto();
@@ -694,8 +737,7 @@ const ModalCorrelativa = ({
             </h2>
 
             <p>
-              Las materias se cargan al seleccionar el curso, usando cátedras
-              como fuente real.
+              Armá relaciones manuales o generá cadenas automáticas por materia.
             </p>
           </div>
 
@@ -732,6 +774,23 @@ const ModalCorrelativa = ({
           )}
 
           {error && <div className="modal-corr-error">{error}</div>}
+
+          <div className="modal-corr-summary" aria-label="Resumen de correlatividad">
+            <div className="modal-corr-summary-item">
+              <span>Modo</span>
+              <strong>{resumenModo}</strong>
+            </div>
+
+            <div className="modal-corr-summary-item modal-corr-summary-item--wide">
+              <span>Base</span>
+              <strong title={resumenBase}>{resumenBase}</strong>
+            </div>
+
+            <div className="modal-corr-summary-item">
+              <span>Salida</span>
+              <strong title={resumenSalida}>{resumenSalida}</strong>
+            </div>
+          </div>
 
           {modo === "manual" && (
             <>
@@ -876,36 +935,40 @@ const ModalCorrelativa = ({
                             </select>
                           </div>
 
-                          <div className="modal-corr-checks">
-                            <label>
-                              <input
-                                type="checkbox"
-                                checked={Number(rel.bloquea_inscripcion) === 1}
-                                onChange={(e) =>
-                                  cambiarRelacion(
-                                    index,
-                                    "bloquea_inscripcion",
-                                    e.target.checked ? 1 : 0
-                                  )
-                                }
-                              />
-                              Bloquea inscripción
-                            </label>
+                          <div className="modal-corr-options">
+                            <span className="modal-corr-options-title">Reglas</span>
 
-                            <label>
-                              <input
-                                type="checkbox"
-                                checked={Number(rel.bloquea_armado) === 1}
-                                onChange={(e) =>
-                                  cambiarRelacion(
-                                    index,
-                                    "bloquea_armado",
-                                    e.target.checked ? 1 : 0
-                                  )
-                                }
-                              />
-                              Bloquea armado
-                            </label>
+                            <div className="modal-corr-checks">
+                              <label>
+                                <input
+                                  type="checkbox"
+                                  checked={Number(rel.bloquea_inscripcion) === 1}
+                                  onChange={(e) =>
+                                    cambiarRelacion(
+                                      index,
+                                      "bloquea_inscripcion",
+                                      e.target.checked ? 1 : 0
+                                    )
+                                  }
+                                />
+                                Bloquea inscripción
+                              </label>
+
+                              <label>
+                                <input
+                                  type="checkbox"
+                                  checked={Number(rel.bloquea_armado) === 1}
+                                  onChange={(e) =>
+                                    cambiarRelacion(
+                                      index,
+                                      "bloquea_armado",
+                                      e.target.checked ? 1 : 0
+                                    )
+                                  }
+                                />
+                                Bloquea armado
+                              </label>
+                            </div>
                           </div>
                         </div>
 
@@ -926,10 +989,7 @@ const ModalCorrelativa = ({
               </div>
 
               <div className="modal-corr-example">
-                Ejemplo: si elegís <strong>1° - MATEMÁTICA</strong> como
-                anterior y agregás <strong>2° - MATEMÁTICA</strong> como
-                posterior, el sistema guarda esa correlatividad. Podés agregar
-                varias relaciones antes de guardar.
+                Ejemplo: <strong>1° - MATEMÁTICA</strong> como base y <strong>2° - MATEMÁTICA</strong> como posterior. Podés cargar varias relaciones antes de guardar.
               </div>
             </>
           )}
@@ -962,28 +1022,32 @@ const ModalCorrelativa = ({
                   </select>
                 </div>
 
-                <div className="modal-corr-checks auto-checks">
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={Number(autoBloqueaInscripcion) === 1}
-                      onChange={(e) =>
-                        setAutoBloqueaInscripcion(e.target.checked ? 1 : 0)
-                      }
-                    />
-                    Bloquea inscripción
-                  </label>
+                <div className="modal-corr-options auto-checks">
+                  <span className="modal-corr-options-title">Reglas de bloqueo</span>
 
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={Number(autoBloqueaArmado) === 1}
-                      onChange={(e) =>
-                        setAutoBloqueaArmado(e.target.checked ? 1 : 0)
-                      }
-                    />
-                    Bloquea armado
-                  </label>
+                  <div className="modal-corr-checks">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={Number(autoBloqueaInscripcion) === 1}
+                        onChange={(e) =>
+                          setAutoBloqueaInscripcion(e.target.checked ? 1 : 0)
+                        }
+                      />
+                      Bloquea inscripción
+                    </label>
+
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={Number(autoBloqueaArmado) === 1}
+                        onChange={(e) =>
+                          setAutoBloqueaArmado(e.target.checked ? 1 : 0)
+                        }
+                      />
+                      Bloquea armado
+                    </label>
+                  </div>
                 </div>
               </div>
 

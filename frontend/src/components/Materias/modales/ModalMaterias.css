@@ -1,11 +1,16 @@
 /* =========================================================
-   Materias — estilos compartidos SOLO para modales de Materias
-   Base visual: Global_Modals.css.
-   Acá quedan únicamente ajustes propios de Materia / Área.
+   Materias — ajustes propios de modales
+   Usa Global_Modals.css como base. No redefine el global.
 ========================================================= */
 
 .materias-editor-modal.gm-modal{
+  width:min(780px, 96vw) !important;
   overflow-x:hidden !important;
+}
+
+.materias-editor-modal.gm-modal.large,
+.materias-editor-modal.gm-modal.gm-modal--materias-lg{
+  width:min(900px, 96vw) !important;
 }
 
 .materias-editor-modal.gm-modal .materias-modal-header p{
@@ -21,8 +26,9 @@
   gap:12px;
   background:linear-gradient(180deg, #fff 0%, #F7FAFD 100%) !important;
   overscroll-behavior:contain;
+  scrollbar-gutter:stable;
   scrollbar-width:thin;
-  scrollbar-color:rgba(10,37,64,.22) transparent;
+  scrollbar-color:rgba(10,37,64,.18) transparent;
 }
 
 .materias-editor-content.gm-modal__content::-webkit-scrollbar{
@@ -34,7 +40,7 @@
 }
 
 .materias-editor-content.gm-modal__content::-webkit-scrollbar-thumb{
-  background:rgba(10,37,64,.22);
+  background:rgba(10,37,64,.18);
   border-radius:999px;
 }
 
@@ -42,15 +48,70 @@
   margin:0 !important;
 }
 
+.materias-editor-summary{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:10px;
+}
+
+.materias-editor-summaryItem{
+  min-height:58px;
+  padding:10px 12px;
+  border:1px solid rgba(10,37,64,.08);
+  border-radius:14px;
+  background:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  box-shadow:0 10px 24px -22px rgba(10,37,64,.36);
+}
+
+.materias-editor-summaryItem span{
+  color:var(--gm-muted, #718096);
+  font-size:11px;
+  font-weight:760;
+  letter-spacing:.055em;
+  text-transform:uppercase;
+}
+
+.materias-editor-summaryItem strong{
+  min-width:0;
+  color:var(--gm-ink, #0A2540);
+  font-size:13px;
+  font-weight:690;
+  line-height:1.25;
+  text-align:right;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.materias-editor-summaryItem.is-active strong{
+  color:var(--gm-success, #22AD5C);
+}
+
+.materias-editor-summaryItem.is-inactive strong{
+  color:var(--gm-danger, #E13D45);
+}
+
+.materias-modal-tabs{
+  flex:0 0 auto;
+}
+
 /* Paneles internos */
 .materias-editor-panel.gm-panel{
-  border-color:rgba(10,37,64,.09) !important;
-  box-shadow:0 12px 30px -26px rgba(10,37,64,.38) !important;
+  border-color:rgba(10,37,64,.085) !important;
+  box-shadow:0 14px 30px -28px rgba(10,37,64,.42) !important;
 }
 
 .materias-editor-panel.gm-panel .gm-panel__head{
   min-height:50px;
-  background:rgba(255,255,255,.82) !important;
+  background:rgba(255,255,255,.86) !important;
+}
+
+.materias-editor-panel.gm-panel .gm-panel__body{
+  padding:14px !important;
 }
 
 .materias-editor-mainRow.gm-formRow--split{
@@ -58,7 +119,7 @@
 }
 
 .materias-editor-status .gm-statusToggle{
-  background:rgba(246,249,252,.92);
+  background:rgba(246,249,252,.82);
 }
 
 .materias-editor-addRow{
@@ -74,9 +135,10 @@
   flex-wrap:wrap;
   align-items:flex-start;
   gap:8px;
-  max-height:240px;
+  max-height:250px;
   overflow-x:hidden;
   overflow-y:auto;
+  padding:2px 2px 4px;
 }
 
 .materias-modalChip{
@@ -86,8 +148,8 @@
   align-items:center;
   gap:7px;
   border-radius:999px !important;
-  background:rgba(0,85,187,.08) !important;
-  border-color:rgba(0,85,187,.18) !important;
+  background:rgba(0,85,187,.07) !important;
+  border:1px solid rgba(0,85,187,.14) !important;
   color:var(--gm-action, #0055BB) !important;
   font-size:12px;
   font-weight:650;
@@ -98,7 +160,7 @@
   height:22px;
   border:0;
   border-radius:999px;
-  background:rgba(255,255,255,.78);
+  background:rgba(255,255,255,.82);
   color:inherit;
   cursor:pointer;
   display:inline-flex;
@@ -123,27 +185,27 @@
 .materias-modalCheckGrid{
   display:grid;
   grid-template-columns:repeat(2, minmax(0, 1fr));
-  gap:10px;
+  gap:9px;
 }
 
 .materias-editor-checkGrid{
   max-height:min(46vh, 360px);
   min-height:210px;
   overflow-y:auto !important;
-  padding:8px 10px 20px 2px !important;
+  padding:8px 8px 20px 2px !important;
   scrollbar-gutter:stable;
 }
 
 .materias-modalCheck{
   position:relative;
-  min-height:56px !important;
-  padding:12px 14px 12px 48px !important;
-  border:1px solid rgba(10,37,64,.10) !important;
-  border-radius:16px !important;
-  background:linear-gradient(180deg, #fff 0%, #FBFDFF 100%) !important;
+  min-height:54px !important;
+  padding:11px 14px 11px 46px !important;
+  border:1px solid rgba(10,37,64,.09) !important;
+  border-radius:14px !important;
+  background:#fff !important;
   color:var(--gm-ink, #0A2540) !important;
   cursor:pointer;
-  box-shadow:0 10px 22px -20px rgba(10,37,64,.34), 0 1px 0 rgba(10,37,64,.04) !important;
+  box-shadow:0 10px 22px -21px rgba(10,37,64,.32), 0 1px 0 rgba(10,37,64,.03) !important;
   transition:border-color 160ms ease, background 160ms ease, box-shadow 160ms ease, transform 160ms ease !important;
 }
 
@@ -151,14 +213,14 @@
   position:absolute;
   left:16px;
   top:50%;
-  width:18px;
-  height:18px;
+  width:17px;
+  height:17px;
   margin:0;
   transform:translateY(-50%);
   appearance:none;
   -webkit-appearance:none;
-  border:2px solid rgba(10,37,64,.38);
-  border-radius:5px;
+  border:2px solid rgba(10,37,64,.26);
+  border-radius:6px;
   background:#fff;
   cursor:pointer;
   display:grid;
@@ -180,37 +242,38 @@
 
 .materias-modalCheck span{
   display:block;
+  min-width:0;
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
   line-height:1.15;
-  font-size:13.5px;
-  font-weight:720;
-  letter-spacing:.01em;
+  font-size:13.2px;
+  font-weight:680;
+  letter-spacing:.002em;
 }
 
 .materias-modalCheck:hover{
   transform:translateY(-1px) !important;
-  border-color:rgba(0,85,187,.22) !important;
-  background:linear-gradient(180deg, #fff 0%, rgba(0,85,187,.035) 100%) !important;
-  box-shadow:0 14px 26px -20px rgba(10,37,64,.42), 0 0 0 4px rgba(0,85,187,.045) !important;
+  border-color:rgba(0,85,187,.20) !important;
+  background:rgba(0,85,187,.025) !important;
+  box-shadow:0 14px 26px -22px rgba(10,37,64,.40), 0 0 0 4px rgba(0,85,187,.035) !important;
 }
 
 .materias-modalCheck:hover input{
-  border-color:rgba(0,85,187,.60);
+  border-color:rgba(0,85,187,.52);
 }
 
 .materias-modalCheck.is-checked{
-  border-color:rgba(0,85,187,.34) !important;
-  background:linear-gradient(180deg, rgba(0,85,187,.075) 0%, rgba(0,85,187,.035) 100%) !important;
+  border-color:rgba(0,85,187,.30) !important;
+  background:rgba(0,85,187,.055) !important;
   color:var(--gm-action, #0055BB) !important;
-  box-shadow:0 14px 28px -22px rgba(0,85,187,.42), inset 0 0 0 1px rgba(0,85,187,.06) !important;
+  box-shadow:0 13px 26px -22px rgba(0,85,187,.38), inset 0 0 0 1px rgba(0,85,187,.045) !important;
 }
 
 .materias-modalCheck.is-checked input{
   border-color:var(--gm-action, #0055BB);
   background:var(--gm-action, #0055BB);
-  box-shadow:0 0 0 4px rgba(0,85,187,.12);
+  box-shadow:0 0 0 4px rgba(0,85,187,.10);
 }
 
 .materias-modalCheck.is-checked input::after{
@@ -247,9 +310,14 @@
     padding:12px !important;
   }
 
+  .materias-editor-summary,
   .materias-editor-mainRow.gm-formRow--split,
   .materias-editor-addRow{
     grid-template-columns:1fr !important;
+  }
+
+  .materias-editor-summaryItem{
+    min-height:52px;
   }
 
   .materias-editor-addRow .gm-btn{
@@ -261,7 +329,7 @@
   }
 
   .materias-editor-checkGrid{
-    max-height:calc(94dvh - 355px) !important;
+    max-height:calc(94dvh - 370px) !important;
     min-height:180px;
     padding-right:4px !important;
   }
