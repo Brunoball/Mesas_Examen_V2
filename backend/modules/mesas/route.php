@@ -5,10 +5,20 @@ declare(strict_types=1);
 require_once __DIR__ . '/armado_mesas/armado_mesas_controller.php';
 require_once __DIR__ . '/armado_mesas_docentes/armado_mesas_docentes_controller.php';
 require_once __DIR__ . '/editar_mesas/route.php';
+require_once __DIR__ . '/resultados/route_resultados.php';
+require_once __DIR__ . '/historial_mesas/route_historial.php';
 
 function route_mesas(string $action): bool
 {
     if (route_mesas_editar($action)) {
+        return true;
+    }
+
+    if (route_mesas_resultados($action)) {
+        return true;
+    }
+
+    if (route_mesas_historial($action)) {
         return true;
     }
 
@@ -44,6 +54,8 @@ function route_mesas(string $action): bool
             return true;
 
         case 'mesas_armado_eliminar_borrador':
+        case 'mesas_armado_eliminar_mesas':
+        case 'mesas_eliminar_armado':
             mesas_armado_eliminar_borrador();
             return true;
 

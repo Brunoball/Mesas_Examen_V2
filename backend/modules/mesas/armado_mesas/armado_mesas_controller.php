@@ -25,6 +25,7 @@ require_once __DIR__ . '/fases/fase_4_agrupar_simples.php';
 require_once __DIR__ . '/fases/fase_5_validar_y_numerar.php';
 require_once __DIR__ . '/fases/fase_6_agrupar_grupos_finales.php';
 require_once __DIR__ . '/fases/fase_7_reoptimizar_no_agrupadas.php';
+require_once __DIR__ . '/../historial_mesas/historial_mesas_helpers.php';
 
 /**
  * Agrega un item único a una colección usando un índice interno.
@@ -533,7 +534,14 @@ function mesas_armado_eliminar_borrador(): void
 
         if (function_exists('mesas_armado_grupos_asegurar_tablas')) {
             mesas_armado_grupos_asegurar_tablas($pdo);
+        }
 
+        $idHistorialArmado = null;
+        if (function_exists('mesas_historial_crear_armado_actual')) {
+            $idHistorialArmado = mesas_historial_crear_armado_actual($pdo, 'eliminacion_armado');
+        }
+
+        if (function_exists('mesas_armado_grupos_asegurar_tablas')) {
             $noAgrupadasEliminadas = (int)$pdo->exec('DELETE FROM mesas_no_agrupadas');
             $gruposEliminados = (int)$pdo->exec('DELETE FROM mesas_grupos');
         }
@@ -551,6 +559,7 @@ function mesas_armado_eliminar_borrador(): void
                 'eliminadas' => $stmt->rowCount(),
                 'grupos_eliminados' => $gruposEliminados,
                 'no_agrupadas_eliminadas' => $noAgrupadasEliminadas,
+                'id_historial_armado' => $idHistorialArmado,
             ],
         ]);
     } catch (Throwable $e) {

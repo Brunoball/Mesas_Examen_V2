@@ -20,7 +20,7 @@ declare(strict_types=1);
 | - Las correlativas anteriores y las mesas con más alumnos toman los primeros slots disponibles.
 | - Las mesas chicas se ubican después, preferentemente en slots ya abiertos de su misma area.
 | - Respeta docentes_disponibilidad como disponibilidad positiva, manteniendo la compactacion por area.
-| - Evita que un mismo docente esté en dos mesas en el mismo slot.
+| - Evita choque docente, salvo cuando el mismo docente toma numeros de la misma area en el mismo slot.
 | - Evita que un mismo alumno esté en dos mesas en el mismo slot.
 | - Si una correlativa posterior depende de una anterior del mismo alumno,
 |   la posterior se ubica en un slot posterior.
@@ -966,8 +966,21 @@ function mesas_armado_calendarizar_grupos(
             $marcarArmada ? 'armada' : 'borrador'
         );
 
+        $detalleOcupacionDocente = [
+            'numero_mesa' => (int)$grupo['numero_mesa'],
+            'area_key' => $areaKey,
+            'tipo_mesa' => (string)($grupo['tipo_mesa'] ?? ''),
+            'prioridad' => (int)($grupo['prioridad'] ?? 0),
+        ];
+
         foreach ($grupo['docentes'] as $idDocente) {
-            $ocupacionDocente[mesas_armado_clave_ocupacion_docente((int)$idDocente, $fecha, $idTurno)] = true;
+            $claveDocente = mesas_armado_clave_ocupacion_docente((int)$idDocente, $fecha, $idTurno);
+
+            if (!isset($ocupacionDocente[$claveDocente]) || !is_array($ocupacionDocente[$claveDocente])) {
+                $ocupacionDocente[$claveDocente] = [];
+            }
+
+            $ocupacionDocente[$claveDocente][] = $detalleOcupacionDocente;
         }
 
         foreach ($grupo['dnis'] as $dni) {
@@ -1043,7 +1056,7 @@ function mesas_armado_calendarizar_grupos(
             '2_volumen' => 'mayor cantidad de alumnos y previas primero',
             '3_restriccion_docente' => 'docentes con disponibilidad cargada primero',
             '4_compactacion_area' => 'misma area intenta quedar en mismo slot para facilitar mesas_grupos',
-            '5_disponibilidad' => 'slot hábil donde el docente esté disponible por día de semana y turno, sin choque de docente/alumno ni correlativa posterior antes de anterior',
+            '5_disponibilidad' => 'slot hábil donde el docente esté disponible por día de semana y turno; se evita choque de alumno y de docente, salvo mismo docente + misma área compatible para compactar números sin duplicar días.',
         ],
     ];
 }
@@ -1083,7 +1096,11 @@ function mesas_armado_buscar_slot_disponible_para_grupo(
                 break;
             }
 
-            if (isset($ocupacionDocente[mesas_armado_clave_ocupacion_docente($idDocente, $fecha, $idTurno)])) {
+            $claveDocente = mesas_armado_clave_ocupacion_docente($idDocente, $fecha, $idTurno);
+
+            if (isset($ocupacionDocente[$claveDocente])
+                && mesas_armado_ocupacion_docente_bloquea_slot($ocupacionDocente[$claveDocente], $grupo)
+            ) {
                 $docenteDisponible = false;
                 break;
             }
@@ -1170,6 +1187,43 @@ function mesas_armado_slot_respeta_correlativas(array $grupo, int $slotIndex, ar
     }
 
     return true;
+}
+
+
+function mesas_armado_grupo_permite_compartir_docente_en_slot(array $grupo): bool
+{
+    $areaKey = trim((string)($grupo['area_key'] ?? ''));
+
+    return $areaKey !== ''
+        && $areaKey !== 'sin_area'
+        && !str_starts_with($areaKey, 'taller_')
+        && (string)($grupo['tipo_mesa'] ?? '') !== 'taller'
+        && (int)($grupo['prioridad'] ?? 0) !== 1;
+}
+
+function mesas_armado_ocupacion_docente_bloquea_slot(mixed $ocupaciones, array $grupo): bool
+{
+    if (!is_array($ocupaciones) || count($ocupaciones) === 0) {
+        return true;
+    }
+
+    if (!mesas_armado_grupo_permite_compartir_docente_en_slot($grupo)) {
+        return true;
+    }
+
+    $areaKeyGrupo = (string)($grupo['area_key'] ?? '');
+
+    foreach ($ocupaciones as $ocupacion) {
+        if (!is_array($ocupacion) || !mesas_armado_grupo_permite_compartir_docente_en_slot($ocupacion)) {
+            return true;
+        }
+
+        if ((string)($ocupacion['area_key'] ?? '') !== $areaKeyGrupo) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function mesas_armado_clave_ocupacion_docente(int $idDocente, string $fecha, int $idTurno): string

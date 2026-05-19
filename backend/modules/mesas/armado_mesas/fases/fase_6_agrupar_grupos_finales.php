@@ -225,7 +225,7 @@ function mesas_armado_grupos_finales_core(PDO $pdo, array $opciones = []): array
             'agrupacion_final_generada' => true,
             'reoptimizacion_ejecutada' => is_array($resultadoReoptimizacion),
             'estructura' => 'simple_sin_detalle',
-            'criterio' => 'mesas_grupos guarda una fila por numero_mesa usando numero_grupo repetido. Todo numero_mesa con prioridad 1/taller queda como grupo individual. Correlativas quedan como anclas de fecha/turno. Las simples funcionan como comodines y la fase 7 puede moverlas de fecha/turno para completar grupos compatibles de 2 a 4 por area, sin choque de alumnos. Se permite compartir docente solo si el grupo final conserva al menos 2 docentes/personas distintas; talleres quedan como excepcion individual.',
+            'criterio' => 'mesas_grupos guarda una fila por numero_mesa usando numero_grupo repetido. Todo numero_mesa con prioridad 1/taller queda como grupo individual. Correlativas quedan como anclas de fecha/turno. Las simples funcionan como comodines y la fase 7 puede moverlas de fecha/turno para completar grupos compatibles de 2 a 4 por area, sin choque de alumnos. Se permite compartir docente cuando sea mismo docente + misma área en números no taller, pero solo si el grupo final conserva al menos 2 docentes/personas distintas; talleres quedan como excepcion individual.',
             'min_numeros_por_grupo' => $minNumeros,
             'max_numeros_por_grupo' => $maxNumeros,
             'total_numeros_leidos' => $totalNumeros,
@@ -440,9 +440,16 @@ function mesas_armado_grupos_csv_a_array(?string $csv): array
 }
 function mesas_armado_grupos_es_simple_para_compartir_docente(array $numero): bool
 {
+    /*
+     * El nombre de la función queda por compatibilidad, pero la regla ahora es más amplia:
+     * se permite priorizar mismo docente + misma área para cualquier número NO taller.
+     * La validación final sigue exigiendo mínimo 2 docentes distintos en el grupo,
+     * por lo que nunca queda un grupo de 2 números atendido por una sola persona.
+     */
     return empty($numero['es_taller'])
-        && (int)($numero['prioridad'] ?? 0) === 0
-        && (string)($numero['tipo_mesa'] ?? 'simple') === 'simple';
+        && (int)($numero['prioridad'] ?? 0) !== 1
+        && (string)($numero['tipo_mesa'] ?? 'simple') !== 'taller'
+        && ($numero['id_area'] ?? null) !== null;
 }
 
 function mesas_armado_grupos_comparten_docente(array $a, array $b): bool

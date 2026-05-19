@@ -79,7 +79,7 @@ export const crearGruposFinalesMesas = ({
 };
 
 export const eliminarBorradorMesas = () => {
-  return apiPost("mesas_armado_eliminar_borrador", {});
+  return apiPost("mesas_armado_eliminar_mesas", {});
 };
 
 export const obtenerMesaEdicion = ({ tipo = "grupo", id_grupo, numero_grupo, id_no_agrupada, numero_mesa } = {}) => {
@@ -261,4 +261,29 @@ export const confirmarAgregarNumeroGrupo = ({ numero_grupo, id_grupo, tipo = "no
     numero_mesa,
     id_previa,
   });
+};
+
+
+export const guardarNotaPreviaMesa = ({ id_previa, id_mesa, numero_mesa, nota } = {}) => {
+  return apiPost("mesas_resultado_guardar_nota", {
+    id_previa,
+    id_mesa,
+    numero_mesa,
+    nota,
+  });
+};
+
+
+export const listarHistorialMesas = ({ busqueda = "", limite_resultados = 250, limite_armados = 60 } = {}) => {
+  return apiGet("mesas_historial_listar", limpiarParams({
+    busqueda,
+    limite_resultados,
+    limite_armados,
+  }));
+};
+
+export const obtenerDetalleHistorialArmado = ({ id_armado_historial } = {}) => {
+  return apiGet("mesas_historial_detalle_armado", limpiarParams({
+    id_armado_historial,
+  }));
 };

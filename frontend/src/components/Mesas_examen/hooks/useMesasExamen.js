@@ -10,7 +10,10 @@ import {
   eliminarMesaEdicion,
   eliminarNumeroGrupoEdicion,
   eliminarPreviaMesa,
+  guardarNotaPreviaMesa,
   guardarProgramacionMesa,
+  listarHistorialMesas,
+  obtenerDetalleHistorialArmado,
   listarMesasGruposFinales,
   listarMesasNoAgrupadas,
   moverNumeroMesaGrupo,
@@ -220,11 +223,42 @@ export const useMesasExamen = ({ onToast } = {}) => {
   const [agrupando, setAgrupando] = useState(false);
   const [error, setError] = useState("");
 
+  const [modalEliminarArmadoAbierto, setModalEliminarArmadoAbierto] = useState(false);
+  const [eliminandoArmado, setEliminandoArmado] = useState(false);
+  const [guardandoNotas, setGuardandoNotas] = useState({});
+
+  const [historialResultados, setHistorialResultados] = useState([]);
+  const [historialArmados, setHistorialArmados] = useState([]);
+  const [historialResumen, setHistorialResumen] = useState(null);
+  const [cargandoHistorial, setCargandoHistorial] = useState(false);
+  const [errorHistorial, setErrorHistorial] = useState("");
+  const [historialDetalleArmado, setHistorialDetalleArmado] = useState(null);
+  const [cargandoDetalleHistorial, setCargandoDetalleHistorial] = useState(false);
+
+  const resumenArmadoTimerRef = useRef(null);
+
   const mostrarToast = useCallback((tipo = "exito", mensaje = "Operación realizada con éxito.", duracion = 2800) => {
     if (typeof onToast === "function") {
       onToast(tipo, mensaje, duracion);
     }
   }, [onToast]);
+
+  const limpiarTimerResumenArmado = useCallback(() => {
+    if (resumenArmadoTimerRef.current) {
+      clearTimeout(resumenArmadoTimerRef.current);
+      resumenArmadoTimerRef.current = null;
+    }
+  }, []);
+
+  const ocultarResumenArmadoLuego = useCallback((duracion = 6500) => {
+    limpiarTimerResumenArmado();
+    resumenArmadoTimerRef.current = window.setTimeout(() => {
+      setResumenArmado(null);
+      resumenArmadoTimerRef.current = null;
+    }, duracion);
+  }, [limpiarTimerResumenArmado]);
+
+  useEffect(() => limpiarTimerResumenArmado, [limpiarTimerResumenArmado]);
 
   const cerrarModalesInternosEdicion = useCallback(() => {
     setModalPreviasPersonaAbierto(false);
@@ -290,6 +324,51 @@ export const useMesasExamen = ({ onToast } = {}) => {
     }
   }, []);
 
+  const cargarHistorial = useCallback(async (busquedaHistorial = "") => {
+    setCargandoHistorial(true);
+    setErrorHistorial("");
+
+    try {
+      const response = await listarHistorialMesas({ busqueda: busquedaHistorial });
+      const data = response?.data || {};
+      setHistorialResultados(Array.isArray(data.resultados) ? data.resultados : []);
+      setHistorialArmados(Array.isArray(data.armados) ? data.armados : []);
+      setHistorialResumen(data.resumen || null);
+      return data;
+    } catch (err) {
+      setErrorHistorial(err.message || "Error al cargar el historial de mesas.");
+      setHistorialResultados([]);
+      setHistorialArmados([]);
+      setHistorialResumen(null);
+      return null;
+    } finally {
+      setCargandoHistorial(false);
+    }
+  }, []);
+
+  const verDetalleHistorialArmado = useCallback(async (idArmadoHistorial) => {
+    const id = Number(idArmadoHistorial || 0);
+    if (!id) return null;
+
+    setCargandoDetalleHistorial(true);
+    setErrorHistorial("");
+
+    try {
+      const response = await obtenerDetalleHistorialArmado({ id_armado_historial: id });
+      setHistorialDetalleArmado(response?.data || null);
+      return response?.data || null;
+    } catch (err) {
+      setErrorHistorial(err.message || "Error al cargar el detalle del historial.");
+      return null;
+    } finally {
+      setCargandoDetalleHistorial(false);
+    }
+  }, []);
+
+  const cerrarDetalleHistorialArmado = useCallback(() => {
+    setHistorialDetalleArmado(null);
+  }, []);
+
   const abrirModalCrear = useCallback(async () => {
     const data = await cargarParametrosArmado();
 
@@ -319,6 +398,7 @@ export const useMesasExamen = ({ onToast } = {}) => {
         ...(actual || {}),
         grupos_finales: response.data || null,
       }));
+      ocultarResumenArmadoLuego();
 
       await cargarMesas();
       setTab("grupos-finales");
@@ -331,12 +411,13 @@ export const useMesasExamen = ({ onToast } = {}) => {
     } finally {
       setAgrupando(false);
     }
-  }, [cargarMesas, mostrarToast]);
+  }, [cargarMesas, mostrarToast, ocultarResumenArmadoLuego]);
 
   const crearMesas = useCallback(
     async (payload) => {
       setArmando(true);
       setError("");
+      limpiarTimerResumenArmado();
       setResumenArmado(null);
 
       try {
@@ -353,6 +434,7 @@ export const useMesasExamen = ({ onToast } = {}) => {
           ...(response.data || {}),
           grupos_finales: responseGrupos.data || null,
         });
+        ocultarResumenArmadoLuego();
         setModalCrearAbierto(false);
         setTab("grupos-finales");
 
@@ -367,39 +449,46 @@ export const useMesasExamen = ({ onToast } = {}) => {
         setArmando(false);
       }
     },
-    [cargarMesas, mostrarToast]
+    [cargarMesas, mostrarToast, ocultarResumenArmadoLuego, limpiarTimerResumenArmado]
   );
 
-  const eliminarBorrador = useCallback(async () => {
-    const confirmar = window.confirm(
-      "¿Seguro que querés eliminar el armado actual? Esta acción borra mesas, grupos finales y no agrupadas."
-    );
+  const abrirConfirmarEliminarArmado = useCallback(() => {
+    if (armando || agrupando || eliminandoArmado) return;
+    setModalEliminarArmadoAbierto(true);
+  }, [armando, agrupando, eliminandoArmado]);
 
-    if (!confirmar) {
-      return;
-    }
+  const cerrarConfirmarEliminarArmado = useCallback(() => {
+    if (eliminandoArmado) return;
+    setModalEliminarArmadoAbierto(false);
+  }, [eliminandoArmado]);
+
+  const confirmarEliminarArmado = useCallback(async () => {
+    if (eliminandoArmado) return null;
 
     setArmando(true);
+    setEliminandoArmado(true);
     setError("");
+    limpiarTimerResumenArmado();
     setResumenArmado(null);
 
     try {
       const response = await eliminarBorradorMesas();
 
-      setResumenArmado({
-        eliminadas: response?.data?.eliminadas || 0,
-        grupos_eliminados: response?.data?.grupos_eliminados || 0,
-        no_agrupadas_eliminadas: response?.data?.no_agrupadas_eliminadas || 0,
-      });
-
       await cargarMesas();
-      mostrarToast("exito", "Armado eliminado con éxito.");
+      setModalEliminarArmadoAbierto(false);
+      mostrarToast("exito", "Mesas eliminadas con éxito.");
+      return response;
     } catch (err) {
-      setError(err.message || "Error al eliminar el armado actual.");
+      const mensaje = err.message || "Error al eliminar las mesas.";
+      setError(mensaje);
+      throw err;
     } finally {
       setArmando(false);
+      setEliminandoArmado(false);
     }
-  }, [cargarMesas, mostrarToast]);
+  }, [cargarMesas, mostrarToast, eliminandoArmado, limpiarTimerResumenArmado]);
+
+  const eliminarBorrador = abrirConfirmarEliminarArmado;
 
 
   const cargarSlotsEdicion = useCallback(async ({ item = grupoEdicion, tipo = tipoEdicion, anio, mes, fecha_inicio, fecha_fin } = {}) => {
@@ -1060,6 +1149,77 @@ export const useMesasExamen = ({ onToast } = {}) => {
     }
   }, [targetEliminarEdicion, cargarMesas, mostrarToast]);
 
+  const guardarNotaAlumno = useCallback(async ({ alumno, nota } = {}) => {
+    const idPrevia = Number(alumno?.id_previa || 0);
+    const idMesa = Number(alumno?.id_mesa || 0);
+    const numeroMesa = Number(alumno?.numero_mesa || 0);
+    const notaNum = Number(nota || 0);
+
+    if (!idPrevia || notaNum < 1 || notaNum > 10) {
+      mostrarToast("error", "Seleccioná una nota válida del 1 al 10.", 3200);
+      return null;
+    }
+
+    const key = `${idPrevia}-${idMesa || numeroMesa || "mesa"}`;
+    setGuardandoNotas((actual) => ({ ...actual, [key]: true }));
+
+    try {
+      const response = await guardarNotaPreviaMesa({
+        id_previa: idPrevia,
+        id_mesa: idMesa || undefined,
+        numero_mesa: numeroMesa || undefined,
+        nota: notaNum,
+      });
+
+      const idsAfectadas = Array.isArray(response?.data?.ids_previas_afectadas)
+        ? response.data.ids_previas_afectadas.map((id) => Number(id))
+        : [idPrevia];
+
+      const aplicarNotaLocal = (lista = []) => lista.map((grupo) => ({
+        ...grupo,
+        numeros: Array.isArray(grupo.numeros) ? grupo.numeros.map((numero) => ({
+          ...numero,
+          alumnos: Array.isArray(numero.alumnos) ? numero.alumnos.map((item) => (
+            idsAfectadas.includes(Number(item?.id_previa || 0)) ? { ...item, nota: notaNum } : item
+          )) : numero.alumnos,
+        })) : grupo.numeros,
+        alumnos: Array.isArray(grupo.alumnos) ? grupo.alumnos.map((item) => (
+          idsAfectadas.includes(Number(item?.id_previa || 0)) ? { ...item, nota: notaNum } : item
+        )) : grupo.alumnos,
+      }));
+
+      if (!response?.data?.aprobado) {
+        setGruposFinales((actual) => aplicarNotaLocal(actual));
+        setNoAgrupadas((actual) => aplicarNotaLocal(actual));
+      }
+
+      await cargarMesas();
+
+      if (modalEditarAbierto && grupoEdicion) {
+        await recargarGrupoEdicion();
+      }
+
+      const aprobado = !!response?.data?.aprobado;
+      mostrarToast(
+        "exito",
+        aprobado
+          ? "Nota guardada: previa aprobada y dada de baja."
+          : "Nota guardada en historial. La previa sigue pendiente."
+      );
+
+      return response;
+    } catch (err) {
+      mostrarToast("error", err.message || "No se pudo guardar la nota.", 3800);
+      throw err;
+    } finally {
+      setGuardandoNotas((actual) => {
+        const nuevo = { ...actual };
+        delete nuevo[key];
+        return nuevo;
+      });
+    }
+  }, [cargarMesas, grupoEdicion, modalEditarAbierto, recargarGrupoEdicion, mostrarToast]);
+
   const eliminarMesaDesdeEdicion = abrirConfirmarEliminarMesa;
 
   useEffect(() => {
@@ -1067,10 +1227,20 @@ export const useMesasExamen = ({ onToast } = {}) => {
     cargarParametrosArmado();
   }, [cargarMesas, cargarParametrosArmado]);
 
+  useEffect(() => {
+    if (tab !== "historial") return;
+
+    const timer = window.setTimeout(() => {
+      cargarHistorial(busqueda);
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [tab, busqueda, cargarHistorial]);
+
   const gruposFiltrados = useMemo(() => {
     const texto = normalizar(busqueda);
     const terminos = texto.split(" ").filter(Boolean);
-    const base = tab === "no-agrupadas" ? [...noAgrupadas] : [...gruposFinales];
+    const base = tab === "no-agrupadas" ? [...noAgrupadas] : tab === "historial" ? [] : [...gruposFinales];
 
     if (terminos.length === 0) {
       return base;
@@ -1131,6 +1301,14 @@ export const useMesasExamen = ({ onToast } = {}) => {
     guardarEdicionProgramacion,
     crearGrupoUnicoDesdeNoAgrupada,
     eliminarMesaDesdeEdicion,
+
+    eliminarArmado: {
+      modalAbierto: modalEliminarArmadoAbierto,
+      eliminando: eliminandoArmado,
+      abrir: abrirConfirmarEliminarArmado,
+      cerrar: cerrarConfirmarEliminarArmado,
+      confirmar: confirmarEliminarArmado,
+    },
 
     eliminarEdicion: {
       modalAbierto: modalEliminarEdicionAbierto,
@@ -1205,6 +1383,19 @@ export const useMesasExamen = ({ onToast } = {}) => {
       recargar: cargarOpcionesAgregarNumero,
     },
 
+    historial: {
+      resultados: historialResultados,
+      armados: historialArmados,
+      resumen: historialResumen,
+      detalleArmado: historialDetalleArmado,
+      cargando: cargandoHistorial,
+      cargandoDetalle: cargandoDetalleHistorial,
+      error: errorHistorial,
+      cargar: () => cargarHistorial(busqueda),
+      verDetalleArmado: verDetalleHistorialArmado,
+      cerrarDetalleArmado: cerrarDetalleHistorialArmado,
+    },
+
     crearMesas,
     eliminarBorrador,
     generarGruposFinales,
@@ -1215,5 +1406,8 @@ export const useMesasExamen = ({ onToast } = {}) => {
     armando,
     agrupando,
     error,
+
+    guardandoNotas,
+    guardarNotaAlumno,
   };
 };

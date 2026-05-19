@@ -1,5 +1,5 @@
 // src/components/Mesas_examen/Mesas_examen.jsx
-import React, { useCallback, useContext, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faLayerGroup,
@@ -12,6 +12,7 @@ import {
   faCheckCircle,
   faEdit,
   faTimes,
+  faFilePdf,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "../Global/Global_css/roots.css";
@@ -23,6 +24,8 @@ import ModalCrearMesa from "./modales/ModalCrearMesa";
 import ModalEditarMesa from "./modales/ModalEditarMesa";
 import ModalEliminarGlobal from "../Global/Modales/ModalEliminarGlobal";
 import Toast from "../Global/Toast";
+import ModalTituloPdfMesas from "./modales/exportar_pdf/ModalTituloPdfMesas";
+import { descargarPdfMesas } from "./modales/exportar_pdf/mesasPdfExporter";
 import logo from "../../imagenes/Escudo.png";
 
 const textoCorto = (valor, fallback = "-") => {
@@ -148,6 +151,43 @@ const obtenerMateriaAlumno = (alumno, numero) =>
 const obtenerDocenteAlumno = (alumno, numero) =>
   textoCorto(alumno?.docente || numero?.docente, "Sin docente");
 
+const obtenerKeyNotaAlumno = (alumno) => {
+  const idPrevia = alumno?.id_previa || "sin-previa";
+  const idMesa = alumno?.id_mesa || alumno?.numero_mesa || "sin-mesa";
+  return `${idPrevia}-${idMesa}`;
+};
+
+const obtenerNotaActualAlumno = (alumno) => {
+  const nota = Number(alumno?.nota || 0);
+  return nota >= 1 && nota <= 10 ? String(nota) : "";
+};
+
+const SelectorNotaAlumno = ({ alumno, onGuardarNota, guardando }) => {
+  if (!alumno?.id_previa) {
+    return <span className="mesas-nota-placeholder">-</span>;
+  }
+
+  const valorActual = obtenerNotaActualAlumno(alumno);
+
+  return (
+    <div className="mesas-nota-selectWrap">
+      <select
+        className={`mesas-nota-select ${valorActual ? "is-selected" : ""}`}
+        value={valorActual}
+        disabled={guardando}
+        title="Asignar nota de examen"
+        onChange={(e) => onGuardarNota?.({ alumno, nota: e.target.value })}
+      >
+        <option value="">Nota</option>
+        {Array.from({ length: 10 }, (_, index) => index + 1).map((nota) => (
+          <option key={nota} value={nota}>{nota}</option>
+        ))}
+      </select>
+      {guardando && <FontAwesomeIcon className="mesas-nota-spinner" icon={faSpinner} spin />}
+    </div>
+  );
+};
+
 const agruparAlumnosParaVistaPdf = (numero) => {
   const alumnos = Array.isArray(numero?.alumnos) ? numero.alumnos : [];
 
@@ -238,7 +278,7 @@ const construirPayloadEliminar = (item, tab) => ({
   numero_mesa: item.numero_mesa || item.numeros?.[0]?.numero_mesa || null,
 });
 
-const MesaPdfCard = ({ grupo, esNoAgrupada = false, onEdit, onDelete }) => {
+const MesaPdfCard = ({ grupo, esNoAgrupada = false, onEdit, onDelete, onGuardarNota, guardandoNotas = {} }) => {
   const bloques = obtenerBloquesVistaPdf(grupo);
   const totalFilas = Math.max(
     1,
@@ -279,6 +319,7 @@ const MesaPdfCard = ({ grupo, esNoAgrupada = false, onEdit, onDelete }) => {
               <th className="pdf-col-estudiante">Estudiante</th>
               <th className="pdf-col-dni">DNI</th>
               <th className="pdf-col-curso">Curso</th>
+              <th className="pdf-col-nota">Nota</th>
               <th className="pdf-col-docente">Docentes</th>
             </tr>
           </thead>
@@ -311,6 +352,13 @@ const MesaPdfCard = ({ grupo, esNoAgrupada = false, onEdit, onDelete }) => {
                     </td>
                     <td className="pdf-dni-cell">{alumno ? textoCorto(alumno.dni) : "-"}</td>
                     <td className="pdf-curso-cell">{alumno ? obtenerCursoAlumno(alumno) : "-"}</td>
+                    <td className="pdf-nota-cell">
+                      <SelectorNotaAlumno
+                        alumno={alumno}
+                        guardando={alumno ? !!guardandoNotas[obtenerKeyNotaAlumno(alumno)] : false}
+                        onGuardarNota={onGuardarNota}
+                      />
+                    </td>
 
                     {alumnoIndex === 0 && (
                       <td className="pdf-docente-line-cell" rowSpan={Math.max(1, bloque.alumnos.length)}>
@@ -336,6 +384,237 @@ const MesaPdfCard = ({ grupo, esNoAgrupada = false, onEdit, onDelete }) => {
         </button>
       </footer>
     </article>
+  );
+};
+
+
+const HistorialMesasPanel = ({ historial }) => {
+  const resultados = Array.isArray(historial?.resultados) ? historial.resultados : [];
+  const armados = Array.isArray(historial?.armados) ? historial.armados : [];
+  const resumen = historial?.resumen || {};
+  const detalle = historial?.detalleArmado || null;
+  const detalleFilas = Array.isArray(detalle?.detalle) ? detalle.detalle : [];
+
+  return (
+    <div className="mesas-historial-panel">
+      <div className="mesas-historial-head">
+        <div>
+          <h3>Historial completo de mesas</h3>
+          <p>Acá quedan registradas las notas cargadas, las previas aprobadas/desaprobadas y los armados eliminados.</p>
+        </div>
+        <button
+          type="button"
+          className="mov-btn mov-btn--secondary mesas-historial-refresh"
+          onClick={historial?.cargar}
+          disabled={historial?.cargando}
+        >
+          <FontAwesomeIcon icon={historial?.cargando ? faSpinner : faCheckCircle} spin={!!historial?.cargando} />
+          Actualizar historial
+        </button>
+      </div>
+
+      {historial?.error && (
+        <div className="mov-alert mesas-alert mesas-alert-error mesas-historial-error">
+          <FontAwesomeIcon icon={faTriangleExclamation} />
+          {historial.error}
+        </div>
+      )}
+
+      <div className="mesas-historial-resumen">
+        <div className="mesas-historial-kpi">
+          <span>Resultados</span>
+          <strong>{resumen.total_resultados ?? resultados.length}</strong>
+        </div>
+        <div className="mesas-historial-kpi is-ok">
+          <span>Aprobadas</span>
+          <strong>{resumen.total_aprobadas ?? resultados.filter((item) => Number(item.aprobado) === 1).length}</strong>
+        </div>
+        <div className="mesas-historial-kpi is-warn">
+          <span>No aprobadas</span>
+          <strong>{resumen.total_desaprobadas ?? resultados.filter((item) => Number(item.aprobado) !== 1).length}</strong>
+        </div>
+        <div className="mesas-historial-kpi">
+          <span>Armados guardados</span>
+          <strong>{resumen.total_armados ?? armados.length}</strong>
+        </div>
+      </div>
+
+      {historial?.cargando ? (
+        <div className="cc-emptyState mesas-empty mesas-pdf-empty">
+          <FontAwesomeIcon icon={faSpinner} spin />
+          <div className="cc-emptyText">Cargando historial...</div>
+        </div>
+      ) : (
+        <>
+          <section className="mesas-historial-section">
+            <div className="mesas-historial-sectionTitle">
+              <h4>Historial de notas y previas</h4>
+              <span>{resultados.length} registros visibles</span>
+            </div>
+
+            {resultados.length === 0 ? (
+              <div className="cc-emptyState mesas-empty mesas-historial-empty">
+                <div className="cc-emptyText">Todavía no hay notas cargadas en el historial.</div>
+              </div>
+            ) : (
+              <div className="mesas-historial-tableWrap">
+                <table className="mesas-historial-table">
+                  <thead>
+                    <tr>
+                      <th>Fecha nota</th>
+                      <th>Alumno</th>
+                      <th>DNI</th>
+                      <th>Materia</th>
+                      <th>Mesa</th>
+                      <th>Docente</th>
+                      <th>Nota</th>
+                      <th>Resultado</th>
+                      <th>Motivo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resultados.map((item) => {
+                      const aprobado = Number(item.aprobado) === 1;
+                      return (
+                        <tr key={`resultado-${item.id_resultado}`}>
+                          <td>{textoCorto(item.fecha_nota_texto || item.fecha_nota)}</td>
+                          <td><strong>{textoCorto(item.alumno)}</strong></td>
+                          <td>{textoCorto(item.dni)}</td>
+                          <td>{textoCorto(item.materia)}</td>
+                          <td>
+                            <span className="mesas-historial-chip">N° {textoCorto(item.numero_mesa)}</span>
+                            {item.numero_grupo && <small>Grupo {item.numero_grupo}</small>}
+                            {item.fecha_mesa_texto && <small>{item.fecha_mesa_texto}</small>}
+                          </td>
+                          <td>{textoCorto(item.docente)}</td>
+                          <td><strong className="mesas-historial-nota">{item.nota}</strong></td>
+                          <td>
+                            <span className={`mesas-historial-estado ${aprobado ? "is-approved" : "is-pending"}`}>
+                              {aprobado ? "Aprobada" : "No aprobada"}
+                            </span>
+                          </td>
+                          <td>{textoCorto(item.motivo)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          <section className="mesas-historial-section">
+            <div className="mesas-historial-sectionTitle">
+              <h4>Historial de armados eliminados</h4>
+              <span>{armados.length} armados visibles</span>
+            </div>
+
+            {armados.length === 0 ? (
+              <div className="cc-emptyState mesas-empty mesas-historial-empty">
+                <div className="cc-emptyText">Todavía no hay armados eliminados guardados.</div>
+              </div>
+            ) : (
+              <div className="mesas-historial-tableWrap">
+                <table className="mesas-historial-table mesas-historial-table-armados">
+                  <thead>
+                    <tr>
+                      <th>Guardado</th>
+                      <th>Código</th>
+                      <th>Motivo</th>
+                      <th>Mesas</th>
+                      <th>Previas</th>
+                      <th>Grupos</th>
+                      <th>No agrupadas</th>
+                      <th>Detalle</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {armados.map((item) => (
+                      <tr key={`armado-${item.id_armado_historial}`}>
+                        <td>{textoCorto(item.creado_en_texto || item.creado_en)}</td>
+                        <td><strong>{textoCorto(item.codigo_armado)}</strong></td>
+                        <td>{textoCorto(item.motivo)}</td>
+                        <td>{item.total_mesas ?? 0}</td>
+                        <td>{item.total_previas ?? 0}</td>
+                        <td>{item.total_grupos ?? 0}</td>
+                        <td>{item.total_no_agrupadas ?? 0}</td>
+                        <td>
+                          <button
+                            type="button"
+                            className="mesas-historial-detailBtn"
+                            onClick={() => historial?.verDetalleArmado?.(item.id_armado_historial)}
+                            disabled={historial?.cargandoDetalle}
+                          >
+                            <FontAwesomeIcon icon={historial?.cargandoDetalle ? faSpinner : faLayerGroup} spin={!!historial?.cargandoDetalle} />
+                            Ver detalle
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          {detalle && (
+            <section className="mesas-historial-section mesas-historial-detalle">
+              <div className="mesas-historial-sectionTitle">
+                <div>
+                  <h4>Detalle del armado {textoCorto(detalle.armado?.codigo_armado, "")}</h4>
+                  <span>{detalleFilas.length} registros guardados del armado final</span>
+                </div>
+                <button type="button" className="mesas-historial-closeBtn" onClick={historial?.cerrarDetalleArmado}>
+                  <FontAwesomeIcon icon={faTimes} /> Cerrar detalle
+                </button>
+              </div>
+
+              {historial?.cargandoDetalle ? (
+                <div className="cc-emptyState mesas-empty mesas-historial-empty">
+                  <FontAwesomeIcon icon={faSpinner} spin />
+                  <div className="cc-emptyText">Cargando detalle...</div>
+                </div>
+              ) : (
+                <div className="mesas-historial-tableWrap">
+                  <table className="mesas-historial-table">
+                    <thead>
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Grupo</th>
+                        <th>Mesa</th>
+                        <th>Alumno</th>
+                        <th>DNI</th>
+                        <th>Materia</th>
+                        <th>Docente</th>
+                        <th>Tipo</th>
+                        <th>Nota</th>
+                        <th>Activa</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detalleFilas.map((item) => (
+                        <tr key={`detalle-${item.id_historial_detalle}`}>
+                          <td>{textoCorto(item.fecha_mesa_texto || item.fecha_mesa)}</td>
+                          <td>{textoCorto(item.numero_grupo)}</td>
+                          <td>{textoCorto(item.numero_mesa)}</td>
+                          <td><strong>{textoCorto(item.alumno)}</strong></td>
+                          <td>{textoCorto(item.dni)}</td>
+                          <td>{textoCorto(item.materia)}</td>
+                          <td>{textoCorto(item.docente)}</td>
+                          <td>{textoCorto(item.tipo_mesa)}</td>
+                          <td>{textoCorto(item.nota)}</td>
+                          <td>{Number(item.previa_activa) === 1 ? "Sí" : "No"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          )}
+        </>
+      )}
+    </div>
   );
 };
 
@@ -385,11 +664,15 @@ const MesasExamen = () => {
     guardarEdicionProgramacion,
     crearGrupoUnicoDesdeNoAgrupada,
     eliminarMesaDesdeEdicion,
+    eliminarArmado,
     eliminarEdicion,
     personaEdicion,
     masEdicion,
     flechasEdicion,
     agregarNumeroEdicion,
+    historial,
+    guardandoNotas,
+    guardarNotaAlumno,
     crearMesas,
     eliminarBorrador,
     cargando,
@@ -398,9 +681,58 @@ const MesasExamen = () => {
     error,
   } = useMesasExamen({ onToast: mostrarToastGlobal });
 
-  const totalVisible = Array.isArray(mesasFiltradas) ? mesasFiltradas.length : 0;
-  const totalReferencia = tab === "no-agrupadas" ? totalNoAgrupadas : totalGrupos;
+  const totalHistorialVisible = (Array.isArray(historial?.resultados) ? historial.resultados.length : 0)
+    + (Array.isArray(historial?.armados) ? historial.armados.length : 0);
+  const totalVisible = tab === "historial" ? totalHistorialVisible : (Array.isArray(mesasFiltradas) ? mesasFiltradas.length : 0);
+  const totalReferencia = tab === "historial" ? totalHistorialVisible : tab === "no-agrupadas" ? totalNoAgrupadas : totalGrupos;
   const hayBusquedaActiva = String(busqueda || "").trim() !== "";
+
+  const [modalTituloPdfAbierto, setModalTituloPdfAbierto] = useState(false);
+  const [exportandoPdf, setExportandoPdf] = useState(false);
+
+  const abrirModalExportarPdf = useCallback(() => {
+    if (tab === "historial") {
+      mostrarToastGlobal("error", "El historial no se exporta desde este botón. Usá la vista de mesas para generar el PDF.", 3200);
+      return;
+    }
+
+    if (!Array.isArray(mesasFiltradas) || mesasFiltradas.length === 0) {
+      mostrarToastGlobal("error", "No hay mesas visibles para exportar.", 3200);
+      return;
+    }
+
+    setModalTituloPdfAbierto(true);
+  }, [mesasFiltradas, tab, mostrarToastGlobal]);
+
+  const cerrarModalExportarPdf = useCallback(() => {
+    if (exportandoPdf) return;
+    setModalTituloPdfAbierto(false);
+  }, [exportandoPdf]);
+
+  const confirmarExportarPdf = useCallback(({ tituloFijo, continuacion } = {}) => {
+    if (!Array.isArray(mesasFiltradas) || mesasFiltradas.length === 0) {
+      mostrarToastGlobal("error", "No hay mesas visibles para exportar.", 3200);
+      return;
+    }
+
+    setExportandoPdf(true);
+
+    try {
+      descargarPdfMesas({
+        mesas: mesasFiltradas,
+        tab,
+        tituloFijo,
+        continuacion,
+      });
+
+      setModalTituloPdfAbierto(false);
+      mostrarToastGlobal("exito", "PDF descargado correctamente.", 3000);
+    } catch (_) {
+      mostrarToastGlobal("error", "No se pudo generar el PDF. Intentá nuevamente.", 3800);
+    } finally {
+      setExportandoPdf(false);
+    }
+  }, [mesasFiltradas, tab, mostrarToastGlobal]);
 
   const contenido = (
     <div className="mesas-page mov-page">
@@ -436,6 +768,15 @@ const MesasExamen = () => {
                   >
                     <FontAwesomeIcon icon={faLinkSlash} />
                     No agrupadas: {totalNoAgrupadas}
+                  </button>
+
+                  <button
+                    className={`mov-tab mesas-tab mesas-tab-link ${tab === "historial" ? "is-active" : ""}`}
+                    type="button"
+                    onClick={() => setTab("historial")}
+                  >
+                    <FontAwesomeIcon icon={faCheckCircle} />
+                    Historial
                   </button>
                 </div>
               </div>
@@ -473,6 +814,16 @@ const MesasExamen = () => {
 
           <div className="mov-card__actions mesas-actionsHead">
             <button
+              className="mov-btn mov-btn--secondary mesas-actionBtn mesas-exportBtn"
+              type="button"
+              onClick={abrirModalExportarPdf}
+              disabled={tab === "historial" || cargando || armando || agrupando || totalVisible === 0}
+            >
+              <FontAwesomeIcon icon={faFilePdf} />
+              Exportar PDF
+            </button>
+
+            <button
               className="mov-btn mov-btn--primary mesas-actionBtn mesas-createBtn"
               type="button"
               onClick={abrirModalCrear}
@@ -493,7 +844,7 @@ const MesasExamen = () => {
               disabled={armando || agrupando || (gruposFinales.length === 0 && noAgrupadas.length === 0)}
             >
               <FontAwesomeIcon icon={faTrash} />
-              Eliminar Armado
+              Eliminar mesas
             </button>
           </div>
         </div>
@@ -511,13 +862,26 @@ const MesasExamen = () => {
               <div className="mov-alert mesas-alert mesas-alert-ok">
                 <FontAwesomeIcon icon={faCheckCircle} />
                 <div>
-                  <strong>Resultado del armado</strong>
-                  <span>
-                    Insertadas: {resumenArmado.insertados ?? 0} | Actualizadas:{" "}
-                    {resumenArmado.actualizados ?? 0} | Observadas: {resumenArmado.observados ?? 0} |{" "}
-                    Grupos finales: {resumenArmado.grupos_finales?.total_grupos_generados ?? "-"} |{" "}
-                    No agrupadas: {resumenArmado.grupos_finales?.total_no_agrupadas ?? "-"}
-                  </span>
+                  {resumenArmado.eliminadas !== undefined ? (
+                    <>
+                      <strong>Resultado de eliminación</strong>
+                      <span>
+                        Mesas eliminadas: {resumenArmado.eliminadas ?? 0} | Grupos eliminados:{" "}
+                        {resumenArmado.grupos_eliminados ?? 0} | No agrupadas eliminadas:{" "}
+                        {resumenArmado.no_agrupadas_eliminadas ?? 0}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <strong>Resultado del armado</strong>
+                      <span>
+                        Insertadas: {resumenArmado.insertados ?? 0} | Actualizadas:{" "}
+                        {resumenArmado.actualizados ?? 0} | Observadas: {resumenArmado.observados ?? 0} |{" "}
+                        Grupos finales: {resumenArmado.grupos_finales?.total_grupos_generados ?? "-"} |{" "}
+                        No agrupadas: {resumenArmado.grupos_finales?.total_no_agrupadas ?? "-"}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -525,7 +889,9 @@ const MesasExamen = () => {
         )}
 
         <div className="mesas-pdf-view">
-          {cargando ? (
+          {tab === "historial" ? (
+            <HistorialMesasPanel historial={historial} />
+          ) : cargando ? (
             <div className="cc-emptyState mesas-empty mesas-pdf-empty">
               <FontAwesomeIcon icon={faSpinner} spin />
               <div className="cc-emptyText">Cargando mesas...</div>
@@ -548,6 +914,8 @@ const MesasExamen = () => {
                 esNoAgrupada={tab === "no-agrupadas"}
                 onEdit={() => abrirModalEditar(item, tab === "no-agrupadas" ? "no_agrupada" : "grupo")}
                 onDelete={() => eliminarMesaDesdeEdicion(construirPayloadEliminar(item, tab))}
+                onGuardarNota={guardarNotaAlumno}
+                guardandoNotas={guardandoNotas}
               />
             ))
           )}
@@ -582,6 +950,34 @@ const MesasExamen = () => {
         flechas={flechasEdicion}
         eliminar={eliminarEdicion}
         agregarNumero={agregarNumeroEdicion}
+      />
+
+      <ModalTituloPdfMesas
+        abierto={modalTituloPdfAbierto}
+        loading={exportandoPdf}
+        onClose={cerrarModalExportarPdf}
+        onConfirm={confirmarExportarPdf}
+      />
+
+      <ModalEliminarGlobal
+        open={!!eliminarArmado?.modalAbierto}
+        operacion="eliminar"
+        loading={!!eliminarArmado?.eliminando}
+        title="Eliminar mesas"
+        message="¿Seguro que querés eliminar todas las mesas del armado actual?"
+        warning="Esta acción borra los grupos finales, las no agrupadas y los números de mesa generados. No se puede deshacer."
+        details={[
+          { label: "Grupos finales", value: totalGrupos },
+          { label: "No agrupadas", value: totalNoAgrupadas },
+          { label: "Total visible", value: totalVisible },
+        ]}
+        confirmLabel="Eliminar mesas"
+        loadingLabel="Eliminando..."
+        loadingMessage="Eliminando mesas..."
+        successMessage="Mesas eliminadas correctamente."
+        errorMessage="No se pudieron eliminar las mesas."
+        onClose={eliminarArmado?.cerrar}
+        onConfirm={eliminarArmado?.confirmar}
       />
 
       <ModalEliminarGlobal

@@ -3055,3 +3055,90 @@
     width:100% !important;
   }
 }
+
+/* =========================================================
+   MESAS — Exportación PDF y modal de título
+   ========================================================= */
+.mesas-exportBtn.mov-btn,
+.mesas-exportBtn.mov-btn--secondary{
+  background:rgba(31,75,147,.08);
+  color:#1f4b93;
+  border:1px solid rgba(31,75,147,.24);
+  box-shadow:none;
+}
+
+.mesas-exportBtn.mov-btn:hover:not(:disabled){
+  background:rgba(31,75,147,.13);
+  color:#15376f;
+  border-color:rgba(31,75,147,.34);
+  transform:translateY(-1px);
+}
+
+/* === Notas de mesa / historial académico === */
+.mesas-card-pdf-fijo .pdf-col-hora { width: 9%; }
+.mesas-card-pdf-fijo .pdf-col-materia { width: 22%; }
+.mesas-card-pdf-fijo .pdf-col-estudiante { width: 24%; }
+.mesas-card-pdf-fijo .pdf-col-dni { width: 8%; }
+.mesas-card-pdf-fijo .pdf-col-curso { width: 8%; }
+.mesas-card-pdf-fijo .pdf-col-nota {
+  width: 7%;
+  text-align: center !important;
+}
+.mesas-card-pdf-fijo .pdf-col-docente { width: 22%; }
+
+.mesas-card-pdf-fijo .pdf-nota-cell {
+  text-align: center;
+  font-weight: 700;
+}
+
+.mesas-nota-selectWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+}
+
+.mesas-nota-select {
+  width: 62px;
+  height: 32px;
+  border: 1px solid rgba(0, 31, 91, 0.18);
+  border-radius: 10px;
+  background: #ffffff;
+  color: #001f5b;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+  outline: none;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.mesas-nota-select:hover,
+.mesas-nota-select:focus {
+  border-color: rgba(0, 85, 187, 0.45);
+  box-shadow: 0 10px 22px rgba(0, 85, 187, 0.12);
+}
+
+.mesas-nota-select.is-selected {
+  border-color: rgba(22, 163, 74, 0.45);
+  background: #f0fdf4;
+}
+
+.mesas-nota-select:disabled {
+  opacity: 0.68;
+  cursor: wait;
+}
+
+.mesas-nota-spinner {
+  position: absolute;
+  right: -16px;
+  font-size: 11px;
+  color: #0055bb;
+}
+
+.mesas-nota-placeholder {
+  color: rgba(0, 31, 91, 0.45);
+  font-weight: 900;
+}

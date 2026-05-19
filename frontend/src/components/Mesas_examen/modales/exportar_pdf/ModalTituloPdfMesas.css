@@ -1,0 +1,230 @@
+/* Modal para configurar el título antes de descargar el PDF de mesas */
+.mesas-title-pdf-overlay,
+.mesas-title-pdf-overlay *{
+  box-sizing:border-box;
+}
+
+.mesas-title-pdf-overlay{
+  position:fixed;
+  inset:0;
+  z-index:9999999998;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px 16px;
+  background:rgba(15,23,42,.50);
+  backdrop-filter:blur(4px);
+}
+
+.mesas-title-pdf-modal{
+  width:min(990px, 100%);
+  max-height:calc(100dvh - 40px);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.75);
+  background:#fff;
+  box-shadow:0 30px 90px -28px rgba(0,0,0,.42);
+  color:#172033;
+  font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+.mesas-title-pdf-header{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:18px;
+  padding:20px 18px;
+  background:#244a91;
+  color:#fff;
+}
+
+.mesas-title-pdf-header h2{
+  margin:0 0 7px;
+  font-size:22px;
+  line-height:1.1;
+  font-weight:900;
+  letter-spacing:-.03em;
+}
+
+.mesas-title-pdf-header p{
+  margin:0;
+  font-size:15px;
+  font-weight:700;
+  opacity:.95;
+}
+
+.mesas-title-pdf-close{
+  width:34px;
+  height:34px;
+  display:grid;
+  place-items:center;
+  border:0;
+  border-radius:999px;
+  background:transparent;
+  color:#fff;
+  font-size:18px;
+  cursor:pointer;
+  transition:background .15s ease, transform .15s ease, opacity .15s ease;
+}
+
+.mesas-title-pdf-close:hover:not(:disabled){
+  background:rgba(255,255,255,.15);
+  transform:rotate(90deg);
+}
+
+.mesas-title-pdf-close:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+}
+
+.mesas-title-pdf-body{
+  flex:1 1 auto;
+  overflow:auto;
+  padding:18px;
+  background:#f8fafc;
+}
+
+.mesas-title-pdf-config{
+  padding:16px 14px 24px;
+  border:1px solid #dbe4f0;
+  border-radius:14px;
+  background:#fff;
+}
+
+.mesas-title-pdf-config h3{
+  margin:0 0 12px;
+  padding-bottom:10px;
+  border-bottom:1px solid #dbe4f0;
+  font-size:18px;
+  font-weight:900;
+  color:#0f172a;
+}
+
+.mesas-title-pdf-grid{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:14px;
+}
+
+.mesas-title-pdf-field{
+  display:grid;
+  gap:9px;
+  min-width:0;
+}
+
+.mesas-title-pdf-field span{
+  color:#475569;
+  font-size:15px;
+  font-weight:850;
+}
+
+.mesas-title-pdf-field input{
+  width:100%;
+  min-height:44px;
+  padding:11px 13px;
+  border:1px solid #d7e0ec;
+  border-radius:14px;
+  outline:none;
+  background:#fff;
+  color:#334155;
+  font:inherit;
+  font-size:14px;
+  font-weight:650;
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+
+.mesas-title-pdf-field input:focus{
+  border-color:#244a91;
+  box-shadow:0 0 0 3px rgba(36,74,145,.14);
+}
+
+.mesas-title-pdf-field small{
+  color:#334155;
+  font-size:13px;
+  line-height:1.35;
+}
+
+.mesas-title-pdf-preview{
+  margin:18px 0 0;
+  color:#475569;
+  font-size:14px;
+  font-weight:650;
+}
+
+.mesas-title-pdf-preview strong{
+  color:#334155;
+  font-weight:900;
+}
+
+.mesas-title-pdf-footer{
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  padding:14px 18px;
+  border-top:1px solid #dbe4f0;
+  background:#fff;
+}
+
+.mesas-title-pdf-btn{
+  min-height:44px;
+  padding:0 17px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  border-radius:14px;
+  font-size:14px;
+  font-weight:850;
+  cursor:pointer;
+  transition:transform .15s ease, box-shadow .15s ease, background .15s ease, color .15s ease, opacity .15s ease;
+}
+
+.mesas-title-pdf-btn:disabled{
+  opacity:.65;
+  cursor:not-allowed;
+}
+
+.mesas-title-pdf-btn-secondary{
+  border:1px solid #d7e0ec;
+  background:#fff;
+  color:#1e293b;
+}
+
+.mesas-title-pdf-btn-primary{
+  border:1px solid #244a91;
+  background:#244a91;
+  color:#fff;
+  box-shadow:0 10px 20px -14px rgba(36,74,145,.85);
+}
+
+.mesas-title-pdf-btn:hover:not(:disabled){
+  transform:translateY(-1px);
+}
+
+@media (max-width:760px){
+  .mesas-title-pdf-modal{
+    max-height:calc(100dvh - 24px);
+    border-radius:16px;
+  }
+
+  .mesas-title-pdf-header,
+  .mesas-title-pdf-body,
+  .mesas-title-pdf-footer{
+    padding-left:14px;
+    padding-right:14px;
+  }
+
+  .mesas-title-pdf-grid{
+    grid-template-columns:1fr;
+  }
+
+  .mesas-title-pdf-footer{
+    flex-direction:column-reverse;
+  }
+
+  .mesas-title-pdf-btn{
+    width:100%;
+  }
+}
