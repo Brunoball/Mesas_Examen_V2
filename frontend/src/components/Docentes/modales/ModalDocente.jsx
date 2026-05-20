@@ -138,6 +138,7 @@ export default function ModalDocente({
       if (e.key !== 'Escape') return;
       e.preventDefault();
       e.stopPropagation();
+      e.stopImmediatePropagation?.();
       if (mostrarTutorial) { setMostrarTutorial(false); return; }
       if (!guardando) onCerrar();
     };

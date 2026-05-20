@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -21,11 +21,46 @@ function formatearFecha(fecha) {
 }
 
 export default function ModalInfoDocente({ item, onCerrar }) {
+  const closeRef = useRef(null);
   const catedras = Array.isArray(item?.catedras) ? item.catedras : [];
 
   const disponibilidades = Array.isArray(item?.disponibilidades)
     ? item.disponibilidades
     : [];
+
+  const estaActivo = Number(item?.activo) === 1;
+  const totalRegistros = item?.cantidad_registros || item?.ids_docentes?.length || 1;
+
+  const detalleDocente = useMemo(() => {
+    const cargo = item?.cargo || 'Sin cargo';
+    return `${cargo}`;
+  }, [item?.cargo]);
+
+  useEffect(() => {
+    const body = document.body;
+    const overflowAnterior = body.style.overflow;
+    body.style.overflow = 'hidden';
+
+    const timer = setTimeout(() => {
+      closeRef.current?.focus?.();
+    }, 0);
+
+    const handleKeyDown = (event) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+      onCerrar?.();
+    };
+
+    document.addEventListener('keydown', handleKeyDown, true);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('keydown', handleKeyDown, true);
+      body.style.overflow = overflowAnterior;
+    };
+  }, [onCerrar]);
 
   return createPortal(
     <div
@@ -55,6 +90,7 @@ export default function ModalInfoDocente({ item, onCerrar }) {
 
           <button
             type="button"
+            ref={closeRef}
             className="docentes-info-modal-close"
             onClick={onCerrar}
             aria-label="Cerrar modal"
@@ -70,12 +106,14 @@ export default function ModalInfoDocente({ item, onCerrar }) {
             </div>
 
             <div>
-              <h3>{item?.docente || 'Docente'}</h3>
+              <div className="docentes-info-nameRow">
+                <h3>{item?.docente || 'Docente'}</h3>
+                <span className={`docentes-info-status ${estaActivo ? 'is-active' : 'is-inactive'}`}>
+                  {estaActivo ? 'Activo' : 'Dado de baja'}
+                </span>
+              </div>
 
-              <p>
-                {item?.cargo || 'Sin cargo'} ·{' '}
-                {Number(item?.activo) === 1 ? 'Activo' : 'Dado de baja'}
-              </p>
+              <p>{detalleDocente}</p>
 
               {item?.observacion && <small>{item.observacion}</small>}
             </div>
@@ -84,19 +122,20 @@ export default function ModalInfoDocente({ item, onCerrar }) {
           <div className="docentes-info-grid">
             <div className="docentes-info-card">
               <span>Registros internos</span>
-              <strong>
-                {item?.cantidad_registros || item?.ids_docentes?.length || 1}
-              </strong>
+              <strong>{totalRegistros}</strong>
+              <small>Unificados en la ficha</small>
             </div>
 
             <div className="docentes-info-card">
               <span>Cátedras asignadas</span>
               <strong>{catedras.length}</strong>
+              <small>Materias vinculadas</small>
             </div>
 
             <div className="docentes-info-card">
               <span>Días disponibles</span>
               <strong>{disponibilidades.length}</strong>
+              <small>Reglas cargadas</small>
             </div>
           </div>
 
@@ -140,8 +179,10 @@ export default function ModalInfoDocente({ item, onCerrar }) {
                       </td>
 
                       <td>
-                        <FontAwesomeIcon icon={faBookOpen} />
-                        {cat.materia}
+                        <span className="docentes-info-materia">
+                          <FontAwesomeIcon icon={faBookOpen} />
+                          {cat.materia}
+                        </span>
                       </td>
                     </tr>
                   ))}
@@ -170,8 +211,10 @@ export default function ModalInfoDocente({ item, onCerrar }) {
                     bloque.fecha || 'semanal'
                   }-${index}`}
                 >
-                  <strong>{bloque.dia_semana || 'DÍA'}</strong>
-                  <span>{bloque.turno || 'TURNO'}</span>
+                  <span className="docentes-bloque-chip__main">
+                    <strong>{bloque.dia_semana || 'DÍA'}</strong>
+                    <span>{bloque.turno || 'TURNO'}</span>
+                  </span>
 
                   {bloque.fecha && (
                     <small>{formatearFecha(bloque.fecha)}</small>

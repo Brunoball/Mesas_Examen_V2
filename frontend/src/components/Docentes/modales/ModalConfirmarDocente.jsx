@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faExclamationTriangle, faTimes } from '@fortawesome/free-solid-svg-icons';
 
@@ -17,6 +17,27 @@ export default function ModalConfirmarDocente({ tipo, item, onConfirmar, onCerra
     : esAlta
       ? 'El docente volverá a figurar como activo.'
       : 'Se eliminará definitivamente. Si tenía cátedras asignadas, quedarán sin docente.';
+
+  useEffect(() => {
+    const body = document.body;
+    const overflowAnterior = body.style.overflow;
+    body.style.overflow = 'hidden';
+
+    const handleKeyDown = (event) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+      if (!procesando) onCerrar?.();
+    };
+
+    document.addEventListener('keydown', handleKeyDown, true);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true);
+      body.style.overflow = overflowAnterior;
+    };
+  }, [onCerrar, procesando]);
 
   async function handleConfirmar() {
     setProcesando(true);
