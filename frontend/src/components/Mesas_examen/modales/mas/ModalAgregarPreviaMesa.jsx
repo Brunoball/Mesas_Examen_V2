@@ -1,5 +1,6 @@
 // src/components/Mesas_examen/modales/mas/ModalAgregarPreviaMesa.jsx
 import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCheck,
@@ -61,6 +62,9 @@ const ModalAgregarPreviaMesa = ({
 
   if (!abierto) return null;
 
+  const portalTarget = typeof document !== "undefined" ? document.body : null;
+  if (!portalTarget) return null;
+
   const numeroMesa = obtenerNumero(numero || data?.meta || data);
 
   const confirmar = () => {
@@ -68,7 +72,7 @@ const ModalAgregarPreviaMesa = ({
     onConfirm(previaSeleccionada);
   };
 
-  return (
+  return createPortal((
     <div className="mas-modal-overlay" role="dialog" aria-modal="true">
       <div className="mas-modal-panel">
         <header className="mas-modal-header">
@@ -167,7 +171,7 @@ const ModalAgregarPreviaMesa = ({
         </footer>
       </div>
     </div>
-  );
+  ), portalTarget);
 };
 
 export default ModalAgregarPreviaMesa;

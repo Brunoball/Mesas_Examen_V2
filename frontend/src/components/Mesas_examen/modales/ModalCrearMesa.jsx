@@ -1,5 +1,6 @@
 // src/components/Mesas_examen/modales/ModalCrearMesa.jsx
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCalendarDays,
@@ -9,6 +10,9 @@ import {
   faTimes,
   faTriangleExclamation,
 } from "@fortawesome/free-solid-svg-icons";
+
+import "../../Global/Global_css/Global_Modals.css";
+import "./ModalCrearMesa.css";
 
 const esFechaValida = (fecha) => /^\d{4}-\d{2}-\d{2}$/.test(String(fecha || ""));
 
@@ -75,6 +79,9 @@ const ModalCrearMesa = ({
   if (!abierto) {
     return null;
   }
+
+  const portalTarget = typeof document !== "undefined" ? document.body : null;
+  if (!portalTarget) return null;
 
   const totalPrevias = parametros?.total_previas_para_armar || 0;
   const turnos = parametros?.turnos || [];
@@ -147,11 +154,15 @@ const ModalCrearMesa = ({
     });
   };
 
-  return (
+  return createPortal((
     <div className="mesas-modal-overlay">
       <div className="mesas-modal">
         <div className="mesas-modal-header">
-          <div>
+          <div className="mesas-modal-head-icon" aria-hidden="true">
+            <FontAwesomeIcon icon={faCalendarDays} />
+          </div>
+
+          <div className="mesas-modal-head-text">
             <h3>Crear mesas de examen</h3>
             <p>Cruza previas con cátedras/docentes, genera los números y asigna fecha/turno.</p>
           </div>
@@ -319,7 +330,7 @@ const ModalCrearMesa = ({
         </form>
       </div>
     </div>
-  );
+  ), portalTarget);
 };
 
 export default ModalCrearMesa;

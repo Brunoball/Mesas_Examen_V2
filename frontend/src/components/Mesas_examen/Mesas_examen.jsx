@@ -6,7 +6,6 @@ import {
   faMagnifyingGlass,
   faTrash,
   faUserPlus,
-  faLinkSlash,
   faSpinner,
   faTriangleExclamation,
   faCheckCircle,
@@ -17,6 +16,7 @@ import {
 
 import "../Global/Global_css/roots.css";
 import "../Global/Global_css/Global_Section.css";
+import "../Global/Global_css/Global_DivTable.css";
 import "./Mesas_examen.css";
 import Principal, { MesasShellContext } from "../Principal/Principal";
 import { useMesasExamen } from "./hooks/useMesasExamen";
@@ -46,6 +46,48 @@ const MESES_ES = [
 ];
 
 const DIAS_ES = ["DOMINGO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO"];
+
+const HISTORIAL_RESULTADOS_GRID_COLS = "0.95fr 1.35fr 0.75fr 1.2fr 0.95fr 1.15fr 0.55fr 0.9fr 1.15fr";
+const HISTORIAL_ARMADOS_GRID_COLS = "0.95fr 1fr 1.35fr 0.65fr 0.75fr 0.7fr 0.95fr 0.9fr";
+const HISTORIAL_DETALLE_GRID_COLS = "0.9fr 0.65fr 0.65fr 1.25fr 0.75fr 1.15fr 1.15fr 0.75fr 0.55fr 0.65fr";
+
+const HISTORIAL_RESULTADOS_COLUMNS = [
+  { key: "fecha", label: "Fecha nota" },
+  { key: "alumno", label: "Alumno" },
+  { key: "dni", label: "DNI" },
+  { key: "materia", label: "Materia" },
+  { key: "mesa", label: "Mesa" },
+  { key: "docente", label: "Docente" },
+  { key: "nota", label: "Nota", align: "is-center" },
+  { key: "resultado", label: "Resultado", align: "is-center" },
+  { key: "motivo", label: "Motivo" },
+];
+
+const HISTORIAL_ARMADOS_COLUMNS = [
+  { key: "guardado", label: "Guardado" },
+  { key: "codigo", label: "Código" },
+  { key: "motivo", label: "Motivo" },
+  { key: "mesas", label: "Mesas", align: "is-center" },
+  { key: "previas", label: "Previas", align: "is-center" },
+  { key: "grupos", label: "Grupos", align: "is-center" },
+  { key: "noAgrupadas", label: "No agrupadas", align: "is-center" },
+  { key: "detalle", label: "Detalle", align: "is-center" },
+];
+
+const HISTORIAL_DETALLE_COLUMNS = [
+  { key: "fecha", label: "Fecha" },
+  { key: "grupo", label: "Grupo", align: "is-center" },
+  { key: "mesa", label: "Mesa", align: "is-center" },
+  { key: "alumno", label: "Alumno" },
+  { key: "dni", label: "DNI" },
+  { key: "materia", label: "Materia" },
+  { key: "docente", label: "Docente" },
+  { key: "tipo", label: "Tipo" },
+  { key: "nota", label: "Nota", align: "is-center" },
+  { key: "activa", label: "Activa", align: "is-center" },
+];
+
+const alignClass = (align) => align || "";
 
 const parseFechaMesa = (valor) => {
   const texto = String(valor || "").trim();
@@ -388,6 +430,24 @@ const MesaPdfCard = ({ grupo, esNoAgrupada = false, onEdit, onDelete, onGuardarN
 };
 
 
+const HistorialGridHead = ({ columns, gridCols }) => (
+  <div
+    className="mov-gridTable mov-gridTable--head global-divTable__head mesas-historial-gridHead"
+    style={{ gridTemplateColumns: gridCols }}
+    role="row"
+  >
+    {columns.map((column) => (
+      <div
+        key={column.key}
+        className={["mov-gridCell", "mov-gridCell--head", alignClass(column.align)].filter(Boolean).join(" ")}
+        role="columnheader"
+      >
+        {column.label}
+      </div>
+    ))}
+  </div>
+);
+
 const HistorialMesasPanel = ({ historial }) => {
   const resultados = Array.isArray(historial?.resultados) ? historial.resultados : [];
   const armados = Array.isArray(historial?.armados) ? historial.armados : [];
@@ -398,7 +458,7 @@ const HistorialMesasPanel = ({ historial }) => {
   return (
     <div className="mesas-historial-panel">
       <div className="mesas-historial-head">
-        <div>
+        <div className="mesas-historial-title">
           <h3>Historial completo de mesas</h3>
           <p>Acá quedan registradas las notas cargadas, las previas aprobadas/desaprobadas y los armados eliminados.</p>
         </div>
@@ -446,10 +506,9 @@ const HistorialMesasPanel = ({ historial }) => {
         </div>
       ) : (
         <>
-          <section className="mesas-historial-section">
+          <section className="mesas-historial-section mov-card mov-card--table">
             <div className="mesas-historial-sectionTitle">
               <h4>Historial de notas y previas</h4>
-              <span>{resultados.length} registros visibles</span>
             </div>
 
             {resultados.length === 0 ? (
@@ -457,56 +516,69 @@ const HistorialMesasPanel = ({ historial }) => {
                 <div className="cc-emptyText">Todavía no hay notas cargadas en el historial.</div>
               </div>
             ) : (
-              <div className="mesas-historial-tableWrap">
-                <table className="mesas-historial-table">
-                  <thead>
-                    <tr>
-                      <th>Fecha nota</th>
-                      <th>Alumno</th>
-                      <th>DNI</th>
-                      <th>Materia</th>
-                      <th>Mesa</th>
-                      <th>Docente</th>
-                      <th>Nota</th>
-                      <th>Resultado</th>
-                      <th>Motivo</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {resultados.map((item) => {
-                      const aprobado = Number(item.aprobado) === 1;
-                      return (
-                        <tr key={`resultado-${item.id_resultado}`}>
-                          <td>{textoCorto(item.fecha_nota_texto || item.fecha_nota)}</td>
-                          <td><strong>{textoCorto(item.alumno)}</strong></td>
-                          <td>{textoCorto(item.dni)}</td>
-                          <td>{textoCorto(item.materia)}</td>
-                          <td>
-                            <span className="mesas-historial-chip">N° {textoCorto(item.numero_mesa)}</span>
-                            {item.numero_grupo && <small>Grupo {item.numero_grupo}</small>}
-                            {item.fecha_mesa_texto && <small>{item.fecha_mesa_texto}</small>}
-                          </td>
-                          <td>{textoCorto(item.docente)}</td>
-                          <td><strong className="mesas-historial-nota">{item.nota}</strong></td>
-                          <td>
-                            <span className={`mesas-historial-estado ${aprobado ? "is-approved" : "is-pending"}`}>
-                              {aprobado ? "Aprobada" : "No aprobada"}
-                            </span>
-                          </td>
-                          <td>{textoCorto(item.motivo)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <>
+                <div className="mesas-historial-divTable global-divTable" role="table" aria-label="Historial de notas y previas">
+                  <HistorialGridHead columns={HISTORIAL_RESULTADOS_COLUMNS} gridCols={HISTORIAL_RESULTADOS_GRID_COLS} />
+
+                  <div className="mesas-historial-tableWrap mov-tableWrap global-divTable__wrap" role="rowgroup">
+                    <div className="mov-gridBody global-divTable__body mesas-historial-gridBody">
+                      {resultados.map((item) => {
+                        const aprobado = Number(item.aprobado) === 1;
+                        return (
+                          <div
+                            key={`resultado-${item.id_resultado}`}
+                            className="mov-gridTable mov-gridTable--row global-divTable__row mesas-historial-gridRow"
+                            style={{ gridTemplateColumns: HISTORIAL_RESULTADOS_GRID_COLS }}
+                            role="row"
+                          >
+                            <div className="mov-gridCell" role="cell" data-label="Fecha nota">
+                              {textoCorto(item.fecha_nota_texto || item.fecha_nota)}
+                            </div>
+                            <div className="mov-gridCell is-strong" role="cell" data-label="Alumno" title={textoCorto(item.alumno)}>
+                              {textoCorto(item.alumno)}
+                            </div>
+                            <div className="mov-gridCell" role="cell" data-label="DNI">{textoCorto(item.dni)}</div>
+                            <div className="mov-gridCell" role="cell" data-label="Materia" title={textoCorto(item.materia)}>
+                              {textoCorto(item.materia)}
+                            </div>
+                            <div className="mov-gridCell" role="cell" data-label="Mesa">
+                              <div className="mesas-historial-stack">
+                                <span className="mesas-historial-chip">N° {textoCorto(item.numero_mesa)}</span>
+                                {item.numero_grupo && <small>Grupo {item.numero_grupo}</small>}
+                                {item.fecha_mesa_texto && <small>{item.fecha_mesa_texto}</small>}
+                              </div>
+                            </div>
+                            <div className="mov-gridCell" role="cell" data-label="Docente" title={textoCorto(item.docente)}>
+                              {textoCorto(item.docente)}
+                            </div>
+                            <div className="mov-gridCell is-center" role="cell" data-label="Nota">
+                              <strong className="mesas-historial-nota">{item.nota}</strong>
+                            </div>
+                            <div className="mov-gridCell is-center" role="cell" data-label="Resultado">
+                              <span className={`mesas-historial-estado ${aprobado ? "is-approved" : "is-pending"}`}>
+                                {aprobado ? "Aprobada" : "No aprobada"}
+                              </span>
+                            </div>
+                            <div className="mov-gridCell" role="cell" data-label="Motivo" title={textoCorto(item.motivo)}>
+                              {textoCorto(item.motivo)}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mesas-recordsFoot mesas-historial-countFoot">
+                  <b>{resultados.length}</b> registros visibles
+                </div>
+              </>
             )}
           </section>
 
-          <section className="mesas-historial-section">
+          <section className="mesas-historial-section mov-card mov-card--table">
             <div className="mesas-historial-sectionTitle">
               <h4>Historial de armados eliminados</h4>
-              <span>{armados.length} armados visibles</span>
             </div>
 
             {armados.length === 0 ? (
@@ -514,55 +586,61 @@ const HistorialMesasPanel = ({ historial }) => {
                 <div className="cc-emptyText">Todavía no hay armados eliminados guardados.</div>
               </div>
             ) : (
-              <div className="mesas-historial-tableWrap">
-                <table className="mesas-historial-table mesas-historial-table-armados">
-                  <thead>
-                    <tr>
-                      <th>Guardado</th>
-                      <th>Código</th>
-                      <th>Motivo</th>
-                      <th>Mesas</th>
-                      <th>Previas</th>
-                      <th>Grupos</th>
-                      <th>No agrupadas</th>
-                      <th>Detalle</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {armados.map((item) => (
-                      <tr key={`armado-${item.id_armado_historial}`}>
-                        <td>{textoCorto(item.creado_en_texto || item.creado_en)}</td>
-                        <td><strong>{textoCorto(item.codigo_armado)}</strong></td>
-                        <td>{textoCorto(item.motivo)}</td>
-                        <td>{item.total_mesas ?? 0}</td>
-                        <td>{item.total_previas ?? 0}</td>
-                        <td>{item.total_grupos ?? 0}</td>
-                        <td>{item.total_no_agrupadas ?? 0}</td>
-                        <td>
-                          <button
-                            type="button"
-                            className="mesas-historial-detailBtn"
-                            onClick={() => historial?.verDetalleArmado?.(item.id_armado_historial)}
-                            disabled={historial?.cargandoDetalle}
-                          >
-                            <FontAwesomeIcon icon={historial?.cargandoDetalle ? faSpinner : faLayerGroup} spin={!!historial?.cargandoDetalle} />
-                            Ver detalle
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <>
+                <div className="mesas-historial-divTable global-divTable" role="table" aria-label="Historial de armados eliminados">
+                  <HistorialGridHead columns={HISTORIAL_ARMADOS_COLUMNS} gridCols={HISTORIAL_ARMADOS_GRID_COLS} />
+
+                  <div className="mesas-historial-tableWrap mov-tableWrap global-divTable__wrap" role="rowgroup">
+                    <div className="mov-gridBody global-divTable__body mesas-historial-gridBody">
+                      {armados.map((item) => (
+                        <div
+                          key={`armado-${item.id_armado_historial}`}
+                          className="mov-gridTable mov-gridTable--row global-divTable__row mesas-historial-gridRow"
+                          style={{ gridTemplateColumns: HISTORIAL_ARMADOS_GRID_COLS }}
+                          role="row"
+                        >
+                          <div className="mov-gridCell" role="cell" data-label="Guardado">
+                            {textoCorto(item.creado_en_texto || item.creado_en)}
+                          </div>
+                          <div className="mov-gridCell is-strong" role="cell" data-label="Código" title={textoCorto(item.codigo_armado)}>
+                            {textoCorto(item.codigo_armado)}
+                          </div>
+                          <div className="mov-gridCell" role="cell" data-label="Motivo" title={textoCorto(item.motivo)}>
+                            {textoCorto(item.motivo)}
+                          </div>
+                          <div className="mov-gridCell is-center" role="cell" data-label="Mesas">{item.total_mesas ?? 0}</div>
+                          <div className="mov-gridCell is-center" role="cell" data-label="Previas">{item.total_previas ?? 0}</div>
+                          <div className="mov-gridCell is-center" role="cell" data-label="Grupos">{item.total_grupos ?? 0}</div>
+                          <div className="mov-gridCell is-center" role="cell" data-label="No agrupadas">{item.total_no_agrupadas ?? 0}</div>
+                          <div className="mov-gridCell mov-gridCell--actions is-center" role="cell" data-label="Detalle">
+                            <button
+                              type="button"
+                              className="mesas-historial-detailBtn"
+                              onClick={() => historial?.verDetalleArmado?.(item.id_armado_historial)}
+                              disabled={historial?.cargandoDetalle}
+                            >
+                              <FontAwesomeIcon icon={historial?.cargandoDetalle ? faSpinner : faLayerGroup} spin={!!historial?.cargandoDetalle} />
+                              Ver detalle
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mesas-recordsFoot mesas-historial-countFoot">
+                  <b>{armados.length}</b> armados visibles
+                </div>
+              </>
             )}
           </section>
 
           {detalle && (
-            <section className="mesas-historial-section mesas-historial-detalle">
+            <section className="mesas-historial-section mesas-historial-detalle mov-card mov-card--table">
               <div className="mesas-historial-sectionTitle">
                 <div>
                   <h4>Detalle del armado {textoCorto(detalle.armado?.codigo_armado, "")}</h4>
-                  <span>{detalleFilas.length} registros guardados del armado final</span>
                 </div>
                 <button type="button" className="mesas-historial-closeBtn" onClick={historial?.cerrarDetalleArmado}>
                   <FontAwesomeIcon icon={faTimes} /> Cerrar detalle
@@ -575,40 +653,39 @@ const HistorialMesasPanel = ({ historial }) => {
                   <div className="cc-emptyText">Cargando detalle...</div>
                 </div>
               ) : (
-                <div className="mesas-historial-tableWrap">
-                  <table className="mesas-historial-table">
-                    <thead>
-                      <tr>
-                        <th>Fecha</th>
-                        <th>Grupo</th>
-                        <th>Mesa</th>
-                        <th>Alumno</th>
-                        <th>DNI</th>
-                        <th>Materia</th>
-                        <th>Docente</th>
-                        <th>Tipo</th>
-                        <th>Nota</th>
-                        <th>Activa</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {detalleFilas.map((item) => (
-                        <tr key={`detalle-${item.id_historial_detalle}`}>
-                          <td>{textoCorto(item.fecha_mesa_texto || item.fecha_mesa)}</td>
-                          <td>{textoCorto(item.numero_grupo)}</td>
-                          <td>{textoCorto(item.numero_mesa)}</td>
-                          <td><strong>{textoCorto(item.alumno)}</strong></td>
-                          <td>{textoCorto(item.dni)}</td>
-                          <td>{textoCorto(item.materia)}</td>
-                          <td>{textoCorto(item.docente)}</td>
-                          <td>{textoCorto(item.tipo_mesa)}</td>
-                          <td>{textoCorto(item.nota)}</td>
-                          <td>{Number(item.previa_activa) === 1 ? "Sí" : "No"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <>
+                  <div className="mesas-historial-divTable global-divTable" role="table" aria-label="Detalle del armado eliminado">
+                    <HistorialGridHead columns={HISTORIAL_DETALLE_COLUMNS} gridCols={HISTORIAL_DETALLE_GRID_COLS} />
+
+                    <div className="mesas-historial-tableWrap mov-tableWrap global-divTable__wrap" role="rowgroup">
+                      <div className="mov-gridBody global-divTable__body mesas-historial-gridBody">
+                        {detalleFilas.map((item) => (
+                          <div
+                            key={`detalle-${item.id_historial_detalle}`}
+                            className="mov-gridTable mov-gridTable--row global-divTable__row mesas-historial-gridRow"
+                            style={{ gridTemplateColumns: HISTORIAL_DETALLE_GRID_COLS }}
+                            role="row"
+                          >
+                            <div className="mov-gridCell" role="cell" data-label="Fecha">{textoCorto(item.fecha_mesa_texto || item.fecha_mesa)}</div>
+                            <div className="mov-gridCell is-center" role="cell" data-label="Grupo">{textoCorto(item.numero_grupo)}</div>
+                            <div className="mov-gridCell is-center" role="cell" data-label="Mesa">{textoCorto(item.numero_mesa)}</div>
+                            <div className="mov-gridCell is-strong" role="cell" data-label="Alumno" title={textoCorto(item.alumno)}>{textoCorto(item.alumno)}</div>
+                            <div className="mov-gridCell" role="cell" data-label="DNI">{textoCorto(item.dni)}</div>
+                            <div className="mov-gridCell" role="cell" data-label="Materia" title={textoCorto(item.materia)}>{textoCorto(item.materia)}</div>
+                            <div className="mov-gridCell" role="cell" data-label="Docente" title={textoCorto(item.docente)}>{textoCorto(item.docente)}</div>
+                            <div className="mov-gridCell" role="cell" data-label="Tipo">{textoCorto(item.tipo_mesa)}</div>
+                            <div className="mov-gridCell is-center" role="cell" data-label="Nota">{textoCorto(item.nota)}</div>
+                            <div className="mov-gridCell is-center" role="cell" data-label="Activa">{Number(item.previa_activa) === 1 ? "Sí" : "No"}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mesas-recordsFoot mesas-historial-countFoot">
+                    <b>{detalleFilas.length}</b> registros guardados del armado final
+                  </div>
+                </>
               )}
             </section>
           )}
@@ -743,44 +820,35 @@ const MesasExamen = () => {
               <div className="mov-card__title mesas-section-title">
                 Mesas de Examen
               </div>
-              <div className="mov-card__hint">
-                Mostrando <b>{totalVisible}</b> de <b>{totalReferencia}</b> registros
+
+              <div className="mesas-titleTabs" aria-label="Cambiar vista de mesas">
+                <button
+                  className={`mov-tab mesas-titleTab ${tab === "grupos-finales" ? "is-active" : ""}`}
+                  type="button"
+                  onClick={() => setTab("grupos-finales")}
+                >
+                  Grupos finales
+                </button>
+
+                <button
+                  className={`mov-tab mesas-titleTab ${tab === "no-agrupadas" ? "is-active" : ""}`}
+                  type="button"
+                  onClick={() => setTab("no-agrupadas")}
+                >
+                  No agrupadas
+                </button>
+
+                <button
+                  className={`mov-tab mesas-titleTab ${tab === "historial" ? "is-active" : ""}`}
+                  type="button"
+                  onClick={() => setTab("historial")}
+                >
+                  Historial
+                </button>
               </div>
             </div>
 
             <div className="mov-headFilters mesas-headFilters">
-              <div className="mesas-filterTabs" aria-label="Cambiar vista de mesas">
-                <span className="mesas-filterTabs__label">Vista</span>
-                <div className="mov-tabs mesas-tabsInline">
-                  <button
-                    className={`mov-tab mesas-tab mesas-tab-counter ${tab === "grupos-finales" ? "is-active" : ""}`}
-                    type="button"
-                    onClick={() => setTab("grupos-finales")}
-                  >
-                    <FontAwesomeIcon icon={faLayerGroup} />
-                    Grupos finales: {totalGrupos}
-                  </button>
-
-                  <button
-                    className={`mov-tab mesas-tab mesas-tab-link ${tab === "no-agrupadas" ? "is-active" : ""}`}
-                    type="button"
-                    onClick={() => setTab("no-agrupadas")}
-                  >
-                    <FontAwesomeIcon icon={faLinkSlash} />
-                    No agrupadas: {totalNoAgrupadas}
-                  </button>
-
-                  <button
-                    className={`mov-tab mesas-tab mesas-tab-link ${tab === "historial" ? "is-active" : ""}`}
-                    type="button"
-                    onClick={() => setTab("historial")}
-                  >
-                    <FontAwesomeIcon icon={faCheckCircle} />
-                    Historial
-                  </button>
-                </div>
-              </div>
-
               <div className="cc-filter mesas-searchFilter">
                 <div className={`cc-floatingField cc-floatingField--search mesas-floatingSearch ${hayBusquedaActiva ? "is-active" : ""}`}>
                   <div className="cc-searchInput">
@@ -920,6 +988,12 @@ const MesasExamen = () => {
             ))
           )}
         </div>
+
+        {tab !== "historial" && (
+          <div className="mesas-recordsFoot">
+            Mostrando <b>{totalVisible}</b> de <b>{totalReferencia}</b> registros
+          </div>
+        )}
       </section>
 
       <ModalCrearMesa

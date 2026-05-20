@@ -1,5 +1,6 @@
 // src/components/Mesas_examen/modales/flechas/ModalMoverNumeroMesa.jsx
 import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCheck,
@@ -71,6 +72,9 @@ const ModalMoverNumeroMesa = ({
 
   if (!abierto) return null;
 
+  const portalTarget = typeof document !== "undefined" ? document.body : null;
+  if (!portalTarget) return null;
+
   const meta = destinosData?.meta || numero || {};
 
   const confirmar = () => {
@@ -78,7 +82,7 @@ const ModalMoverNumeroMesa = ({
     onConfirm?.(seleccionado);
   };
 
-  return (
+  return createPortal((
     <div className="flechas-overlay" role="dialog" aria-modal="true">
       <div className="flechas-modal">
         <header className="flechas-header">
@@ -184,7 +188,7 @@ const ModalMoverNumeroMesa = ({
         </footer>
       </div>
     </div>
-  );
+  ), portalTarget);
 };
 
 export default ModalMoverNumeroMesa;

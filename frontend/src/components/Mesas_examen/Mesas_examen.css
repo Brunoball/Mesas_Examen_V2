@@ -612,332 +612,7 @@
   background: #8793a8;
 }
 
-/* =========================================================
-   MODAL CREAR MESAS
-========================================================= */
-
-.mesas-modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  padding: 24px;
-
-  background: rgba(10, 37, 64, 0.55);
-  backdrop-filter: blur(6px);
-}
-
-.mesas-modal {
-  width: min(680px, 100%);
-  max-height: 92dvh;
-
-  overflow: hidden;
-
-  background: #ffffff;
-  color: var(--mesas-midnight);
-
-  border: 1px solid var(--mesas-border);
-  border-radius: 18px;
-
-  box-shadow: 0 28px 64px -24px rgba(10, 37, 64, 0.32);
-
-  animation: mesasModalIn 0.18s ease-out;
-}
-
-@keyframes mesasModalIn {
-  from {
-    opacity: 0;
-    transform: translateY(18px) scale(0.98);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.mesas-modal-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-
-  padding: 24px 26px;
-
-  background: #ffffff;
-  color: var(--mesas-midnight);
-
-  border-bottom: 1px solid var(--mesas-border);
-}
-
-.mesas-modal-header h3 {
-  margin: 0;
-
-  color: var(--mesas-midnight);
-  font-size: 22px;
-  font-weight: 800;
-}
-
-.mesas-modal-header p {
-  margin: 6px 0 0;
-
-  color: var(--mesas-muted);
-  font-size: 14px;
-}
-
-.mesas-modal-close {
-  width: 40px;
-  height: 40px;
-
-  border: 1px solid var(--mesas-soft-border);
-  border-radius: 12px;
-
-  background: #ffffff;
-  color: var(--mesas-midnight);
-
-  display: grid;
-  place-items: center;
-
-  cursor: pointer;
-  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
-}
-
-.mesas-modal-close:hover {
-  background: #f8fbff;
-  transform: translateY(-1px);
-  box-shadow: var(--mesas-shadow-sm);
-}
-
-.mesas-modal-body {
-  padding: 24px 26px 26px;
-  overflow-y: auto;
-  max-height: calc(92dvh - 90px);
-}
-
-.mesas-modal-alert {
-  display: flex;
-  gap: 12px;
-
-  padding: 14px 16px;
-  margin-bottom: 18px;
-
-  border-radius: 16px;
-  border: 1px solid rgba(245, 158, 11, 0.24);
-
-  background: rgba(245, 158, 11, 0.1);
-  color: #92400e;
-
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.mesas-modal-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-
-.mesas-field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.mesas-field span {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  color: var(--mesas-text);
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.mesas-field input {
-  height: 46px;
-
-  border-radius: 13px;
-  border: 1px solid var(--mesas-soft-border);
-
-  background: #ffffff;
-  color: var(--mesas-midnight);
-
-  padding: 0 12px;
-
-  font-size: 15px;
-  outline: none;
-}
-
-.mesas-field input:focus {
-  border-color: var(--mesas-blue);
-  box-shadow: 0 0 0 4px rgba(0, 85, 187, 0.12);
-}
-
-.mesas-modal-info {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-
-  margin: 18px 0;
-}
-
-.mesas-modal-info > div {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-
-  padding: 16px;
-
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-}
-
-.mesas-modal-info strong {
-  color: var(--mesas-midnight);
-  font-size: 24px;
-  font-weight: 800;
-}
-
-.mesas-modal-info span {
-  color: var(--mesas-muted);
-  font-size: 14px;
-}
-
-.mesas-turnos-preview {
-  padding: 14px 16px;
-  margin-bottom: 16px;
-
-  border-radius: 16px;
-  border: 1px solid #e2e8f0;
-
-  background: #f8fafc;
-}
-
-.mesas-turnos-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  margin-bottom: 10px;
-
-  color: var(--mesas-text);
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.mesas-turnos-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.mesas-turno-pill {
-  padding: 6px 10px;
-
-  border-radius: 999px;
-  border: 1px solid rgba(0, 85, 187, 0.18);
-
-  background: rgba(0, 85, 187, 0.08);
-  color: var(--mesas-blue);
-
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.mesas-modal-options {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-
-  margin: 16px 0;
-}
-
-.mesas-modal-options label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-
-  color: var(--mesas-text);
-  font-size: 14px;
-
-  cursor: pointer;
-}
-
-.mesas-modal-options input {
-  width: 16px;
-  height: 16px;
-}
-
-.mesas-modal-error {
-  padding: 12px 14px;
-  margin-top: 14px;
-
-  border-radius: 14px;
-  border: 1px solid rgba(225, 61, 69, 0.22);
-
-  background: rgba(225, 61, 69, 0.1);
-  color: #b4232b;
-
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.mesas-modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-
-  margin-top: 22px;
-}
-
-.btn-modal-cancel,
-.btn-modal-confirm {
-  min-height: 46px;
-
-  border: 1px solid transparent;
-  border-radius: 14px;
-
-  padding: 0 18px;
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-
-  font-weight: 800;
-  cursor: pointer;
-
-  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, opacity 160ms ease;
-}
-
-.btn-modal-cancel {
-  background: #ffffff;
-  color: var(--mesas-midnight);
-  border-color: var(--mesas-soft-border);
-}
-
-.btn-modal-confirm {
-  background: var(--mesas-blue);
-  color: #ffffff;
-  border-color: var(--mesas-blue);
-}
-
-.btn-modal-cancel:hover:not(:disabled),
-.btn-modal-confirm:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: var(--mesas-shadow-md);
-}
-
-.btn-modal-cancel:disabled,
-.btn-modal-confirm:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-}
+/* Los estilos de ModalCrearMesa se movieron a modales/ModalCrearMesa.css. */
 
 /* =========================================================
    RESPONSIVE
@@ -1031,19 +706,6 @@
     max-height: 55dvh;
   }
 
-  .mesas-modal-grid,
-  .mesas-modal-info {
-    grid-template-columns: 1fr;
-  }
-
-  .mesas-modal-actions {
-    flex-direction: column;
-  }
-
-  .btn-modal-cancel,
-  .btn-modal-confirm {
-    width: 100%;
-  }
 }
 /* =========================================================
    VISTA AGRUPADA POR NUMERO DE MESA
@@ -1706,7 +1368,6 @@
 
 .mesas-pdf-sheet {
   width: 100%;
-  min-width: 1180px;
   height: auto !important;
   min-height: 0 !important;
   max-height: none !important;
@@ -1967,15 +1628,7 @@
   text-transform: uppercase;
 }
 
-@media (max-width: 1100px) {
-  .mesas-pdf-view {
-    max-height: 65dvh;
-  }
 
-  .mesas-pdf-sheet {
-    min-width: 1080px;
-  }
-}
 
 @media print {
   @page {
@@ -2075,79 +1728,7 @@
   }
 }
 
-/* Selector de criterio de armado en ModalCrearMesa */
-.mesas-tipo-armado-box {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: 16px 0 8px;
-}
-
-.mesas-tipo-armado-title {
-  color: var(--mesas-text);
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-
-.mesas-tipo-armado-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.mesas-tipo-armado-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 13px 14px;
-  border: 1px solid var(--mesas-border);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.74);
-  color: var(--mesas-text);
-  cursor: pointer;
-  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
-}
-
-.mesas-tipo-armado-card:hover {
-  transform: translateY(-1px);
-  border-color: rgba(37, 99, 235, 0.35);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
-}
-
-.mesas-tipo-armado-card.activo {
-  border-color: rgba(37, 99, 235, 0.7);
-  background: rgba(37, 99, 235, 0.08);
-  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.10);
-}
-
-.mesas-tipo-armado-card input {
-  width: 17px;
-  height: 17px;
-  margin-top: 2px;
-  accent-color: #2563eb;
-}
-
-.mesas-tipo-armado-card strong {
-  display: block;
-  margin-bottom: 3px;
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.mesas-tipo-armado-card span {
-  display: block;
-  color: var(--mesas-muted);
-  font-size: 12.5px;
-  line-height: 1.35;
-}
-
-@media (max-width: 720px) {
-  .mesas-tipo-armado-grid {
-    grid-template-columns: 1fr;
-  }
-}
+/* Los estilos del criterio de armado se movieron a modales/ModalCrearMesa.css. */
 
 /* =========================================================
    ACCIONES DE EDICIÓN POR MESA
@@ -2226,7 +1807,6 @@
 
 .mesas-card-pdf-fijo .mesas-pdf-sheet {
   width: 100%;
-  min-width: 1180px;
   display: block;
   overflow: hidden !important;
   background: #ffffff;
@@ -2534,9 +2114,7 @@
     max-height: 65dvh;
   }
 
-  .mesas-card-pdf-fijo .mesas-pdf-sheet {
-    min-width: 1080px;
-  }
+
 }
 
 @media print {
@@ -2999,44 +2577,6 @@
   overflow:visible !important;
 }
 
-.mesas-modal-overlay{
-  align-items:flex-start !important;
-  overflow-y:auto !important;
-  overflow-x:hidden !important;
-  padding:24px !important;
-}
-
-.mesas-modal{
-  display:flex !important;
-  flex-direction:column !important;
-  max-height:calc(100dvh - 48px) !important;
-  margin:auto 0 !important;
-  overflow:hidden !important;
-}
-
-.mesas-modal-header{
-  flex:0 0 auto !important;
-}
-
-.mesas-modal-body{
-  flex:1 1 auto !important;
-  min-height:0 !important;
-  max-height:none !important;
-  overflow-y:auto !important;
-  overflow-x:hidden !important;
-  overscroll-behavior:contain;
-  -webkit-overflow-scrolling:touch;
-  padding-bottom:18px !important;
-}
-
-.mesas-modal-actions{
-  position:sticky;
-  bottom:0;
-  z-index:2;
-  margin:18px -2px 0;
-  padding:14px 2px 2px;
-  background:linear-gradient(180deg, rgba(255,255,255,.72), #fff 34%);
-}
 
 @media (max-width:1100px){
   .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-view{
@@ -3045,16 +2585,6 @@
   }
 }
 
-@media (max-width:720px){
-  .mesas-modal-overlay{
-    padding:12px !important;
-  }
-
-  .mesas-modal{
-    max-height:calc(100dvh - 24px) !important;
-    width:100% !important;
-  }
-}
 
 /* =========================================================
    MESAS — Exportación PDF y modal de título
@@ -3141,4 +2671,406 @@
 .mesas-nota-placeholder {
   color: rgba(0, 31, 91, 0.45);
   font-weight: 900;
+}
+
+/* =========================================================
+   MESAS — pestañas debajo del título + contador fuera del header
+   ========================================================= */
+.mesas-titleBox{
+  min-width:min(100%, 430px);
+  gap:8px;
+}
+
+.mesas-titleTabs{
+  width:max-content;
+  max-width:100%;
+  display:flex;
+  align-items:flex-end;
+  gap:18px;
+  margin-top:9px;
+  padding:0;
+  border-bottom:1px solid color-mix(in srgb, var(--mov-border) 78%, #fff);
+  overflow-x:auto;
+  overflow-y:hidden;
+  scrollbar-width:none;
+}
+
+.mesas-titleTabs::-webkit-scrollbar{
+  display:none;
+}
+
+.mesas-titleTab.mov-tab{
+  height:34px;
+  min-height:34px;
+  padding:0 2px 9px;
+  border:0;
+  border-radius:0;
+  border-bottom:2px solid transparent;
+  background:transparent;
+  box-shadow:none;
+  color:color-mix(in srgb, var(--balto-text) 82%, #000);
+  font-size:13px;
+  font-weight:560;
+  letter-spacing:.01em;
+  line-height:1;
+  transform:none;
+}
+
+.mesas-titleTab.mov-tab:hover{
+  background:transparent;
+  color:var(--balto-action);
+  border-bottom-color:color-mix(in srgb, var(--balto-action) 30%, #fff);
+  box-shadow:none;
+  transform:none;
+}
+
+.mesas-titleTab.mov-tab.is-active{
+  background:transparent;
+  color:var(--balto-action);
+  border-bottom-color:var(--balto-action);
+  box-shadow:none;
+}
+
+.mesas-recordsFoot{
+  flex:0 0 auto;
+  padding:10px 20px 12px;
+  border-top:1px solid color-mix(in srgb, var(--mov-border) 70%, #fff);
+  background:#fff;
+  color:var(--mov-muted);
+  font-size:12px;
+  font-weight:460;
+  text-align:right;
+}
+
+.mesas-recordsFoot b{
+  color:var(--balto-ink);
+  font-weight:620;
+}
+
+/* =========================================================
+   HISTORIAL — misma base visual que Materias con estilos globales
+   ========================================================= */
+.mesas-historial-panel{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  width:100%;
+  min-height:0;
+  color:var(--balto-ink);
+}
+
+.mesas-historial-head{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:18px;
+  padding:16px 20px;
+  border:1px solid color-mix(in srgb, var(--mov-border) 82%, #fff);
+  border-radius:var(--mov-radius);
+  background:linear-gradient(180deg, #fff 0%, color-mix(in srgb, var(--balto-bg) 36%, #fff) 100%);
+  box-shadow:var(--mov-shadow-sm);
+}
+
+.mesas-historial-title{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  min-width:0;
+}
+
+.mesas-historial-title h3{
+  margin:0;
+  color:var(--balto-ink);
+  font-size:17px;
+  font-weight:620;
+  letter-spacing:-.01em;
+}
+
+.mesas-historial-title p{
+  max-width:760px;
+  margin:0;
+  color:var(--mov-muted);
+  font-size:12px;
+  font-weight:460;
+  line-height:1.35;
+}
+
+.mesas-historial-refresh.mov-btn{
+  min-height:0;
+  height:40px;
+  border-radius:12px;
+  font-size:13px;
+  font-weight:560;
+  box-shadow:none;
+  white-space:nowrap;
+}
+
+.mesas-historial-error.mov-alert{
+  margin:0;
+  border-radius:12px;
+}
+
+.mesas-historial-resumen{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0, 1fr));
+  gap:12px;
+}
+
+.mesas-historial-kpi{
+  min-width:0;
+  padding:14px 16px;
+  border:1px solid color-mix(in srgb, var(--mov-border) 82%, #fff);
+  border-radius:16px;
+  background:#fff;
+  box-shadow:var(--mov-shadow-sm);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.mesas-historial-kpi span{
+  color:var(--mov-muted);
+  font-size:12px;
+  font-weight:560;
+}
+
+.mesas-historial-kpi strong{
+  color:var(--balto-ink);
+  font-size:20px;
+  font-weight:620;
+  line-height:1;
+}
+
+.mesas-historial-kpi.is-ok strong{
+  color:color-mix(in srgb, var(--balto-success) 72%, #000);
+}
+
+.mesas-historial-kpi.is-warn strong{
+  color:color-mix(in srgb, var(--balto-danger) 70%, #000);
+}
+
+.mesas-historial-section.mov-card{
+  overflow:hidden;
+  border-radius:var(--mov-radius);
+  background:#fff;
+  box-shadow:var(--mov-shadow-sm);
+}
+
+.mesas-historial-sectionTitle{
+  min-height:56px;
+  padding:14px 18px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  border-bottom:1px solid color-mix(in srgb, var(--mov-border) 70%, #fff);
+  background:linear-gradient(180deg, #fff 0%, color-mix(in srgb, var(--balto-bg) 34%, #fff) 100%);
+}
+
+.mesas-historial-sectionTitle h4{
+  margin:0;
+  color:var(--balto-ink);
+  font-size:14px;
+  font-weight:620;
+  letter-spacing:-.01em;
+}
+
+.mesas-historial-divTable{
+  min-height:0;
+}
+
+.mesas-historial-gridHead,
+.mesas-historial-gridRow,
+.mesas-historial-gridBody{
+  min-width:1120px;
+}
+
+.mesas-historial-tableWrap.mov-tableWrap{
+  min-height:0;
+  max-height:360px;
+  overflow:auto;
+  scrollbar-gutter:stable;
+}
+
+.mesas-historial-tableWrap .mov-gridBody{
+  min-height:0;
+}
+
+.mesas-historial-gridRow .mov-gridCell{
+  min-height:54px;
+  white-space:normal;
+  line-height:1.25;
+}
+
+.mesas-historial-gridRow .mov-gridCell:not(.mov-gridCell--actions){
+  text-overflow:clip;
+}
+
+.mesas-historial-stack{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:3px;
+  min-width:0;
+}
+
+.mesas-historial-stack small{
+  color:var(--mov-muted);
+  font-size:11px;
+  font-weight:520;
+  line-height:1.15;
+}
+
+.mesas-historial-chip,
+.mesas-historial-estado{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:max-content;
+  max-width:100%;
+  min-height:24px;
+  padding:0 9px;
+  border-radius:999px;
+  border:1px solid color-mix(in srgb, var(--balto-action) 18%, #fff);
+  background:rgba(0,85,187,.07);
+  color:var(--balto-action);
+  font-size:11px;
+  font-weight:620;
+  line-height:1;
+  white-space:nowrap;
+}
+
+.mesas-historial-estado.is-approved{
+  border-color:color-mix(in srgb, var(--balto-success) 28%, #fff);
+  background:color-mix(in srgb, var(--balto-success) 10%, #fff);
+  color:color-mix(in srgb, var(--balto-success) 70%, #000);
+}
+
+.mesas-historial-estado.is-pending{
+  border-color:color-mix(in srgb, var(--balto-danger) 24%, #fff);
+  background:color-mix(in srgb, var(--balto-danger) 9%, #fff);
+  color:color-mix(in srgb, var(--balto-danger) 68%, #000);
+}
+
+.mesas-historial-nota{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:30px;
+  height:28px;
+  padding:0 8px;
+  border-radius:10px;
+  background:color-mix(in srgb, var(--balto-bg) 68%, #fff);
+  color:var(--balto-ink);
+  border:1px solid color-mix(in srgb, var(--mov-border) 70%, #fff);
+  font-size:12px;
+  font-weight:620;
+}
+
+.mesas-historial-detailBtn,
+.mesas-historial-closeBtn{
+  min-height:32px;
+  border:1px solid var(--mov-border);
+  border-radius:10px;
+  background:#fff;
+  color:color-mix(in srgb, var(--balto-text) 80%, #000);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  padding:0 11px;
+  font-size:12px;
+  font-weight:560;
+  cursor:pointer;
+  transition:background var(--mov-trans), color var(--mov-trans), border-color var(--mov-trans), transform var(--mov-trans), box-shadow var(--mov-trans);
+  font-family:inherit;
+  white-space:nowrap;
+}
+
+.mesas-historial-detailBtn:hover:not(:disabled),
+.mesas-historial-closeBtn:hover:not(:disabled){
+  transform:translateY(-1px);
+  background:rgba(0,85,187,.08);
+  border-color:rgba(0,85,187,.25);
+  color:var(--balto-action);
+  box-shadow:var(--mov-shadow-sm);
+}
+
+.mesas-historial-detailBtn:disabled{
+  opacity:.62;
+  cursor:not-allowed;
+  transform:none;
+  box-shadow:none;
+}
+
+.mesas-historial-closeBtn{
+  color:color-mix(in srgb, var(--balto-danger) 70%, #000);
+  border-color:color-mix(in srgb, var(--balto-danger) 26%, #fff);
+}
+
+.mesas-historial-empty.cc-emptyState{
+  min-height:128px;
+  margin:0;
+  border:0;
+  border-radius:0;
+  background:#fff;
+}
+
+.mesas-historial-countFoot{
+  padding:9px 18px 11px;
+  background:color-mix(in srgb, var(--balto-bg) 48%, #fff);
+  border-top:1px solid color-mix(in srgb, var(--mov-border) 64%, #fff);
+}
+
+@media (max-width:1100px){
+  .mesas-titleBox{
+    width:100%;
+    min-width:0;
+  }
+
+  .mesas-titleTabs{
+    width:100%;
+  }
+
+  .mesas-historial-head{
+    flex-direction:column;
+    align-items:stretch;
+  }
+
+  .mesas-historial-refresh.mov-btn{
+    width:max-content;
+  }
+
+  .mesas-historial-resumen{
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width:720px){
+  .mesas-titleTabs{
+    gap:14px;
+  }
+
+  .mesas-titleTab.mov-tab{
+    font-size:12px;
+  }
+
+  .mesas-recordsFoot{
+    text-align:left;
+    padding-inline:14px;
+  }
+
+  .mesas-historial-resumen{
+    grid-template-columns:1fr;
+  }
+
+  .mesas-historial-sectionTitle{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+
+  .mesas-historial-refresh.mov-btn{
+    width:100%;
+  }
 }

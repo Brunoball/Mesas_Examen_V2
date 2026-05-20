@@ -1,5 +1,6 @@
 // src/components/Mesas_examen/modales/persona/ModalPreviasMesa.jsx
 import React from "react";
+import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faExchangeAlt, faSpinner, faTimes, faTrash } from "@fortawesome/free-solid-svg-icons";
 
@@ -13,10 +14,13 @@ const texto = (valor, fallback = "-") => {
 const ModalPreviasMesa = ({ abierto, numero, data, cargando, error, onClose, onMover, onEliminar }) => {
   if (!abierto) return null;
 
+  const portalTarget = typeof document !== "undefined" ? document.body : null;
+  if (!portalTarget) return null;
+
   const numeroMesa = numero?.numero_mesa || data?.numero_mesa || "-";
   const previas = Array.isArray(data?.previas) ? data.previas : [];
 
-  return (
+  return createPortal((
     <div className="persona-modal-overlay" role="dialog" aria-modal="true">
       <div className="persona-modal persona-modal-previas">
         <header className="persona-modal-header">
@@ -92,7 +96,7 @@ const ModalPreviasMesa = ({ abierto, numero, data, cargando, error, onClose, onM
         </footer>
       </div>
     </div>
-  );
+  ), portalTarget);
 };
 
 export default ModalPreviasMesa;

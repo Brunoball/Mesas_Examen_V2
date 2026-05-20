@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFilePdf, faTimes } from "@fortawesome/free-solid-svg-icons";
+import "../../../Global/Global_css/Global_Modals.css";
 import "./ModalTituloPdfMesas.css";
 import { construirTituloPdfExportacion } from "./mesasPdfExporter";
 
@@ -30,6 +32,9 @@ const ModalTituloPdfMesas = ({ abierto, loading = false, onClose, onConfirm }) =
 
   if (!abierto) return null;
 
+  const portalTarget = typeof document !== "undefined" ? document.body : null;
+  if (!portalTarget) return null;
+
   const preview = construirTituloPdfExportacion({ tituloFijo, continuacion });
 
   const handleSubmit = (event) => {
@@ -38,7 +43,7 @@ const ModalTituloPdfMesas = ({ abierto, loading = false, onClose, onConfirm }) =
     onConfirm?.({ tituloFijo, continuacion });
   };
 
-  return (
+  return createPortal((
     <div className="mesas-title-pdf-overlay" role="dialog" aria-modal="true" aria-labelledby="mesas-title-pdf-title">
       <form className="mesas-title-pdf-modal" onSubmit={handleSubmit}>
         <header className="mesas-title-pdf-header">
@@ -95,7 +100,7 @@ const ModalTituloPdfMesas = ({ abierto, loading = false, onClose, onConfirm }) =
         </footer>
       </form>
     </div>
-  );
+  ), portalTarget);
 };
 
 export default ModalTituloPdfMesas;

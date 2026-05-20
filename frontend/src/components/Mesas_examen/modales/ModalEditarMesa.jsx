@@ -1,5 +1,6 @@
 // src/components/Mesas_examen/modales/ModalEditarMesa.jsx
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowLeft,
@@ -15,6 +16,7 @@ import {
   faUser,
 } from "@fortawesome/free-solid-svg-icons";
 
+import "../../Global/Global_css/Global_Modals.css";
 import "./ModalEditarMesa.css";
 import ModalPreviasMesa from "./persona/ModalPreviasMesa";
 import ModalMoverPreviaMesa from "./persona/ModalMoverPreviaMesa";
@@ -332,6 +334,9 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
 
   if (!abierto) return null;
 
+  const portalTarget = typeof document !== "undefined" ? document.body : null;
+  if (!portalTarget) return null;
+
   const slots = [...numeros];
   while (slots.length < 4) slots.push(null);
 
@@ -374,7 +379,7 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
     });
   };
 
-  return (
+  return createPortal((
     <div className="editar-mesa-overlay" role="dialog" aria-modal="true">
       <div className="editar-mesa-panel">
         <header className="editar-mesa-header">
@@ -609,7 +614,7 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
         onAgregar={agregarNumero.confirmarAgregar}
       />
     </div>
-  );
+  ), portalTarget);
 };
 
 export default ModalEditarMesa;

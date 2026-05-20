@@ -1,5 +1,6 @@
 // src/components/Mesas_examen/modales/agregar_numero/ModalAgregarNumeroGrupo.jsx
 import React, { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faSearch, faSpinner, faTimes } from "@fortawesome/free-solid-svg-icons";
 import "./agregar_numero.css";
@@ -75,12 +76,15 @@ const ModalAgregarNumeroGrupo = ({ abierto, data, cargando, agregando, error, on
 
   if (!abierto) return null;
 
+  const portalTarget = typeof document !== "undefined" ? document.body : null;
+  if (!portalTarget) return null;
+
   const meta = data?.meta || {};
   const placeholder = tab === "no_agrupadas"
     ? "Buscar por número, materia, docente, alumno..."
     : "Buscar por DNI, alumno, materia, curso...";
 
-  return (
+  return createPortal((
     <div className="ag-num-overlay" role="dialog" aria-modal="true">
       <div className="ag-num-panel">
         <header className="ag-num-header">
@@ -193,7 +197,7 @@ const ModalAgregarNumeroGrupo = ({ abierto, data, cargando, agregando, error, on
         </footer>
       </div>
     </div>
-  );
+  ), portalTarget);
 };
 
 export default ModalAgregarNumeroGrupo;

@@ -1,5 +1,6 @@
 // src/components/Mesas_examen/modales/persona/ModalMoverPreviaMesa.jsx
 import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faSpinner, faTimes } from "@fortawesome/free-solid-svg-icons";
 
@@ -29,9 +30,12 @@ const ModalMoverPreviaMesa = ({ abierto, previa, destinosData, cargando, moviend
 
   if (!abierto) return null;
 
+  const portalTarget = typeof document !== "undefined" ? document.body : null;
+  if (!portalTarget) return null;
+
   const puedeConfirmar = !!destinoSeleccionado?.valido && !moviendo && !cargando;
 
-  return (
+  return createPortal((
     <div className="persona-modal-overlay persona-modal-overlay-top" role="dialog" aria-modal="true">
       <div className="persona-modal persona-modal-mover">
         <header className="persona-modal-header">
@@ -126,7 +130,7 @@ const ModalMoverPreviaMesa = ({ abierto, previa, destinosData, cargando, moviend
         </footer>
       </div>
     </div>
-  );
+  ), portalTarget);
 };
 
 export default ModalMoverPreviaMesa;

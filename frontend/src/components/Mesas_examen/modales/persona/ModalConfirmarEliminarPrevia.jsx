@@ -1,5 +1,6 @@
 // src/components/Mesas_examen/modales/persona/ModalConfirmarEliminarPrevia.jsx
 import React from "react";
+import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner, faTrash } from "@fortawesome/free-solid-svg-icons";
 
@@ -13,7 +14,10 @@ const texto = (valor, fallback = "-") => {
 const ModalConfirmarEliminarPrevia = ({ abierto, previa, eliminando, onCancel, onConfirm }) => {
   if (!abierto) return null;
 
-  return (
+  const portalTarget = typeof document !== "undefined" ? document.body : null;
+  if (!portalTarget) return null;
+
+  return createPortal((
     <div className="persona-modal-overlay persona-modal-overlay-top" role="dialog" aria-modal="true">
       <div className="persona-confirm-card">
         <div className="persona-confirm-icon">
@@ -35,7 +39,7 @@ const ModalConfirmarEliminarPrevia = ({ abierto, previa, eliminando, onCancel, o
         </div>
       </div>
     </div>
-  );
+  ), portalTarget);
 };
 
 export default ModalConfirmarEliminarPrevia;
