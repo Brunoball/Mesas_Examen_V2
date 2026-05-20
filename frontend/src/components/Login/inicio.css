@@ -429,3 +429,220 @@ html, body {
 .reg_toggle-password{
   color:#0055BB !important;
 }
+
+/* =========================================================
+   Recuperación de contraseña
+   ========================================================= */
+.ini_check-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ini_recordar-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ini_link-recuperar {
+  border: 0;
+  background: transparent;
+  color: #2563eb;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: color 0.16s ease, transform 0.16s ease;
+}
+
+.ini_link-recuperar:hover {
+  color: #1d4ed8;
+  transform: translateY(-1px);
+  text-decoration: underline;
+}
+
+.ini_modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(17, 24, 39, 0.58);
+  backdrop-filter: blur(2px);
+}
+
+.ini_modal-card {
+  width: min(560px, 100%);
+  background: #ffffff;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 34px 95px rgba(15, 23, 42, 0.32);
+  animation: iniModalIn 0.18s ease-out;
+}
+
+@keyframes iniModalIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.ini_modal-header {
+  display: grid;
+  grid-template-columns: 52px 1fr 34px;
+  align-items: center;
+  gap: 14px;
+  padding: 25px;
+  border-bottom: 1px solid #edf0f5;
+}
+
+.ini_modal-icon {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  color: #2563eb;
+  background: #eef5ff;
+}
+
+.ini_modal-header h2 {
+  margin: 0 0 5px;
+  color: #101828;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.ini_modal-header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.ini_modal-close {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 32px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+
+.ini_modal-close:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.ini_modal-close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ini_modal-body {
+  padding: 26px 25px 10px;
+}
+
+.ini_modal-label {
+  display: block;
+  margin: 0 0 8px;
+  color: #344054;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.ini_modal-input {
+  width: 100%;
+  min-height: 50px;
+  padding: 0 16px;
+  border: 1px solid #d7dee9;
+  border-radius: 12px;
+  outline: none;
+  color: #111827;
+  font-size: 17px;
+  background: #ffffff;
+  box-sizing: border-box;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.ini_modal-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+}
+
+.ini_modal-help {
+  margin: 12px 0 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.ini_modal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 15px 25px 30px;
+}
+
+.ini_modal-btn {
+  border: 0;
+  min-height: 54px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, opacity 0.16s ease;
+}
+
+.ini_modal-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.ini_modal-btn:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
+.ini_modal-btn-sec {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.ini_modal-btn-pri {
+  background: #5d83ea;
+  color: #ffffff;
+  box-shadow: 0 15px 30px rgba(37, 99, 235, 0.18);
+}
+
+.ini_modal-btn-pri:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+@media (max-width: 560px) {
+  .ini_modal-overlay {
+    align-items: flex-start;
+    padding: 42px 14px 14px;
+  }
+
+  .ini_modal-header {
+    grid-template-columns: 48px 1fr 32px;
+    padding: 20px;
+  }
+
+  .ini_modal-body {
+    padding: 22px 20px 8px;
+  }
+
+  .ini_modal-actions {
+    grid-template-columns: 1fr;
+    padding: 12px 20px 24px;
+  }
+}

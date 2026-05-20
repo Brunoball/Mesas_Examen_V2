@@ -28,6 +28,12 @@ $accionesPublicas = [
     'inicio',
     'auth_csrf_token',
 
+    // Recuperación de contraseña pública.
+    // Estas acciones NO requieren sesión porque se usan antes de iniciar sesión.
+    'recuperar_contrasena_solicitar',
+    'recuperar_contrasena_validar',
+    'recuperar_contrasena_guardar',
+
     // Formulario público de inscripción a mesas.
     'form_obtener_config_inscripcion',
     'form_buscar_previas',
@@ -41,10 +47,6 @@ $accionesPublicas = [
     'formulario_buscar_previas',
     'formulario_registrar_inscripcion',
 ];
-
-if (env_bool('ALLOW_PUBLIC_REGISTRATION', false)) {
-    $accionesPublicas[] = 'registro';
-}
 
 if (env_bool('ALLOW_DEBUG_SAAS_LOGIN', false)) {
     $accionesPublicas[] = 'debug_saas_login';
@@ -159,15 +161,16 @@ try {
 } catch (Throwable $e) {
     log_error($e, 'router:' . $action);
 
-    
     $debug = strtolower((string)(env_value('APP_DEBUG', 'false') ?? 'false')) === 'true';
     $payload = [
         'exito' => false,
         'mensaje' => 'Error interno del servidor.',
     ];
+
     if ($debug) {
         $payload['detalle'] = $e->getMessage();
         $payload['archivo'] = basename($e->getFile()) . ':' . $e->getLine();
     }
+
     json_response($payload, 500);
 }

@@ -6,4 +6,17 @@ export const loginApi = {
 
   registrar: ({ nombre, contrasena, rol }) =>
     apiPost('registro', { nombre, contrasena, rol }),
+
+  solicitarRecuperacion: ({ usuario }) =>
+    apiPost('recuperar_contrasena_solicitar', { usuario }),
+
+  validarTokenRecuperacion: ({ token }) =>
+    apiPost('recuperar_contrasena_validar', { token }),
+
+  guardarNuevaContrasena: ({ token, contrasena, confirmarContrasena }) =>
+    apiPost('recuperar_contrasena_guardar', {
+      token,
+      contrasena,
+      confirmarContrasena,
+    }),
 };

@@ -44,6 +44,9 @@ const Inicio = () => {
   const [cargando, setCargando] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
+  const [modalRecuperarAbierto, setModalRecuperarAbierto] = useState(false);
+  const [usuarioRecuperacion, setUsuarioRecuperacion] = useState('');
+  const [cargandoRecuperacion, setCargandoRecuperacion] = useState(false);
 
   const [toast, setToast] = useState(null);
   const mostrarToast = (tipo, mensaje, duracion = 3000) =>
@@ -86,6 +89,55 @@ const Inicio = () => {
   }, [nombre, contrasena, remember]);
 
   const togglePasswordVisibility = () => setShowPassword((v) => !v);
+
+  const abrirModalRecuperacion = () => {
+    setUsuarioRecuperacion((nombre || '').trim());
+    setModalRecuperarAbierto(true);
+  };
+
+  const cerrarModalRecuperacion = () => {
+    if (cargandoRecuperacion) return;
+    setModalRecuperarAbierto(false);
+    setUsuarioRecuperacion('');
+  };
+
+  const manejarSolicitarRecuperacion = async (e) => {
+    e.preventDefault();
+    if (cargandoRecuperacion) return;
+
+    const valor = (usuarioRecuperacion || '').trim();
+    if (!valor) {
+      mostrarToast('advertencia', 'Ingresá tu usuario o email de recuperación.');
+      return;
+    }
+
+    try {
+      setCargandoRecuperacion(true);
+      const data = await loginApi.solicitarRecuperacion({ usuario: valor });
+
+      if (!data?.exito) {
+        mostrarToast('error', data?.mensaje || 'No se pudo enviar el correo de recuperación.');
+        return;
+      }
+
+      mostrarToast(
+        'exito',
+        data?.email
+          ? `Enviamos el enlace al email registrado: ${data.email}`
+          : data?.mensaje || 'Enviamos el enlace al email registrado.',
+        4500
+      );
+      setModalRecuperarAbierto(false);
+      setUsuarioRecuperacion('');
+    } catch (err) {
+      mostrarToast(
+        'error',
+        err?.data?.mensaje || 'No se pudo enviar el correo de recuperación.'
+      );
+    } finally {
+      setCargandoRecuperacion(false);
+    }
+  };
 
   const manejarEnvio = async (e) => {
     e.preventDefault();
@@ -215,16 +267,26 @@ const Inicio = () => {
           </div>
 
           <div className="ini_check-row">
-            <input
-              id="recordar"
-              type="checkbox"
-              className="ini_checkbox"
-              checked={remember}
-              onChange={(e) => setRemember(e.target.checked)}
-            />
-            <label htmlFor="recordar" className="ini_check-label">
-              Recordar cuenta
-            </label>
+            <div className="ini_recordar-wrap">
+              <input
+                id="recordar"
+                type="checkbox"
+                className="ini_checkbox"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+              />
+              <label htmlFor="recordar" className="ini_check-label">
+                Recordar cuenta
+              </label>
+            </div>
+
+            <button
+              type="button"
+              className="ini_link-recuperar"
+              onClick={abrirModalRecuperacion}
+            >
+              Olvidé mi contraseña
+            </button>
           </div>
 
           <div className="ini_footer">
@@ -240,6 +302,76 @@ const Inicio = () => {
           </div>
         </form>
       </div>
+
+      {modalRecuperarAbierto && (
+        <div
+          className="ini_modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ini_recuperar_titulo"
+        >
+          <form className="ini_modal-card" onSubmit={manejarSolicitarRecuperacion}>
+            <div className="ini_modal-header">
+              <div className="ini_modal-icon" aria-hidden="true">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="11" width="18" height="10" rx="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+              </div>
+              <div>
+                <h2 id="ini_recuperar_titulo">Recuperar contraseña</h2>
+                <p>Ingresá tu usuario o email de recuperación</p>
+              </div>
+              <button
+                type="button"
+                className="ini_modal-close"
+                onClick={cerrarModalRecuperacion}
+                disabled={cargandoRecuperacion}
+                aria-label="Cerrar"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="ini_modal-body">
+              <label className="ini_modal-label" htmlFor="usuarioRecuperacion">
+                Usuario o email
+              </label>
+              <input
+                id="usuarioRecuperacion"
+                type="text"
+                className="ini_modal-input"
+                value={usuarioRecuperacion}
+                onChange={(e) => setUsuarioRecuperacion(e.target.value)}
+                placeholder="Ej: admin o correo@gmail.com"
+                autoComplete="username"
+                autoFocus
+              />
+              <p className="ini_modal-help">
+                Si el usuario tiene un email cargado en la base master, le enviaremos un enlace para crear una nueva contraseña.
+              </p>
+            </div>
+
+            <div className="ini_modal-actions">
+              <button
+                type="button"
+                className="ini_modal-btn ini_modal-btn-sec"
+                onClick={cerrarModalRecuperacion}
+                disabled={cargandoRecuperacion}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="ini_modal-btn ini_modal-btn-pri"
+                disabled={cargandoRecuperacion}
+              >
+                {cargandoRecuperacion ? 'Enviando...' : 'Enviar enlace'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {toast && (
         <Toast

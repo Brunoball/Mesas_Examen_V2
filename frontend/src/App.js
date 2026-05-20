@@ -4,8 +4,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 
 /* Páginas */
 import Inicio from "./components/Login/Inicio";
+import RestablecerContrasena from "./components/Login/RestablecerContrasena";
 import Principal from "./components/Principal/Principal";
-import Registro from "./components/Login/Registro";
 import MesasExamen from "./components/Mesas_examen/Mesas_examen";
 import Materias from "./components/Materias/Materias";
 import Catedras from "./components/Catedras/Catedras";
@@ -45,7 +45,8 @@ export default function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Inicio />} />
-        <Route path="/registro" element={<Registro />} />
+        <Route path="/restablecer-contrasena" element={<RestablecerContrasena />} />
+        <Route path="/recuperar-contrasena" element={<RestablecerContrasena />} />
 
         <Route
           path="/panel"
