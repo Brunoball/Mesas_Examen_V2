@@ -402,29 +402,35 @@ export default function Previas() {
             </span>
           )}
 
-          <div className="previas-pagination">
-            <button
-              type="button"
-              className="previas-page-btn"
-              disabled={paginacion.pagina <= 1 || loading}
-              onClick={() => paginacion.setPagina((p) => Math.max(1, p - 1))}
-            >
-              Anterior
-            </button>
+          {!hayBusqueda ? (
+            <div className="previas-pagination">
+              <button
+                type="button"
+                className="previas-page-btn"
+                disabled={paginacion.pagina <= 1 || loading}
+                onClick={() => paginacion.setPagina((p) => Math.max(1, p - 1))}
+              >
+                Anterior
+              </button>
 
-            <span className="previas-page-info">
-              Página <strong>{paginacion.pagina}</strong> / <strong>{paginacion.totalPaginas}</strong>
-            </span>
+              <span className="previas-page-info">
+                Página <strong>{paginacion.pagina}</strong> / <strong>{paginacion.totalPaginas}</strong>
+              </span>
 
-            <button
-              type="button"
-              className="previas-page-btn"
-              disabled={paginacion.pagina >= paginacion.totalPaginas || loading}
-              onClick={() => paginacion.setPagina((p) => p + 1)}
-            >
-              Siguiente
-            </button>
-          </div>
+              <button
+                type="button"
+                className="previas-page-btn"
+                disabled={paginacion.pagina >= paginacion.totalPaginas || loading}
+                onClick={() => paginacion.setPagina((p) => p + 1)}
+              >
+                Siguiente
+              </button>
+            </div>
+          ) : (
+            <div className="previas-pagination previas-pagination--search">
+              <span className="previas-page-info">Búsqueda global sin paginación</span>
+            </div>
+          )}
 
         </div>
       </section>

@@ -27,11 +27,45 @@ function previas_body(): array
     return is_array($json) ? $json : [];
 }
 
+function previas_strtoupper(string $texto): string
+{
+    return function_exists('mb_strtoupper') ? mb_strtoupper($texto, 'UTF-8') : strtoupper($texto);
+}
+
 function previas_mayuscula($texto): string
 {
     $texto = trim((string)$texto);
     $texto = preg_replace('/\s+/', ' ', $texto) ?? $texto;
-    return $texto === '' ? '' : mb_strtoupper($texto, 'UTF-8');
+    return $texto === '' ? '' : previas_strtoupper($texto);
+}
+
+function previas_columna_existe(PDO $pdo, string $tabla, string $columna): bool
+{
+    static $cache = [];
+    $key = $tabla . '.' . $columna;
+
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
+
+    try {
+        $stmt = $pdo->prepare("SHOW COLUMNS FROM `{$tabla}` LIKE :columna");
+        $stmt->execute([':columna' => $columna]);
+        $cache[$key] = (bool)$stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        $cache[$key] = true;
+    }
+
+    return $cache[$key];
+}
+
+function previas_select_columna(PDO $pdo, string $tabla, string $aliasTabla, string $columna, string $aliasColumna, string $fallback = 'NULL'): string
+{
+    if (previas_columna_existe($pdo, $tabla, $columna)) {
+        return "{$aliasTabla}.{$columna} AS {$aliasColumna}";
+    }
+
+    return "{$fallback} AS {$aliasColumna}";
 }
 
 function previas_fecha_valida($fecha, bool $requerida = false): ?string
@@ -122,7 +156,7 @@ function previas_es_curso_egresado(PDO $pdo, int $idCurso): bool
 
     $stmt = $pdo->prepare('SELECT nombre_curso FROM curso WHERE id_curso = :id_curso LIMIT 1');
     $stmt->execute([':id_curso' => $idCurso]);
-    $nombre = mb_strtoupper((string)$stmt->fetchColumn(), 'UTF-8');
+    $nombre = previas_strtoupper((string)$stmt->fetchColumn());
 
     return $nombre === 'EGRESADO';
 }
@@ -140,9 +174,50 @@ function previas_existe_catedra_materia(PDO $pdo, int $idCurso, int $idDivision,
     return (bool)$stmt->fetch(PDO::FETCH_ASSOC);
 }
 
-function previas_base_select(): string
+function previas_base_select(PDO $pdo): string
 {
-    return "\n        SELECT\n            p.id_previa,\n            p.dni,\n            p.alumno,\n            p.cursando_id_curso,\n            cur_cursando.nombre_curso AS cursando_curso,\n            p.cursando_id_division,\n            div_cursando.nombre_division AS cursando_division,\n            p.id_materia,\n            mat.materia,\n            p.materia_id_curso,\n            cur_materia.nombre_curso AS materia_curso,\n            p.materia_id_division,\n            div_materia.nombre_division AS materia_division,\n            p.id_condicion,\n            cond.condicion,\n            p.nota,\n            p.fecha_nota,\n            p.inscripcion,\n            CASE WHEN p.inscripcion = 1 THEN 'Sí' ELSE 'No' END AS inscripcion_texto,\n            p.activo,\n            p.anio,\n            p.fecha_carga,\n            p.fecha_baja,\n            p.motivo_baja,\n            CONCAT(cur_materia.nombre_curso, ' ', div_materia.nombre_division) AS curso_materia,\n            TRIM(CONCAT(cur_cursando.nombre_curso, ' ', COALESCE(div_cursando.nombre_division, ''))) AS curso_cursando\n        FROM previas p\n        INNER JOIN materias mat ON mat.id_materia = p.id_materia\n        INNER JOIN condicion cond ON cond.id_condicion = p.id_condicion\n        INNER JOIN curso cur_cursando ON cur_cursando.id_curso = p.cursando_id_curso\n        LEFT JOIN division div_cursando ON div_cursando.id_division = p.cursando_id_division\n        INNER JOIN curso cur_materia ON cur_materia.id_curso = p.materia_id_curso\n        INNER JOIN division div_materia ON div_materia.id_division = p.materia_id_division\n    ";
+    $nota = previas_select_columna($pdo, 'previas', 'p', 'nota', 'nota', 'NULL');
+    $fechaNota = previas_select_columna($pdo, 'previas', 'p', 'fecha_nota', 'fecha_nota', 'NULL');
+    $fechaBaja = previas_select_columna($pdo, 'previas', 'p', 'fecha_baja', 'fecha_baja', 'NULL');
+    $motivoBaja = previas_select_columna($pdo, 'previas', 'p', 'motivo_baja', 'motivo_baja', 'NULL');
+    $fechaCarga = previas_select_columna($pdo, 'previas', 'p', 'fecha_carga', 'fecha_carga', 'NULL');
+
+    return "
+        SELECT
+            p.id_previa,
+            p.dni,
+            p.alumno,
+            p.cursando_id_curso,
+            COALESCE(cur_cursando.nombre_curso, '') AS cursando_curso,
+            p.cursando_id_division,
+            COALESCE(div_cursando.nombre_division, '') AS cursando_division,
+            p.id_materia,
+            COALESCE(mat.materia, '') AS materia,
+            p.materia_id_curso,
+            COALESCE(cur_materia.nombre_curso, '') AS materia_curso,
+            p.materia_id_division,
+            COALESCE(div_materia.nombre_division, '') AS materia_division,
+            p.id_condicion,
+            COALESCE(cond.condicion, '') AS condicion,
+            {$nota},
+            {$fechaNota},
+            p.inscripcion,
+            CASE WHEN p.inscripcion = 1 THEN 'Sí' ELSE 'No' END AS inscripcion_texto,
+            p.activo,
+            p.anio,
+            {$fechaCarga},
+            {$fechaBaja},
+            {$motivoBaja},
+            TRIM(CONCAT(COALESCE(cur_materia.nombre_curso, ''), ' ', COALESCE(div_materia.nombre_division, ''))) AS curso_materia,
+            TRIM(CONCAT(COALESCE(cur_cursando.nombre_curso, ''), ' ', COALESCE(div_cursando.nombre_division, ''))) AS curso_cursando
+        FROM previas p
+        LEFT JOIN materias mat ON mat.id_materia = p.id_materia
+        LEFT JOIN condicion cond ON cond.id_condicion = p.id_condicion
+        LEFT JOIN curso cur_cursando ON cur_cursando.id_curso = p.cursando_id_curso
+        LEFT JOIN division div_cursando ON div_cursando.id_division = p.cursando_id_division
+        LEFT JOIN curso cur_materia ON cur_materia.id_curso = p.materia_id_curso
+        LEFT JOIN division div_materia ON div_materia.id_division = p.materia_id_division
+    ";
 }
 
 function previas_condiciones(): void
@@ -249,11 +324,16 @@ function previas_catalogos(): void
             'catedras' => $catedras,
         ];
 
-        json_response([
+        $response = [
             'exito' => true,
             'data' => $payload,
-            ...$payload,
-        ]);
+        ];
+
+        foreach ($payload as $key => $value) {
+            $response[$key] = $value;
+        }
+
+        json_response($response);
     } catch (Throwable $e) {
         log_error($e, __FUNCTION__);
         json_response([
@@ -271,6 +351,7 @@ function previas_listar(): void
     $activo = isset($_GET['activo']) ? previas_int($_GET['activo']) : 1;
     $activo = $activo === 0 ? 0 : 1;
     $busqueda = trim((string)($_GET['busqueda'] ?? ''));
+    $sinPaginacion = $busqueda !== '' || previas_int($_GET['sin_paginacion'] ?? 0) === 1;
     $idCursoMateria = previas_int($_GET['materia_id_curso'] ?? 0);
     $idDivisionMateria = previas_int($_GET['materia_id_division'] ?? 0);
     $idCondicion = previas_int($_GET['id_condicion'] ?? 0);
@@ -300,14 +381,39 @@ function previas_listar(): void
     }
 
     if ($busqueda !== '') {
-        $where[] = "(\n            p.alumno LIKE :busqueda\n            OR p.dni LIKE :busqueda\n            OR mat.materia LIKE :busqueda\n            OR cond.condicion LIKE :busqueda\n            OR cur_materia.nombre_curso LIKE :busqueda\n            OR div_materia.nombre_division LIKE :busqueda\n        )";
-        $params[':busqueda'] = '%' . $busqueda . '%';
+        /*
+         * IMPORTANTE:
+         * No se reutiliza el mismo placeholder (:busqueda) varias veces porque
+         * en muchos Hostinger/PDO con prepares nativos eso dispara HY093
+         * (Invalid parameter number) y termina como error 500 solo al buscar.
+         */
+        $camposBusqueda = [
+            'p.alumno',
+            'p.dni',
+            'mat.materia',
+            'cond.condicion',
+            'cur_materia.nombre_curso',
+            'div_materia.nombre_division',
+            'cur_cursando.nombre_curso',
+            'div_cursando.nombre_division',
+            'p.anio',
+            'p.id_previa',
+        ];
+
+        $orBusqueda = [];
+        foreach ($camposBusqueda as $idx => $campo) {
+            $placeholder = ':busqueda_' . $idx;
+            $orBusqueda[] = "CAST({$campo} AS CHAR) LIKE {$placeholder}";
+            $params[$placeholder] = '%' . $busqueda . '%';
+        }
+
+        $where[] = '(' . implode(' OR ', $orBusqueda) . ')';
     }
 
     $whereSql = implode(' AND ', $where);
 
     try {
-        $countSql = "\n            SELECT COUNT(*)\n            FROM previas p\n            INNER JOIN materias mat ON mat.id_materia = p.id_materia\n            INNER JOIN condicion cond ON cond.id_condicion = p.id_condicion\n            INNER JOIN curso cur_materia ON cur_materia.id_curso = p.materia_id_curso\n            INNER JOIN division div_materia ON div_materia.id_division = p.materia_id_division\n            WHERE {$whereSql}\n        ";
+        $countSql = "\n            SELECT COUNT(*)\n            FROM previas p\n            LEFT JOIN materias mat ON mat.id_materia = p.id_materia\n            LEFT JOIN condicion cond ON cond.id_condicion = p.id_condicion\n            LEFT JOIN curso cur_materia ON cur_materia.id_curso = p.materia_id_curso\n            LEFT JOIN division div_materia ON div_materia.id_division = p.materia_id_division\n            LEFT JOIN curso cur_cursando ON cur_cursando.id_curso = p.cursando_id_curso\n            LEFT JOIN division div_cursando ON div_cursando.id_division = p.cursando_id_division\n            WHERE {$whereSql}\n        ";
 
         $stmtCount = $pdo->prepare($countSql);
         foreach ($params as $key => $value) {
@@ -316,24 +422,40 @@ function previas_listar(): void
         $stmtCount->execute();
         $total = (int)$stmtCount->fetchColumn();
 
-        $sql = previas_base_select() . "\n            WHERE {$whereSql}\n            ORDER BY p.alumno ASC, p.dni ASC, cur_materia.id_curso ASC, div_materia.id_division ASC, mat.materia ASC\n            LIMIT :limit OFFSET :offset\n        ";
+        $sql = previas_base_select($pdo) . "
+            WHERE {$whereSql}
+            ORDER BY p.alumno ASC, p.dni ASC, cur_materia.id_curso ASC, div_materia.id_division ASC, mat.materia ASC
+        ";
+
+        if (!$sinPaginacion) {
+            $sql .= "
+            LIMIT :limit OFFSET :offset
+            ";
+        }
 
         $stmt = $pdo->prepare($sql);
         foreach ($params as $key => $value) {
             $stmt->bindValue($key, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
         }
-        $stmt->bindValue(':limit', $pag['por_pagina'], PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $pag['offset'], PDO::PARAM_INT);
+
+        if (!$sinPaginacion) {
+            $stmt->bindValue(':limit', $pag['por_pagina'], PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $pag['offset'], PDO::PARAM_INT);
+        }
+
         $stmt->execute();
+        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $porPaginaRespuesta = $sinPaginacion ? max(1, $total) : $pag['por_pagina'];
 
         json_response([
             'exito' => true,
-            'data' => $stmt->fetchAll(PDO::FETCH_ASSOC),
+            'data' => $data,
             'paginacion' => [
-                'pagina' => $pag['pagina'],
-                'por_pagina' => $pag['por_pagina'],
+                'pagina' => $sinPaginacion ? 1 : $pag['pagina'],
+                'por_pagina' => $porPaginaRespuesta,
                 'total' => $total,
-                'paginas' => max(1, (int)ceil($total / $pag['por_pagina'])),
+                'paginas' => $sinPaginacion ? 1 : max(1, (int)ceil($total / $pag['por_pagina'])),
+                'sin_paginacion' => $sinPaginacion,
             ],
         ]);
     } catch (Throwable $e) {
@@ -358,7 +480,7 @@ function previas_obtener(): void
     }
 
     try {
-        $sql = previas_base_select() . "\n            WHERE p.id_previa = :id_previa\n            LIMIT 1\n        ";
+        $sql = previas_base_select($pdo) . "\n            WHERE p.id_previa = :id_previa\n            LIMIT 1\n        ";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([':id_previa' => $idPrevia]);
         $previa = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -621,12 +743,19 @@ function previas_cambiar_estado(): void
             $params[$key] = $id;
         }
 
-        if ($activo === 1) {
-            $sql = 'UPDATE previas SET activo = 1, fecha_baja = NULL, motivo_baja = NULL WHERE id_previa IN (' . implode(',', $placeholders) . ')';
-        } else {
-            $sql = 'UPDATE previas SET activo = 0, fecha_baja = CURDATE(), motivo_baja = :motivo WHERE id_previa IN (' . implode(',', $placeholders) . ')';
-            $params[':motivo'] = $motivo !== '' ? $motivo : null;
+        $set = ['activo = :activo'];
+        $params[':activo'] = $activo;
+
+        if (previas_columna_existe($pdo, 'previas', 'fecha_baja')) {
+            $set[] = $activo === 1 ? 'fecha_baja = NULL' : 'fecha_baja = CURDATE()';
         }
+
+        if (previas_columna_existe($pdo, 'previas', 'motivo_baja')) {
+            $set[] = 'motivo_baja = :motivo';
+            $params[':motivo'] = $activo === 1 ? null : ($motivo !== '' ? $motivo : null);
+        }
+
+        $sql = 'UPDATE previas SET ' . implode(', ', $set) . ' WHERE id_previa IN (' . implode(',', $placeholders) . ')';
 
         $stmt = $pdo->prepare($sql);
         foreach ($params as $key => $value) {

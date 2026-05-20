@@ -167,12 +167,16 @@ export const previasApi = {
     return obtenerArrayMateriasPorCurso(respuesta);
   },
 
-  listar: (pagina = 1, porPagina = POR_PAGINA_MAXIMO, filtros = {}) =>
-    apiGet('previas_listar', limpiarFiltros({
-      pagina,
-      por_pagina: Math.min(POR_PAGINA_MAXIMO, Number(porPagina || POR_PAGINA_MAXIMO)),
+  listar: (pagina = 1, porPagina = POR_PAGINA_MAXIMO, filtros = {}) => {
+    const hayBusqueda = String(filtros?.busqueda || '').trim() !== '';
+
+    return apiGet('previas_listar', limpiarFiltros({
+      pagina: hayBusqueda ? 1 : pagina,
+      por_pagina: hayBusqueda ? undefined : Math.min(POR_PAGINA_MAXIMO, Number(porPagina || POR_PAGINA_MAXIMO)),
+      sin_paginacion: hayBusqueda ? 1 : undefined,
       ...filtros,
-    })),
+    }));
+  },
 
   // Se mantiene por compatibilidad con otros llamados antiguos, pero la pantalla ya no lo usa.
   async listarTodos(activo = 1, filtros = {}) {

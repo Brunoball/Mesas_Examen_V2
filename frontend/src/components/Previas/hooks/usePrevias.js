@@ -129,9 +129,12 @@ export function usePrevias() {
         filtros.busqueda = busquedaLimpia;
       }
 
+      const paginaConsulta = busquedaLimpia !== '' ? 1 : paginacion.pagina;
+      const porPaginaConsulta = paginacion.porPagina;
+
       const res = await previasApi.listar(
-        paginacion.pagina,
-        paginacion.porPagina,
+        paginaConsulta,
+        porPaginaConsulta,
         filtros
       );
 
