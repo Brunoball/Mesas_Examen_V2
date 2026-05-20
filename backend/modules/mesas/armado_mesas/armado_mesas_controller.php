@@ -537,8 +537,15 @@ function mesas_armado_eliminar_borrador(): void
         }
 
         $idHistorialArmado = null;
+        $notasDesaprobadasLimpiadas = 0;
         if (function_exists('mesas_historial_crear_armado_actual')) {
             $idHistorialArmado = mesas_historial_crear_armado_actual($pdo, 'eliminacion_armado');
+        }
+
+        // Después de guardar la foto histórica, las desaprobadas siguen activas,
+        // pero se limpian nota/fecha_nota para que entren limpias en próximos armados.
+        if (function_exists('mesas_historial_limpiar_notas_desaprobadas_armado_actual')) {
+            $notasDesaprobadasLimpiadas = mesas_historial_limpiar_notas_desaprobadas_armado_actual($pdo);
         }
 
         if (function_exists('mesas_armado_grupos_asegurar_tablas')) {
@@ -560,6 +567,7 @@ function mesas_armado_eliminar_borrador(): void
                 'grupos_eliminados' => $gruposEliminados,
                 'no_agrupadas_eliminadas' => $noAgrupadasEliminadas,
                 'id_historial_armado' => $idHistorialArmado,
+                'notas_desaprobadas_limpiadas' => $notasDesaprobadasLimpiadas,
             ],
         ]);
     } catch (Throwable $e) {

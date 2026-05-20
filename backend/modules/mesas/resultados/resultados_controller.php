@@ -125,6 +125,58 @@ function mesas_resultados_recalcular_numero(PDO $pdo, int $numeroMesa): void
     $stmtNoAgrupada->execute([':cantidad' => $cantidad, ':numero_mesa' => $numeroMesa]);
 }
 
+function mesas_resultados_buscar_historial_existente(PDO $pdo, int $idPrevia, ?int $idMesa, ?int $numeroMesa, $fechaMesa, ?int $idTurno, ?int $idCatedra): int
+{
+    if ($idPrevia <= 0) {
+        return 0;
+    }
+
+    // Misma mesa operativa = se edita la nota del mismo registro histórico.
+    // Otro armado genera otro id_mesa, por lo tanto se inserta otro historial.
+    if ($idMesa !== null && $idMesa > 0) {
+        $stmt = $pdo->prepare("\n            SELECT id_resultado\n            FROM historial_previas_resultados\n            WHERE id_previa_original = :id_previa\n              AND id_mesa = :id_mesa\n            ORDER BY id_resultado DESC\n            LIMIT 1\n        ");
+        $stmt->execute([
+            ':id_previa' => $idPrevia,
+            ':id_mesa' => $idMesa,
+        ]);
+
+        $id = (int)$stmt->fetchColumn();
+        if ($id > 0) {
+            return $id;
+        }
+
+        return 0;
+    }
+
+    // Fallback solo para registros muy viejos sin id_mesa. No se usa para mesas actuales.
+    if ($numeroMesa !== null && $numeroMesa > 0 && !empty($fechaMesa)) {
+        $sql = "\n            SELECT id_resultado\n            FROM historial_previas_resultados\n            WHERE id_previa_original = :id_previa\n              AND numero_mesa = :numero_mesa\n              AND fecha_mesa = :fecha_mesa\n        ";
+        $params = [
+            ':id_previa' => $idPrevia,
+            ':numero_mesa' => $numeroMesa,
+            ':fecha_mesa' => $fechaMesa,
+        ];
+
+        if ($idTurno !== null && $idTurno > 0) {
+            $sql .= " AND id_turno = :id_turno";
+            $params[':id_turno'] = $idTurno;
+        }
+
+        if ($idCatedra !== null && $idCatedra > 0) {
+            $sql .= " AND id_catedra = :id_catedra";
+            $params[':id_catedra'] = $idCatedra;
+        }
+
+        $sql .= "\n            ORDER BY id_resultado DESC\n            LIMIT 1\n        ";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        return (int)$stmt->fetchColumn();
+    }
+
+    return 0;
+}
+
 function mesas_resultados_guardar_historial(PDO $pdo, array $ctx, int $nota, bool $aprobado, string $fechaNota, array $snapshot): int
 {
     $estadoResultado = $aprobado ? 'aprobada' : 'desaprobada';
@@ -136,9 +188,19 @@ function mesas_resultados_guardar_historial(PDO $pdo, array $ctx, int $nota, boo
     $numeroMesa = isset($ctx['numero_mesa']) && $ctx['numero_mesa'] !== null ? (int)$ctx['numero_mesa'] : null;
     $fechaMesa = $ctx['fecha_mesa'] ?? null;
 
-    $stmtExiste = $pdo->prepare("\n        SELECT id_resultado\n        FROM previas_historial_resultados\n        WHERE id_previa_original = :id_previa\n        ORDER BY id_resultado DESC\n        LIMIT 1\n    ");
-    $stmtExiste->execute([':id_previa' => $idPrevia]);
-    $idResultado = (int)$stmtExiste->fetchColumn();
+    $idMesaHistorial = isset($ctx['id_mesa']) && $ctx['id_mesa'] !== null ? (int)$ctx['id_mesa'] : null;
+    $idTurnoHistorial = isset($ctx['id_turno']) && $ctx['id_turno'] !== null ? (int)$ctx['id_turno'] : null;
+    $idCatedraHistorial = isset($ctx['id_catedra']) && $ctx['id_catedra'] !== null ? (int)$ctx['id_catedra'] : null;
+
+    $idResultado = mesas_resultados_buscar_historial_existente(
+        $pdo,
+        $idPrevia,
+        $idMesaHistorial,
+        $numeroMesa,
+        $fechaMesa,
+        $idTurnoHistorial,
+        $idCatedraHistorial
+    );
 
     $params = [
         ':id_previa_original' => $idPrevia > 0 ? $idPrevia : null,
@@ -179,12 +241,12 @@ function mesas_resultados_guardar_historial(PDO $pdo, array $ctx, int $nota, boo
         $paramsUpdate[':id_resultado'] = $idResultado;
         unset($paramsUpdate[':id_previa_original']);
 
-        $stmt = $pdo->prepare("\n            UPDATE previas_historial_resultados SET\n                id_mesa = :id_mesa,\n                numero_mesa = :numero_mesa,\n                numero_grupo = :numero_grupo,\n                fecha_mesa = :fecha_mesa,\n                id_turno = :id_turno,\n                hora = :hora,\n                dni = :dni,\n                alumno = :alumno,\n                cursando_id_curso = :cursando_id_curso,\n                cursando_id_division = :cursando_id_division,\n                id_materia = :id_materia,\n                materia = :materia,\n                materia_id_curso = :materia_id_curso,\n                materia_id_division = :materia_id_division,\n                id_condicion = :id_condicion,\n                condicion = :condicion,\n                id_catedra = :id_catedra,\n                id_docente = :id_docente,\n                docente = :docente,\n                tipo_mesa = :tipo_mesa,\n                anio = :anio,\n                nota = :nota,\n                aprobado = :aprobado,\n                estado_resultado = :estado_resultado,\n                fecha_nota = :fecha_nota,\n                motivo = :motivo,\n                snapshot_json = :snapshot_json\n            WHERE id_resultado = :id_resultado\n        ");
+        $stmt = $pdo->prepare("\n            UPDATE historial_previas_resultados SET\n                id_mesa = :id_mesa,\n                numero_mesa = :numero_mesa,\n                numero_grupo = :numero_grupo,\n                fecha_mesa = :fecha_mesa,\n                id_turno = :id_turno,\n                hora = :hora,\n                dni = :dni,\n                alumno = :alumno,\n                cursando_id_curso = :cursando_id_curso,\n                cursando_id_division = :cursando_id_division,\n                id_materia = :id_materia,\n                materia = :materia,\n                materia_id_curso = :materia_id_curso,\n                materia_id_division = :materia_id_division,\n                id_condicion = :id_condicion,\n                condicion = :condicion,\n                id_catedra = :id_catedra,\n                id_docente = :id_docente,\n                docente = :docente,\n                tipo_mesa = :tipo_mesa,\n                anio = :anio,\n                nota = :nota,\n                aprobado = :aprobado,\n                estado_resultado = :estado_resultado,\n                fecha_nota = :fecha_nota,\n                motivo = :motivo,\n                snapshot_json = :snapshot_json\n            WHERE id_resultado = :id_resultado\n        ");
         $stmt->execute($paramsUpdate);
         return $idResultado;
     }
 
-    $stmt = $pdo->prepare("\n        INSERT INTO previas_historial_resultados (\n            id_previa_original, id_mesa, numero_mesa, numero_grupo, fecha_mesa, id_turno, hora,\n            dni, alumno, cursando_id_curso, cursando_id_division, id_materia, materia, materia_id_curso, materia_id_division,\n            id_condicion, condicion, id_catedra, id_docente, docente, tipo_mesa, anio,\n            nota, aprobado, estado_resultado, fecha_nota, motivo, snapshot_json\n        ) VALUES (\n            :id_previa_original, :id_mesa, :numero_mesa, :numero_grupo, :fecha_mesa, :id_turno, :hora,\n            :dni, :alumno, :cursando_id_curso, :cursando_id_division, :id_materia, :materia, :materia_id_curso, :materia_id_division,\n            :id_condicion, :condicion, :id_catedra, :id_docente, :docente, :tipo_mesa, :anio,\n            :nota, :aprobado, :estado_resultado, :fecha_nota, :motivo, :snapshot_json\n        )\n    ");
+    $stmt = $pdo->prepare("\n        INSERT INTO historial_previas_resultados (\n            id_previa_original, id_mesa, numero_mesa, numero_grupo, fecha_mesa, id_turno, hora,\n            dni, alumno, cursando_id_curso, cursando_id_division, id_materia, materia, materia_id_curso, materia_id_division,\n            id_condicion, condicion, id_catedra, id_docente, docente, tipo_mesa, anio,\n            nota, aprobado, estado_resultado, fecha_nota, motivo, snapshot_json\n        ) VALUES (\n            :id_previa_original, :id_mesa, :numero_mesa, :numero_grupo, :fecha_mesa, :id_turno, :hora,\n            :dni, :alumno, :cursando_id_curso, :cursando_id_division, :id_materia, :materia, :materia_id_curso, :materia_id_division,\n            :id_condicion, :condicion, :id_catedra, :id_docente, :docente, :tipo_mesa, :anio,\n            :nota, :aprobado, :estado_resultado, :fecha_nota, :motivo, :snapshot_json\n        )\n    ");
     $stmt->execute($params);
 
     return (int)$pdo->lastInsertId();
@@ -232,9 +294,10 @@ function mesas_resultados_guardar_nota(): void
             return;
         }
 
-        if ((int)($ctxInicial['activo'] ?? 0) !== 1) {
+        $ctxInicialEstaEnMesa = isset($ctxInicial['id_mesa']) && (int)$ctxInicial['id_mesa'] > 0;
+        if ((int)($ctxInicial['activo'] ?? 0) !== 1 && !$ctxInicialEstaEnMesa) {
             $pdo->rollBack();
-            json_response(['exito' => false, 'mensaje' => 'La previa ya no está activa.'], 409);
+            json_response(['exito' => false, 'mensaje' => 'La previa ya no está activa o no pertenece a una mesa vigente.'], 409);
             return;
         }
 
@@ -252,7 +315,8 @@ function mesas_resultados_guardar_nota(): void
                 ? $ctxInicial
                 : mesas_resultados_obtener_contexto($pdo, $idPreviaAfectada, null, null);
 
-            if (!$ctx || (int)($ctx['activo'] ?? 0) !== 1) {
+            $ctxEstaEnMesa = $ctx && isset($ctx['id_mesa']) && (int)$ctx['id_mesa'] > 0;
+            if (!$ctx || ((int)($ctx['activo'] ?? 0) !== 1 && !$ctxEstaEnMesa)) {
                 continue;
             }
 
@@ -307,12 +371,10 @@ function mesas_resultados_guardar_nota(): void
             $stmtPrevia = $pdo->prepare("\n                UPDATE previas\n                SET " . implode(', ', $setsPrevia) . "\n                WHERE id_previa IN ({$placeholders})\n            ");
             $stmtPrevia->execute(array_merge($paramsPrevia, $idsAfectadas));
 
-            $stmtMesas = $pdo->prepare("DELETE FROM mesas WHERE id_previa IN ({$placeholders})");
-            $stmtMesas->execute($idsAfectadas);
-
-            foreach ($numerosAfectados as $num) {
-                mesas_resultados_recalcular_numero($pdo, $num);
-            }
+            // La previa aprobada se da de baja para que no vuelva a entrar en próximos armados,
+            // pero NO se elimina de la mesa operativa actual. Así queda visible con su nota
+            // hasta que el usuario elimine/cierre las mesas, momento en el que se guarda la foto
+            // completa en historial y se borran las filas de `mesas`.
         } else {
             $setsPrevia = [
                 'nota = ?',
@@ -338,7 +400,7 @@ function mesas_resultados_guardar_nota(): void
         json_response([
             'exito' => true,
             'mensaje' => $aprobado
-                ? 'Nota guardada. La previa fue aprobada y dada de baja.'
+                ? 'Nota guardada. La previa fue aprobada y dada de baja, pero queda visible en la mesa actual hasta eliminar/cerrar las mesas.'
                 : 'Nota guardada. La previa queda pendiente porque no alcanzó 7.',
             'data' => [
                 'id_resultado' => $idsResultados[0] ?? null,
