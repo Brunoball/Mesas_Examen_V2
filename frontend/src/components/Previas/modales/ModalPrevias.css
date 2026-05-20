@@ -67,3 +67,72 @@
     width:100%;
   }
 }
+
+/* Tabs de materias: cuando hay muchas, la lista scrollea y el botón para agregar queda siempre visible. */
+.previas-materia-tabs-shell{
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) auto;
+  align-items:stretch;
+  gap:10px;
+  width:100%;
+  min-width:0;
+  margin-top:2px;
+}
+
+.previas-materia-tabs{
+  min-width:0;
+  max-width:100%;
+  overflow-x:auto;
+  overflow-y:hidden;
+  flex-wrap:nowrap;
+  justify-content:flex-start;
+  scroll-behavior:smooth;
+  scrollbar-width:thin;
+  scrollbar-color:color-mix(in srgb, var(--gm-action) 42%, transparent) transparent;
+}
+
+.previas-materia-tabs::-webkit-scrollbar{
+  height:6px;
+}
+
+.previas-materia-tabs::-webkit-scrollbar-track{
+  background:transparent;
+}
+
+.previas-materia-tabs::-webkit-scrollbar-thumb{
+  border-radius:999px;
+  background:color-mix(in srgb, var(--gm-action) 34%, transparent);
+}
+
+.previas-materia-tabs .gm-tab,
+.previas-materia-tab-add{
+  flex:0 0 auto;
+  white-space:nowrap;
+}
+
+.previas-materia-tab-add{
+  margin:0;
+  min-width:86px;
+  justify-content:center;
+  border:1px solid color-mix(in srgb, var(--gm-action) 18%, #fff);
+  border-radius:12px;
+  background:#fff;
+  box-shadow:0 10px 24px rgba(10, 37, 64, .08);
+}
+
+.previas-materia-tab-add:hover{
+  background:color-mix(in srgb, var(--gm-action) 8%, #fff);
+  border-color:color-mix(in srgb, var(--gm-action) 30%, #fff);
+}
+
+@media (max-width:620px){
+  .previas-materia-tabs-shell{
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+
+  .previas-materia-tab-add{
+    width:100%;
+    min-height:38px;
+  }
+}

@@ -414,7 +414,6 @@ export default function Previas() {
 
             <span className="previas-page-info">
               Página <strong>{paginacion.pagina}</strong> / <strong>{paginacion.totalPaginas}</strong>
-              <small>100 por página</small>
             </span>
 
             <button
@@ -427,9 +426,6 @@ export default function Previas() {
             </button>
           </div>
 
-          <span className="previas-footer-note">
-            El buscador consulta en toda la base.
-          </span>
         </div>
       </section>
 

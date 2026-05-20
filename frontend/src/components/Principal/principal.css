@@ -88,7 +88,7 @@ body.pp-lockScroll{ overflow:hidden !important; }
   align-items:center;
   justify-content:space-between;
   gap:14px;
-  padding:0 16px;
+  padding:0 16px 0 0;
   background: linear-gradient(90deg, var(--balto-midnight) 0%, #0D2E52 55%, #09324A 120%);
   border-bottom:1px solid rgba(255,255,255,.12);
   box-shadow:0 10px 24px rgba(2, 6, 23, .18);
@@ -121,26 +121,46 @@ body.pp-lockScroll{ overflow:hidden !important; }
 }
 
 .mov-topbar__logo{
-  border:none;
+  border:0;
   background:transparent;
   padding:0;
-  cursor:pointer;
+  cursor:default;
   display:flex;
   align-items:center;
+  justify-content:center;
 }
 
-.mov-topbar__logoImg{
-  height:40px;
-  width:auto;
-  object-fit:contain;
-  filter: drop-shadow(0 8px 14px rgba(0,0,0,.18));
+.pp-brand:focus-visible,
+.pp-drawerBrand:focus-visible{
+  outline:3px solid rgba(255,255,255,.36);
+  outline-offset:3px;
 }
+
 
 .mov-topbar__logoImg--escudo{
   width:40px;
   border-radius:12px;
   background:rgba(255,255,255,.96);
   padding:3px;
+}
+
+.mov-topbar__lernaBrand{
+  display:flex;
+  align-items:center;
+  min-width:0;
+  height:40px;
+}
+
+.mov-topbar__lernaLogo{
+  display:block;
+  height:180px;
+  width:auto;
+  max-width:min(30vw, 260px);
+  object-fit:contain;
+  filter:none;
+  transition:none;
+  transform:none;
+  pointer-events:none;
 }
 
 .mov-topbar__titles{
@@ -405,6 +425,11 @@ body.pp-lockScroll{ overflow:hidden !important; }
   user-select:none;
   transition:var(--t);
   border:1px solid transparent;
+}
+.pp-sidebar .pp-brand:focus-visible,
+.pp-sidebar .pp-drawerBrand:focus-visible{
+  outline:3px solid var(--balto-focus);
+  outline-offset:3px;
 }
 @media (hover:hover) and (pointer:fine){
   .pp-brand:hover{
@@ -909,13 +934,13 @@ body.pp-lockScroll{ overflow:hidden !important; }
     flex:0 1 auto;
   }
 
-  .mov-topbar__logoImg{
+  .mov-topbar__lernaBrand{
     height:34px;
-    max-width:120px;
   }
 
-  .mov-topbar__logoImg--escudo{
-    width:34px;
+  .mov-topbar__lernaLogo{
+    height:28px;
+    max-width:112px;
   }
 
   .mov-topbar__titles{
@@ -1070,15 +1095,13 @@ body.pp-lockScroll{ overflow:hidden !important; }
     display:none !important;
   }
 
-  .mov-topbar__logoImg{
+  .mov-topbar__lernaBrand{
     height:30px;
-    max-width:105px;
   }
 
-  .mov-topbar__logoImg--escudo{
-    width:30px;
-    border-radius:10px;
-    padding:2px;
+  .mov-topbar__lernaLogo{
+    height:24px;
+    max-width:92px;
   }
 
   .pp-topbarLogout,
@@ -1121,13 +1144,9 @@ body.pp-lockScroll{ overflow:hidden !important; }
     padding:0 6px;
   }
 
-  .mov-topbar__logoImg{
-    height:27px;
-    max-width:92px;
-  }
-
-  .mov-topbar__logoImg--escudo{
-    width:27px;
+  .mov-topbar__lernaLogo{
+    height:23px;
+    max-width:80px;
   }
 
   .mov-topbar__right{ gap:5px; }

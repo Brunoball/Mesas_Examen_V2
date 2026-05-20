@@ -25,7 +25,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 import "./principal.css";
-import logoRH from "../../imagenes/Escudo.png";
+import logoLernaBlanco from "../../imagenes/lerna_blancov3.png";
 import Dashbord from "../Dashbord/Dashbord";
 
 export const MesasShellContext = createContext(false);
@@ -117,7 +117,7 @@ const NAV_ITEMS = [
   },
   {
     key: "mesas",
-    label: "Mesas de Examen",
+    label: "Mesas",
     icon: faLayerGroup,
     ruta: "/mesas-examen",
     description: "Crear, consultar, agrupar y exportar mesas.",
@@ -340,37 +340,14 @@ const Principal = ({ children = null }) => {
               <FontAwesomeIcon icon={faBars} />
             </button>
 
-            <button
-              className="mov-topbar__logo"
-              type="button"
-              onClick={handleLogoClick}
-              title="Ir al panel principal"
-            >
+
+
+            <div className="mov-topbar__logo mov-topbar__lernaBrand" aria-label="Logo Lerna">
               <img
-                src={logoRH}
-                alt="Logo IPET N° 50"
-                className="mov-topbar__logoImg mov-topbar__logoImg--escudo"
+                src={logoLernaBlanco}
+                alt="Logo Lerna"
+                className="mov-topbar__lernaLogo"
               />
-            </button>
-
-            <div className="mov-topbar__titles">
-              <div className="mov-topbar__sysname">
-                <span className="mov-topbar__brandName">IPET N° 50</span>
-                <span className="mov-topbar__brandDot">•</span>
-                <span className="mov-topbar__brandType">Sistema de Mesas</span>
-              </div>
-
-              <div className="mov-topbar__sysby">
-                Desarrollado por{" "}
-                <a
-                  href="https://3devsnet.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mov-topbar__sysbyLink"
-                >
-                  3 devs
-                </a>
-              </div>
             </div>
           </div>
 
@@ -424,12 +401,12 @@ const Principal = ({ children = null }) => {
               }}
             >
               <div className="pp-drawerBrand__mark">
-                <FontAwesomeIcon icon={faGraduationCap} />
+                <FontAwesomeIcon icon={faChartLine} />
               </div>
 
               <div className="pp-drawerBrand__txt">
-                <div className="pp-drawerBrand__t">IPET N° 50</div>
-                <div className="pp-drawerBrand__s">Mesas de Examen</div>
+                <div className="pp-drawerBrand__t">Sistema Académico</div>
+                <div className="pp-drawerBrand__s">Panel principal</div>
               </div>
             </div>
 
@@ -453,13 +430,13 @@ const Principal = ({ children = null }) => {
               if (e.key === "Enter" || e.key === " ") handleLogoClick();
             }}
           >
-            <div className="pp-brand__mark pp-brand__mark--image">
-              <img src={logoRH} alt="Logo IPET N° 50" className="pp-brand__logo" />
+            <div className="pp-brand__mark">
+              <FontAwesomeIcon icon={faChartLine} />
             </div>
 
             <div className="pp-brand__text">
-              <div className="pp-brand__title">IPET N° 50</div>
-              <div className="pp-brand__subtitle">Mesas de Examen</div>
+              <div className="pp-brand__title">Sistema Académico</div>
+              <div className="pp-brand__subtitle">Panel principal</div>
             </div>
           </div>
 

@@ -198,7 +198,7 @@
 
 .materias-table-wrap.mov-tableWrap{
   overflow:auto;
-  overflow-x:auto;
+  overflow-x:hidden;
 }
 
 .materias-table-wrap .mov-gridBody--relative{

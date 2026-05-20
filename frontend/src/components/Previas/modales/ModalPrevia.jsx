@@ -140,6 +140,7 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
   const [tabMateria, setTabMateria] = useState(0);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
+  const materiaTabsRef = useRef(null);
   const [materiasPorClave, setMateriasPorClave] = useState({});
   const [cargandoMateriasPorClave, setCargandoMateriasPorClave] = useState({});
   const [erroresMateriasPorClave, setErroresMateriasPorClave] = useState({});
@@ -193,6 +194,21 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
       document.removeEventListener('keydown', onKeyDown, true);
     };
   }, [guardando, onCerrar]);
+
+  useEffect(() => {
+    if (editando || tabPrincipal !== 'materias') return;
+
+    const contenedor = materiaTabsRef.current;
+    const tabActiva = contenedor?.querySelector('[data-materia-active="true"]');
+
+    if (typeof tabActiva?.scrollIntoView !== 'function') return;
+
+    tabActiva.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+      inline: 'nearest',
+    });
+  }, [editando, tabPrincipal, tabMateria, materias.length]);
 
   const esEgresado = useMemo(() => {
     const curso = cursos.find((c) => String(c.id_curso) === String(datosAlumno.cursando_id_curso));
@@ -654,22 +670,34 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
 
           {!editando && tabPrincipal === 'materias' && (
             <>
-              <div className="gm-tabs gm-tabs--google previas-materia-tabs" role="tablist" aria-label="Materias previas cargadas">
-                {materias.map((m, index) => (
-                  <button
-                    key={m.uid}
-                    type="button"
-                    role="tab"
-                    aria-selected={tabMateria === index}
-                    className={`gm-tab${tabMateria === index ? ' is-active' : ''}`}
-                    onClick={() => setTabMateria(index)}
-                  >
-                    <FontAwesomeIcon icon={faBookOpen} />
-                    <span>Materia {index + 1}</span>
-                  </button>
-                ))}
+              <div className="previas-materia-tabs-shell">
+                <div
+                  ref={materiaTabsRef}
+                  className="gm-tabs gm-tabs--google previas-materia-tabs"
+                  role="tablist"
+                  aria-label="Materias previas cargadas"
+                >
+                  {materias.map((m, index) => (
+                    <button
+                      key={m.uid}
+                      type="button"
+                      role="tab"
+                      aria-selected={tabMateria === index}
+                      data-materia-active={tabMateria === index ? 'true' : 'false'}
+                      className={`gm-tab${tabMateria === index ? ' is-active' : ''}`}
+                      onClick={() => setTabMateria(index)}
+                    >
+                      <FontAwesomeIcon icon={faBookOpen} />
+                      <span>Materia {index + 1}</span>
+                    </button>
+                  ))}
+                </div>
 
-                <button type="button" className="gm-tab previas-materia-tab-add" onClick={agregarMateria}>
+                <button
+                  type="button"
+                  className="gm-tab previas-materia-tab-add"
+                  onClick={agregarMateria}
+                >
                   <FontAwesomeIcon icon={faPlus} />
                   <span>Otra</span>
                 </button>
