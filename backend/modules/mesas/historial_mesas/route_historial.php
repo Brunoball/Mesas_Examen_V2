@@ -17,6 +17,11 @@ function route_mesas_historial(string $action): bool
             mesas_historial_detalle_armado();
             return true;
 
+        case 'mesas_historial_exportar':
+        case 'mesas_historial_armados_exportar':
+            mesas_historial_exportar();
+            return true;
+
         default:
             return false;
     }

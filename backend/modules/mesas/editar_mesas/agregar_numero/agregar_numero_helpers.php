@@ -59,10 +59,16 @@ function mesas_editar_agregar_numero_obtener_grupo_destino(PDO $pdo, int $numero
     $grupo['id_area'] = $grupo['id_area'] !== null ? (int)$grupo['id_area'] : null;
     $grupo['cantidad_numeros'] = (int)$grupo['cantidad_numeros'];
     $grupo['cantidad_alumnos'] = (int)$grupo['cantidad_alumnos'];
-    $grupo['slots_libres'] = max(0, 4 - $grupo['cantidad_numeros']);
     $grupo['numeros'] = mesas_editar_agregar_numero_obtener_numeros_grupo($pdo, $numeroGrupo);
 
-    return $grupo;
+    $esTaller = mesas_editar_grupo_es_taller_por_numeros($grupo['numeros'], $grupo);
+    $capacidad = mesas_editar_capacidad_slots_calcular(
+        $grupo['cantidad_numeros'],
+        $esTaller,
+        mesas_editar_slots_extra_obtener($pdo, $numeroGrupo)
+    );
+
+    return array_merge($grupo, $capacidad);
 }
 
 function mesas_editar_agregar_numero_obtener_numeros_grupo(PDO $pdo, int $numeroGrupo): array
@@ -167,8 +173,9 @@ function mesas_editar_agregar_numero_validar_numero_en_grupo(PDO $pdo, int $nume
         $errores[] = 'El grupo destino no es válido.';
     }
 
-    if ($cantidadDestino >= 4) {
-        $errores[] = 'El grupo destino ya tiene 4 números de mesa.';
+    $capacidadDestino = (int)($grupoDestino['capacidad_slots'] ?? 4);
+    if ($cantidadDestino >= $capacidadDestino) {
+        $errores[] = 'El grupo destino no tiene slots libres. Habilitá un nuevo slot desde edición para poder agregar otro número.';
     }
 
     try {
@@ -500,8 +507,8 @@ function mesas_editar_agregar_numero_opciones(PDO $pdo, int $numeroGrupo): array
         throw new RuntimeException('No se encontró el grupo al que querés agregar un número.');
     }
 
-    if ((int)$grupo['cantidad_numeros'] >= 4) {
-        throw new InvalidArgumentException('El grupo ya tiene 4 números de mesa.');
+    if ((int)$grupo['cantidad_numeros'] >= (int)($grupo['capacidad_slots'] ?? 4)) {
+        throw new InvalidArgumentException('El grupo no tiene slots libres. Habilitá un nuevo slot desde edición para poder agregar otro número.');
     }
 
     return [
@@ -515,6 +522,10 @@ function mesas_editar_agregar_numero_opciones(PDO $pdo, int $numeroGrupo): array
             'hora' => $grupo['hora'] ?? null,
             'cantidad_numeros' => (int)$grupo['cantidad_numeros'],
             'slots_libres' => (int)$grupo['slots_libres'],
+            'slots_extra' => (int)($grupo['slots_extra'] ?? 0),
+            'capacidad_slots' => (int)($grupo['capacidad_slots'] ?? 4),
+            'capacidad_base_slots' => (int)($grupo['capacidad_base_slots'] ?? 4),
+            'es_grupo_taller' => !empty($grupo['es_grupo_taller']),
             'id_area' => $grupo['id_area'],
             'area' => trim((string)($grupo['area'] ?? '')),
             'numeros' => $grupo['numeros'],

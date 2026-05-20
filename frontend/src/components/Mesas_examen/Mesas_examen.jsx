@@ -1,5 +1,6 @@
 // src/components/Mesas_examen/Mesas_examen.jsx
 import React, { useCallback, useContext, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faLayerGroup,
@@ -12,6 +13,7 @@ import {
   faEdit,
   faTimes,
   faFilePdf,
+  faFileExcel,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "../Global/Global_css/roots.css";
@@ -26,6 +28,13 @@ import ModalEliminarGlobal from "../Global/Modales/ModalEliminarGlobal";
 import Toast from "../Global/Toast";
 import ModalTituloPdfMesas from "./modales/exportar_pdf/ModalTituloPdfMesas";
 import { descargarPdfMesas } from "./modales/exportar_pdf/mesasPdfExporter";
+import ModalExportarHistorial from "./modales/exportar_historial/ModalExportarHistorial";
+import {
+  contarMesasHistorial,
+  contarRegistrosHistorialExportacion,
+  descargarExcelHistorialMesas,
+  descargarPdfHistorialMesas,
+} from "./modales/exportar_historial/historialMesasExporter";
 import logo from "../../imagenes/Escudo.png";
 
 const textoCorto = (valor, fallback = "-") => {
@@ -281,7 +290,7 @@ const obtenerBloquesVistaPdf = (grupo) => {
       numeroMesa: textoCorto(numero?.numero_mesa),
       tipoMesa: textoCorto(numero?.tipo_mesa, "-"),
       prioridad: numero?.prioridad ?? grupo?.prioridad_max ?? 0,
-      observacion: textoCorto(bloque.observacion || numero?.observacion || grupo?.motivo || grupo?.observacion, ""),
+      observacion: textoCorto(bloque.observacion || numero?.observacion, ""),
     }))
   );
 };
@@ -345,9 +354,9 @@ const MesaPdfCard = ({ grupo, esNoAgrupada = false, onEdit, onDelete, onGuardarN
         </div>
       </header>
 
-      {(esNoAgrupada || grupo?.motivo || grupo?.observacion) && (grupo?.motivo || grupo?.observacion) && (
-        <div className={`mesas-pdf-observacion ${!esNoAgrupada ? "mesas-pdf-observacion-info" : ""}`}>
-          <strong>{esNoAgrupada ? "Motivo sin agrupar:" : "Observación:"}</strong>{" "}
+      {esNoAgrupada && (grupo?.motivo || grupo?.observacion) && (
+        <div className="mesas-pdf-observacion">
+          <strong>Motivo sin agrupar:</strong>{" "}
           {textoCorto(grupo.motivo || grupo.observacion)}
         </div>
       )}
@@ -462,15 +471,6 @@ const HistorialMesasPanel = ({ historial }) => {
           <h3>Historial completo de mesas</h3>
           <p>Acá quedan registradas las notas cargadas, las previas aprobadas/desaprobadas y los armados eliminados.</p>
         </div>
-        <button
-          type="button"
-          className="mov-btn mov-btn--secondary mesas-historial-refresh"
-          onClick={historial?.cargar}
-          disabled={historial?.cargando}
-        >
-          <FontAwesomeIcon icon={historial?.cargando ? faSpinner : faCheckCircle} spin={!!historial?.cargando} />
-          Actualizar historial
-        </button>
       </div>
 
       {historial?.error && (
@@ -766,25 +766,37 @@ const MesasExamen = () => {
 
   const [modalTituloPdfAbierto, setModalTituloPdfAbierto] = useState(false);
   const [exportandoPdf, setExportandoPdf] = useState(false);
+  const [modalExportarHistorialAbierto, setModalExportarHistorialAbierto] = useState(false);
+  const [exportandoHistorial, setExportandoHistorial] = useState(false);
 
   const abrirModalExportarPdf = useCallback(() => {
-    if (tab === "historial") {
-      mostrarToastGlobal("error", "El historial no se exporta desde este botón. Usá la vista de mesas para generar el PDF.", 3200);
-      return;
-    }
-
     if (!Array.isArray(mesasFiltradas) || mesasFiltradas.length === 0) {
       mostrarToastGlobal("error", "No hay mesas visibles para exportar.", 3200);
       return;
     }
 
     setModalTituloPdfAbierto(true);
-  }, [mesasFiltradas, tab, mostrarToastGlobal]);
+  }, [mesasFiltradas, mostrarToastGlobal]);
+
+  const abrirModalExportarHistorial = useCallback(() => {
+    const cantidadArmados = Array.isArray(historial?.armados) ? historial.armados.length : 0;
+    if (cantidadArmados <= 0) {
+      mostrarToastGlobal("error", "No hay armados guardados en el historial para exportar.", 3400);
+      return;
+    }
+
+    setModalExportarHistorialAbierto(true);
+  }, [historial?.armados, mostrarToastGlobal]);
 
   const cerrarModalExportarPdf = useCallback(() => {
     if (exportandoPdf) return;
     setModalTituloPdfAbierto(false);
   }, [exportandoPdf]);
+
+  const cerrarModalExportarHistorial = useCallback(() => {
+    if (exportandoHistorial) return;
+    setModalExportarHistorialAbierto(false);
+  }, [exportandoHistorial]);
 
   const confirmarExportarPdf = useCallback(({ tituloFijo, continuacion } = {}) => {
     if (!Array.isArray(mesasFiltradas) || mesasFiltradas.length === 0) {
@@ -810,6 +822,37 @@ const MesasExamen = () => {
       setExportandoPdf(false);
     }
   }, [mesasFiltradas, tab, mostrarToastGlobal]);
+
+  const confirmarExportarHistorial = useCallback(async ({ formato = "excel" } = {}) => {
+    if (exportandoHistorial) return;
+
+    setExportandoHistorial(true);
+
+    try {
+      const data = await historial?.obtenerExportacion?.();
+      const cantidadMesas = contarMesasHistorial(data);
+      const cantidadRegistros = contarRegistrosHistorialExportacion(data);
+
+      if (cantidadRegistros <= 0) {
+        mostrarToastGlobal("error", "No hay historial para exportar.", 3600);
+        return;
+      }
+
+      if (formato === "pdf") {
+        descargarPdfHistorialMesas(data);
+        mostrarToastGlobal("exito", `PDF del historial descargado correctamente (${cantidadMesas} mesas).`, 3200);
+      } else {
+        descargarExcelHistorialMesas(data);
+        mostrarToastGlobal("exito", `Excel del historial descargado correctamente (2 hojas, ${cantidadMesas} mesas).`, 3200);
+      }
+
+      setModalExportarHistorialAbierto(false);
+    } catch (err) {
+      mostrarToastGlobal("error", err?.message || "No se pudo exportar el historial.", 4000);
+    } finally {
+      setExportandoHistorial(false);
+    }
+  }, [exportandoHistorial, historial, mostrarToastGlobal]);
 
   const contenido = (
     <div className="mesas-page mov-page">
@@ -884,11 +927,11 @@ const MesasExamen = () => {
             <button
               className="mov-btn mov-btn--secondary mesas-actionBtn mesas-exportBtn"
               type="button"
-              onClick={abrirModalExportarPdf}
-              disabled={tab === "historial" || cargando || armando || agrupando || totalVisible === 0}
+              onClick={tab === "historial" ? abrirModalExportarHistorial : abrirModalExportarPdf}
+              disabled={cargando || armando || agrupando || (tab === "historial" ? historial?.cargando || exportandoHistorial || totalVisible === 0 : totalVisible === 0)}
             >
-              <FontAwesomeIcon icon={faFilePdf} />
-              Exportar PDF
+              <FontAwesomeIcon icon={tab === "historial" ? faFileExcel : faFilePdf} />
+              {tab === "historial" ? "Exportar historial" : "Exportar PDF"}
             </button>
 
             <button
@@ -1033,6 +1076,15 @@ const MesasExamen = () => {
         onConfirm={confirmarExportarPdf}
       />
 
+      <ModalExportarHistorial
+        abierto={modalExportarHistorialAbierto}
+        loading={exportandoHistorial}
+        cantidadArmados={Array.isArray(historial?.armados) ? historial.armados.length : 0}
+        busqueda={busqueda}
+        onClose={cerrarModalExportarHistorial}
+        onConfirm={confirmarExportarHistorial}
+      />
+
       <ModalEliminarGlobal
         open={!!eliminarArmado?.modalAbierto}
         operacion="eliminar"
@@ -1071,14 +1123,28 @@ const MesasExamen = () => {
         onConfirm={eliminarEdicion?.confirmar}
       />
 
-      {toastGlobal && (
-        <Toast
-          key={toastGlobal.id}
-          tipo={toastGlobal.tipo}
-          mensaje={toastGlobal.mensaje}
-          duracion={toastGlobal.duracion}
-          onClose={cerrarToastGlobal}
-        />
+      {toastGlobal && (typeof document !== "undefined"
+        ? createPortal(
+          <div className="mesas-toastPortal">
+            <Toast
+              key={toastGlobal.id}
+              tipo={toastGlobal.tipo}
+              mensaje={toastGlobal.mensaje}
+              duracion={toastGlobal.duracion}
+              onClose={cerrarToastGlobal}
+            />
+          </div>,
+          document.body
+        )
+        : (
+          <Toast
+            key={toastGlobal.id}
+            tipo={toastGlobal.tipo}
+            mensaje={toastGlobal.mensaje}
+            duracion={toastGlobal.duracion}
+            onClose={cerrarToastGlobal}
+          />
+        )
       )}
     </div>
   );

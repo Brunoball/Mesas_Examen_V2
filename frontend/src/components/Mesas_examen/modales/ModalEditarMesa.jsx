@@ -143,6 +143,43 @@ const obtenerSubtitulo = (grupo) => {
   return area === "Sin área" ? materia : `${area}: ${materia}`;
 };
 
+const esNumeroTaller = (numero) => {
+  const tipo = String(numero?.tipo_mesa || numero?.tipo_numero || numero?.tipo || "").toLowerCase();
+  return tipo.includes("taller") || Number(numero?.prioridad || numero?.prioridad_numero || 0) === 1;
+};
+
+const esGrupoTaller = (grupo, numeros = []) => {
+  const tiposTexto = String(grupo?.tipos_mesa_texto || grupo?.tipo_mesa || "").toLowerCase();
+  return tiposTexto.includes("taller") || numeros.some(esNumeroTaller) || !!grupo?.es_grupo_taller;
+};
+
+const calcularCapacidadSlots = (grupo, numeros = []) => {
+  const cantidad = numeros.length;
+  const capacidadBackend = Number(grupo?.capacidad_slots || 0);
+  if (capacidadBackend > 0) {
+    return Math.max(cantidad, capacidadBackend);
+  }
+
+  const extra = Math.max(0, Number(grupo?.slots_extra || 0));
+  const base = esGrupoTaller(grupo, numeros) ? 1 : 4;
+  return Math.max(cantidad, base + extra);
+};
+
+const calcularBaseSlots = (grupo, numeros = []) => {
+  const baseBackend = Number(grupo?.capacidad_base_slots || 0);
+  if (baseBackend > 0) return baseBackend;
+  return esGrupoTaller(grupo, numeros) ? 1 : 4;
+};
+
+const calcularSlotsExtraLibres = (grupo, numeros = []) => {
+  const slotsExtra = Math.max(0, Number(grupo?.slots_extra || 0));
+  if (slotsExtra <= 0) return 0;
+
+  const base = calcularBaseSlots(grupo, numeros);
+  const extrasUsados = Math.max(0, numeros.length - base);
+  return Math.max(0, slotsExtra - extrasUsados);
+};
+
 const CalendarMesa = ({ fechaSeleccionada, idTurno, slotsDisponibles = [], cargandoSlots = false, onChange, onMesChange }) => {
   const fechaBase = useMemo(() => crearFechaLocal(fechaSeleccionada), [fechaSeleccionada]);
   const [mesVisible, setMesVisible] = useState(() => new Date(fechaBase.getFullYear(), fechaBase.getMonth(), 1));
@@ -247,11 +284,26 @@ const SlotNumero = ({ numero, onVerPrevias, onAgregarPrevia, onMoverNumero, onEl
   </article>
 );
 
-const SlotVacio = ({ onClick }) => (
-  <button type="button" className="editar-mesa-slot-empty" onClick={onClick}>
-    <FontAwesomeIcon icon={faPlus} />
-    <span>Agregar número</span>
-  </button>
+const SlotVacio = ({ onClick, esExtraLibre = false, eliminando = false, onEliminarSlot }) => (
+  <div className={`editar-mesa-slot-empty ${esExtraLibre ? "editar-mesa-slot-empty-extra" : ""}`}>
+    <button type="button" className="editar-mesa-slot-empty-main" onClick={onClick}>
+      <FontAwesomeIcon icon={faPlus} />
+      <span>Agregar número</span>
+    </button>
+
+    {esExtraLibre && typeof onEliminarSlot === "function" && (
+      <button
+        type="button"
+        className="editar-mesa-slot-empty-remove"
+        onClick={onEliminarSlot}
+        disabled={eliminando}
+        title="Eliminar este slot libre agregado"
+      >
+        <FontAwesomeIcon icon={eliminando ? faSpinner : faTrash} spin={eliminando} />
+        Quitar slot
+      </button>
+    )}
+  </div>
 );
 
 const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardando, slotsDisponibles, cargandoSlots = false, error, onClose, onSave, onCrearGrupoUnico, onDelete, onLoadSlots, persona = {}, mas = {}, flechas = {}, eliminar = {}, agregarNumero = {} }) => {
@@ -262,8 +314,13 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
 
   const numeros = useMemo(() => {
     const base = Array.isArray(grupo?.numeros) ? grupo.numeros : [];
-    return base.slice(0, 4);
+    return base;
   }, [grupo]);
+
+  const grupoTieneTaller = useMemo(() => esGrupoTaller(grupo, numeros), [grupo, numeros]);
+  const capacidadSlots = useMemo(() => calcularCapacidadSlots(grupo, numeros), [grupo, numeros]);
+  const slotsExtraLibres = useMemo(() => calcularSlotsExtraLibres(grupo, numeros), [grupo, numeros]);
+  const slotsLibres = Math.max(0, capacidadSlots - numeros.length);
 
   const slotsValidos = useMemo(() => {
     const lista = Array.isArray(slotsDisponibles?.slots) ? slotsDisponibles.slots : [];
@@ -338,7 +395,7 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
   if (!portalTarget) return null;
 
   const slots = [...numeros];
-  while (slots.length < 4) slots.push(null);
+  while (slots.length < capacidadSlots) slots.push(null);
 
   const handleSave = () => {
     if (!grupo || !slotSeleccionadoValido) return;
@@ -377,6 +434,16 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
       id_no_agrupada: grupo.id_no_agrupada || null,
       numero_mesa: tipo === "no_agrupada" ? numeros?.[0]?.numero_mesa : null,
     });
+  };
+
+  const handleHabilitarSlotExtra = () => {
+    if (!grupo || typeof agregarNumero.habilitarSlotExtra !== "function") return;
+    agregarNumero.habilitarSlotExtra(grupo);
+  };
+
+  const handleEliminarSlotExtra = () => {
+    if (!grupo || typeof agregarNumero.eliminarSlotExtra !== "function") return;
+    agregarNumero.eliminarSlotExtra(grupo);
   };
 
   return createPortal((
@@ -508,8 +575,30 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
                   </div>
                 ) : (
                   <div className="editar-mesa-slots-card">
-                    <h3>Slots del grupo (hasta 4)</h3>
+                    <div className="editar-mesa-slots-head">
+                      <div>
+                        <h3>Slots del grupo ({numeros.length}/{capacidadSlots})</h3>
+                        <small>{grupoTieneTaller ? "Mesa especial/taller: arranca solo con su slot real." : "Capacidad base: 4 números de mesa."}</small>
+                      </div>
+
+                      <button
+                        type="button"
+                        className="editar-mesa-btn-slot-extra"
+                        onClick={handleHabilitarSlotExtra}
+                        disabled={guardando || agregarNumero.habilitandoSlotExtra || typeof agregarNumero.habilitarSlotExtra !== "function"}
+                        title="Habilitar un nuevo slot para poder agregar otro número a esta mesa"
+                      >
+                        <FontAwesomeIcon icon={agregarNumero.habilitandoSlotExtra ? faSpinner : faPlus} spin={agregarNumero.habilitandoSlotExtra} />
+                        Agregar slot
+                      </button>
+                    </div>
                     <div className="editar-mesa-section-line" />
+
+                    {slotsLibres <= 0 && (
+                      <div className="editar-mesa-slot-note">
+                        No hay slots libres. Presioná <strong>Agregar slot</strong> para habilitar uno nuevo.
+                      </div>
+                    )}
 
                     <div className="editar-mesa-slots-grid">
                       {slots.map((slot, index) => (
@@ -525,6 +614,9 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
                         ) : (
                           <SlotVacio
                             key={`vacio-${index}`}
+                            esExtraLibre={slotsExtraLibres > 0 && index >= capacidadSlots - slotsExtraLibres}
+                            eliminando={!!agregarNumero.eliminandoSlotExtra}
+                            onEliminarSlot={handleEliminarSlotExtra}
                             onClick={() => agregarNumero.abrirAgregarNumeroGrupo && agregarNumero.abrirAgregarNumeroGrupo(grupo)}
                           />
                         )

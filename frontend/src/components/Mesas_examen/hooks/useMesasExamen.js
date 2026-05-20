@@ -10,10 +10,13 @@ import {
   eliminarMesaEdicion,
   eliminarNumeroGrupoEdicion,
   eliminarPreviaMesa,
+  eliminarSlotExtraGrupo,
   guardarNotaPreviaMesa,
   guardarProgramacionMesa,
+  habilitarSlotExtraGrupo,
   listarHistorialMesas,
   obtenerDetalleHistorialArmado,
+  obtenerExportacionHistorialMesas,
   listarMesasGruposFinales,
   listarMesasNoAgrupadas,
   moverNumeroMesaGrupo,
@@ -173,6 +176,8 @@ export const useMesasExamen = ({ onToast } = {}) => {
   const [errorEdicion, setErrorEdicion] = useState("");
   const [slotsEdicion, setSlotsEdicion] = useState(null);
   const [cargandoSlotsEdicion, setCargandoSlotsEdicion] = useState(false);
+  const [habilitandoSlotExtra, setHabilitandoSlotExtra] = useState(false);
+  const [eliminandoSlotExtra, setEliminandoSlotExtra] = useState(false);
   const slotsInflightKeyRef = useRef("");
   const slotsInflightPromiseRef = useRef(null);
 
@@ -368,6 +373,18 @@ export const useMesasExamen = ({ onToast } = {}) => {
   const cerrarDetalleHistorialArmado = useCallback(() => {
     setHistorialDetalleArmado(null);
   }, []);
+
+  const obtenerExportacionHistorial = useCallback(async () => {
+    setErrorHistorial("");
+
+    try {
+      const response = await obtenerExportacionHistorialMesas({ busqueda });
+      return response?.data || { armados: [], detalle: [] };
+    } catch (err) {
+      setErrorHistorial(err.message || "Error al preparar la exportación del historial.");
+      throw err;
+    }
+  }, [busqueda]);
 
   const abrirModalCrear = useCallback(async () => {
     const data = await cargarParametrosArmado();
@@ -591,6 +608,7 @@ export const useMesasExamen = ({ onToast } = {}) => {
     setGrupoEdicion(null);
     setErrorEdicion("");
     setSlotsEdicion(null);
+    setHabilitandoSlotExtra(false);
     slotsInflightKeyRef.current = "";
     slotsInflightPromiseRef.current = null;
     setModalPreviasPersonaAbierto(false);
@@ -988,6 +1006,74 @@ export const useMesasExamen = ({ onToast } = {}) => {
   }, [grupoAgregarNumero, grupoEdicion, cargarMesas, recargarGrupoEdicion, mostrarToast]);
 
 
+  const habilitarSlotExtraEdicion = useCallback(async (grupoDestino = grupoEdicion) => {
+    const numeroGrupo = Number(grupoDestino?.numero_grupo || grupoDestino?.id_grupo || grupoEdicion?.numero_grupo || grupoEdicion?.id_grupo || 0);
+    if (!numeroGrupo || habilitandoSlotExtra) return null;
+
+    setHabilitandoSlotExtra(true);
+    setErrorEdicion("");
+
+    try {
+      const response = await habilitarSlotExtraGrupo({
+        numero_grupo: numeroGrupo,
+        id_grupo: numeroGrupo,
+      });
+
+      const grupoActualizado = response?.data?.grupo || null;
+      if (grupoActualizado) {
+        setGrupoEdicion(grupoActualizado);
+        setTipoEdicion("grupo");
+        await cargarSlotsEdicion({ item: grupoActualizado, tipo: "grupo" });
+      } else {
+        await recargarGrupoEdicion();
+      }
+
+      await cargarMesas();
+      mostrarToast("exito", "Nuevo slot habilitado para esta mesa.");
+      return response;
+    } catch (err) {
+      setErrorEdicion(err.message || "No se pudo habilitar un nuevo slot para esta mesa.");
+      throw err;
+    } finally {
+      setHabilitandoSlotExtra(false);
+    }
+  }, [grupoEdicion, habilitandoSlotExtra, cargarSlotsEdicion, recargarGrupoEdicion, cargarMesas, mostrarToast]);
+
+
+  const eliminarSlotExtraEdicion = useCallback(async (grupoDestino = grupoEdicion) => {
+    const numeroGrupo = Number(grupoDestino?.numero_grupo || grupoDestino?.id_grupo || grupoEdicion?.numero_grupo || grupoEdicion?.id_grupo || 0);
+    if (!numeroGrupo || eliminandoSlotExtra) return null;
+
+    setEliminandoSlotExtra(true);
+    setErrorEdicion("");
+
+    try {
+      const response = await eliminarSlotExtraGrupo({
+        numero_grupo: numeroGrupo,
+        id_grupo: numeroGrupo,
+      });
+
+      const grupoActualizado = response?.data?.grupo || null;
+      if (grupoActualizado) {
+        setGrupoEdicion(grupoActualizado);
+        setTipoEdicion("grupo");
+        await cargarSlotsEdicion({ item: grupoActualizado, tipo: "grupo" });
+      } else {
+        await recargarGrupoEdicion();
+      }
+
+      await cargarMesas();
+      mostrarToast("exito", "Slot libre eliminado correctamente.");
+      return response;
+    } catch (err) {
+      setErrorEdicion(err.message || "No se pudo eliminar el slot libre de esta mesa.");
+      throw err;
+    } finally {
+      setEliminandoSlotExtra(false);
+    }
+  }, [grupoEdicion, eliminandoSlotExtra, cargarSlotsEdicion, recargarGrupoEdicion, cargarMesas, mostrarToast]);
+
+
   const guardarEdicionProgramacion = useCallback(async (payload) => {
     setGuardandoEdicion(true);
     setErrorEdicion("");
@@ -1381,6 +1467,10 @@ export const useMesasExamen = ({ onToast } = {}) => {
       cerrar: cerrarAgregarNumeroGrupo,
       confirmarAgregar: confirmarAgregarNumero,
       recargar: cargarOpcionesAgregarNumero,
+      habilitarSlotExtra: habilitarSlotExtraEdicion,
+      eliminarSlotExtra: eliminarSlotExtraEdicion,
+      habilitandoSlotExtra,
+      eliminandoSlotExtra,
     },
 
     historial: {
@@ -1392,6 +1482,7 @@ export const useMesasExamen = ({ onToast } = {}) => {
       cargandoDetalle: cargandoDetalleHistorial,
       error: errorHistorial,
       cargar: () => cargarHistorial(busqueda),
+      obtenerExportacion: obtenerExportacionHistorial,
       verDetalleArmado: verDetalleHistorialArmado,
       cerrarDetalleArmado: cerrarDetalleHistorialArmado,
     },

@@ -1,0 +1,268 @@
+.mesas-export-historial-overlay,
+.mesas-export-historial-overlay *{
+  box-sizing:border-box;
+}
+
+.mesas-export-historial-overlay{
+  position:fixed;
+  inset:0;
+  z-index:2147483000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  overflow:auto;
+  background:rgba(8,16,30,.56);
+  backdrop-filter:blur(6px);
+}
+
+.mesas-export-historial-modal{
+  width:min(680px, 96vw);
+  max-height:94dvh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  border-radius:var(--gm-radius, 20px);
+  border:1px solid rgba(255,255,255,.22);
+  background:var(--gm-bg, #F6F9FC);
+  box-shadow:var(--gm-shadow, 0 32px 80px rgba(10,37,64,.26), 0 2px 8px rgba(10,37,64,.08));
+  color:var(--gm-ink, #0A2540);
+  font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  animation:gm-pop .18s cubic-bezier(.34, 1.56, .64, 1);
+}
+
+.mesas-export-historial-header{
+  min-height:70px;
+  padding:16px 20px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  background:linear-gradient(135deg, var(--gm-ink, #0A2540) 0%, color-mix(in srgb, var(--gm-ink, #0A2540) 78%, #0055BB) 100%);
+  color:#fff;
+  border-bottom:1px solid rgba(255,255,255,.07);
+}
+
+.mesas-export-historial-header h2{
+  margin:0 0 6px;
+  font-size:21px;
+  line-height:1.1;
+  font-weight:900;
+  letter-spacing:-.03em;
+}
+
+.mesas-export-historial-header p{
+  margin:0;
+  font-size:14px;
+  font-weight:700;
+  opacity:.94;
+}
+
+.mesas-export-historial-close{
+  width:36px;
+  height:36px;
+  display:grid;
+  place-items:center;
+  border:0;
+  border-radius:999px;
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-size:18px;
+  cursor:pointer;
+  transition:background .15s ease, transform .15s ease, opacity .15s ease;
+}
+
+.mesas-export-historial-close:hover:not(:disabled){
+  background:rgba(255,255,255,.16);
+  transform:rotate(90deg);
+}
+
+.mesas-export-historial-close:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+}
+
+.mesas-export-historial-body{
+  flex:1 1 auto;
+  overflow:auto;
+  padding:18px;
+  background:#f8fafc;
+}
+
+.mesas-export-historial-info{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:14px 16px;
+  border:1px solid #dbe4f0;
+  border-radius:16px;
+  background:#fff;
+  box-shadow:0 10px 24px -20px rgba(10,37,64,.3);
+}
+
+.mesas-export-historial-info strong{
+  color:#0A2540;
+  font-size:25px;
+  font-weight:900;
+  line-height:1;
+}
+
+.mesas-export-historial-info span{
+  color:#425466;
+  font-size:13px;
+  font-weight:800;
+  text-align:right;
+}
+
+.mesas-export-historial-scope,
+.mesas-export-historial-note{
+  margin:12px 2px 0;
+  color:#425466;
+  font-size:13px;
+  font-weight:650;
+  line-height:1.42;
+}
+
+.mesas-export-historial-note b{
+  color:#0A2540;
+  font-weight:900;
+}
+
+.mesas-export-historial-options{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:12px;
+  margin-top:16px;
+}
+
+.mesas-export-historial-option{
+  position:relative;
+  min-height:104px;
+  padding:16px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  border:1px solid #dbe4f0;
+  border-radius:16px;
+  background:#fff;
+  color:#0A2540;
+  cursor:pointer;
+  box-shadow:0 12px 28px -24px rgba(10,37,64,.38);
+  transition:border-color .16s ease, box-shadow .16s ease, transform .16s ease, background .16s ease;
+}
+
+.mesas-export-historial-option:hover{
+  transform:translateY(-1px);
+  border-color:rgba(0,85,187,.28);
+  box-shadow:0 18px 38px -26px rgba(10,37,64,.5);
+}
+
+.mesas-export-historial-option.is-active{
+  border-color:rgba(0,85,187,.46);
+  background:linear-gradient(180deg, rgba(0,85,187,.06), #fff 74%);
+  box-shadow:0 0 0 3px rgba(0,85,187,.11), 0 16px 34px -26px rgba(10,37,64,.45);
+}
+
+.mesas-export-historial-option input{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+}
+
+.mesas-export-historial-icon{
+  width:44px;
+  height:44px;
+  display:grid;
+  place-items:center;
+  flex:0 0 auto;
+  border-radius:14px;
+  font-size:20px;
+}
+
+.mesas-export-historial-icon.is-excel{
+  background:rgba(34,173,92,.11);
+  color:#15803d;
+}
+
+.mesas-export-historial-icon.is-pdf{
+  background:rgba(225,61,69,.10);
+  color:#b4232c;
+}
+
+.mesas-export-historial-option span:last-child{
+  display:grid;
+  gap:5px;
+  min-width:0;
+}
+
+.mesas-export-historial-option b{
+  font-size:15px;
+  font-weight:900;
+}
+
+.mesas-export-historial-option small{
+  color:#64748b;
+  font-size:12px;
+  font-weight:700;
+  line-height:1.35;
+}
+
+.mesas-export-historial-footer{
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  padding:14px 18px;
+  border-top:1px solid #dbe4f0;
+  background:#fff;
+}
+
+.mesas-export-historial-btn{
+  min-height:44px;
+  padding:0 17px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  border-radius:14px;
+  font-size:14px;
+  font-weight:850;
+  cursor:pointer;
+  transition:transform .15s ease, box-shadow .15s ease, background .15s ease, color .15s ease, opacity .15s ease;
+}
+
+.mesas-export-historial-btn:disabled{
+  opacity:.65;
+  cursor:not-allowed;
+}
+
+.mesas-export-historial-btn-secondary{
+  border:1px solid #d7e0ec;
+  background:#fff;
+  color:#1e293b;
+}
+
+.mesas-export-historial-btn-primary{
+  border:1px solid #244a91;
+  background:#244a91;
+  color:#fff;
+  box-shadow:0 10px 20px -14px rgba(36,74,145,.85);
+}
+
+.mesas-export-historial-btn:hover:not(:disabled){
+  transform:translateY(-1px);
+}
+
+@media (max-width:680px){
+  .mesas-export-historial-options{
+    grid-template-columns:1fr;
+  }
+
+  .mesas-export-historial-footer{
+    flex-direction:column-reverse;
+  }
+
+  .mesas-export-historial-btn{
+    width:100%;
+  }
+}

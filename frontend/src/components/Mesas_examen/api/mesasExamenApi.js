@@ -263,6 +263,21 @@ export const confirmarAgregarNumeroGrupo = ({ numero_grupo, id_grupo, tipo = "no
   });
 };
 
+export const habilitarSlotExtraGrupo = ({ numero_grupo, id_grupo } = {}) => {
+  return apiPost("mesas_editar_habilitar_slot_extra", {
+    numero_grupo: numero_grupo || id_grupo,
+    id_grupo: id_grupo || numero_grupo,
+  });
+};
+
+
+export const eliminarSlotExtraGrupo = ({ numero_grupo, id_grupo } = {}) => {
+  return apiPost("mesas_editar_eliminar_slot_extra", {
+    numero_grupo: numero_grupo || id_grupo,
+    id_grupo: id_grupo || numero_grupo,
+  });
+};
+
 
 export const guardarNotaPreviaMesa = ({ id_previa, id_mesa, numero_mesa, nota } = {}) => {
   return apiPost("mesas_resultado_guardar_nota", {
@@ -285,5 +300,12 @@ export const listarHistorialMesas = ({ busqueda = "", limite_resultados = 250, l
 export const obtenerDetalleHistorialArmado = ({ id_armado_historial } = {}) => {
   return apiGet("mesas_historial_detalle_armado", limpiarParams({
     id_armado_historial,
+  }));
+};
+
+export const obtenerExportacionHistorialMesas = ({ busqueda = "", limite_armados = 1000 } = {}) => {
+  return apiGet("mesas_historial_exportar", limpiarParams({
+    busqueda,
+    limite_armados,
   }));
 };

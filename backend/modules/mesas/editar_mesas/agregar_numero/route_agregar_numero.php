@@ -19,6 +19,18 @@ function route_mesas_editar_agregar_numero(string $action): bool
             mesas_editar_agregar_numero_confirmar_controller();
             return true;
 
+        case 'mesas_editar_habilitar_slot_extra':
+        case 'mesas_edicion_habilitar_slot_extra':
+        case 'mesas_editar_agregar_slot_extra':
+            mesas_editar_habilitar_slot_extra_controller();
+            return true;
+
+        case 'mesas_editar_eliminar_slot_extra':
+        case 'mesas_edicion_eliminar_slot_extra':
+        case 'mesas_editar_quitar_slot_extra':
+            mesas_editar_eliminar_slot_extra_controller();
+            return true;
+
         default:
             return false;
     }

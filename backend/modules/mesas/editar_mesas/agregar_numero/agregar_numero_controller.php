@@ -9,6 +9,7 @@ function mesas_editar_agregar_numero_opciones_controller(): void
     try {
         $pdo = db();
         mesas_armado_grupos_asegurar_tablas($pdo);
+        mesas_editar_slots_extra_asegurar_tabla($pdo);
 
         $data = array_merge($_GET, mesas_editar_input_json());
         $numeroGrupo = mesas_editar_agregar_numero_int(
@@ -42,6 +43,7 @@ function mesas_editar_agregar_numero_confirmar_controller(): void
     try {
         $pdo = db();
         mesas_armado_grupos_asegurar_tablas($pdo);
+        mesas_editar_slots_extra_asegurar_tabla($pdo);
 
         $data = mesas_editar_input_json();
         $numeroGrupo = mesas_editar_agregar_numero_int(
@@ -103,6 +105,101 @@ function mesas_editar_agregar_numero_confirmar_controller(): void
         json_response([
             'exito' => false,
             'mensaje' => 'Error interno al agregar el número al grupo.',
+            'detalle' => defined('APP_DEBUG') && APP_DEBUG ? $e->getMessage() : null,
+        ], 500);
+    }
+}
+
+
+function mesas_editar_habilitar_slot_extra_controller(): void
+{
+    try {
+        $pdo = db();
+        mesas_armado_grupos_asegurar_tablas($pdo);
+        mesas_editar_slots_extra_asegurar_tabla($pdo);
+
+        $data = mesas_editar_input_json();
+        if (!$data) {
+            $data = $_POST;
+        }
+
+        $numeroGrupo = mesas_editar_agregar_numero_int(
+            $data['numero_grupo'] ?? $data['id_grupo'] ?? null,
+            'Debe indicar el grupo al que querés habilitarle un nuevo slot.'
+        );
+
+        $grupoActual = mesas_editar_obtener_grupo_hidratado($pdo, $numeroGrupo);
+        if (!$grupoActual) {
+            throw new RuntimeException('No se encontró el grupo al que querés habilitarle un nuevo slot.');
+        }
+
+        $slotsExtra = mesas_editar_slots_extra_incrementar($pdo, $numeroGrupo);
+        $grupoActualizado = mesas_editar_obtener_grupo_hidratado($pdo, $numeroGrupo);
+
+        json_response([
+            'exito' => true,
+            'mensaje' => 'Nuevo slot habilitado correctamente.',
+            'data' => [
+                'numero_grupo' => $numeroGrupo,
+                'slots_extra' => $slotsExtra,
+                'grupo' => $grupoActualizado,
+            ],
+        ]);
+    } catch (InvalidArgumentException $e) {
+        json_response([
+            'exito' => false,
+            'mensaje' => $e->getMessage(),
+        ], 422);
+    } catch (Throwable $e) {
+        log_error($e, 'mesas_editar_habilitar_slot_extra');
+        json_response([
+            'exito' => false,
+            'mensaje' => 'Error interno al habilitar un nuevo slot para el grupo.',
+            'detalle' => defined('APP_DEBUG') && APP_DEBUG ? $e->getMessage() : null,
+        ], 500);
+    }
+}
+
+
+function mesas_editar_eliminar_slot_extra_controller(): void
+{
+    try {
+        $pdo = db();
+        mesas_armado_grupos_asegurar_tablas($pdo);
+        mesas_editar_slots_extra_asegurar_tabla($pdo);
+
+        $data = mesas_editar_input_json();
+        if (!$data) {
+            $data = $_POST;
+        }
+
+        $numeroGrupo = mesas_editar_agregar_numero_int(
+            $data['numero_grupo'] ?? $data['id_grupo'] ?? null,
+            'Debe indicar el grupo al que querés quitarle el slot libre.'
+        );
+
+        $slotsExtra = mesas_editar_slots_extra_decrementar($pdo, $numeroGrupo);
+        $grupoActualizado = mesas_editar_obtener_grupo_hidratado($pdo, $numeroGrupo);
+
+        json_response([
+            'exito' => true,
+            'mensaje' => 'Slot libre eliminado correctamente.',
+            'data' => [
+                'numero_grupo' => $numeroGrupo,
+                'slots_extra' => $slotsExtra,
+                'grupo' => $grupoActualizado,
+            ],
+        ]);
+    } catch (InvalidArgumentException $e) {
+        json_response([
+            'exito' => false,
+            'mensaje' => $e->getMessage(),
+        ], 422);
+    } catch (Throwable $e) {
+        log_error($e, 'mesas_editar_eliminar_slot_extra');
+        json_response([
+            'exito' => false,
+            'mensaje' => 'Error interno al eliminar el slot libre del grupo.',
             'detalle' => defined('APP_DEBUG') && APP_DEBUG ? $e->getMessage() : null,
         ], 500);
     }

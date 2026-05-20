@@ -9,6 +9,7 @@ function mesas_editar_flechas_destinos(): void
     try {
         $pdo = db();
         mesas_armado_grupos_asegurar_tablas($pdo);
+        mesas_editar_slots_extra_asegurar_tabla($pdo);
 
         $data = array_merge($_GET, mesas_editar_input_json());
         $numeroMesa = mesas_editar_flechas_int($data['numero_mesa'] ?? null, 'Debe indicar el número de mesa que desea mover.');
@@ -37,6 +38,7 @@ function mesas_editar_flechas_mover(): void
     try {
         $pdo = db();
         mesas_armado_grupos_asegurar_tablas($pdo);
+        mesas_editar_slots_extra_asegurar_tabla($pdo);
 
         $data = mesas_editar_input_json();
         $numeroMesa = mesas_editar_flechas_int($data['numero_mesa'] ?? null, 'Debe indicar el número de mesa que desea mover.');

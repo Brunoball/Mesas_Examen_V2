@@ -4,6 +4,20 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/historial_mesas_helpers.php';
 
+function mesas_historial_like_sql(array $expresiones, string $prefijo, string $busqueda, array &$params): string
+{
+    $partes = [];
+    $valor = '%' . $busqueda . '%';
+
+    foreach ($expresiones as $i => $expresion) {
+        $placeholder = ':' . $prefijo . $i;
+        $partes[] = $expresion . ' LIKE ' . $placeholder;
+        $params[$placeholder] = $valor;
+    }
+
+    return '(' . implode(' OR ', $partes) . ')';
+}
+
 function mesas_historial_limite($valor, int $default, int $max): int
 {
     $n = is_numeric($valor) ? (int)$valor : $default;
@@ -26,8 +40,20 @@ function mesas_historial_listar(): void
         $whereResultados = '1 = 1';
         $paramsResultados = [];
         if ($busqueda !== '') {
-            $whereResultados .= " AND (\n                alumno LIKE :busqueda\n                OR dni LIKE :busqueda\n                OR materia LIKE :busqueda\n                OR docente LIKE :busqueda\n                OR condicion LIKE :busqueda\n                OR tipo_mesa LIKE :busqueda\n                OR estado_resultado LIKE :busqueda\n                OR CAST(numero_mesa AS CHAR) LIKE :busqueda\n            )";
-            $paramsResultados[':busqueda'] = '%' . $busqueda . '%';
+            $whereResultados .= ' AND ' . mesas_historial_like_sql([
+                "COALESCE(alumno, '')",
+                "COALESCE(dni, '')",
+                "COALESCE(materia, '')",
+                "COALESCE(docente, '')",
+                "COALESCE(condicion, '')",
+                "COALESCE(tipo_mesa, '')",
+                "COALESCE(estado_resultado, '')",
+                "COALESCE(motivo, '')",
+                "CAST(numero_mesa AS CHAR)",
+                "CAST(numero_grupo AS CHAR)",
+                "DATE_FORMAT(fecha_mesa, '%d/%m/%Y')",
+                "DATE_FORMAT(fecha_nota, '%d/%m/%Y')",
+            ], 'res_busq_', $busqueda, $paramsResultados);
         }
 
         $stmtResultados = $pdo->prepare("\n            SELECT\n                id_resultado,\n                id_previa_original,\n                id_mesa,\n                numero_mesa,\n                numero_grupo,\n                fecha_mesa,\n                DATE_FORMAT(fecha_mesa, '%d/%m/%Y') AS fecha_mesa_texto,\n                id_turno,\n                hora,\n                dni,\n                alumno,\n                cursando_id_curso,\n                cursando_id_division,\n                id_materia,\n                materia,\n                materia_id_curso,\n                materia_id_division,\n                id_condicion,\n                condicion,\n                id_catedra,\n                id_docente,\n                docente,\n                tipo_mesa,\n                anio,\n                nota,\n                aprobado,\n                estado_resultado,\n                fecha_nota,\n                DATE_FORMAT(fecha_nota, '%d/%m/%Y') AS fecha_nota_texto,\n                motivo,\n                creado_en\n            FROM historial_previas_resultados\n            WHERE {$whereResultados}\n            ORDER BY fecha_nota DESC, creado_en DESC, id_resultado DESC\n            LIMIT {$limiteResultados}\n        ");
@@ -55,11 +81,64 @@ function mesas_historial_listar(): void
         $whereArmados = '1 = 1';
         $paramsArmados = [];
         if ($busqueda !== '') {
-            $whereArmados .= " AND (codigo_armado LIKE :busqueda OR motivo LIKE :busqueda)";
-            $paramsArmados[':busqueda'] = '%' . $busqueda . '%';
+            $condicionArmado = mesas_historial_like_sql([
+                "COALESCE(a.codigo_armado, '')",
+                "COALESCE(a.motivo, '')",
+                "CAST(a.total_mesas AS CHAR)",
+                "CAST(a.total_previas AS CHAR)",
+                "CAST(a.total_grupos AS CHAR)",
+                "CAST(a.total_no_agrupadas AS CHAR)",
+                "DATE_FORMAT(a.creado_en, '%d/%m/%Y %H:%i')",
+            ], 'arm_busq_', $busqueda, $paramsArmados);
+
+            $condicionDetalleArmado = mesas_historial_like_sql([
+                "COALESCE(d.alumno, '')",
+                "COALESCE(d.dni, '')",
+                "COALESCE(NULLIF(d.materia, ''), mat_det.materia, '')",
+                "COALESCE(NULLIF(d.docente, ''), doc_det.docente, '')",
+                "COALESCE(NULLIF(d.condicion, ''), con_det.condicion, '')",
+                "COALESCE(d.tipo_mesa, '')",
+                "COALESCE(d.estado, '')",
+                "COALESCE(d.observacion, '')",
+                "COALESCE(t_det.turno, '')",
+                "CAST(d.numero_mesa AS CHAR)",
+                "CAST(d.numero_grupo AS CHAR)",
+                "DATE_FORMAT(d.fecha_mesa, '%d/%m/%Y')",
+            ], 'arm_det_busq_', $busqueda, $paramsArmados);
+
+            $whereArmados .= " AND (
+                {$condicionArmado}
+                OR EXISTS (
+                    SELECT 1
+                    FROM historial_mesas_detalle d
+                    LEFT JOIN catedras cat_det ON cat_det.id_catedra = d.id_catedra
+                    LEFT JOIN materias mat_det ON mat_det.id_materia = COALESCE(NULLIF(d.id_materia, 0), cat_det.id_materia)
+                    LEFT JOIN docentes doc_det ON doc_det.id_docente = COALESCE(NULLIF(d.id_docente, 0), cat_det.id_docente)
+                    LEFT JOIN condicion con_det ON con_det.id_condicion = d.id_condicion
+                    LEFT JOIN turnos t_det ON t_det.id_turno = d.id_turno
+                    WHERE d.id_armado_historial = a.id_armado_historial
+                      AND {$condicionDetalleArmado}
+                    LIMIT 1
+                )
+            )";
         }
 
-        $stmtArmados = $pdo->prepare("\n            SELECT\n                id_armado_historial,\n                codigo_armado,\n                motivo,\n                total_mesas,\n                total_previas,\n                total_grupos,\n                total_no_agrupadas,\n                creado_en,\n                DATE_FORMAT(creado_en, '%d/%m/%Y %H:%i') AS creado_en_texto\n            FROM historial_mesas_armados\n            WHERE {$whereArmados}\n            ORDER BY creado_en DESC, id_armado_historial DESC\n            LIMIT {$limiteArmados}\n        ");
+        $stmtArmados = $pdo->prepare("
+            SELECT
+                a.id_armado_historial,
+                a.codigo_armado,
+                a.motivo,
+                a.total_mesas,
+                a.total_previas,
+                a.total_grupos,
+                a.total_no_agrupadas,
+                a.creado_en,
+                DATE_FORMAT(a.creado_en, '%d/%m/%Y %H:%i') AS creado_en_texto
+            FROM historial_mesas_armados a
+            WHERE {$whereArmados}
+            ORDER BY a.creado_en DESC, a.id_armado_historial DESC
+            LIMIT {$limiteArmados}
+        ");
         $stmtArmados->execute($paramsArmados);
         $armados = $stmtArmados->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
@@ -91,6 +170,266 @@ function mesas_historial_listar(): void
     }
 }
 
+
+function mesas_historial_obtener_armados_exportacion(PDO $pdo, string $busqueda, int $limiteArmados): array
+{
+    $whereArmados = '1 = 1';
+    $paramsArmados = [];
+
+    if ($busqueda !== '') {
+        $condicionArmado = mesas_historial_like_sql([
+            "COALESCE(a.codigo_armado, '')",
+            "COALESCE(a.motivo, '')",
+            "CAST(a.total_mesas AS CHAR)",
+            "CAST(a.total_previas AS CHAR)",
+            "CAST(a.total_grupos AS CHAR)",
+            "CAST(a.total_no_agrupadas AS CHAR)",
+            "DATE_FORMAT(a.creado_en, '%d/%m/%Y %H:%i')",
+        ], 'exp_arm_busq_', $busqueda, $paramsArmados);
+
+        $condicionDetalleArmado = mesas_historial_like_sql([
+            "COALESCE(d.alumno, '')",
+            "COALESCE(d.dni, '')",
+            "COALESCE(NULLIF(d.materia, ''), mat_det.materia, '')",
+            "COALESCE(NULLIF(d.docente, ''), doc_det.docente, '')",
+            "COALESCE(NULLIF(d.condicion, ''), con_det.condicion, '')",
+            "COALESCE(d.tipo_mesa, '')",
+            "COALESCE(d.estado, '')",
+            "COALESCE(d.observacion, '')",
+            "COALESCE(t_det.turno, '')",
+            "CAST(d.numero_mesa AS CHAR)",
+            "CAST(d.numero_grupo AS CHAR)",
+            "DATE_FORMAT(d.fecha_mesa, '%d/%m/%Y')",
+        ], 'exp_arm_det_busq_', $busqueda, $paramsArmados);
+
+        $whereArmados .= " AND (
+            {$condicionArmado}
+            OR EXISTS (
+                SELECT 1
+                FROM historial_mesas_detalle d
+                LEFT JOIN catedras cat_det ON cat_det.id_catedra = d.id_catedra
+                LEFT JOIN materias mat_det ON mat_det.id_materia = COALESCE(NULLIF(d.id_materia, 0), cat_det.id_materia)
+                LEFT JOIN docentes doc_det ON doc_det.id_docente = COALESCE(NULLIF(d.id_docente, 0), cat_det.id_docente)
+                LEFT JOIN condicion con_det ON con_det.id_condicion = d.id_condicion
+                LEFT JOIN turnos t_det ON t_det.id_turno = d.id_turno
+                WHERE d.id_armado_historial = a.id_armado_historial
+                  AND {$condicionDetalleArmado}
+                LIMIT 1
+            )
+        )";
+    }
+
+    $stmtArmados = $pdo->prepare("
+        SELECT
+            a.id_armado_historial,
+            a.codigo_armado,
+            a.motivo,
+            a.total_mesas,
+            a.total_previas,
+            a.total_grupos,
+            a.total_no_agrupadas,
+            a.creado_en,
+            DATE_FORMAT(a.creado_en, '%d/%m/%Y %H:%i') AS creado_en_texto
+        FROM historial_mesas_armados a
+        WHERE {$whereArmados}
+        ORDER BY a.creado_en DESC, a.id_armado_historial DESC
+        LIMIT {$limiteArmados}
+    ");
+    $stmtArmados->execute($paramsArmados);
+
+    return $stmtArmados->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
+function mesas_historial_exportar(): void
+{
+    try {
+        $pdo = db();
+        mesas_historial_asegurar_tablas($pdo);
+
+        $busqueda = trim((string)($_GET['busqueda'] ?? ''));
+        $limiteArmados = mesas_historial_limite($_GET['limite_armados'] ?? null, 1000, 3000);
+        $limiteResultados = mesas_historial_limite($_GET['limite_resultados'] ?? null, 10000, 50000);
+
+        $whereResultados = '1 = 1';
+        $paramsResultados = [];
+        if ($busqueda !== '') {
+            $whereResultados .= ' AND ' . mesas_historial_like_sql([
+                "COALESCE(alumno, '')",
+                "COALESCE(dni, '')",
+                "COALESCE(materia, '')",
+                "COALESCE(docente, '')",
+                "COALESCE(condicion, '')",
+                "COALESCE(tipo_mesa, '')",
+                "COALESCE(estado_resultado, '')",
+                "COALESCE(motivo, '')",
+                "CAST(numero_mesa AS CHAR)",
+                "CAST(numero_grupo AS CHAR)",
+                "DATE_FORMAT(fecha_mesa, '%d/%m/%Y')",
+                "DATE_FORMAT(fecha_nota, '%d/%m/%Y')",
+            ], 'exp_res_busq_', $busqueda, $paramsResultados);
+        }
+
+        $stmtResultados = $pdo->prepare("
+            SELECT
+                id_resultado,
+                id_previa_original,
+                id_mesa,
+                numero_mesa,
+                numero_grupo,
+                fecha_mesa,
+                DATE_FORMAT(fecha_mesa, '%d/%m/%Y') AS fecha_mesa_texto,
+                id_turno,
+                hora,
+                dni,
+                alumno,
+                cursando_id_curso,
+                cursando_id_division,
+                id_materia,
+                materia,
+                materia_id_curso,
+                materia_id_division,
+                id_condicion,
+                condicion,
+                id_catedra,
+                id_docente,
+                docente,
+                tipo_mesa,
+                anio,
+                nota,
+                aprobado,
+                estado_resultado,
+                fecha_nota,
+                DATE_FORMAT(fecha_nota, '%d/%m/%Y') AS fecha_nota_texto,
+                motivo,
+                creado_en
+            FROM historial_previas_resultados
+            WHERE {$whereResultados}
+            ORDER BY fecha_nota DESC, creado_en DESC, id_resultado DESC
+            LIMIT {$limiteResultados}
+        ");
+        $stmtResultados->execute($paramsResultados);
+        $resultados = $stmtResultados->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        foreach ($resultados as &$resultado) {
+            $tipoMesa = strtolower(trim((string)($resultado['tipo_mesa'] ?? '')));
+            $materiaOriginal = trim((string)($resultado['materia'] ?? ''));
+            $resultado['materia_original'] = $materiaOriginal;
+            $resultado['es_taller'] = $tipoMesa === 'taller' ? 1 : 0;
+            $resultado['tipo_mesa_texto'] = $tipoMesa === 'taller' ? 'Taller' : ucfirst($tipoMesa ?: 'Mesa');
+
+            if ($tipoMesa === 'taller') {
+                $resultado['materia'] = $materiaOriginal !== ''
+                    ? 'TALLER COMPLETO · ' . $materiaOriginal
+                    : 'TALLER COMPLETO';
+            }
+        }
+        unset($resultado);
+
+        $armados = mesas_historial_obtener_armados_exportacion($pdo, $busqueda, $limiteArmados);
+        $idsArmados = array_values(array_filter(array_map(static function ($item) {
+            return is_numeric($item['id_armado_historial'] ?? null) ? (int)$item['id_armado_historial'] : 0;
+        }, $armados)));
+
+        $detalle = [];
+
+        if (count($idsArmados) > 0) {
+            $paramsDetalle = [];
+            $placeholders = [];
+
+            foreach ($idsArmados as $i => $idArmado) {
+                $placeholder = ':id_export_' . $i;
+                $placeholders[] = $placeholder;
+                $paramsDetalle[$placeholder] = $idArmado;
+            }
+
+            $stmtDetalle = $pdo->prepare("
+                SELECT
+                    d.id_historial_detalle,
+                    d.id_armado_historial,
+                    a.codigo_armado,
+                    a.motivo AS motivo_armado,
+                    a.creado_en,
+                    DATE_FORMAT(a.creado_en, '%d/%m/%Y %H:%i') AS creado_en_texto,
+                    d.id_mesa_original,
+                    d.numero_mesa,
+                    d.numero_grupo,
+                    d.prioridad,
+                    d.tipo_mesa,
+                    d.id_taller,
+                    d.id_catedra,
+                    d.id_previa_original,
+                    d.id_docente,
+                    d.fecha_mesa,
+                    DATE_FORMAT(d.fecha_mesa, '%d/%m/%Y') AS fecha_mesa_texto,
+                    d.id_turno,
+                    t.turno,
+                    d.estado,
+                    d.observacion,
+                    d.dni,
+                    d.alumno,
+                    d.cursando_id_curso,
+                    curso_cur.nombre_curso AS cursando_curso,
+                    d.cursando_id_division,
+                    div_cur.nombre_division AS cursando_division,
+                    d.id_materia,
+                    COALESCE(NULLIF(d.materia, ''), mat.materia) AS materia,
+                    COALESCE(NULLIF(d.docente, ''), doc.docente, '') AS docente,
+                    d.materia_id_curso,
+                    curso_mat.nombre_curso AS materia_curso,
+                    d.materia_id_division,
+                    div_mat.nombre_division AS materia_division,
+                    d.id_condicion,
+                    COALESCE(NULLIF(d.condicion, ''), con.condicion) AS condicion,
+                    d.nota,
+                    d.fecha_nota,
+                    DATE_FORMAT(d.fecha_nota, '%d/%m/%Y') AS fecha_nota_texto,
+                    d.inscripcion,
+                    d.previa_activa,
+                    d.anio,
+                    d.creado_en_original
+                FROM historial_mesas_detalle d
+                INNER JOIN historial_mesas_armados a ON a.id_armado_historial = d.id_armado_historial
+                LEFT JOIN catedras cat_detalle ON cat_detalle.id_catedra = d.id_catedra
+                LEFT JOIN materias mat ON mat.id_materia = COALESCE(NULLIF(d.id_materia, 0), cat_detalle.id_materia)
+                LEFT JOIN condicion con ON con.id_condicion = d.id_condicion
+                LEFT JOIN docentes doc ON doc.id_docente = COALESCE(NULLIF(d.id_docente, 0), cat_detalle.id_docente)
+                LEFT JOIN turnos t ON t.id_turno = d.id_turno
+                LEFT JOIN curso curso_cur ON curso_cur.id_curso = d.cursando_id_curso
+                LEFT JOIN division div_cur ON div_cur.id_division = d.cursando_id_division
+                LEFT JOIN curso curso_mat ON curso_mat.id_curso = d.materia_id_curso
+                LEFT JOIN division div_mat ON div_mat.id_division = d.materia_id_division
+                WHERE d.id_armado_historial IN (" . implode(',', $placeholders) . ")
+                ORDER BY a.creado_en DESC, d.id_armado_historial DESC, d.numero_grupo IS NULL ASC, d.numero_grupo ASC, d.numero_mesa ASC, d.alumno ASC, d.materia ASC, d.id_historial_detalle ASC
+            ");
+            $stmtDetalle->execute($paramsDetalle);
+            $detalle = $stmtDetalle->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        }
+
+        json_response([
+            'exito' => true,
+            'data' => [
+                'resultados' => $resultados,
+                'armados' => $armados,
+                'detalle' => $detalle,
+                'total_resultados' => count($resultados),
+                'total_armados' => count($armados),
+                'total_detalle' => count($detalle),
+                'busqueda' => $busqueda,
+            ],
+        ]);
+    } catch (Throwable $e) {
+        if (function_exists('log_error')) {
+            log_error($e, 'mesas_historial_exportar');
+        }
+
+        json_response([
+            'exito' => false,
+            'mensaje' => 'Error interno al preparar la exportación del historial.',
+            'detalle' => defined('APP_DEBUG') && APP_DEBUG ? $e->getMessage() : null,
+        ], 500);
+    }
+}
+
 function mesas_historial_detalle_armado(): void
 {
     try {
@@ -112,7 +451,7 @@ function mesas_historial_detalle_armado(): void
             return;
         }
 
-        $stmtDetalle = $pdo->prepare("\n            SELECT\n                d.id_historial_detalle,\n                d.id_armado_historial,\n                d.id_mesa_original,\n                d.numero_mesa,\n                d.numero_grupo,\n                d.prioridad,\n                d.tipo_mesa,\n                d.id_taller,\n                d.id_catedra,\n                d.id_previa_original,\n                d.id_docente,\n                d.fecha_mesa,\n                DATE_FORMAT(d.fecha_mesa, '%d/%m/%Y') AS fecha_mesa_texto,\n                d.id_turno,\n                t.turno,\n                d.estado,\n                d.observacion,\n                d.dni,\n                d.alumno,\n                d.cursando_id_curso,\n                curso_cur.nombre_curso AS cursando_curso,\n                d.cursando_id_division,\n                div_cur.nombre_division AS cursando_division,\n                d.id_materia,\n                COALESCE(d.materia, mat.materia) AS materia,\n                d.materia_id_curso,\n                curso_mat.nombre_curso AS materia_curso,\n                d.materia_id_division,\n                div_mat.nombre_division AS materia_division,\n                d.id_condicion,\n                COALESCE(d.condicion, con.condicion) AS condicion,\n                d.nota,\n                d.fecha_nota,\n                DATE_FORMAT(d.fecha_nota, '%d/%m/%Y') AS fecha_nota_texto,\n                d.inscripcion,\n                d.previa_activa,\n                d.anio,\n                d.creado_en_original\n            FROM historial_mesas_detalle d\n            LEFT JOIN materias mat ON mat.id_materia = d.id_materia\n            LEFT JOIN condicion con ON con.id_condicion = d.id_condicion\n            LEFT JOIN docentes doc ON doc.id_docente = d.id_docente\n            LEFT JOIN turnos t ON t.id_turno = d.id_turno\n            LEFT JOIN curso curso_cur ON curso_cur.id_curso = d.cursando_id_curso\n            LEFT JOIN division div_cur ON div_cur.id_division = d.cursando_id_division\n            LEFT JOIN curso curso_mat ON curso_mat.id_curso = d.materia_id_curso\n            LEFT JOIN division div_mat ON div_mat.id_division = d.materia_id_division\n            WHERE d.id_armado_historial = :id\n            ORDER BY d.numero_grupo IS NULL ASC, d.numero_grupo ASC, d.numero_mesa ASC, d.alumno ASC, d.materia ASC, d.id_historial_detalle ASC\n        ");
+        $stmtDetalle = $pdo->prepare("\n            SELECT\n                d.id_historial_detalle,\n                d.id_armado_historial,\n                d.id_mesa_original,\n                d.numero_mesa,\n                d.numero_grupo,\n                d.prioridad,\n                d.tipo_mesa,\n                d.id_taller,\n                d.id_catedra,\n                d.id_previa_original,\n                d.id_docente,\n                d.fecha_mesa,\n                DATE_FORMAT(d.fecha_mesa, '%d/%m/%Y') AS fecha_mesa_texto,\n                d.id_turno,\n                t.turno,\n                d.estado,\n                d.observacion,\n                d.dni,\n                d.alumno,\n                d.cursando_id_curso,\n                curso_cur.nombre_curso AS cursando_curso,\n                d.cursando_id_division,\n                div_cur.nombre_division AS cursando_division,\n                d.id_materia,\n                COALESCE(NULLIF(d.materia, ''), mat.materia) AS materia,\n                COALESCE(NULLIF(d.docente, ''), doc.docente, '') AS docente,\n                d.materia_id_curso,\n                curso_mat.nombre_curso AS materia_curso,\n                d.materia_id_division,\n                div_mat.nombre_division AS materia_division,\n                d.id_condicion,\n                COALESCE(NULLIF(d.condicion, ''), con.condicion) AS condicion,\n                d.nota,\n                d.fecha_nota,\n                DATE_FORMAT(d.fecha_nota, '%d/%m/%Y') AS fecha_nota_texto,\n                d.inscripcion,\n                d.previa_activa,\n                d.anio,\n                d.creado_en_original\n            FROM historial_mesas_detalle d\n            LEFT JOIN catedras cat_detalle ON cat_detalle.id_catedra = d.id_catedra\n            LEFT JOIN materias mat ON mat.id_materia = COALESCE(NULLIF(d.id_materia, 0), cat_detalle.id_materia)\n            LEFT JOIN condicion con ON con.id_condicion = d.id_condicion\n            LEFT JOIN docentes doc ON doc.id_docente = COALESCE(NULLIF(d.id_docente, 0), cat_detalle.id_docente)\n            LEFT JOIN turnos t ON t.id_turno = d.id_turno\n            LEFT JOIN curso curso_cur ON curso_cur.id_curso = d.cursando_id_curso\n            LEFT JOIN division div_cur ON div_cur.id_division = d.cursando_id_division\n            LEFT JOIN curso curso_mat ON curso_mat.id_curso = d.materia_id_curso\n            LEFT JOIN division div_mat ON div_mat.id_division = d.materia_id_division\n            WHERE d.id_armado_historial = :id\n            ORDER BY d.numero_grupo IS NULL ASC, d.numero_grupo ASC, d.numero_mesa ASC, d.alumno ASC, d.materia ASC, d.id_historial_detalle ASC\n        ");
         $stmtDetalle->execute([':id' => $idArmado]);
         $detalle = $stmtDetalle->fetchAll(PDO::FETCH_ASSOC) ?: [];
         // Desde esta versión no se guardan tablas separadas para grupos/no agrupadas.

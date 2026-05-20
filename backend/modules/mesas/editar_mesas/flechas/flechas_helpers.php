@@ -180,15 +180,16 @@ function mesas_editar_flechas_obtener_grupos_candidatos(PDO $pdo, int $numeroMes
         . '    MAX(a.area) AS area, '
         . '    COUNT(*) AS cantidad_numeros, '
         . '    SUM(g.cantidad_alumnos) AS cantidad_alumnos, '
-        . '    SUM(CASE WHEN g.tipo_mesa = "taller" THEN 1 ELSE 0 END) AS cantidad_talleres '
+        . '    SUM(CASE WHEN g.tipo_mesa = "taller" OR g.prioridad = 1 THEN 1 ELSE 0 END) AS cantidad_talleres, '
+        . '    COALESCE(MAX(se.slots_extra), 0) AS slots_extra '
         . 'FROM mesas_grupos g '
         . 'LEFT JOIN turnos t ON t.id_turno = g.id_turno '
         . 'LEFT JOIN areas a ON a.id_area = g.id_area '
+        . 'LEFT JOIN mesas_grupos_slots_extra se ON se.numero_grupo = g.numero_grupo '
         . 'WHERE g.id_area = ? '
         . '  AND g.numero_mesa <> ? '
         . ($numeroGrupoOrigen > 0 ? '  AND g.numero_grupo <> ? ' : '')
         . 'GROUP BY g.numero_grupo '
-        . 'HAVING cantidad_numeros < 4 AND cantidad_talleres = 0 '
         . 'ORDER BY MIN(g.fecha_mesa) ASC, MIN(g.id_turno) ASC, g.numero_grupo ASC';
 
     $params = [$idArea, $numeroMesa];
@@ -221,8 +222,9 @@ function mesas_editar_flechas_validar_destino(PDO $pdo, int $numeroMesa, array $
         $errores[] = 'El grupo destino no es válido.';
     }
 
-    if ($cantidadDestino >= 4) {
-        $errores[] = 'El grupo destino ya tiene 4 números de mesa.';
+    $capacidadDestino = mesas_editar_capacidad_slots_fila($pdo, $grupoDestino);
+    if ($cantidadDestino >= (int)$capacidadDestino['capacidad_slots']) {
+        $errores[] = 'El grupo destino no tiene slots libres. Habilitá un nuevo slot desde edición para poder mover otro número.';
     }
 
     if ((int)($grupoDestino['id_area'] ?? 0) !== (int)($metaOrigen['id_area'] ?? 0)) {
@@ -281,6 +283,7 @@ function mesas_editar_flechas_validar_destino(PDO $pdo, int $numeroMesa, array $
 function mesas_editar_flechas_normalizar_destino_salida(PDO $pdo, array $grupo, array $validacion): array
 {
     $numeroGrupo = (int)($grupo['numero_grupo'] ?? 0);
+    $capacidad = mesas_editar_capacidad_slots_fila($pdo, $grupo);
 
     return [
         'numero_grupo' => $numeroGrupo,
@@ -293,7 +296,11 @@ function mesas_editar_flechas_normalizar_destino_salida(PDO $pdo, array $grupo, 
         'id_area' => $grupo['id_area'] !== null ? (int)$grupo['id_area'] : null,
         'area' => trim((string)($grupo['area'] ?? '')),
         'cantidad_numeros' => (int)($grupo['cantidad_numeros'] ?? 0),
-        'slots_libres' => max(0, 4 - (int)($grupo['cantidad_numeros'] ?? 0)),
+        'slots_libres' => (int)$capacidad['slots_libres'],
+        'slots_extra' => (int)$capacidad['slots_extra'],
+        'capacidad_slots' => (int)$capacidad['capacidad_slots'],
+        'capacidad_base_slots' => (int)$capacidad['capacidad_base_slots'],
+        'es_grupo_taller' => !empty($capacidad['es_grupo_taller']),
         'cantidad_alumnos' => (int)($grupo['cantidad_alumnos'] ?? 0),
         'numeros' => mesas_editar_flechas_obtener_numeros_grupo($pdo, $numeroGrupo),
         'valido' => (bool)$validacion['valido'],
@@ -408,10 +415,12 @@ function mesas_editar_flechas_mover_numero(PDO $pdo, int $numeroMesa, int $numer
         . '    MIN(g.id_turno) AS id_turno, MIN(g.hora) AS hora, MAX(t.turno) AS turno, '
         . '    MIN(g.id_area) AS id_area, MAX(a.area) AS area, COUNT(*) AS cantidad_numeros, '
         . '    SUM(g.cantidad_alumnos) AS cantidad_alumnos, '
-        . '    SUM(CASE WHEN g.tipo_mesa = "taller" THEN 1 ELSE 0 END) AS cantidad_talleres '
+        . '    SUM(CASE WHEN g.tipo_mesa = "taller" OR g.prioridad = 1 THEN 1 ELSE 0 END) AS cantidad_talleres, '
+        . '    COALESCE(MAX(se.slots_extra), 0) AS slots_extra '
         . 'FROM mesas_grupos g '
         . 'LEFT JOIN turnos t ON t.id_turno = g.id_turno '
         . 'LEFT JOIN areas a ON a.id_area = g.id_area '
+        . 'LEFT JOIN mesas_grupos_slots_extra se ON se.numero_grupo = g.numero_grupo '
         . 'WHERE g.numero_grupo = ? '
         . 'GROUP BY g.numero_grupo '
         . 'LIMIT 1'

@@ -159,6 +159,164 @@ function mesas_editar_tipo_desde_payload(array $data): string
     return in_array($tipo, ['grupo', 'no_agrupada'], true) ? $tipo : 'grupo';
 }
 
+
+function mesas_editar_slots_extra_asegurar_tabla(PDO $pdo): void
+{
+    $pdo->exec('
+        CREATE TABLE IF NOT EXISTS mesas_grupos_slots_extra (
+            numero_grupo INT UNSIGNED NOT NULL,
+            slots_extra TINYINT UNSIGNED NOT NULL DEFAULT 0,
+            actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (numero_grupo)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ');
+
+    // Evita que queden slots extra enganchados a grupos de armados anteriores.
+    try {
+        $pdo->exec('
+            DELETE se
+            FROM mesas_grupos_slots_extra se
+            LEFT JOIN mesas_grupos g ON g.numero_grupo = se.numero_grupo
+            WHERE g.numero_grupo IS NULL
+        ');
+    } catch (Throwable $e) {
+        // No corta la edición si la limpieza auxiliar falla.
+    }
+}
+
+function mesas_editar_slots_extra_obtener(PDO $pdo, int $numeroGrupo): int
+{
+    if ($numeroGrupo <= 0) {
+        return 0;
+    }
+
+    try {
+        $stmt = $pdo->prepare('SELECT COALESCE(slots_extra, 0) FROM mesas_grupos_slots_extra WHERE numero_grupo = ? LIMIT 1');
+        $stmt->execute([$numeroGrupo]);
+        return max(0, (int)($stmt->fetchColumn() ?: 0));
+    } catch (Throwable $e) {
+        // Si el proyecto todavía no creó la tabla auxiliar, se comporta como antes: sin slots extra.
+        return 0;
+    }
+}
+
+function mesas_editar_slots_extra_incrementar(PDO $pdo, int $numeroGrupo, int $maxExtra = 12): int
+{
+    if ($numeroGrupo <= 0) {
+        throw new InvalidArgumentException('Debe indicar el grupo al que querés habilitarle un nuevo slot.');
+    }
+
+    mesas_editar_slots_extra_asegurar_tabla($pdo);
+
+    $maxExtra = max(1, min(20, $maxExtra));
+    $stmt = $pdo->prepare('
+        INSERT INTO mesas_grupos_slots_extra (numero_grupo, slots_extra)
+        VALUES (?, 1)
+        ON DUPLICATE KEY UPDATE
+            slots_extra = LEAST(slots_extra + 1, ?),
+            actualizado_en = CURRENT_TIMESTAMP
+    ');
+    $stmt->execute([$numeroGrupo, $maxExtra]);
+
+    return mesas_editar_slots_extra_obtener($pdo, $numeroGrupo);
+}
+
+function mesas_editar_slots_extra_decrementar(PDO $pdo, int $numeroGrupo): int
+{
+    if ($numeroGrupo <= 0) {
+        throw new InvalidArgumentException('Debe indicar el grupo al que querés quitarle el slot libre.');
+    }
+
+    mesas_editar_slots_extra_asegurar_tabla($pdo);
+
+    $actual = mesas_editar_obtener_grupo_hidratado($pdo, $numeroGrupo);
+    if (!$actual) {
+        throw new RuntimeException('No se encontró el grupo al que querés quitarle el slot libre.');
+    }
+
+    $slotsExtra = (int)($actual['slots_extra'] ?? 0);
+    $slotsLibres = (int)($actual['slots_libres'] ?? 0);
+
+    if ($slotsExtra <= 0) {
+        throw new InvalidArgumentException('Este grupo no tiene slots agregados manualmente para eliminar.');
+    }
+
+    if ($slotsLibres <= 0) {
+        throw new InvalidArgumentException('No se puede eliminar el slot porque ya está ocupado por un número de mesa.');
+    }
+
+    $stmt = $pdo->prepare('
+        UPDATE mesas_grupos_slots_extra
+        SET slots_extra = GREATEST(slots_extra - 1, 0),
+            actualizado_en = CURRENT_TIMESTAMP
+        WHERE numero_grupo = ? AND slots_extra > 0
+    ');
+    $stmt->execute([$numeroGrupo]);
+
+    $pdo->prepare('DELETE FROM mesas_grupos_slots_extra WHERE numero_grupo = ? AND slots_extra <= 0')->execute([$numeroGrupo]);
+
+    return mesas_editar_slots_extra_obtener($pdo, $numeroGrupo);
+}
+
+function mesas_editar_grupo_es_taller_por_numeros(array $numeros, array $grupo = []): bool
+{
+    foreach ($numeros as $numero) {
+        $tipo = mb_strtolower(trim((string)($numero['tipo_mesa'] ?? $numero['tipo_numero'] ?? $numero['tipo'] ?? '')), 'UTF-8');
+        if ($tipo === 'taller' || str_contains($tipo, 'taller')) {
+            return true;
+        }
+
+        if ((int)($numero['prioridad'] ?? $numero['prioridad_numero'] ?? 0) === 1) {
+            return true;
+        }
+    }
+
+    $textoTipos = mb_strtolower(trim((string)($grupo['tipos_mesa_texto'] ?? $grupo['tipo_mesa'] ?? '')), 'UTF-8');
+    return $textoTipos !== '' && str_contains($textoTipos, 'taller');
+}
+
+function mesas_editar_capacidad_slots_calcular(int $cantidadNumeros, bool $esTaller, int $slotsExtra = 0): array
+{
+    $cantidadNumeros = max(0, $cantidadNumeros);
+    $slotsExtra = max(0, $slotsExtra);
+
+    // Mesas comunes: mantienen 4 slots base. Mesas especiales/taller: arrancan con solo sus slots reales.
+    $base = $esTaller ? 1 : 4;
+    $capacidad = max($cantidadNumeros, $base + $slotsExtra);
+
+    return [
+        'es_grupo_taller' => $esTaller,
+        'slots_extra' => $slotsExtra,
+        'capacidad_base_slots' => $base,
+        'capacidad_slots' => $capacidad,
+        'slots_libres' => max(0, $capacidad - $cantidadNumeros),
+    ];
+}
+
+function mesas_editar_capacidad_slots_fila(PDO $pdo, array $grupo): array
+{
+    $numeroGrupo = (int)($grupo['numero_grupo'] ?? $grupo['id_grupo'] ?? 0);
+    $cantidadNumeros = (int)($grupo['cantidad_numeros'] ?? 0);
+    $cantidadTalleres = (int)($grupo['cantidad_talleres'] ?? 0);
+    $slotsExtra = array_key_exists('slots_extra', $grupo)
+        ? (int)$grupo['slots_extra']
+        : mesas_editar_slots_extra_obtener($pdo, $numeroGrupo);
+
+    return mesas_editar_capacidad_slots_calcular($cantidadNumeros, $cantidadTalleres > 0, $slotsExtra);
+}
+
+function mesas_editar_aplicar_slots_extra_a_grupo(PDO $pdo, array $grupo): array
+{
+    $numeroGrupo = (int)($grupo['numero_grupo'] ?? $grupo['id_grupo'] ?? 0);
+    $numeros = is_array($grupo['numeros'] ?? null) ? $grupo['numeros'] : [];
+    $cantidadNumeros = count($numeros) > 0 ? count($numeros) : (int)($grupo['cantidad_numeros'] ?? 0);
+    $esTaller = mesas_editar_grupo_es_taller_por_numeros($numeros, $grupo);
+    $slotsExtra = mesas_editar_slots_extra_obtener($pdo, $numeroGrupo);
+    $capacidad = mesas_editar_capacidad_slots_calcular($cantidadNumeros, $esTaller, $slotsExtra);
+
+    return array_merge($grupo, $capacidad);
+}
+
 function mesas_editar_obtener_grupo_hidratado(PDO $pdo, int $numeroGrupo): ?array
 {
     mesas_armado_grupos_asegurar_tablas($pdo);
@@ -199,8 +357,16 @@ function mesas_editar_obtener_grupo_hidratado(PDO $pdo, int $numeroGrupo): ?arra
         return null;
     }
 
+    if (!$pdo->inTransaction()) {
+        mesas_editar_slots_extra_asegurar_tabla($pdo);
+    }
+
     $grupos = mesas_armado_grupos_hidratar_detalles($pdo, [$base], [$numeroGrupo]);
-    return $grupos[0] ?? null;
+    if (empty($grupos[0]) || !is_array($grupos[0])) {
+        return null;
+    }
+
+    return mesas_editar_aplicar_slots_extra_a_grupo($pdo, $grupos[0]);
 }
 
 function mesas_editar_obtener_no_agrupada_hidratada(PDO $pdo, ?int $idNoAgrupada = null, ?int $numeroMesa = null): ?array
