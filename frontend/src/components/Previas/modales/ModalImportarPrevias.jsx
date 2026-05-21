@@ -133,7 +133,7 @@ export default function ModalImportarPrevias({
             </div>
             <h3>1. Descargá la plantilla</h3>
             <p>
-              Usá exactamente esas cabeceras para evitar errores. La importación no pide nota ni fecha de nota; esos campos quedan en NULL.
+              Usá exactamente esas cabeceras para evitar errores.
             </p>
             <button type="button" className="mov-btn mov-btn--soft modal-importar-previas__download" onClick={descargarPlantilla} disabled={descargando || procesando || previsualizando}>
               <FontAwesomeIcon icon={descargando ? faSpinner : faDownload} spin={descargando} />
@@ -143,7 +143,7 @@ export default function ModalImportarPrevias({
             <div className="modal-importar-previas__rules">
               <strong>Comparación segura</strong>
               <span>Si coincide DNI + materia + curso/división de la materia + año, actualiza la previa existente.</span>
-              <span>Si no existe, crea una nueva con inscripción 0 y activo 1.</span>
+              <span>Si no existe, crea una nueva</span>
               <span>Si hay errores, no guarda nada hasta corregir el Excel.</span>
             </div>
           </section>
