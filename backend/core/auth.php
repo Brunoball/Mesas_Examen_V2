@@ -118,6 +118,9 @@ function usuario_actual(): ?array
         'rol' => (string)$ctx['rol'],
         'tema' => (string)$ctx['tema'],
         'idTenant' => (int)$ctx['idTenant'],
+        'tenant_nombre' => (string)$ctx['tenant_nombre'],
+        'logo_url' => $ctx['logo_url'] ?? null,
+        'logo_icono_url' => $ctx['logo_icono_url'] ?? ($ctx['logo_url'] ?? null),
         'tenant' => [
             'idTenant' => (int)$ctx['idTenant'],
             'nombre' => (string)$ctx['tenant_nombre'],

@@ -167,16 +167,11 @@ export const previasApi = {
     return obtenerArrayMateriasPorCurso(respuesta);
   },
 
-  listar: (pagina = 1, porPagina = POR_PAGINA_MAXIMO, filtros = {}) => {
-    const hayBusqueda = String(filtros?.busqueda || '').trim() !== '';
-
-    return apiGet('previas_listar', limpiarFiltros({
-      pagina: hayBusqueda ? 1 : pagina,
-      por_pagina: hayBusqueda ? undefined : Math.min(POR_PAGINA_MAXIMO, Number(porPagina || POR_PAGINA_MAXIMO)),
-      sin_paginacion: hayBusqueda ? 1 : undefined,
-      ...filtros,
-    }));
-  },
+  listar: (pagina = 1, porPagina = POR_PAGINA_MAXIMO, filtros = {}) => apiGet('previas_listar', limpiarFiltros({
+    pagina,
+    por_pagina: Math.min(POR_PAGINA_MAXIMO, Number(porPagina || POR_PAGINA_MAXIMO)),
+    ...filtros,
+  })),
 
   // Se mantiene por compatibilidad con otros llamados antiguos, pero la pantalla ya no lo usa.
   async listarTodos(activo = 1, filtros = {}) {
@@ -228,8 +223,27 @@ export const previasApi = {
       motivo,
     }),
 
-  eliminar: (idPrevia) =>
-    apiPost('previas_eliminar', {
+  verificarEliminacion: (idPrevia) =>
+    apiPost('previas_verificar_eliminacion', {
       id_previa: idPrevia,
     }),
+
+  eliminar: (idPrevia, opciones = {}) =>
+    apiPost('previas_eliminar', {
+      id_previa: idPrevia,
+      forzar: opciones.forzar ? 1 : 0,
+      confirmar_eliminacion_vinculada: opciones.forzar ? 1 : 0,
+    }),
+
+  plantillaImportacion: () => apiGet('previas_plantilla_importacion'),
+
+  previsualizarExcel: ({ nombreArchivo, archivoBase64 }) => apiPost('previas_previsualizar_excel', {
+    nombre_archivo: nombreArchivo,
+    archivo_base64: archivoBase64,
+  }),
+
+  importarExcel: ({ nombreArchivo, archivoBase64 }) => apiPost('previas_importar_excel', {
+    nombre_archivo: nombreArchivo,
+    archivo_base64: archivoBase64,
+  }),
 };

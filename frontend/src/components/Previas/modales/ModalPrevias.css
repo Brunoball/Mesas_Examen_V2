@@ -136,3 +136,469 @@
     min-height:38px;
   }
 }
+
+/* =========================
+   Importación masiva de previas
+========================= */
+.modal-importar-previas-overlay{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  background:rgba(5, 17, 34, .46);
+  backdrop-filter:blur(4px);
+}
+
+.modal-importar-previas{
+  width:min(1080px, 96vw);
+  max-height:min(86vh, 820px);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  border-radius:22px;
+  background:#fff;
+  box-shadow:0 26px 80px rgba(5, 17, 34, .28);
+}
+
+.modal-importar-previas__header{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:18px;
+  padding:22px 24px 18px;
+  border-bottom:1px solid color-mix(in srgb, var(--mov-border, #dfe6ef) 72%, #fff);
+}
+
+.modal-importar-previas__header h2{
+  margin:0;
+  color:var(--balto-ink, #0a2540);
+  font-size:21px;
+  font-weight:760;
+}
+
+.modal-importar-previas__header p{
+  margin:6px 0 0;
+  color:var(--mov-muted, #637083);
+  font-size:13px;
+  line-height:1.45;
+}
+
+.modal-previa-close{
+  width:36px;
+  height:36px;
+  border:1px solid color-mix(in srgb, var(--mov-border, #dfe6ef) 80%, #fff);
+  border-radius:12px;
+  background:#fff;
+  color:var(--balto-ink, #0a2540);
+  cursor:pointer;
+}
+
+.modal-previa-close:hover:not(:disabled){
+  background:color-mix(in srgb, var(--balto-bg, #eef5ff) 70%, #fff);
+}
+
+.modal-importar-previas__body{
+  min-height:0;
+  overflow:auto;
+  display:grid;
+  grid-template-columns:minmax(280px, .82fr) minmax(0, 1.18fr);
+  gap:16px;
+  padding:20px 24px;
+  background:linear-gradient(180deg, #fff 0%, color-mix(in srgb, var(--balto-bg, #f3f7ff) 52%, #fff) 100%);
+}
+
+.modal-importar-previas__panel{
+  min-width:0;
+  border:1px solid color-mix(in srgb, var(--mov-border, #dfe6ef) 76%, #fff);
+  border-radius:18px;
+  padding:18px;
+  background:#fff;
+  box-shadow:0 14px 34px rgba(10, 37, 64, .08);
+}
+
+.modal-importar-previas__panel h3{
+  margin:0 0 8px;
+  color:var(--balto-ink, #0a2540);
+  font-size:16px;
+  font-weight:740;
+}
+
+.modal-importar-previas__panel p{
+  margin:0 0 14px;
+  color:var(--mov-muted, #637083);
+  font-size:13px;
+  line-height:1.5;
+}
+
+.modal-importar-previas__iconBox{
+  width:52px;
+  height:52px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin-bottom:12px;
+  border-radius:16px;
+  background:color-mix(in srgb, var(--balto-action, #0055bb) 10%, #fff);
+  color:var(--balto-action, #0055bb);
+  font-size:24px;
+}
+
+.modal-importar-previas__download{
+  width:100%;
+  justify-content:center;
+}
+
+.modal-importar-previas__rules{
+  margin-top:16px;
+  padding:14px;
+  display:grid;
+  gap:8px;
+  border-radius:14px;
+  background:color-mix(in srgb, var(--balto-bg, #eef5ff) 70%, #fff);
+  color:var(--mov-muted, #637083);
+  font-size:12px;
+  line-height:1.4;
+}
+
+.modal-importar-previas__rules strong{
+  color:var(--balto-ink, #0a2540);
+  font-size:13px;
+}
+
+.modal-importar-previas__drop{
+  min-height:210px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  padding:26px;
+  border:2px dashed color-mix(in srgb, var(--balto-action, #0055bb) 25%, #d8e1ef);
+  border-radius:18px;
+  background:color-mix(in srgb, var(--balto-bg, #eef5ff) 52%, #fff);
+  color:var(--balto-ink, #0a2540);
+  text-align:center;
+  cursor:pointer;
+  transition:transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
+}
+
+.modal-importar-previas__drop:hover,
+.modal-importar-previas__drop.is-dragging{
+  transform:translateY(-1px);
+  border-color:var(--balto-action, #0055bb);
+  background:color-mix(in srgb, var(--balto-action, #0055bb) 8%, #fff);
+  box-shadow:0 16px 34px rgba(10,37,64,.10);
+}
+
+.modal-importar-previas__drop.has-file{
+  border-style:solid;
+  border-color:color-mix(in srgb, var(--balto-success, #16a34a) 34%, #d8e1ef);
+  background:color-mix(in srgb, var(--balto-success, #16a34a) 7%, #fff);
+}
+
+.modal-importar-previas__dropIcon{
+  font-size:38px;
+  color:var(--balto-action, #0055bb);
+}
+
+.modal-importar-previas__fileInfo{
+  display:grid;
+  gap:4px;
+}
+
+.modal-importar-previas__fileInfo strong{
+  color:var(--balto-ink, #0a2540);
+  font-size:15px;
+}
+
+.modal-importar-previas__fileInfo span{
+  color:var(--mov-muted, #637083);
+  font-size:12px;
+}
+
+.modal-importar-previas__resultado{
+  margin-top:14px;
+  padding:14px;
+  border-radius:16px;
+  border:1px solid transparent;
+  font-size:13px;
+}
+
+.modal-importar-previas__resultado.is-ok{
+  border-color:color-mix(in srgb, var(--balto-success, #16a34a) 24%, #fff);
+  background:color-mix(in srgb, var(--balto-success, #16a34a) 9%, #fff);
+  color:color-mix(in srgb, var(--balto-success, #16a34a) 62%, #0a2540);
+}
+
+.modal-importar-previas__resultado.is-error{
+  border-color:color-mix(in srgb, var(--balto-danger, #dc2626) 24%, #fff);
+  background:color-mix(in srgb, var(--balto-danger, #dc2626) 8%, #fff);
+  color:color-mix(in srgb, var(--balto-danger, #dc2626) 66%, #0a2540);
+}
+
+.modal-importar-previas__resultadoHead{
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+}
+
+.modal-importar-previas__stats{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:12px;
+}
+
+.modal-importar-previas__stats span{
+  padding:6px 10px;
+  border-radius:999px;
+  background:#fff;
+  color:var(--balto-ink, #0a2540);
+  font-size:12px;
+}
+
+.modal-importar-previas__errores{
+  max-height:180px;
+  overflow:auto;
+  display:grid;
+  gap:6px;
+  margin-top:12px;
+  padding-right:4px;
+}
+
+.modal-importar-previas__errores span,
+.modal-importar-previas__errores b{
+  display:block;
+  padding:7px 9px;
+  border-radius:10px;
+  background:#fff;
+  color:inherit;
+  font-size:12px;
+  line-height:1.35;
+}
+
+.modal-importar-previas__footer{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+  padding:16px 24px 20px;
+  border-top:1px solid color-mix(in srgb, var(--mov-border, #dfe6ef) 72%, #fff);
+  background:#fff;
+}
+
+.previas-actionsHead{
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+@media (max-width:860px){
+  .modal-importar-previas__body{
+    grid-template-columns:1fr;
+  }
+
+  .modal-importar-previas{
+    max-height:92vh;
+  }
+}
+
+@media (max-width:620px){
+  .modal-importar-previas-overlay{
+    padding:10px;
+  }
+
+  .modal-importar-previas__header,
+  .modal-importar-previas__body,
+  .modal-importar-previas__footer{
+    padding-left:16px;
+    padding-right:16px;
+  }
+
+  .modal-importar-previas__footer{
+    flex-direction:column-reverse;
+  }
+
+  .modal-importar-previas__footer .mov-btn{
+    width:100%;
+    justify-content:center;
+  }
+}
+
+/* =========================================================
+   IMPORTACIÓN MASIVA — VISTA PREVIA EXCEL
+   ========================================================= */
+.modal-importar-previas {
+  width: min(1180px, 96vw);
+  max-height: 92vh;
+  overflow: auto;
+}
+
+.modal-importar-previas__preview {
+  margin: 0 22px 18px;
+  padding: 16px;
+  border: 1px solid rgba(10, 37, 64, .12);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: 0 12px 28px rgba(10, 37, 64, .08);
+}
+
+.modal-importar-previas__previewHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 12px;
+}
+
+.modal-importar-previas__previewHead h3 {
+  margin: 0 0 5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #0a2540;
+  font-size: 1.05rem;
+}
+
+.modal-importar-previas__previewHead p,
+.modal-importar-previas__previewNote {
+  margin: 0;
+  color: #60758f;
+  font-size: .88rem;
+}
+
+.modal-importar-previas__stats--preview {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.modal-importar-previas__previewTableWrap {
+  max-height: 310px;
+  overflow: auto;
+  border: 1px solid rgba(10, 37, 64, .1);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.modal-importar-previas__previewTable {
+  width: 100%;
+  min-width: 1050px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: .84rem;
+}
+
+.modal-importar-previas__previewTable th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f1f6fb;
+  color: #0a2540;
+  text-align: left;
+  padding: 11px 12px;
+  border-bottom: 1px solid rgba(10, 37, 64, .1);
+  font-weight: 800;
+}
+
+.modal-importar-previas__previewTable td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(10, 37, 64, .07);
+  color: #21354c;
+  vertical-align: top;
+}
+
+.modal-importar-previas__previewTable tbody tr:hover td {
+  background: #f9fcff;
+}
+
+.modal-importar-previas__accion {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 86px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: .75rem;
+  font-weight: 800;
+  color: #0a2540;
+  background: #eef3f8;
+}
+
+.modal-importar-previas__accion.is-new {
+  color: #087443;
+  background: rgba(34, 173, 92, .12);
+}
+
+.modal-importar-previas__accion.is-update {
+  color: #92400e;
+  background: rgba(245, 158, 11, .16);
+}
+
+@media (max-width: 760px) {
+  .modal-importar-previas__previewHead {
+    flex-direction: column;
+  }
+
+  .modal-importar-previas__stats--preview {
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+}
+
+/* =========================================================
+   ELIMINACIÓN PREVIAS — DOBLE CONFIRMACIÓN
+   ========================================================= */
+.previas-delete-risk {
+  margin-top: 12px;
+  border: 1px solid rgba(225, 61, 69, .22);
+  background: rgba(225, 61, 69, .075);
+  color: #8f1d25;
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.previas-delete-risk strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #8f1d25;
+}
+
+.previas-delete-risk p {
+  margin: 0 0 8px;
+  line-height: 1.35;
+}
+
+.previas-delete-risk ul {
+  margin: 0 0 10px 18px;
+  padding: 0;
+}
+
+.previas-delete-risk li {
+  margin: 3px 0;
+}
+
+.previas-delete-risk__check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: .9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.previas-delete-risk__check input {
+  margin-top: 3px;
+  accent-color: #e13d45;
+}
+
+.previas-delete-loading {
+  margin-top: 12px;
+  border: 1px solid rgba(0, 85, 187, .14);
+  background: rgba(0, 85, 187, .06);
+  color: #0a4a8f;
+  border-radius: 14px;
+  padding: 12px;
+  font-weight: 700;
+}

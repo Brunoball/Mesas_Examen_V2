@@ -53,6 +53,24 @@ function login_registrar_auditoria_master(PDO $master, ?int $idUsuarioMaster, ?i
     }
 }
 
+function login_usuario_actual(): void
+{
+    $usuario = function_exists('usuario_actual') ? usuario_actual() : null;
+
+    if (!$usuario) {
+        json_response([
+            'exito' => false,
+            'mensaje' => 'Sesión inválida o vencida.',
+        ], 401);
+    }
+
+    json_response([
+        'exito' => true,
+        'usuario' => $usuario,
+        'tenant' => $usuario['tenant'] ?? null,
+    ]);
+}
+
 function login_inicio(): void
 {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -191,12 +209,22 @@ function login_inicio(): void
                 'rol'               => $rol,
                 'tema'              => (string)($usuario['tema'] ?? 'claro'),
                 'idTenant'          => (int)$usuario['idTenant'],
+                'tenant_nombre'     => (string)$usuario['tenant_nombre'],
+                'logo_url'          => $usuario['logo_url'] ?? null,
+                'logo_icono_url'    => $usuario['logo_icono_url'] ?? ($usuario['logo_url'] ?? null),
+                'tenant'            => [
+                    'idTenant'      => (int)$usuario['idTenant'],
+                    'nombre'        => (string)$usuario['tenant_nombre'],
+                    'logo_url'      => $usuario['logo_url'] ?? null,
+                    'logo_icono_url' => $usuario['logo_icono_url'] ?? ($usuario['logo_url'] ?? null),
+                    'db_name'       => (string)$usuario['db_name'],
+                ],
             ],
             'tenant'     => [
                 'idTenant'      => (int)$usuario['idTenant'],
                 'nombre'        => (string)$usuario['tenant_nombre'],
                 'logo_url'      => $usuario['logo_url'] ?? null,
-                'logo_icono_url' => $usuario['logo_icono_url'] ?? null,
+                'logo_icono_url' => $usuario['logo_icono_url'] ?? ($usuario['logo_url'] ?? null),
                 'db_name'       => (string)$usuario['db_name'],
             ],
         ]);

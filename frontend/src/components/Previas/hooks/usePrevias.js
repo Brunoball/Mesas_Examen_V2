@@ -59,6 +59,54 @@ function claveMaterias(idCurso, idDivision) {
   return `${Number(idCurso || 0)}-${Number(idDivision || 0)}`;
 }
 
+function leerArchivoComoBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const resultado = String(reader.result || '');
+      const base64 = resultado.includes(',') ? resultado.split(',').pop() : resultado;
+      resolve(base64);
+    };
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo seleccionado.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function descargarBase64ComoArchivo(base64, nombreArchivo, mime) {
+  const byteCharacters = atob(base64);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i += 1) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const blob = new Blob([new Uint8Array(byteNumbers)], { type: mime || 'application/octet-stream' });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = nombreArchivo || 'archivo.xlsx';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+
+function mensajeErrorUsuario(error, fallback) {
+  const raw = String(error?.data?.mensaje || error?.message || fallback || '').trim();
+  const tecnico = /La API no devolvió JSON válido|Undefined array key|<br\s*\/?>|<b>|Warning|Notice|Fatal error|\.php|SQLSTATE|Stack trace/i.test(raw);
+
+  if (tecnico) {
+    return fallback || 'No se pudo procesar la operación. Revisá los datos ingresados y volvé a intentar.';
+  }
+
+  return raw || fallback || 'No se pudo procesar la operación.';
+}
+
+function tipoToast(tipo) {
+  if (tipo === 'success') return 'exito';
+  if (tipo === 'warning') return 'advertencia';
+  return tipo || 'info';
+}
+
 export function usePrevias() {
   const [previasBase, setPreviasBase] = useState([]);
   const [catalogos, setCatalogos] = useState({ cursos: [], divisiones: [], condiciones: [] });
@@ -72,10 +120,20 @@ export function usePrevias() {
 
   const paginacion = usePaginacion(100);
 
-  const mostrarMensaje = useCallback((tipo, texto) => {
-    setMensaje({ tipo, texto });
+  const cerrarMensaje = useCallback(() => {
     window.clearTimeout(window.__previasMsgTimer);
-    window.__previasMsgTimer = window.setTimeout(() => setMensaje(null), 3800);
+    setMensaje(null);
+  }, []);
+
+  const cerrarError = useCallback(() => {
+    setError('');
+  }, []);
+
+  const mostrarMensaje = useCallback((tipo, texto, duracion = 3800) => {
+    if (!texto) return;
+    setMensaje({ tipo: tipoToast(tipo), texto, duracion });
+    window.clearTimeout(window.__previasMsgTimer);
+    window.__previasMsgTimer = window.setTimeout(() => setMensaje(null), duracion);
   }, []);
 
   const cargarCatalogos = useCallback(async () => {
@@ -129,25 +187,24 @@ export function usePrevias() {
         filtros.busqueda = busquedaLimpia;
       }
 
-      const paginaConsulta = busquedaLimpia !== '' ? 1 : paginacion.pagina;
-      const porPaginaConsulta = paginacion.porPagina;
-
       const res = await previasApi.listar(
-        paginaConsulta,
-        porPaginaConsulta,
+        paginacion.pagina,
+        paginacion.porPagina,
         filtros
       );
 
       setPreviasBase(Array.isArray(res.data) ? res.data : []);
       paginacion.actualizarPaginacion(res.paginacion || {});
     } catch (e) {
-      setError(e.message || 'No se pudieron cargar las previas.');
+      const msg = mensajeErrorUsuario(e, 'No se pudieron cargar las previas.');
+      setError(msg);
+      mostrarMensaje('error', msg);
       setPreviasBase([]);
       paginacion.actualizarPaginacion({ pagina: 1, total: 0, paginas: 1 });
     } finally {
       setLoading(false);
     }
-  }, [vista, busquedaDebounced, paginacion.pagina, paginacion.porPagina]);
+  }, [vista, busquedaDebounced, paginacion.pagina, paginacion.porPagina, mostrarMensaje]);
 
   useEffect(() => {
     cargarCatalogos();
@@ -188,7 +245,7 @@ export function usePrevias() {
       const res = await previasApi.obtener(idPrevia);
       return { ok: true, data: res.data };
     } catch (e) {
-      const msg = e.message || 'No se pudo obtener la previa.';
+      const msg = mensajeErrorUsuario(e, 'No se pudo obtener la previa.');
       mostrarMensaje('error', msg);
       return { ok: false, mensaje: msg };
     }
@@ -198,10 +255,10 @@ export function usePrevias() {
     try {
       await previasApi.guardar(payload);
       await cargar();
-      mostrarMensaje('success', payload?.id_previa ? 'Previa actualizada correctamente.' : 'Previa guardada correctamente.');
+      mostrarMensaje('exito', payload?.id_previa ? 'Previa actualizada correctamente.' : 'Previa guardada correctamente.');
       return { ok: true };
     } catch (e) {
-      const msg = e?.data?.mensaje || e.message || 'No se pudo guardar la previa.';
+      const msg = mensajeErrorUsuario(e, 'No se pudo guardar la previa.');
       mostrarMensaje('error', msg);
       return { ok: false, mensaje: msg };
     }
@@ -211,10 +268,10 @@ export function usePrevias() {
     try {
       await previasApi.cambiarEstado(item.id_previa, 0, motivo);
       await cargar();
-      mostrarMensaje('success', 'Previa dada de baja correctamente.');
+      mostrarMensaje('exito', 'Previa dada de baja correctamente.');
       return { ok: true };
     } catch (e) {
-      const msg = e?.data?.mensaje || e.message || 'No se pudo dar de baja la previa.';
+      const msg = mensajeErrorUsuario(e, 'No se pudo dar de baja la previa.');
       mostrarMensaje('error', msg);
       return { ok: false, mensaje: msg };
     }
@@ -224,25 +281,137 @@ export function usePrevias() {
     try {
       await previasApi.cambiarEstado(item.id_previa, 1);
       await cargar();
-      mostrarMensaje('success', 'Previa dada de alta correctamente.');
+      mostrarMensaje('exito', 'Previa dada de alta correctamente.');
       return { ok: true };
     } catch (e) {
-      const msg = e?.data?.mensaje || e.message || 'No se pudo dar de alta la previa.';
+      const msg = mensajeErrorUsuario(e, 'No se pudo dar de alta la previa.');
       mostrarMensaje('error', msg);
       return { ok: false, mensaje: msg };
     }
   }
 
-  async function eliminar(item) {
+  async function verificarEliminacion(item) {
     try {
-      await previasApi.eliminar(item.id_previa);
+      const res = await previasApi.verificarEliminacion(item.id_previa);
+      return { ok: true, data: res?.data || res || {} };
+    } catch (e) {
+      const msg = mensajeErrorUsuario(e, 'No se pudo verificar si la previa tiene mesas o historial.');
+      mostrarMensaje('error', msg);
+      return { ok: false, mensaje: msg, data: null };
+    }
+  }
+
+  async function eliminar(item, opciones = {}) {
+    try {
+      await previasApi.eliminar(item.id_previa, { forzar: Boolean(opciones?.forzar) });
       await cargar();
-      mostrarMensaje('success', 'Previa eliminada correctamente.');
+      mostrarMensaje('exito', 'Previa eliminada correctamente.');
       return { ok: true };
     } catch (e) {
-      const msg = e?.data?.mensaje || e.message || 'No se pudo eliminar la previa.';
+      const msg = mensajeErrorUsuario(e, 'No se pudo eliminar la previa.');
+      mostrarMensaje('error', msg, 5200);
+      return {
+        ok: false,
+        mensaje: msg,
+        data: e?.data?.data || e?.data || null,
+      };
+    }
+  }
+
+  async function descargarPlantillaImportacion() {
+    try {
+      const res = await previasApi.plantillaImportacion();
+      const base64 = res?.archivo_base64 || res?.data?.archivo_base64;
+      const nombre = res?.nombre_archivo || res?.data?.nombre_archivo || 'plantilla_importacion_previas.xlsx';
+      const mime = res?.mime || res?.data?.mime || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+      if (!base64) throw new Error('El backend no devolvió la plantilla.');
+
+      descargarBase64ComoArchivo(base64, nombre, mime);
+      mostrarMensaje('exito', 'Plantilla descargada correctamente.');
+      return { ok: true };
+    } catch (e) {
+      const msg = mensajeErrorUsuario(e, 'No se pudo descargar la plantilla de importación.');
       mostrarMensaje('error', msg);
       return { ok: false, mensaje: msg };
+    }
+  }
+
+  async function previsualizarPreviasExcel(file) {
+    try {
+      if (!file) {
+        return { ok: false, mensaje: 'Seleccioná un archivo Excel .xlsx.' };
+      }
+
+      if (!String(file.name || '').toLowerCase().endsWith('.xlsx')) {
+        return { ok: false, mensaje: 'La previsualización acepta únicamente archivos .xlsx.' };
+      }
+
+      if (Number(file.size || 0) > 8 * 1024 * 1024) {
+        return { ok: false, mensaje: 'El Excel es demasiado pesado. Dividí la carga en archivos más chicos.' };
+      }
+
+      const archivoBase64 = await leerArchivoComoBase64(file);
+      const res = await previasApi.previsualizarExcel({
+        nombreArchivo: file.name,
+        archivoBase64,
+      });
+
+      return {
+        ok: true,
+        mensaje: res?.mensaje || 'Vista previa generada correctamente.',
+        data: res?.data || {},
+      };
+    } catch (e) {
+      const msg = mensajeErrorUsuario(e, 'No se pudo previsualizar el Excel. Corregí el archivo y volvé a intentar.');
+      mostrarMensaje('error', msg, 5200);
+      return {
+        ok: false,
+        mensaje: msg,
+        errores: Array.isArray(e?.data?.errores) ? e.data.errores : [],
+        totalErrores: Number(e?.data?.total_errores || 0),
+      };
+    }
+  }
+
+  async function importarPreviasExcel(file) {
+    try {
+      if (!file) {
+        return { ok: false, mensaje: 'Seleccioná un archivo Excel .xlsx.' };
+      }
+
+      if (!String(file.name || '').toLowerCase().endsWith('.xlsx')) {
+        return { ok: false, mensaje: 'La importación acepta únicamente archivos .xlsx.' };
+      }
+
+      if (Number(file.size || 0) > 8 * 1024 * 1024) {
+        return { ok: false, mensaje: 'El Excel es demasiado pesado. Dividí la carga en archivos más chicos.' };
+      }
+
+      const archivoBase64 = await leerArchivoComoBase64(file);
+      const res = await previasApi.importarExcel({
+        nombreArchivo: file.name,
+        archivoBase64,
+      });
+
+      await cargar();
+      const msg = res?.mensaje || 'Importación completada correctamente.';
+      mostrarMensaje('exito', msg, 4600);
+
+      return {
+        ok: true,
+        mensaje: msg,
+        data: res?.data || {},
+      };
+    } catch (e) {
+      const msg = mensajeErrorUsuario(e, 'No se pudo importar el Excel. Corregí el archivo y volvé a intentar.');
+      mostrarMensaje('error', msg, 5200);
+      return {
+        ok: false,
+        mensaje: msg,
+        errores: Array.isArray(e?.data?.errores) ? e.data.errores : [],
+        totalErrores: Number(e?.data?.total_errores || 0),
+      };
     }
   }
 
@@ -254,6 +423,9 @@ export function usePrevias() {
     loading,
     error,
     mensaje,
+    cerrarMensaje,
+    cerrarError,
+    mostrarMensaje,
     busqueda,
     setBusqueda,
     vista,
@@ -266,6 +438,10 @@ export function usePrevias() {
     guardar,
     darBaja,
     darAlta,
+    verificarEliminacion,
     eliminar,
+    descargarPlantillaImportacion,
+    previsualizarPreviasExcel,
+    importarPreviasExcel,
   };
 }

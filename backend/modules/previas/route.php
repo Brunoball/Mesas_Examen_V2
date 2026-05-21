@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/previas_controller.php';
+require_once __DIR__ . '/previas_importacion_controller.php';
 
 function route_previas(string $action): bool
 {
@@ -33,8 +34,24 @@ function route_previas(string $action): bool
             previas_cambiar_estado();
             return true;
 
+        case 'previas_verificar_eliminacion':
+            previas_verificar_eliminacion();
+            return true;
+
         case 'previas_eliminar':
             previas_eliminar();
+            return true;
+
+        case 'previas_plantilla_importacion':
+            previas_plantilla_importacion();
+            return true;
+
+        case 'previas_previsualizar_excel':
+            previas_previsualizar_excel();
+            return true;
+
+        case 'previas_importar_excel':
+            previas_importar_excel();
             return true;
 
         default:

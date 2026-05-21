@@ -39,6 +39,31 @@ function previas_mayuscula($texto): string
     return $texto === '' ? '' : previas_strtoupper($texto);
 }
 
+
+function previas_tabla_existe(PDO $pdo, string $tabla): bool
+{
+    static $cache = [];
+    $tabla = preg_replace('/[^a-zA-Z0-9_]/', '', $tabla) ?? '';
+
+    if ($tabla === '') {
+        return false;
+    }
+
+    if (array_key_exists($tabla, $cache)) {
+        return $cache[$tabla];
+    }
+
+    try {
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :tabla');
+        $stmt->execute([':tabla' => $tabla]);
+        $cache[$tabla] = ((int)$stmt->fetchColumn()) > 0;
+    } catch (Throwable $e) {
+        $cache[$tabla] = false;
+    }
+
+    return $cache[$tabla];
+}
+
 function previas_columna_existe(PDO $pdo, string $tabla, string $columna): bool
 {
     static $cache = [];
@@ -293,28 +318,32 @@ function previas_catalogos(): void
             log_error($e, __FUNCTION__ . ':condiciones');
         }
 
-        try {
-            $catedras = $pdo->query("
-                SELECT DISTINCT
-                    cat.id_curso,
-                    cu.nombre_curso,
-                    cat.id_division,
-                    divi.nombre_division,
-                    cat.id_materia,
-                    mat.materia
-                FROM catedras cat
-                INNER JOIN curso cu ON cu.id_curso = cat.id_curso
-                INNER JOIN division divi ON divi.id_division = cat.id_division
-                INNER JOIN materias mat ON mat.id_materia = cat.id_materia
-                WHERE cat.activo = 1
-                  AND cu.activo = 1
-                  AND divi.activo = 1
-                  AND mat.activo = 1
-                ORDER BY cu.id_curso ASC, divi.nombre_division ASC, mat.materia ASC
-            ")->fetchAll(PDO::FETCH_ASSOC);
-        } catch (Throwable $e) {
-            // Las cátedras son fallback para materias; no deben impedir que carguen condiciones.
-            log_error($e, __FUNCTION__ . ':catedras');
+        $incluirCatedras = previas_int($_GET['incluir_catedras'] ?? 0) === 1;
+
+        if ($incluirCatedras) {
+            try {
+                $catedras = $pdo->query("
+                    SELECT DISTINCT
+                        cat.id_curso,
+                        cu.nombre_curso,
+                        cat.id_division,
+                        divi.nombre_division,
+                        cat.id_materia,
+                        mat.materia
+                    FROM catedras cat
+                    INNER JOIN curso cu ON cu.id_curso = cat.id_curso
+                    INNER JOIN division divi ON divi.id_division = cat.id_division
+                    INNER JOIN materias mat ON mat.id_materia = cat.id_materia
+                    WHERE cat.activo = 1
+                      AND cu.activo = 1
+                      AND divi.activo = 1
+                      AND mat.activo = 1
+                    ORDER BY cu.id_curso ASC, divi.nombre_division ASC, mat.materia ASC
+                ")->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Throwable $e) {
+                // Las cátedras son fallback para materias; no deben impedir que carguen condiciones.
+                log_error($e, __FUNCTION__ . ':catedras');
+            }
         }
 
         $payload = [
@@ -351,7 +380,7 @@ function previas_listar(): void
     $activo = isset($_GET['activo']) ? previas_int($_GET['activo']) : 1;
     $activo = $activo === 0 ? 0 : 1;
     $busqueda = trim((string)($_GET['busqueda'] ?? ''));
-    $sinPaginacion = $busqueda !== '' || previas_int($_GET['sin_paginacion'] ?? 0) === 1;
+    $sinPaginacion = false; // Performance: el listado principal siempre trabaja paginado, incluso con búsqueda.
     $idCursoMateria = previas_int($_GET['materia_id_curso'] ?? 0);
     $idDivisionMateria = previas_int($_GET['materia_id_division'] ?? 0);
     $idCondicion = previas_int($_GET['id_condicion'] ?? 0);
@@ -413,7 +442,24 @@ function previas_listar(): void
     $whereSql = implode(' AND ', $where);
 
     try {
-        $countSql = "\n            SELECT COUNT(*)\n            FROM previas p\n            LEFT JOIN materias mat ON mat.id_materia = p.id_materia\n            LEFT JOIN condicion cond ON cond.id_condicion = p.id_condicion\n            LEFT JOIN curso cur_materia ON cur_materia.id_curso = p.materia_id_curso\n            LEFT JOIN division div_materia ON div_materia.id_division = p.materia_id_division\n            LEFT JOIN curso cur_cursando ON cur_cursando.id_curso = p.cursando_id_curso\n            LEFT JOIN division div_cursando ON div_cursando.id_division = p.cursando_id_division\n            WHERE {$whereSql}\n        ";
+        $joinsBusqueda = '';
+        if ($busqueda !== '') {
+            $joinsBusqueda = "
+            LEFT JOIN materias mat ON mat.id_materia = p.id_materia
+            LEFT JOIN condicion cond ON cond.id_condicion = p.id_condicion
+            LEFT JOIN curso cur_materia ON cur_materia.id_curso = p.materia_id_curso
+            LEFT JOIN division div_materia ON div_materia.id_division = p.materia_id_division
+            LEFT JOIN curso cur_cursando ON cur_cursando.id_curso = p.cursando_id_curso
+            LEFT JOIN division div_cursando ON div_cursando.id_division = p.cursando_id_division
+            ";
+        }
+
+        $countSql = "
+            SELECT COUNT(*)
+            FROM previas p
+            {$joinsBusqueda}
+            WHERE {$whereSql}
+        ";
 
         $stmtCount = $pdo->prepare($countSql);
         foreach ($params as $key => $value) {
@@ -722,6 +768,120 @@ function previas_guardar(): void
     }
 }
 
+
+function previas_placeholders_ids(array $ids, string $prefix = ':id'): array
+{
+    $placeholders = [];
+    $params = [];
+
+    foreach ($ids as $i => $id) {
+        $key = $prefix . $i;
+        $placeholders[] = $key;
+        $params[$key] = (int)$id;
+    }
+
+    return [$placeholders, $params];
+}
+
+function previas_contar_vinculos(PDO $pdo, string $tabla, string $columna, array $ids): array
+{
+    if (count($ids) === 0 || !previas_tabla_existe($pdo, $tabla) || !previas_columna_existe($pdo, $tabla, $columna)) {
+        return ['total' => 0, 'ids' => []];
+    }
+
+    try {
+        [$placeholders, $params] = previas_placeholders_ids($ids);
+        $sql = "SELECT {$columna} AS id_previa, COUNT(*) AS total FROM `{$tabla}` WHERE {$columna} IN (" . implode(',', $placeholders) . ") GROUP BY {$columna}";
+        $stmt = $pdo->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value, PDO::PARAM_INT);
+        }
+        $stmt->execute();
+
+        $total = 0;
+        $idsVinculados = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $cantidad = (int)($row['total'] ?? 0);
+            $id = (int)($row['id_previa'] ?? 0);
+            $total += $cantidad;
+            if ($id > 0 && $cantidad > 0) {
+                $idsVinculados[$id] = true;
+            }
+        }
+
+        return ['total' => $total, 'ids' => array_keys($idsVinculados)];
+    } catch (Throwable $e) {
+        log_error($e, __FUNCTION__ . '_' . $tabla);
+        return ['total' => 0, 'ids' => []];
+    }
+}
+
+function previas_obtener_vinculos_eliminacion(PDO $pdo, array $ids): array
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn($id) => $id > 0)));
+
+    $mesas = previas_contar_vinculos($pdo, 'mesas', 'id_previa', $ids);
+    $historialMesas = previas_contar_vinculos($pdo, 'historial_mesas_detalle', 'id_previa_original', $ids);
+    $historialResultados = previas_contar_vinculos($pdo, 'historial_previas_resultados', 'id_previa_original', $ids);
+
+    $idsVinculados = [];
+    foreach ([$mesas['ids'], $historialMesas['ids'], $historialResultados['ids']] as $lista) {
+        foreach ($lista as $id) {
+            $idsVinculados[(int)$id] = true;
+        }
+    }
+
+    $resumen = [
+        'mesas_actuales' => (int)$mesas['total'],
+        'historial_mesas' => (int)$historialMesas['total'],
+        'historial_resultados' => (int)$historialResultados['total'],
+    ];
+    $resumen['total_vinculos'] = array_sum($resumen);
+
+    return [
+        'vinculada' => $resumen['total_vinculos'] > 0,
+        'requiere_doble_confirmacion' => $resumen['total_vinculos'] > 0,
+        'ids_vinculadas' => array_values(array_map('intval', array_keys($idsVinculados))),
+        'resumen' => $resumen,
+        'mensaje_advertencia' => $resumen['total_vinculos'] > 0
+            ? 'La previa seleccionada aparece en una mesa armada o en el historial. Para eliminarla se requiere una segunda confirmación.'
+            : 'La previa no tiene vínculos detectados en mesas ni historial.',
+    ];
+}
+
+function previas_verificar_eliminacion(): void
+{
+    $pdo = db();
+    $body = previas_body();
+    $ids = previas_ids_desde_body($body);
+
+    if (count($ids) === 0) {
+        $idGet = previas_int($_GET['id_previa'] ?? $_GET['id'] ?? 0);
+        if ($idGet > 0) {
+            $ids = [$idGet];
+        }
+    }
+
+    if (count($ids) === 0) {
+        json_response(['exito' => false, 'mensaje' => 'No se seleccionó ninguna previa válida para verificar.'], 422);
+    }
+
+    try {
+        $data = previas_obtener_vinculos_eliminacion($pdo, $ids);
+        json_response([
+            'exito' => true,
+            'mensaje' => $data['mensaje_advertencia'],
+            'data' => $data,
+        ]);
+    } catch (Throwable $e) {
+        log_error($e, __FUNCTION__);
+        json_response([
+            'exito' => false,
+            'mensaje' => 'No se pudo verificar si la previa tiene mesas o historial.',
+        ], 500);
+    }
+}
+
 function previas_cambiar_estado(): void
 {
     $pdo = db();
@@ -781,19 +941,24 @@ function previas_eliminar(): void
     $pdo = db();
     $body = previas_body();
     $ids = previas_ids_desde_body($body);
+    $forzar = previas_int($body['forzar'] ?? $body['confirmar_eliminacion_vinculada'] ?? 0) === 1;
 
     if (count($ids) === 0) {
         json_response(['exito' => false, 'mensaje' => 'No se seleccionó ninguna previa válida.'], 422);
     }
 
     try {
-        $placeholders = [];
-        $params = [];
-        foreach ($ids as $i => $id) {
-            $key = ':id' . $i;
-            $placeholders[] = $key;
-            $params[$key] = $id;
+        $vinculos = previas_obtener_vinculos_eliminacion($pdo, $ids);
+
+        if ($vinculos['vinculada'] && !$forzar) {
+            json_response([
+                'exito' => false,
+                'mensaje' => 'La previa está vinculada a mesas o historial. Revisá la advertencia y confirmá nuevamente para eliminarla.',
+                'data' => $vinculos,
+            ], 409);
         }
+
+        [$placeholders, $params] = previas_placeholders_ids($ids);
 
         $stmt = $pdo->prepare('DELETE FROM previas WHERE id_previa IN (' . implode(',', $placeholders) . ')');
         foreach ($params as $key => $value) {
@@ -804,6 +969,11 @@ function previas_eliminar(): void
         json_response([
             'exito' => true,
             'mensaje' => 'Previa eliminada correctamente.',
+            'data' => [
+                'eliminadas' => $stmt->rowCount(),
+                'eliminacion_forzada' => $forzar && $vinculos['vinculada'],
+                'vinculos_detectados' => $vinculos,
+            ],
         ]);
     } catch (PDOException $e) {
         log_error($e, __FUNCTION__);
@@ -827,3 +997,4 @@ function previas_eliminar(): void
         ], 500);
     }
 }
+

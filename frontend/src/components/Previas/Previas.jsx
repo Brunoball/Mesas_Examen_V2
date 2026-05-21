@@ -1,8 +1,10 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useMemo, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faBoxOpen,
   faEdit,
+  faFileImport,
+  faSpinner,
   faPlus,
   faSearch,
   faTimes,
@@ -12,7 +14,9 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { usePrevias } from './hooks/usePrevias.js';
 import ModalPrevia from './modales/ModalPrevia.jsx';
+import ModalImportarPrevias from './modales/ModalImportarPrevias.jsx';
 import ModalEliminarGlobal from '../Global/Modales/ModalEliminarGlobal.jsx';
+import Toast from '../Global/Toast.jsx';
 import '../Global/Global_css/roots.css';
 import '../Global/Global_css/Global_Section.css';
 import '../Global/Global_css/Global_DivTable.css';
@@ -89,6 +93,8 @@ export default function Previas() {
     loading,
     error,
     mensaje,
+    cerrarMensaje,
+    cerrarError,
     busqueda,
     setBusqueda,
     vista,
@@ -99,12 +105,18 @@ export default function Previas() {
     guardar,
     darBaja,
     darAlta,
+    verificarEliminacion,
     eliminar,
+    descargarPlantillaImportacion,
+    previsualizarPreviasExcel,
+    importarPreviasExcel,
     obtenerMateriasPorCurso,
   } = usePrevias();
 
   const [modalPrevia, setModalPrevia] = useState({ abierto: false, modo: 'crear', item: null, cargando: false });
-  const [modalConfirmar, setModalConfirmar] = useState({ abierto: false, tipo: '', item: null });
+  const [modalImportar, setModalImportar] = useState(false);
+  const [modalConfirmar, setModalConfirmar] = useState({ abierto: false, tipo: '', item: null, riesgo: null, cargandoRiesgo: false });
+  const [confirmacionRiesgo, setConfirmacionRiesgo] = useState(false);
 
   function abrirCrear() {
     setModalPrevia({ abierto: true, modo: 'crear', item: null, cargando: false });
@@ -121,8 +133,30 @@ export default function Previas() {
     }
   }
 
-  function abrirConfirmar(tipo, item) {
-    setModalConfirmar({ abierto: true, tipo, item });
+  async function abrirConfirmar(tipo, item) {
+    setConfirmacionRiesgo(false);
+
+    if (tipo !== 'eliminar') {
+      setModalConfirmar({ abierto: true, tipo, item, riesgo: null, cargandoRiesgo: false });
+      return;
+    }
+
+    setModalConfirmar({ abierto: true, tipo, item, riesgo: null, cargandoRiesgo: true });
+    const res = await verificarEliminacion(item);
+    setModalConfirmar((prev) => {
+      if (!prev.abierto || prev.tipo !== 'eliminar' || prev.item?.id_previa !== item.id_previa) return prev;
+      return {
+        ...prev,
+        riesgo: res?.ok ? (res?.data || null) : {
+          vinculada: true,
+          requiere_doble_confirmacion: true,
+          verificacion_error: true,
+          mensaje_advertencia: res?.mensaje || 'No se pudo verificar la previa. Por seguridad se requiere doble confirmación.',
+          resumen: { mesas_actuales: 0, historial_mesas: 0, historial_resultados: 0, total_vinculos: 0 },
+        },
+        cargandoRiesgo: false,
+      };
+    });
   }
 
   async function confirmarOperacion(payload = {}) {
@@ -130,12 +164,52 @@ export default function Previas() {
 
     if (modalConfirmar.tipo === 'baja') return darBaja(modalConfirmar.item, motivo);
     if (modalConfirmar.tipo === 'alta') return darAlta(modalConfirmar.item);
-    if (modalConfirmar.tipo === 'eliminar') return eliminar(modalConfirmar.item);
+    if (modalConfirmar.tipo === 'eliminar') {
+      const vinculada = Boolean(modalConfirmar.riesgo?.vinculada || modalConfirmar.riesgo?.requiere_doble_confirmacion);
+      return eliminar(modalConfirmar.item, { forzar: vinculada && confirmacionRiesgo });
+    }
     return { ok: false, mensaje: 'Operación inválida.' };
   }
 
   const totalVisible = Array.isArray(previas) ? previas.length : 0;
   const hayBusqueda = busqueda.trim() !== '';
+  const riesgoEliminacion = modalConfirmar.tipo === 'eliminar' ? modalConfirmar.riesgo : null;
+  const previaVinculada = Boolean(riesgoEliminacion?.vinculada || riesgoEliminacion?.requiere_doble_confirmacion);
+
+  const extraEliminar = useMemo(() => {
+    if (modalConfirmar.tipo !== 'eliminar') return null;
+
+    if (modalConfirmar.cargandoRiesgo) {
+      return (
+        <div className="previas-delete-loading">
+          <FontAwesomeIcon icon={faSpinner} spin /> Verificando si la previa está en mesas o historial...
+        </div>
+      );
+    }
+
+    if (!previaVinculada) return null;
+
+    const resumen = riesgoEliminacion?.resumen || {};
+    return (
+      <div className="previas-delete-risk">
+        <strong>Atención: esta previa ya está vinculada.</strong>
+        <p>Eliminarla puede dejar una mesa actual sin referencia directa o perder trazabilidad contra el historial. Para continuar, confirmá dos veces.</p>
+        <ul>
+          <li>Mesas actuales: <b>{Number(resumen.mesas_actuales || 0)}</b></li>
+          <li>Historial de mesas: <b>{Number(resumen.historial_mesas || 0)}</b></li>
+          <li>Historial de resultados: <b>{Number(resumen.historial_resultados || 0)}</b></li>
+        </ul>
+        <label className="previas-delete-risk__check">
+          <input
+            type="checkbox"
+            checked={confirmacionRiesgo}
+            onChange={(event) => setConfirmacionRiesgo(event.target.checked)}
+          />
+          <span>Entiendo el riesgo y confirmo que quiero eliminar esta previa igualmente.</span>
+        </label>
+      </div>
+    );
+  }, [modalConfirmar.tipo, modalConfirmar.cargandoRiesgo, previaVinculada, riesgoEliminacion, confirmacionRiesgo]);
 
   const modalGlobalConfig = {
     baja: {
@@ -166,15 +240,21 @@ export default function Previas() {
     },
     eliminar: {
       operacion: 'eliminar',
-      title: 'Eliminar previa',
-      message: 'Esta acción elimina el registro de forma permanente.',
-      warning: 'Si la previa está vinculada a una mesa, el backend puede bloquear la eliminación.',
-      confirmLabel: 'Eliminar',
+      title: previaVinculada ? 'Eliminar previa vinculada' : 'Eliminar previa',
+      message: previaVinculada
+        ? 'Esta previa aparece en una mesa armada o en el historial. Revisá la advertencia antes de continuar.'
+        : 'Esta acción elimina el registro de forma permanente.',
+      warning: previaVinculada
+        ? 'Recomendación: si no estás completamente seguro, usá Dar de baja en lugar de eliminar.'
+        : 'Esta acción no se puede deshacer.',
+      confirmLabel: previaVinculada ? 'Eliminar igualmente' : 'Eliminar',
       loadingLabel: 'Eliminando...',
       successMessage: 'Previa eliminada correctamente.',
       errorMessage: 'No se pudo eliminar la previa.',
       tone: 'danger',
       showReason: false,
+      extraContent: extraEliminar,
+      confirmDisabled: Boolean(modalConfirmar.cargandoRiesgo || (previaVinculada && !confirmacionRiesgo)),
     },
   }[modalConfirmar.tipo] || {
     operacion: 'advertencia',
@@ -199,12 +279,22 @@ export default function Previas() {
   const contenido = (
     <div className="previas-page mov-page">
       {mensaje && (
-        <div className={`mov-alert previas-alerta ${mensaje.tipo === 'success' ? 'previas-alerta-success' : 'previas-alerta-error'}`}>
-          {mensaje.texto}
-        </div>
+        <Toast
+          tipo={mensaje.tipo}
+          mensaje={mensaje.texto}
+          duracion={mensaje.duracion || 3800}
+          onClose={cerrarMensaje}
+        />
       )}
 
-      {error && <div className="mov-alert previas-alerta previas-alerta-error">{error}</div>}
+      {error && !mensaje && (
+        <Toast
+          tipo="error"
+          mensaje={error}
+          duracion={4200}
+          onClose={cerrarError}
+        />
+      )}
 
       <section className="previas-card mov-card mov-card--table">
         <div className="mov-card__head previas-card__head">
@@ -271,6 +361,9 @@ export default function Previas() {
           </div>
 
           <div className="mov-card__actions previas-actionsHead">
+            <button type="button" className="mov-btn mov-btn--soft" onClick={() => setModalImportar(true)}>
+              <FontAwesomeIcon icon={faFileImport} /> Importar previas
+            </button>
             <button type="button" className="mov-btn mov-btn--primary" onClick={abrirCrear}>
               <FontAwesomeIcon icon={faPlus} /> Agregar previa
             </button>
@@ -402,35 +495,30 @@ export default function Previas() {
             </span>
           )}
 
-          {!hayBusqueda ? (
-            <div className="previas-pagination">
-              <button
-                type="button"
-                className="previas-page-btn"
-                disabled={paginacion.pagina <= 1 || loading}
-                onClick={() => paginacion.setPagina((p) => Math.max(1, p - 1))}
-              >
-                Anterior
-              </button>
+          <div className="previas-pagination">
+            <button
+              type="button"
+              className="previas-page-btn"
+              disabled={paginacion.pagina <= 1 || loading}
+              onClick={() => paginacion.setPagina((p) => Math.max(1, p - 1))}
+            >
+              Anterior
+            </button>
 
-              <span className="previas-page-info">
-                Página <strong>{paginacion.pagina}</strong> / <strong>{paginacion.totalPaginas}</strong>
-              </span>
+            <span className="previas-page-info">
+              Página <strong>{paginacion.pagina}</strong> / <strong>{paginacion.totalPaginas}</strong>
+              {hayBusqueda && <small> búsqueda paginada</small>}
+            </span>
 
-              <button
-                type="button"
-                className="previas-page-btn"
-                disabled={paginacion.pagina >= paginacion.totalPaginas || loading}
-                onClick={() => paginacion.setPagina((p) => p + 1)}
-              >
-                Siguiente
-              </button>
-            </div>
-          ) : (
-            <div className="previas-pagination previas-pagination--search">
-              <span className="previas-page-info">Búsqueda global sin paginación</span>
-            </div>
-          )}
+            <button
+              type="button"
+              className="previas-page-btn"
+              disabled={paginacion.pagina >= paginacion.totalPaginas || loading}
+              onClick={() => paginacion.setPagina((p) => p + 1)}
+            >
+              Siguiente
+            </button>
+          </div>
 
         </div>
       </section>
@@ -446,12 +534,25 @@ export default function Previas() {
         />
       )}
 
+      {modalImportar && (
+        <ModalImportarPrevias
+          open={modalImportar}
+          onClose={() => setModalImportar(false)}
+          onDescargarPlantilla={descargarPlantillaImportacion}
+          onPrevisualizar={previsualizarPreviasExcel}
+          onImportar={importarPreviasExcel}
+        />
+      )}
+
       {modalConfirmar.abierto && (
         <ModalEliminarGlobal
           open={modalConfirmar.abierto}
           row={modalConfirmar.item}
           details={detallesModalGlobal}
-          onClose={() => setModalConfirmar({ abierto: false, tipo: '', item: null })}
+          onClose={() => {
+            setConfirmacionRiesgo(false);
+            setModalConfirmar({ abierto: false, tipo: '', item: null, riesgo: null, cargandoRiesgo: false });
+          }}
           onConfirm={confirmarOperacion}
           {...modalGlobalConfig}
         />
