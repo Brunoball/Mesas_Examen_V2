@@ -2495,7 +2495,7 @@
    ========================================================= */
 .mesas-titleBox{
   min-width:min(100%, 430px);
-  gap:8px;
+  gap:0;
 }
 
 .mesas-titleTabs{
@@ -2715,6 +2715,56 @@
   letter-spacing:-.01em;
 }
 
+.mesas-historial-sectionTitle--withIndicators{
+  flex-wrap:wrap;
+}
+
+.mesas-historial-indicadores{
+  margin-left:auto;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.mesas-historial-indicador{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  min-height:26px;
+  padding:0 10px;
+  border-radius:999px;
+  border:1px solid color-mix(in srgb, var(--mov-border) 72%, #fff);
+  background:#fff;
+  color:color-mix(in srgb, var(--balto-text) 82%, #000);
+  font-size:12px;
+  font-weight:620;
+  line-height:1;
+}
+
+.mesas-historial-indicador__dot{
+  width:9px;
+  height:9px;
+  border-radius:999px;
+  flex:0 0 auto;
+  background:currentColor;
+  box-shadow:0 0 0 3px color-mix(in srgb, currentColor 16%, transparent);
+  opacity:.82;
+}
+
+.mesas-historial-indicador--approved{
+  color:color-mix(in srgb, var(--balto-success) 70%, #000);
+  border-color:color-mix(in srgb, var(--balto-success) 24%, #fff);
+  background:color-mix(in srgb, var(--balto-success) 8%, #fff);
+}
+
+.mesas-historial-indicador--pending{
+  color:color-mix(in srgb, var(--balto-danger) 70%, #000);
+  border-color:color-mix(in srgb, var(--balto-danger) 24%, #fff);
+  background:color-mix(in srgb, var(--balto-danger) 8%, #fff);
+}
+
 .mesas-historial-divTable{
   width:100%;
   min-height:0;
@@ -2728,12 +2778,16 @@
   min-width:1120px;
 }
 
+.mesas-historial-gridHead{
+  overflow:visible;
+  scrollbar-gutter:auto;
+}
+
 .mesas-historial-tableWrap.mov-tableWrap{
   width:100%;
   min-height:0;
   max-height:none;
   overflow:visible;
-  scrollbar-gutter:stable;
 }
 
 .mesas-historial-tableWrap .mov-gridBody{
@@ -2748,6 +2802,29 @@
 
 .mesas-historial-gridRow .mov-gridCell:not(.mov-gridCell--actions){
   text-overflow:clip;
+}
+
+.mesas-historial-gridRow--resultado{
+  border-left:4px solid transparent;
+  background:#fff;
+}
+
+.mesas-historial-gridRow--resultado.is-approved{
+  border-left-color:var(--balto-success);
+  background:linear-gradient(90deg, color-mix(in srgb, var(--balto-success) 10%, #fff) 0%, #fff 32%);
+}
+
+.mesas-historial-gridRow--resultado.is-pending{
+  border-left-color:var(--balto-danger);
+  background:linear-gradient(90deg, color-mix(in srgb, var(--balto-danger) 10%, #fff) 0%, #fff 32%);
+}
+
+.mesas-historial-gridRow--resultado.is-approved:hover{
+  background:linear-gradient(90deg, color-mix(in srgb, var(--balto-success) 15%, #fff) 0%, color-mix(in srgb, var(--balto-success) 4%, #fff) 42%, #fff 100%);
+}
+
+.mesas-historial-gridRow--resultado.is-pending:hover{
+  background:linear-gradient(90deg, color-mix(in srgb, var(--balto-danger) 15%, #fff) 0%, color-mix(in srgb, var(--balto-danger) 4%, #fff) 42%, #fff 100%);
 }
 
 .mesas-historial-descriptionCell{
@@ -2935,6 +3012,16 @@
   .mesas-historial-sectionTitle{
     flex-direction:column;
     align-items:flex-start;
+  }
+
+  .mesas-historial-sectionTitle--withIndicators{
+    flex-direction:row;
+    align-items:center;
+  }
+
+  .mesas-historial-indicadores{
+    width:auto;
+    margin-left:auto;
   }
 }
 

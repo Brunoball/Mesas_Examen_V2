@@ -334,8 +334,6 @@ const ModalCrearMesa = ({
 
           {error && <div className="mesas-modal-error">{error}</div>}
 
-        </form>
-        
           <div className="mesas-modal-actions">
             <button
               type="button"
@@ -364,6 +362,7 @@ const ModalCrearMesa = ({
               )}
             </button>
           </div>
+        </form>
       </div>
     </div>
   ), portalTarget);

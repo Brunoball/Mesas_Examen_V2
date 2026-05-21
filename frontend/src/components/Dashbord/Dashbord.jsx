@@ -73,7 +73,6 @@ function Dashbord() {
         value: tarjetas.previas_inscriptas,
         subtitle: `${numero(tarjetas.alumnos_inscriptos)} alumnos distintos`,
         icon: faGraduationCap,
-        tone: "blue",
       },
       {
         key: "mesas",
@@ -81,7 +80,6 @@ function Dashbord() {
         value: tarjetas.numeros_mesa,
         subtitle: `${numero(indicadores.mesas_registros)} registros generados`,
         icon: faLayerGroup,
-        tone: "green",
       },
       {
         key: "grupos",
@@ -89,7 +87,6 @@ function Dashbord() {
         value: tarjetas.grupos_finales,
         subtitle: `${numero(indicadores.numeros_agrupados)} números agrupados`,
         icon: faLayerGroup,
-        tone: "purple",
       },
       {
         key: "pendientes",
@@ -97,7 +94,7 @@ function Dashbord() {
         value: tarjetas.no_agrupadas,
         subtitle: `${numero(indicadores.previas_sin_mesa)} previas sin mesa`,
         icon: faTriangleExclamation,
-        tone: Number(tarjetas.no_agrupadas || 0) > 0 ? "red" : "green",
+        alert: Number(tarjetas.no_agrupadas || 0) > 0,
       },
     ],
     [tarjetas, indicadores]
@@ -110,28 +107,24 @@ function Dashbord() {
         label: "Numeración",
         value: indicadores.porcentaje_numerado,
         icon: faChartLine,
-        tone: "blue",
       },
       {
         key: "agrupacion",
         label: "Agrupación",
         value: indicadores.porcentaje_agrupado,
         icon: faLayerGroup,
-        tone: "green",
       },
       {
         key: "catedras",
         label: "Cátedras con docente",
         value: indicadores.porcentaje_catedras_con_docente,
         icon: faGraduationCap,
-        tone: "purple",
       },
       {
         key: "disponibilidad",
         label: "Docentes con disponibilidad",
         value: indicadores.porcentaje_docentes_con_disponibilidad,
         icon: faCheckCircle,
-        tone: "orange",
       },
     ],
     [indicadores]
@@ -139,26 +132,28 @@ function Dashbord() {
 
   const maxGrafico = useMemo(() => maximoGrafico(graficoDias), [graficoDias]);
   const estadoCodigo = texto(estadoArmado.codigo, "sin_armado");
+  const pendientes = Number(tarjetas.no_agrupadas || 0);
 
   return (
     <section className="dashbord-page">
       <header className="dashbord-hero">
-        <div className="dashbord-hero__text">
+        <div className="dashbord-hero__main">
           <span className="dashbord-kicker">Panel general</span>
           <h1>Dashboard de Mesas de Examen</h1>
           <p>
-            Vista rápida del armado: previas inscriptas, números de mesa, grupos finales
-            y pendientes principales.
+            Control rápido del armado, el avance de numeración y los pendientes que necesitan revisión.
           </p>
         </div>
 
-        <div className="dashbord-hero__actions">
+        <div className="dashbord-hero__meta" aria-label="Periodo del dashboard">
           <div className="dashbord-period">
-            <FontAwesomeIcon icon={faChartLine} />
-            <span>Año {texto(periodo.anio_actual, new Date().getFullYear())}</span>
+            <span>Año</span>
+            <strong>{texto(periodo.anio_actual, new Date().getFullYear())}</strong>
+          </div>
+          <div className="dashbord-period dashbord-period--wide">
+            <span>Rango armado</span>
             <strong>{texto(periodo.rango_armado?.label, "Sin armado")}</strong>
           </div>
-
         </div>
       </header>
 
@@ -174,79 +169,48 @@ function Dashbord() {
           </button>
         </div>
       ) : (
-        <>
-          <div className="dashbord-cards">
-            {cards.map((card) => (
-              <article key={card.key} className={`dashbord-card dashbord-card--${card.tone}`}>
-                <div className="dashbord-card__icon">
-                  <FontAwesomeIcon icon={card.icon} />
-                </div>
-                <div className="dashbord-card__body">
-                  <span>{card.title}</span>
-                  <strong>{numero(card.value)}</strong>
-                  <small>{card.subtitle}</small>
-                </div>
-              </article>
-            ))}
-          </div>
-
-          <div className="dashbord-grid">
-            <article className="dashbord-panel dashbord-panel--chart">
-              <div className="dashbord-panel__head">
+        <div className="dashbord-content">
+          <div className="dashbord-topGrid">
+            <article className="dashbord-panel dashbord-panel--summary">
+              <div className="dashbord-panel__head dashbord-panel__head--summary">
                 <div>
-                  <h2>Distribución del armado por fecha</h2>
-                  <p>Grupos finales, números de mesa y pendientes sin agrupar.</p>
+                  <h2>Resumen operativo</h2>
+                  <p>Indicadores principales del proceso actual.</p>
                 </div>
 
-                <div className="dashbord-legend">
-                  <span><i className="is-blue" /> Grupos</span>
-                  <span><i className="is-green" /> Números</span>
-                  <span><i className="is-red" /> Sin agrupar</span>
-                </div>
+                <span className={`dashbord-reviewChip ${pendientes > 0 ? "is-alert" : "is-ok"}`}>
+                  <FontAwesomeIcon icon={pendientes > 0 ? faTriangleExclamation : faCheckCircle} />
+                  {pendientes > 0 ? `${numero(pendientes)} pendientes` : "Sin pendientes"}
+                </span>
               </div>
 
-              {graficoDias.length === 0 ? (
-                <EmptyChart />
-              ) : (
-                <div className="dashbord-bars" aria-label="Gráfico de mesas por día">
-                  {graficoDias.map((item) => {
-                    const hGrupos = Math.max(4, (Number(item.grupos || 0) / maxGrafico) * 100);
-                    const hNumeros = Math.max(4, (Number(item.numeros || 0) / maxGrafico) * 100);
-                    const hNoAgrupadas = Number(item.no_agrupadas || 0) > 0
-                      ? Math.max(4, (Number(item.no_agrupadas || 0) / maxGrafico) * 100)
-                      : 0;
-
-                    return (
-                      <div className="dashbord-bars__item" key={item.fecha_mesa || item.label}>
-                        <div className="dashbord-bars__cols">
-                          <span
-                            className="dashbord-bar dashbord-bar--blue"
-                            style={{ height: `${hGrupos}%` }}
-                            title={`${numero(item.grupos)} grupos`}
-                          />
-                          <span
-                            className="dashbord-bar dashbord-bar--green"
-                            style={{ height: `${hNumeros}%` }}
-                            title={`${numero(item.numeros)} números`}
-                          />
-                          <span
-                            className="dashbord-bar dashbord-bar--red"
-                            style={{ height: `${hNoAgrupadas}%` }}
-                            title={`${numero(item.no_agrupadas)} sin agrupar`}
-                          />
-                        </div>
-                        <strong>{texto(item.label)}</strong>
+              <div className="dashbord-cards">
+                {cards.map((card) => (
+                  <article
+                    key={card.key}
+                    className={`dashbord-card ${card.alert ? "dashbord-card--alert" : ""}`}
+                  >
+                    <div className="dashbord-card__top">
+                      <div className="dashbord-card__icon">
+                        <FontAwesomeIcon icon={card.icon} />
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                      <span>{card.title}</span>
+                    </div>
+
+                    <div className="dashbord-card__body">
+                      <strong>{numero(card.value)}</strong>
+                      <small>{card.subtitle}</small>
+                    </div>
+                  </article>
+                ))}
+              </div>
             </article>
 
             <aside className="dashbord-panel dashbord-panel--status">
               <div className="dashbord-panel__head">
                 <div>
                   <h2>Estado del armado</h2>
+                  <p>Lectura general del avance actual.</p>
                 </div>
               </div>
 
@@ -262,24 +226,73 @@ function Dashbord() {
 
               <div className="dashbord-miniGrid">
                 {miniCards.map((item) => (
-                  <div key={item.key} className={`dashbord-miniCard dashbord-miniCard--${item.tone}`}>
-                    <div className="dashbord-miniCard__row">
-                      <div className="dashbord-miniCard__icon">
-                        <FontAwesomeIcon icon={item.icon} />
-                      </div>
-
-                      <div className="dashbord-miniCard__info">
-                        <strong>{numero(item.value)}%</strong>
-                      </div>
+                  <div key={item.key} className="dashbord-miniCard">
+                    <div className="dashbord-miniCard__icon">
+                      <FontAwesomeIcon icon={item.icon} />
                     </div>
 
-                    <span className="dashbord-miniCard__label">{item.label}</span>
+                    <div className="dashbord-miniCard__info">
+                      <strong>{numero(item.value)}%</strong>
+                      <span>{item.label}</span>
+                    </div>
                   </div>
                 ))}
               </div>
             </aside>
           </div>
-        </>
+
+          <article className="dashbord-panel dashbord-panel--chart">
+            <div className="dashbord-panel__head dashbord-panel__head--chart">
+              <div>
+                <h2>Distribución del armado por fecha</h2>
+                <p>Comparativa de grupos finales, números de mesa y pendientes sin agrupar.</p>
+              </div>
+
+              <div className="dashbord-legend">
+                <span><i className="is-primary" /> Grupos</span>
+                <span><i className="is-secondary" /> Números</span>
+                <span><i className="is-alert" /> Sin agrupar</span>
+              </div>
+            </div>
+
+            {graficoDias.length === 0 ? (
+              <EmptyChart />
+            ) : (
+              <div className="dashbord-bars" aria-label="Gráfico de mesas por día">
+                {graficoDias.map((item) => {
+                  const hGrupos = Math.max(4, (Number(item.grupos || 0) / maxGrafico) * 100);
+                  const hNumeros = Math.max(4, (Number(item.numeros || 0) / maxGrafico) * 100);
+                  const hNoAgrupadas = Number(item.no_agrupadas || 0) > 0
+                    ? Math.max(4, (Number(item.no_agrupadas || 0) / maxGrafico) * 100)
+                    : 0;
+
+                  return (
+                    <div className="dashbord-bars__item" key={item.fecha_mesa || item.label}>
+                      <div className="dashbord-bars__cols">
+                        <span
+                          className="dashbord-bar dashbord-bar--primary"
+                          style={{ height: `${hGrupos}%` }}
+                          title={`${numero(item.grupos)} grupos`}
+                        />
+                        <span
+                          className="dashbord-bar dashbord-bar--secondary"
+                          style={{ height: `${hNumeros}%` }}
+                          title={`${numero(item.numeros)} números`}
+                        />
+                        <span
+                          className="dashbord-bar dashbord-bar--alert"
+                          style={{ height: `${hNoAgrupadas}%` }}
+                          title={`${numero(item.no_agrupadas)} sin agrupar`}
+                        />
+                      </div>
+                      <strong>{texto(item.label)}</strong>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </article>
+        </div>
       )}
     </section>
   );

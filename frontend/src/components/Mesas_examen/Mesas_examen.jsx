@@ -58,19 +58,18 @@ const MESES_ES = [
 
 const DIAS_ES = ["DOMINGO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO"];
 
-const HISTORIAL_RESULTADOS_GRID_COLS = "0.95fr 1.35fr 0.75fr 1.2fr 0.95fr 1.15fr 0.55fr 0.9fr 1.15fr";
+const HISTORIAL_RESULTADOS_GRID_COLS = "0.65fr 1.35fr 0.65fr 1.2fr 0.55fr 1.15fr 0.45fr 1.15fr";
 const HISTORIAL_ARMADOS_GRID_COLS = "0.95fr 1fr 1.35fr 0.65fr 0.75fr 0.7fr 0.95fr 0.9fr";
 const HISTORIAL_DETALLE_GRID_COLS = "0.9fr 0.65fr 0.65fr 1.25fr 0.75fr 1.15fr 1.15fr 0.75fr 0.55fr 0.65fr";
 
 const HISTORIAL_RESULTADOS_COLUMNS = [
   { key: "fecha", label: "Fecha nota" },
   { key: "alumno", label: "Alumno" },
-  { key: "dni", label: "DNI" },
+  { key: "dni", label: "DNI", align: "is-center" },
   { key: "materia", label: "Materia" },
   { key: "mesa", label: "Mesa" },
   { key: "docente", label: "Docente" },
   { key: "nota", label: "Nota", align: "is-center" },
-  { key: "resultado", label: "Resultado", align: "is-center" },
   { key: "motivo", label: "Motivo" },
 ];
 
@@ -90,10 +89,10 @@ const HISTORIAL_DETALLE_COLUMNS = [
   { key: "grupo", label: "Grupo", align: "is-center" },
   { key: "mesa", label: "Mesa", align: "is-center" },
   { key: "alumno", label: "Alumno" },
-  { key: "dni", label: "DNI" },
+  { key: "dni", label: "DNI", align: "is-center" },
   { key: "materia", label: "Materia" },
   { key: "docente", label: "Docente" },
-  { key: "tipo", label: "Tipo" },
+  { key: "tipo", label: "Tipo", align: "is-center" },
   { key: "nota", label: "Nota", align: "is-center" },
   { key: "activa", label: "Activa", align: "is-center" },
 ];
@@ -564,8 +563,19 @@ const HistorialMesasPanel = ({ historial }) => {
       ) : (
         <>
           <section className="mesas-historial-section mov-card mov-card--table">
-            <div className="mesas-historial-sectionTitle">
+            <div className="mesas-historial-sectionTitle mesas-historial-sectionTitle--withIndicators">
               <h4>Historial de notas y previas</h4>
+
+              <div className="mesas-historial-indicadores" aria-label="Indicadores de resultado">
+                <span className="mesas-historial-indicador mesas-historial-indicador--approved">
+                  <span className="mesas-historial-indicador__dot" aria-hidden="true" />
+                  Aprobó
+                </span>
+                <span className="mesas-historial-indicador mesas-historial-indicador--pending">
+                  <span className="mesas-historial-indicador__dot" aria-hidden="true" />
+                  No aprobó
+                </span>
+              </div>
             </div>
 
             {resultados.length === 0 ? (
@@ -584,7 +594,14 @@ const HistorialMesasPanel = ({ historial }) => {
                         return (
                           <div
                             key={`resultado-${item.id_resultado}`}
-                            className="mov-gridTable mov-gridTable--row global-divTable__row mesas-historial-gridRow"
+                            className={[
+                              "mov-gridTable",
+                              "mov-gridTable--row",
+                              "global-divTable__row",
+                              "mesas-historial-gridRow",
+                              "mesas-historial-gridRow--resultado",
+                              aprobado ? "is-approved" : "is-pending",
+                            ].join(" ")}
                             style={{ gridTemplateColumns: HISTORIAL_RESULTADOS_GRID_COLS }}
                             role="row"
                           >
@@ -594,7 +611,7 @@ const HistorialMesasPanel = ({ historial }) => {
                             <div className="mov-gridCell is-strong" role="cell" data-label="Alumno" title={textoCorto(item.alumno)}>
                               {textoCorto(item.alumno)}
                             </div>
-                            <div className="mov-gridCell" role="cell" data-label="DNI">{textoCorto(item.dni)}</div>
+                            <div className="mov-gridCell is-center" role="cell" data-label="DNI">{textoCorto(item.dni)}</div>
                             <div className="mov-gridCell" role="cell" data-label="Materia" title={textoCorto(item.materia)}>
                               {textoCorto(item.materia)}
                             </div>
@@ -610,11 +627,6 @@ const HistorialMesasPanel = ({ historial }) => {
                             </div>
                             <div className="mov-gridCell is-center" role="cell" data-label="Nota">
                               <strong className="mesas-historial-nota">{item.nota}</strong>
-                            </div>
-                            <div className="mov-gridCell is-center" role="cell" data-label="Resultado">
-                              <span className={`mesas-historial-estado ${aprobado ? "is-approved" : "is-pending"}`}>
-                                {aprobado ? "Aprobada" : "No aprobada"}
-                              </span>
                             </div>
                             <div className="mov-gridCell mesas-historial-descriptionCell" role="cell" data-label="Motivo">
                               <HistorialDescripcionExpandible
@@ -735,10 +747,10 @@ const HistorialMesasPanel = ({ historial }) => {
                             <div className="mov-gridCell is-center" role="cell" data-label="Grupo">{textoCorto(item.numero_grupo)}</div>
                             <div className="mov-gridCell is-center" role="cell" data-label="Mesa">{textoCorto(item.numero_mesa)}</div>
                             <div className="mov-gridCell is-strong" role="cell" data-label="Alumno" title={textoCorto(item.alumno)}>{textoCorto(item.alumno)}</div>
-                            <div className="mov-gridCell" role="cell" data-label="DNI">{textoCorto(item.dni)}</div>
+                            <div className="mov-gridCell is-center" role="cell" data-label="DNI">{textoCorto(item.dni)}</div>
                             <div className="mov-gridCell" role="cell" data-label="Materia" title={textoCorto(item.materia)}>{textoCorto(item.materia)}</div>
                             <div className="mov-gridCell" role="cell" data-label="Docente" title={textoCorto(item.docente)}>{textoCorto(item.docente)}</div>
-                            <div className="mov-gridCell" role="cell" data-label="Tipo">{textoCorto(item.tipo_mesa)}</div>
+                            <div className="mov-gridCell is-center" role="cell" data-label="Tipo">{textoCorto(item.tipo_mesa)}</div>
                             <div className="mov-gridCell is-center" role="cell" data-label="Nota">{textoCorto(item.nota)}</div>
                             <div className="mov-gridCell is-center" role="cell" data-label="Activa">{Number(item.previa_activa) === 1 ? "Sí" : "No"}</div>
                           </div>
