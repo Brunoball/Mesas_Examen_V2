@@ -27,6 +27,7 @@ import {
 import "./principal.css";
 import logoLernaBlanco from "../../imagenes/lerna_blancov3.png";
 import Dashbord from "../Dashbord/Dashbord";
+import BASE_URL from "../../config/config";
 
 export const MesasShellContext = createContext(false);
 
@@ -172,6 +173,149 @@ const NAV_ITEMS = [
   },
 ];
 
+
+/* =========================================================
+   Logo del tenant / cliente
+========================================================= */
+const parseStoredJson = (key) => {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const LERNA_PROD_ORIGIN = "https://lerna.3devsnet.com";
+
+const esHostLocal = () => {
+  const host = String(window.location.hostname || "").toLowerCase();
+  return host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0";
+};
+
+const esUrlLocal = (url) => {
+  const value = String(url || "").trim().toLowerCase();
+
+  if (!value) return false;
+
+  try {
+    const parsed = new URL(value, window.location.origin);
+    const host = String(parsed.hostname || "").toLowerCase();
+    return host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0";
+  } catch {
+    return (
+      value.includes("localhost") ||
+      value.includes("127.0.0.1") ||
+      value.includes("0.0.0.0")
+    );
+  }
+};
+
+const normalizarApiRoutesUrl = (url) => {
+  let value = String(url || "").trim();
+
+  if (!value) return "";
+
+  value = value.replace(/\/+$/, "");
+
+  // Si el config tiene .../routes, lo convertimos al archivo real de la API.
+  if (/\/routes$/i.test(value)) return `${value}/api.php`;
+
+  return value;
+};
+
+const obtenerOrigenDesdeUrl = (url) => {
+  const value = String(url || "").trim();
+
+  if (!value) return "";
+
+  try {
+    return new URL(value, window.location.origin).origin.replace(/\/+$/, "");
+  } catch {
+    return "";
+  }
+};
+
+const resolverApiPrincipalUrl = () => {
+  // Usa SIEMPRE el config real del proyecto:
+  // frontend/src/components/config/config.jsx
+  //
+  // Si BASE_URL apunta a Hostinger, aunque el frontend corra en localhost,
+  // la consulta del usuario/logo se hace contra Hostinger.
+  // Si BASE_URL apunta a localhost, no se pide el logo para no generar errores.
+  const configUrl = String(BASE_URL || "").trim();
+
+  if (configUrl) return normalizarApiRoutesUrl(configUrl);
+
+  const envUrl = String(
+    process.env.REACT_APP_API_URL || process.env.REACT_APP_API_BASE_URL || ""
+  ).trim();
+
+  if (envUrl) return normalizarApiRoutesUrl(envUrl);
+
+  if (esHostLocal()) {
+    return "http://localhost:3001/routes/api.php";
+  }
+
+  return `${String(window.location.origin || LERNA_PROD_ORIGIN).replace(/\/+$/, "")}/api/routes/api.php`;
+};
+
+const resolverPublicBaseUrl = () => {
+  const publicEnvUrl = String(
+    process.env.REACT_APP_PUBLIC_BASE_URL ||
+      process.env.REACT_APP_APP_URL ||
+      ""
+  ).trim();
+
+  if (publicEnvUrl) return publicEnvUrl.replace(/\/+$/, "");
+
+  // Importante: para logos guardados como /uploads/tenants/..., usamos el
+  // origen del BASE_URL configurado. Así si el front está local pero BASE_URL
+  // apunta a Hostinger, la imagen se arma como:
+  // https://lerna.3devsnet.com/uploads/tenants/t_1/logos/Escudo.png
+  const configOrigin = obtenerOrigenDesdeUrl(BASE_URL);
+
+  if (configOrigin) return configOrigin;
+
+  return String(window.location.origin || LERNA_PROD_ORIGIN).replace(/\/+$/, "");
+};
+
+const normalizarLogoTenantUrl = (url) => {
+  const value = String(url || "").trim();
+
+  if (
+    !value ||
+    value.toLowerCase() === "null" ||
+    value.toLowerCase() === "undefined" ||
+    value === "-"
+  ) {
+    return "";
+  }
+
+  if (/^(https?:)?\/\//i.test(value) || value.startsWith("data:") || value.startsWith("blob:")) {
+    return value;
+  }
+
+  const clean = value.replace(/\\/g, "/");
+  const publicBase = resolverPublicBaseUrl();
+
+  return clean.startsWith("/") ? `${publicBase}${clean}` : `${publicBase}/${clean}`;
+};
+
+const extraerLogoTenant = (usuario) => {
+  const candidatos = [
+    usuario?.logo_icono_url,
+    usuario?.logo_url,
+    usuario?.tenant_logo_icono_url,
+    usuario?.tenant_logo_url,
+    usuario?.tenant?.logo_icono_url,
+    usuario?.tenant?.logo_url,
+  ];
+
+  const elegido = candidatos.find((item) => String(item || "").trim() !== "");
+  return normalizarLogoTenantUrl(elegido);
+};
+
 /* =========================================================
    Outlet memoizado
 ========================================================= */
@@ -192,21 +336,94 @@ const Principal = ({ children = null }) => {
   const [isExiting, setIsExiting] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [openSubmenuKey, setOpenSubmenuKey] = useState("");
+  const [logoTenantError, setLogoTenantError] = useState(false);
+
+  const apiPrincipalUrl = useMemo(() => resolverApiPrincipalUrl(), []);
+  const apiPrincipalEsLocal = useMemo(() => esUrlLocal(apiPrincipalUrl), [apiPrincipalUrl]);
+
+  const logoTenantUrl = useMemo(() => {
+    // Si la API configurada apunta a localhost, no se pide ni se muestra el logo.
+    // En local normalmente /uploads/... no existe y no conviene consultar Hostinger.
+    if (apiPrincipalEsLocal) return "";
+    return extraerLogoTenant(usuario);
+  }, [usuario, apiPrincipalEsLocal]);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("usuario");
-      const u = raw ? JSON.parse(raw) : null;
-      setUsuario(u);
-    } catch {
-      setUsuario(null);
-    }
+    setLogoTenantError(false);
+  }, [logoTenantUrl]);
 
+  useEffect(() => {
     // Mesas queda fijo en modo claro. No se porta la lógica de modo oscuro de Balto.
     document.documentElement.setAttribute("data-theme", "claro");
     document.body?.classList?.remove("dark");
     localStorage.removeItem("tema_mesas");
-  }, []);
+
+    const usuarioGuardado = parseStoredJson("usuario");
+    const tenantGuardado = parseStoredJson("tenant");
+
+    const usuarioInicial = usuarioGuardado
+      ? {
+          ...usuarioGuardado,
+          tenant: usuarioGuardado.tenant || tenantGuardado || null,
+        }
+      : null;
+
+    setUsuario(usuarioInicial);
+
+    const token =
+      localStorage.getItem("token") ||
+      localStorage.getItem("session_key") ||
+      localStorage.getItem("sessionKey") ||
+      sessionStorage.getItem("token") ||
+      sessionStorage.getItem("session_key") ||
+      sessionStorage.getItem("sessionKey") ||
+      "";
+
+    if (!token) return undefined;
+
+    // Si el sistema está configurado contra backend local, no intentamos consultar
+    // auth_usuario_actual ni pedir logo de tenant. Así no aparece ERR_CONNECTION_REFUSED
+    // cuando el PHP local no está levantado.
+    if (apiPrincipalEsLocal) return undefined;
+
+    const controller = new AbortController();
+    const apiUrl = apiPrincipalUrl;
+    const separator = apiUrl.includes("?") ? "&" : "?";
+
+    fetch(`${apiUrl}${separator}action=auth_usuario_actual`, {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+        "X-Session": token,
+        Authorization: `Bearer ${token}`,
+      },
+      signal: controller.signal,
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data?.exito || !data?.usuario) return;
+
+        const usuarioActualizado = {
+          ...data.usuario,
+          tenant: data.usuario.tenant || data.tenant || tenantGuardado || null,
+        };
+
+        setUsuario(usuarioActualizado);
+        localStorage.setItem("usuario", JSON.stringify(usuarioActualizado));
+
+        if (usuarioActualizado.tenant) {
+          localStorage.setItem("tenant", JSON.stringify(usuarioActualizado.tenant));
+        }
+      })
+      .catch((error) => {
+        if (error?.name !== "AbortError") {
+          // Si falla la actualización, se mantiene el usuario ya guardado localmente.
+        }
+      });
+
+    return () => controller.abort();
+  }, [apiPrincipalEsLocal, apiPrincipalUrl]);
 
   useEffect(() => {
     setDrawerOpen(false);
@@ -355,11 +572,21 @@ const Principal = ({ children = null }) => {
             <div className="mov-topbar__section">{activeLabel}</div>
 
             <div
-              className="mov-topbar__usericon"
-              title={usuario?.Nombre_Completo || usuario?.nombre || "Usuario"}
+              className={`mov-topbar__usericon ${logoTenantUrl && !logoTenantError ? "has-logo" : ""}`}
+              title={usuario?.tenant?.nombre || usuario?.tenant_nombre || usuario?.Nombre_Completo || usuario?.nombre || "Usuario"}
               aria-label="Usuario"
             >
-              <FontAwesomeIcon icon={faUserCircle} />
+              {logoTenantUrl && !logoTenantError ? (
+                <img
+                  src={logoTenantUrl}
+                  alt={usuario?.tenant?.nombre || usuario?.tenant_nombre || "Logo institucional"}
+                  className="mov-topbar__userlogo"
+                  loading="eager"
+                  onError={() => setLogoTenantError(true)}
+                />
+              ) : (
+                <FontAwesomeIcon icon={faUserCircle} />
+              )}
             </div>
 
             <button

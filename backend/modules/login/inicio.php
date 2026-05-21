@@ -84,7 +84,9 @@ function login_inicio(): void
                 u.activo AS usuario_activo,
                 t.nombre AS tenant_nombre,
                 t.logo_url,
-                t.logo_icono_url,
+                /* Compatibilidad: la columna logo_icono_url fue eliminada de tenants.
+                   Se devuelve el mismo logo_url como alias para no romper el frontend viejo. */
+                t.logo_url AS logo_icono_url,
                 t.db_host,
                 t.db_name,
                 t.activo AS tenant_activo

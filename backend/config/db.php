@@ -97,7 +97,7 @@ function tenant_context(?string $sessionKey = null): ?array
 
     $master = master_db();
 
-    $stmt = $master->prepare("\n        SELECT\n            s.idSesion,\n            s.session_key,\n            s.idUsuarioMaster,\n            s.idTenant,\n            s.expira_en,\n            u.usuario,\n            u.email_recuperacion,\n            u.rol,\n            u.tema,\n            u.activo AS usuario_activo,\n            t.nombre AS tenant_nombre,\n            t.logo_url,\n            t.logo_icono_url,\n            t.db_host,\n            t.db_name,\n            t.db_user,\n            t.db_pass,\n            t.activo AS tenant_activo\n        FROM sesiones s\n        INNER JOIN usuarios_master u ON u.idUsuarioMaster = s.idUsuarioMaster\n        INNER JOIN tenants t ON t.idTenant = s.idTenant\n        WHERE s.session_key = :session_key\n          AND s.activo = 1\n        LIMIT 1\n    ");
+    $stmt = $master->prepare("\n        SELECT\n            s.idSesion,\n            s.session_key,\n            s.idUsuarioMaster,\n            s.idTenant,\n            s.expira_en,\n            u.usuario,\n            u.email_recuperacion,\n            u.rol,\n            u.tema,\n            u.activo AS usuario_activo,\n            t.nombre AS tenant_nombre,\n            t.logo_url,\n            t.logo_url AS logo_icono_url,\n            t.db_host,\n            t.db_name,\n            t.db_user,\n            t.db_pass,\n            t.activo AS tenant_activo\n        FROM sesiones s\n        INNER JOIN usuarios_master u ON u.idUsuarioMaster = s.idUsuarioMaster\n        INNER JOIN tenants t ON t.idTenant = s.idTenant\n        WHERE s.session_key = :session_key\n          AND s.activo = 1\n        LIMIT 1\n    ");
     $stmt->execute([':session_key' => $sessionKey]);
     $ctx = $stmt->fetch();
 
@@ -150,10 +150,10 @@ function tenant_db(): PDO
         return $connections[$key];
     }
 
-    $host = (string)$ctx['db_host'];
-    $name = (string)$ctx['db_name'];
-    $user = (string)$ctx['db_user'];
-    $pass = (string)$ctx['db_pass'];
+    $host = trim((string)$ctx['db_host']);
+    $name = trim((string)$ctx['db_name']);
+    $user = trim((string)$ctx['db_user']);
+    $pass = trim((string)$ctx['db_pass']);
 
     $key = "tenant|{$host}|{$name}|{$user}";
     if (!isset($connections[$key])) {

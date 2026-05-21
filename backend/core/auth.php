@@ -122,7 +122,7 @@ function usuario_actual(): ?array
             'idTenant' => (int)$ctx['idTenant'],
             'nombre' => (string)$ctx['tenant_nombre'],
             'logo_url' => $ctx['logo_url'] ?? null,
-            'logo_icono_url' => $ctx['logo_icono_url'] ?? null,
+            'logo_icono_url' => $ctx['logo_icono_url'] ?? ($ctx['logo_url'] ?? null),
             'db_name' => (string)$ctx['db_name'],
         ],
     ];
