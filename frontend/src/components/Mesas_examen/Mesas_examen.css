@@ -2495,7 +2495,7 @@
    ========================================================= */
 .mesas-titleBox{
   min-width:min(100%, 430px);
-  gap:0;
+  gap:0 !important;
 }
 
 .mesas-titleTabs{
