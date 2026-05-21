@@ -26,9 +26,6 @@
   box-shadow: 0 26px 80px rgba(15, 23, 42, 0.38);
 }
 
-.persona-modal-previas {
-  min-height: 600px;
-}
 
 .persona-modal-mover {
   width: min(1080px, 94vw);
@@ -147,40 +144,8 @@
   background: #ffffff;
 }
 
-.persona-table th,
-.persona-table td {
-  padding: 13px 14px;
-  border-bottom: 1px solid #e5e7eb;
-  text-align: center;
-  vertical-align: middle;
-}
-
-.persona-table th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: #f1f5f9;
-  color: #334155;
+.persona-table-mover .persona-grid-cell {
   font-size: 14px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-
-.persona-table td {
-  font-size: 17px;
-}
-
-.persona-table tbody tr:nth-child(even) {
-  background: #f8fafc;
-}
-
-.persona-table tbody tr:hover {
-  background: #eff6ff;
-}
-
-.persona-table-mover td {
-  font-size: 16px;
 }
 
 .persona-row-disabled {
@@ -479,5 +444,334 @@
   .persona-modal{
     width:100%;
     max-height:calc(100dvh - 24px);
+  }
+}
+
+/* =========================================================
+   Tablas internas sin etiquetas tablas HTML
+   Patrón visual tipo Materias: grilla con acciones compactas.
+========================================================= */
+.persona-div-table{
+  width:100%;
+  min-width:920px;
+  border-collapse:initial;
+  display:block;
+  color:#0f172a;
+  background:#fff;
+}
+
+.persona-grid-row{
+  display:grid;
+  min-width:100%;
+}
+
+.persona-grid-head{
+  position:sticky;
+  top:0;
+  z-index:2;
+  background:#f1f5f9;
+  border-bottom:1px solid #e2e8f0;
+}
+
+.persona-grid-data-row{
+  border-bottom:1px solid #e5e7eb;
+  background:#fff;
+}
+
+.persona-grid-data-row:nth-child(even){
+  background:#f8fafc;
+}
+
+.persona-grid-data-row:hover{
+  background:#eff6ff;
+}
+
+.persona-grid-cell{
+  min-width:0;
+  min-height:50px;
+  padding:12px 14px;
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:8px;
+  color:#0f172a;
+  font-size:14px;
+  line-height:1.25;
+  font-weight:520;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.persona-grid-cell-head{
+  min-height:44px;
+  color:#334155;
+  font-size:12px;
+  font-weight:760;
+  text-transform:uppercase;
+  letter-spacing:.02em;
+}
+
+.persona-grid-cell-actions,
+.persona-grid-cell.is-center{
+  justify-content:center;
+  text-align:center;
+}
+
+.persona-grid-cell.is-strong{
+  color:var(--gm-ink, #0A2540);
+  font-weight:600;
+}
+
+.persona-action-icon,
+.persona-actions .materias-icon-btn{
+  width:26px !important;
+  height:24px !important;
+  min-width:26px !important;
+  min-height:24px !important;
+  border-radius:8px !important;
+  padding:0 !important;
+  font-size:12px !important;
+}
+
+.persona-actions .materias-icon-danger{
+  color:color-mix(in srgb, var(--balto-danger, #dc2626) 72%, #000) !important;
+}
+
+@media (max-width:768px){
+  .persona-div-table{
+    min-width:760px;
+  }
+
+  .persona-grid-cell{
+    padding:11px 12px;
+    font-size:13px;
+  }
+}
+
+/* =========================================================
+   Mover previa: header liviano + datos en tarjeta interna.
+========================================================= */
+.persona-modal-header-compact h3{
+  margin-bottom:7px;
+}
+
+.persona-mover-info-card{
+  margin:0 0 14px;
+  padding:13px;
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:10px;
+  border:1px solid rgba(10,37,64,.09);
+  border-radius:16px;
+  background:linear-gradient(180deg, #fff, #f7f9fc);
+  box-shadow:0 12px 26px -24px rgba(10,37,64,.42);
+}
+
+.persona-mover-info-card div{
+  min-width:0;
+  padding:10px 11px;
+  border:1px solid rgba(10,37,64,.075);
+  border-radius:13px;
+  background:#fff;
+}
+
+.persona-mover-info-card span{
+  display:block;
+  margin-bottom:4px;
+  color:var(--gm-muted, #718096);
+  font-size:11px;
+  line-height:1.2;
+  font-weight:760;
+  letter-spacing:.035em;
+  text-transform:uppercase;
+}
+
+.persona-mover-info-card strong{
+  display:block;
+  min-width:0;
+  color:var(--gm-ink, #0A2540);
+  font-size:12.5px;
+  line-height:1.25;
+  font-weight:680;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.persona-mover-info-card p{
+  grid-column:1 / -1;
+  margin:0;
+  padding:10px 12px;
+  border:1px solid rgba(0,85,187,.12);
+  border-radius:13px;
+  background:rgba(0,85,187,.055);
+  color:color-mix(in srgb, var(--gm-action, #0055BB) 76%, #000);
+  font-size:12.5px;
+  line-height:1.35;
+  font-weight:620;
+}
+
+.persona-modal-body-scroll{
+  max-height:none;
+  min-height:0;
+}
+
+@media (max-width:768px){
+  .persona-mover-info-card{
+    grid-template-columns:1fr;
+  }
+}
+
+/* =========================================================
+   Headers de submodales — icono + título + metadatos en línea
+========================================================= */
+.persona-header-title{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  position:relative;
+  z-index:1;
+}
+
+.persona-header-icon{
+  flex:0 0 auto;
+  width:40px;
+  height:40px;
+  display:grid;
+  place-items:center;
+  border-radius:13px;
+  color:#fff;
+  background:rgba(255,255,255,.13);
+  border:1px solid rgba(255,255,255,.18);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14);
+}
+
+.persona-header-text{
+  min-width:0;
+}
+
+.persona-header-meta{
+  max-width:100%;
+  margin-top:6px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.persona-header-meta span{
+  min-width:0;
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  padding:4px 8px;
+  border-radius:999px;
+  color:rgba(255,255,255,.76);
+  background:rgba(255,255,255,.10);
+  border:1px solid rgba(255,255,255,.12);
+  font-size:12px;
+  line-height:1.15;
+  font-weight:560;
+  white-space:nowrap;
+}
+
+.persona-header-meta strong{
+  color:#fff;
+  font-weight:740;
+}
+
+/* =========================================================
+   Tarjetas internas con estética Dashboard
+========================================================= */
+.persona-mover-info-card{
+  gap:10px;
+}
+
+.persona-mover-info-card .persona-dashboard-card{
+  position:relative;
+  min-width:0;
+  min-height:82px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:13px !important;
+  border:1px solid rgba(10,37,64,.12) !important;
+  border-radius:22px !important;
+  background:#fff !important;
+  box-shadow:0 1px 4px rgba(10,37,64,.08);
+  overflow:hidden;
+}
+
+.persona-mover-info-card .persona-dashboard-card::after{
+  content:"";
+  position:absolute;
+  right:-30px;
+  bottom:-30px;
+  width:76px;
+  height:76px;
+  border-radius:50%;
+  opacity:.10;
+  background:currentColor;
+}
+
+.persona-dashboard-card__icon{
+  flex:0 0 auto;
+  width:42px;
+  height:42px;
+  margin:0 !important;
+  display:grid !important;
+  place-items:center;
+  border-radius:14px !important;
+  color:currentColor !important;
+  background:rgba(0,85,187,.11) !important;
+  border:0 !important;
+  font-size:16px !important;
+}
+
+.persona-dashboard-card__body{
+  min-width:0;
+  padding:0 !important;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  position:relative;
+  z-index:1;
+}
+
+.persona-dashboard-card__body span{
+  margin:0 !important;
+  color:rgba(66,84,102,.72) !important;
+  font-size:11px !important;
+  font-weight:900 !important;
+  letter-spacing:.055em !important;
+  text-transform:uppercase;
+}
+
+.persona-dashboard-card__body strong{
+  color:var(--gm-ink, #0A2540) !important;
+  font-size: 12px !important;
+  line-height:1.05 !important;
+  font-weight:700 !important;
+  letter-spacing:-.04em;
+}
+
+.persona-dashboard-card--blue{ color:#0055BB; }
+.persona-dashboard-card--green{ color:#22ad5c; }
+.persona-dashboard-card--purple{ color:#7c3aed; }
+.persona-dashboard-card--green .persona-dashboard-card__icon{ background:rgba(34,173,92,.12) !important; }
+.persona-dashboard-card--purple .persona-dashboard-card__icon{ background:rgba(124,58,237,.12) !important; }
+
+@media (max-width:768px){
+  .persona-header-meta span{
+    white-space:normal;
+  }
+
+  .persona-mover-info-card .persona-dashboard-card{
+    min-height:76px;
   }
 }

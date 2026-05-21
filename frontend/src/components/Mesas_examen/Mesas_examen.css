@@ -434,44 +434,6 @@
   color: var(--mesas-midnight);
 }
 
-.mesas-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-
-  background: #f6f8fb;
-  color: var(--mesas-midnight);
-
-  text-align: left;
-
-  padding: 15px 14px;
-
-  font-size: 15px;
-  font-weight: 850;
-
-  border-bottom: 1px solid var(--mesas-border);
-}
-
-.mesas-table tbody td {
-  padding: 18px 14px;
-
-  vertical-align: middle;
-
-  color: var(--mesas-text);
-  font-size: 15px;
-  font-weight: 500;
-
-  border-bottom: 1px solid rgba(10, 37, 64, 0.08);
-}
-
-.mesas-table tbody tr:nth-child(even) {
-  background: #fafbfd;
-}
-
-.mesas-table tbody tr:hover {
-  background: rgba(0, 85, 187, 0.055);
-}
-
 .col-hora {
   width: 160px;
 }
@@ -835,11 +797,6 @@
   transform: translateY(-1px);
   background: rgba(0, 85, 187, 0.06);
   box-shadow: 0 10px 18px rgba(10, 37, 64, 0.12);
-}
-
-.fila-detalle-alumnos td {
-  padding: 0 !important;
-  background: #f8fbff;
 }
 
 .alumnos-panel {
@@ -1217,11 +1174,6 @@
   background: #f8fbff;
 }
 
-.fila-detalle-alumnos td {
-  padding: 0 !important;
-  background: #f8fafc;
-}
-
 .alumnos-panel {
   padding: 18px;
 }
@@ -1485,57 +1437,6 @@
   display: table !important;
 }
 
-.mesas-pdf-table thead {
-  display: table-header-group !important;
-}
-
-.mesas-pdf-table tbody {
-  display: table-row-group !important;
-}
-
-.mesas-pdf-table tr {
-  display: table-row !important;
-}
-
-.mesas-pdf-table th,
-.mesas-pdf-table td {
-  display: table-cell !important;
-}
-
-.mesas-pdf-table th {
-  padding: 11px 10px;
-  background: #e9ecff;
-  color: #001f5b;
-  border-bottom: 1px solid #dbe2f3;
-  font-size: 13px;
-  font-weight: 900;
-  text-align: left;
-  vertical-align: middle;
-}
-
-.mesas-pdf-table td {
-  padding: 9px 10px;
-  border-bottom: 1px dashed rgba(10, 37, 64, 0.1);
-  vertical-align: middle;
-  color: #001f5b;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.25;
-  background: #ffffff;
-}
-
-.mesas-pdf-table tbody tr:nth-child(even) td {
-  background: #fffafa;
-}
-
-.mesas-pdf-table tbody tr:hover td {
-  background: #f8fbff;
-}
-
-.pdf-row-observada td {
-  background: #fff7ed !important;
-}
-
 .pdf-col-numero {
   width: 86px;
   text-align: center !important;
@@ -1702,17 +1603,7 @@
     overflow: visible !important;
   }
 
-  .mesas-pdf-table th {
-    padding: 5px 6px;
-    font-size: 9px;
-  }
-
-  .mesas-pdf-table td {
-    padding: 4px 6px;
-    font-size: 9px;
-  }
-
-  .pdf-materia-line-cell strong,
+      .pdf-materia-line-cell strong,
   .pdf-docente-line-cell strong,
   .pdf-numero-cell strong,
   .pdf-nota-cell span,
@@ -1921,61 +1812,6 @@
   table-layout: fixed;
   color: #001f5b;
   display: table !important;
-}
-
-.mesas-card-pdf-fijo .mesas-pdf-table thead {
-  display: table-header-group !important;
-}
-
-.mesas-card-pdf-fijo .mesas-pdf-table tbody {
-  display: table-row-group !important;
-}
-
-.mesas-card-pdf-fijo .mesas-pdf-table tr {
-  display: table-row !important;
-}
-
-.mesas-card-pdf-fijo .mesas-pdf-table th,
-.mesas-card-pdf-fijo .mesas-pdf-table td {
-  display: table-cell !important;
-}
-
-.mesas-card-pdf-fijo .mesas-pdf-table th {
-  padding: 9px 10px;
-  background: #e8e9fb;
-  color: #001f5b;
-  border-bottom: 1px solid #dce2f4;
-  font-size: 12px;
-  font-weight: 900;
-  text-align: left;
-  vertical-align: middle;
-}
-
-.mesas-card-pdf-fijo .mesas-pdf-table td {
-  padding: 9px 10px;
-  border-bottom: 1px dashed rgba(10, 37, 64, 0.08);
-  vertical-align: middle;
-  color: #001f5b;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.22;
-  background: #ffffff;
-}
-
-.mesas-card-pdf-fijo .mesas-pdf-table tbody tr:nth-child(even) td:not(.pdf-hora-cell):not(.pdf-materia-line-cell):not(.pdf-docente-line-cell) {
-  background: #fffafa;
-}
-
-.mesas-card-pdf-fijo .mesas-pdf-table tbody tr:hover td {
-  background: #f8fbff;
-}
-
-.mesas-card-pdf-fijo .pdf-row-inicio-materia:not(:first-child) td {
-  border-top: 1px solid #002a75;
-}
-
-.mesas-card-pdf-fijo .pdf-row-observada td {
-  background: #fff7ed !important;
 }
 
 .mesas-card-pdf-fijo .pdf-col-hora {
@@ -2399,31 +2235,6 @@
   font-size:12px;
 }
 
-.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-table th{
-  background:color-mix(in srgb, var(--balto-bg) 72%, #fff);
-  color:var(--balto-ink);
-  border-bottom:1px solid color-mix(in srgb, var(--mov-border) 72%, #fff);
-  font-size:11px;
-  font-weight:620;
-  letter-spacing:.03em;
-  text-transform:uppercase;
-}
-
-.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-table td{
-  color:color-mix(in srgb, var(--balto-ink) 84%, #000);
-  border-bottom:1px solid color-mix(in srgb, var(--mov-border) 54%, #fff);
-  font-size:12px;
-  font-weight:440;
-}
-
-.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-table tbody tr:nth-child(even) td:not(.pdf-hora-cell):not(.pdf-materia-line-cell):not(.pdf-docente-line-cell){
-  background:color-mix(in srgb, var(--balto-bg) 35%, #fff);
-}
-
-.mesas-shell-card.mesas-card-pdf-fijo .pdf-row-inicio-materia:not(:first-child) td{
-  border-top:1px solid color-mix(in srgb, var(--mov-border) 70%, #fff);
-}
-
 .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-actions{
   min-height:48px;
   gap:10px;
@@ -2566,7 +2377,7 @@
 .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-view{
   flex:1 1 auto;
   min-height:360px;
-  max-height:calc(100dvh - 180px);
+  max-height:calc(100dvh - 225px);
   overflow:auto !important;
     overflow-x: hidden !important; 
   overscroll-behavior:contain;
@@ -2575,6 +2386,12 @@
 
 .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-sheet{
   overflow:visible !important;
+}
+
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-view--historial{
+  padding:0 !important;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
 }
 
 
@@ -2753,113 +2570,135 @@
 .mesas-historial-panel{
   display:flex;
   flex-direction:column;
-  gap:14px;
+  gap:12px;
   width:100%;
   min-height:0;
+  padding:12px;
   color:var(--balto-ink);
-}
-
-.mesas-historial-head{
-  display:flex;
-  align-items:flex-end;
-  justify-content:space-between;
-  gap:18px;
-  padding:16px 20px;
-  border:1px solid color-mix(in srgb, var(--mov-border) 82%, #fff);
-  border-radius:var(--mov-radius);
-  background:linear-gradient(180deg, #fff 0%, color-mix(in srgb, var(--balto-bg) 36%, #fff) 100%);
-  box-shadow:var(--mov-shadow-sm);
-}
-
-.mesas-historial-title{
-  display:flex;
-  flex-direction:column;
-  gap:4px;
-  min-width:0;
-}
-
-.mesas-historial-title h3{
-  margin:0;
-  color:var(--balto-ink);
-  font-size:17px;
-  font-weight:620;
-  letter-spacing:-.01em;
-}
-
-.mesas-historial-title p{
-  max-width:760px;
-  margin:0;
-  color:var(--mov-muted);
-  font-size:12px;
-  font-weight:460;
-  line-height:1.35;
-}
-
-.mesas-historial-refresh.mov-btn{
-  min-height:0;
-  height:40px;
-  border-radius:12px;
-  font-size:13px;
-  font-weight:560;
-  box-shadow:none;
-  white-space:nowrap;
 }
 
 .mesas-historial-error.mov-alert{
   margin:0;
-  border-radius:12px;
+  border-radius:14px;
+  padding:10px 12px;
 }
 
 .mesas-historial-resumen{
   display:grid;
   grid-template-columns:repeat(4, minmax(0, 1fr));
-  gap:12px;
+  gap:10px;
 }
 
 .mesas-historial-kpi{
+  position:relative;
   min-width:0;
-  padding:14px 16px;
-  border:1px solid color-mix(in srgb, var(--mov-border) 82%, #fff);
-  border-radius:16px;
+  min-height:86px;
+  padding:14px;
+  border:1px solid rgba(10,37,64,.12);
+  border-radius:22px;
   background:#fff;
-  box-shadow:var(--mov-shadow-sm);
+  box-shadow:0 1px 4px rgba(10,37,64,.08);
+  color:var(--balto-action);
   display:flex;
   align-items:center;
-  justify-content:space-between;
-  gap:12px;
+  justify-content:flex-start;
+  gap:10px;
+  overflow:hidden;
 }
 
-.mesas-historial-kpi span{
+.mesas-historial-kpi::after{
+  content:"";
+  position:absolute;
+  right:-30px;
+  bottom:-30px;
+  width:76px;
+  height:76px;
+  border-radius:50%;
+  opacity:.1;
+  background:currentColor;
+  pointer-events:none;
+}
+
+.mesas-historial-kpiIcon{
+  position:relative;
+  z-index:1;
+  flex:0 0 auto;
+  width:42px;
+  height:42px;
+  border-radius:14px;
+  display:grid;
+  place-items:center;
+  font-size:17px;
+  background:rgba(0,85,187,.11);
+}
+
+.mesas-historial-kpiBody{
+  position:relative;
+  z-index:1;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+
+.mesas-historial-kpiBody span{
+  color:var(--mov-muted);
+  font-size:11px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.055em;
+}
+
+.mesas-historial-kpiBody strong{
+  color:var(--balto-ink);
+  font-size:clamp(22px, 1.7vw, 30px);
+  line-height:1.05;
+  font-weight:900;
+  letter-spacing:-.04em;
+}
+
+.mesas-historial-kpiBody small{
   color:var(--mov-muted);
   font-size:12px;
-  font-weight:560;
+  font-weight:700;
 }
 
-.mesas-historial-kpi strong{
-  color:var(--balto-ink);
-  font-size:20px;
-  font-weight:620;
-  line-height:1;
+.mesas-historial-kpi--green{
+  color:var(--balto-success);
 }
 
-.mesas-historial-kpi.is-ok strong{
-  color:color-mix(in srgb, var(--balto-success) 72%, #000);
+.mesas-historial-kpi--red{
+  color:var(--balto-danger);
 }
 
-.mesas-historial-kpi.is-warn strong{
-  color:color-mix(in srgb, var(--balto-danger) 70%, #000);
+.mesas-historial-kpi--purple{
+  color:#7c3aed;
+}
+
+.mesas-historial-kpi--green .mesas-historial-kpiIcon{
+  background:rgba(34,173,92,.12);
+}
+
+.mesas-historial-kpi--red .mesas-historial-kpiIcon{
+  background:rgba(225,61,69,.12);
+}
+
+.mesas-historial-kpi--purple .mesas-historial-kpiIcon{
+  background:rgba(124,58,237,.12);
 }
 
 .mesas-historial-section.mov-card{
+  width:calc(100% + 24px);
+  margin-inline:-12px;
   overflow:hidden;
-  border-radius:var(--mov-radius);
+  border-radius:18px;
   background:#fff;
-  box-shadow:var(--mov-shadow-sm);
+  box-shadow:0 1px 4px rgba(10,37,64,.08);
 }
 
 .mesas-historial-sectionTitle{
-  min-height:56px;
-  padding:14px 18px;
+  min-height:52px;
+  padding:12px 14px;
   display:flex;
   align-items:center;
   justify-content:space-between;
@@ -2877,7 +2716,10 @@
 }
 
 .mesas-historial-divTable{
+  width:100%;
   min-height:0;
+  overflow-x:auto;
+  overflow-y:visible;
 }
 
 .mesas-historial-gridHead,
@@ -2887,9 +2729,10 @@
 }
 
 .mesas-historial-tableWrap.mov-tableWrap{
+  width:100%;
   min-height:0;
-  max-height:360px;
-  overflow:auto;
+  max-height:none;
+  overflow:visible;
   scrollbar-gutter:stable;
 }
 
@@ -2905,6 +2748,30 @@
 
 .mesas-historial-gridRow .mov-gridCell:not(.mov-gridCell--actions){
   text-overflow:clip;
+}
+
+.mesas-historial-descriptionCell{
+  min-width:0;
+  align-items:center;
+}
+
+.mesas-historial-expandible.ginfo-inline{
+  width:100%;
+  min-width:0;
+}
+
+.mesas-historial-expandible__text.ginfo-inline__text{
+  max-width:100%;
+  color:inherit;
+  font-weight:520;
+}
+
+.mesas-historial-expandible__button.ginfo-inline__button{
+  width:26px;
+  height:26px;
+  min-width:26px;
+  min-height:26px;
+  padding:0;
 }
 
 .mesas-historial-stack{
@@ -3033,15 +2900,6 @@
     width:100%;
   }
 
-  .mesas-historial-head{
-    flex-direction:column;
-    align-items:stretch;
-  }
-
-  .mesas-historial-refresh.mov-btn{
-    width:max-content;
-  }
-
   .mesas-historial-resumen{
     grid-template-columns:repeat(2, minmax(0, 1fr));
   }
@@ -3061,17 +2919,22 @@
     padding-inline:14px;
   }
 
+  .mesas-historial-panel{
+    padding:10px;
+  }
+
   .mesas-historial-resumen{
     grid-template-columns:1fr;
+  }
+
+  .mesas-historial-section.mov-card{
+    width:calc(100% + 20px);
+    margin-inline:-10px;
   }
 
   .mesas-historial-sectionTitle{
     flex-direction:column;
     align-items:flex-start;
-  }
-
-  .mesas-historial-refresh.mov-btn{
-    width:100%;
   }
 }
 
@@ -3093,5 +2956,371 @@
     top:12px;
     right:12px;
     left:12px;
+  }
+}
+
+/* =========================================================
+   Vista de mesas sin etiquetas tablas HTML
+   Grilla visual + acciones compactas como Materias.
+========================================================= */
+.mesas-pdf-divTable,
+.mesas-card-pdf-fijo .mesas-pdf-divTable,
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-divTable{
+  width:100%;
+  min-width:0;
+  display:block !important;
+  color:#001f5b;
+  table-layout:initial;
+}
+
+.mesas-pdf-gridHead,
+.mesas-pdf-gridBody{
+  display:grid;
+  width:100%;
+  min-width:0;
+}
+
+.mesas-pdf-gridHead{
+  background:#e8e9fb;
+  border-bottom:1px solid #dce2f4;
+}
+
+.mesas-pdf-gridBody{
+  background:#fff;
+  grid-auto-flow:row dense;
+  align-items:stretch;
+}
+
+.mesas-pdf-headCell,
+.mesas-pdf-cell{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  color:#001f5b;
+}
+
+.mesas-pdf-headCell{
+  padding:9px 10px;
+  background:#e8e9fb;
+  font-size:12px;
+  font-weight:760;
+  line-height:1.18;
+  text-align:left;
+}
+
+.mesas-pdf-cell{
+  padding:9px 10px;
+  border-bottom:1px dashed rgba(10,37,64,.08);
+  background:#fff;
+  font-size:12px;
+  font-weight:500;
+  line-height:1.22;
+}
+
+.mesas-pdf-cell.pdf-row-observada{
+  background:#fff7ed !important;
+}
+
+.mesas-pdf-cell.pdf-hora-cell,
+.mesas-pdf-cell.pdf-materia-line-cell,
+.mesas-pdf-cell.pdf-docente-line-cell{
+  align-items:stretch;
+}
+
+.mesas-pdf-cell.pdf-hora-cell{
+  justify-content:center;
+  text-align:center;
+  background:#f8fbff;
+  border-right:1px solid #dbe2f3;
+}
+
+.mesas-pdf-cell.pdf-materia-line-cell,
+.mesas-pdf-cell.pdf-docente-line-cell{
+  flex-direction:column;
+  justify-content:center;
+  gap:4px;
+}
+
+.mesas-pdf-cell.pdf-nota-cell,
+.mesas-pdf-headCell.pdf-col-nota,
+.mesas-pdf-cell.pdf-dni-cell,
+.mesas-pdf-cell.pdf-curso-cell,
+.mesas-pdf-headCell.pdf-col-dni,
+.mesas-pdf-headCell.pdf-col-curso{
+  justify-content:center;
+  text-align:center;
+}
+
+.mesas-pdf-actions{
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  gap:7px;
+  padding:8px 12px 10px;
+  border-top:1px solid rgba(10,37,64,.08);
+  background:linear-gradient(180deg, #fff, #f8fbff);
+}
+
+.mesas-pdf-actionsInline{
+  gap:7px;
+}
+
+.mesas-pdf-iconBtn,
+.mesas-pdf-actions .materias-icon-btn{
+  width:26px !important;
+  height:24px !important;
+  min-width:26px !important;
+  min-height:24px !important;
+  border-radius:8px !important;
+  padding:0 !important;
+  font-size:12px !important;
+}
+
+.mesas-pdf-actions .materias-icon-danger{
+  color:color-mix(in srgb, var(--balto-danger, #dc2626) 72%, #000) !important;
+}
+
+@media (max-width:960px){
+  .mesas-pdf-table-wrap{
+    overflow:auto !important;
+  }
+
+  .mesas-pdf-divTable,
+  .mesas-card-pdf-fijo .mesas-pdf-divTable,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-divTable{
+    min-width:860px;
+  }
+}
+
+
+/* =========================================================
+   FIX VISUAL FINAL — Vista de mesas en grilla DIV
+   Mantiene la estructura en divs y evita que las columnas queden recortadas.
+   Toma la estética limpia de la sección Mesas de Examen.
+========================================================= */
+.mesas-card-pdf-fijo .mesas-pdf-table-wrap,
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-table-wrap{
+  width:100%;
+  padding:0;
+  margin:0;
+  overflow-x:auto !important;
+  overflow-y:visible !important;
+}
+
+.mesas-card-pdf-fijo .mesas-pdf-divTable,
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-divTable,
+.mesas-card-pdf-fijo .mesas-pdf-table.mesas-pdf-divTable,
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-table.mesas-pdf-divTable{
+  width:100%;
+  min-width:980px;
+  display:block !important;
+  table-layout:initial !important;
+  border-collapse:initial !important;
+  border-spacing:0 !important;
+  color:var(--balto-ink, #0A2540);
+}
+
+.mesas-card-pdf-fijo .mesas-pdf-gridHead,
+.mesas-card-pdf-fijo .mesas-pdf-gridBody,
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-gridHead,
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-gridBody{
+  display:grid !important;
+  width:100%;
+  min-width:0;
+  align-items:stretch;
+}
+
+.mesas-card-pdf-fijo .mesas-pdf-gridHead,
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-gridHead{
+  min-height:44px;
+  background:color-mix(in srgb, var(--balto-bg, #F6F9FC) 72%, #fff);
+  border-bottom:1px solid color-mix(in srgb, var(--mov-border, #D6E2F3) 78%, #fff);
+}
+
+.mesas-card-pdf-fijo .mesas-pdf-gridBody,
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-gridBody{
+  grid-auto-flow:row dense;
+  grid-auto-rows:minmax(64px, auto);
+  background:#fff;
+}
+
+.mesas-card-pdf-fijo .mesas-pdf-divTable .pdf-col-hora,
+.mesas-card-pdf-fijo .mesas-pdf-divTable .pdf-col-materia,
+.mesas-card-pdf-fijo .mesas-pdf-divTable .pdf-col-estudiante,
+.mesas-card-pdf-fijo .mesas-pdf-divTable .pdf-col-dni,
+.mesas-card-pdf-fijo .mesas-pdf-divTable .pdf-col-curso,
+.mesas-card-pdf-fijo .mesas-pdf-divTable .pdf-col-nota,
+.mesas-card-pdf-fijo .mesas-pdf-divTable .pdf-col-docente,
+.mesas-card-pdf-fijo .mesas-pdf-divTable .pdf-hora-cell,
+.mesas-card-pdf-fijo .mesas-pdf-divTable .pdf-materia-line-cell,
+.mesas-card-pdf-fijo .mesas-pdf-divTable .pdf-estudiante-cell,
+.mesas-card-pdf-fijo .mesas-pdf-divTable .pdf-dni-cell,
+.mesas-card-pdf-fijo .mesas-pdf-divTable .pdf-curso-cell,
+.mesas-card-pdf-fijo .mesas-pdf-divTable .pdf-nota-cell,
+.mesas-card-pdf-fijo .mesas-pdf-divTable .pdf-docente-line-cell{
+  width:auto !important;
+  max-width:none !important;
+}
+
+.mesas-card-pdf-fijo .mesas-pdf-headCell,
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-headCell{
+  min-width:0;
+  padding:12px 14px;
+  display:flex;
+  align-items:center;
+  overflow:visible;
+  text-overflow:clip;
+  white-space:normal;
+  color:var(--balto-ink, #0A2540);
+  background:color-mix(in srgb, var(--balto-bg, #F6F9FC) 72%, #fff);
+  border-bottom:1px solid color-mix(in srgb, var(--mov-border, #D6E2F3) 78%, #fff);
+  font-size:12px;
+  font-weight:680;
+  line-height:1.15;
+  letter-spacing:.035em;
+  text-transform:uppercase;
+}
+
+.mesas-card-pdf-fijo .mesas-pdf-cell,
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-cell{
+  min-width:0;
+  min-height:64px;
+  padding:12px 14px;
+  display:flex;
+  align-items:center;
+  overflow:visible;
+  text-overflow:clip;
+  white-space:normal;
+  color:var(--balto-ink, #0A2540);
+  background:#fff;
+  border-bottom:1px solid color-mix(in srgb, var(--mov-border, #D6E2F3) 64%, #fff);
+  font-size:13px;
+  font-weight:500;
+  line-height:1.25;
+}
+
+.mesas-card-pdf-fijo .mesas-pdf-sheet-observada .mesas-pdf-cell,
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-sheet-observada .mesas-pdf-cell,
+.mesas-card-pdf-fijo .mesas-pdf-cell.pdf-row-observada,
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-cell.pdf-row-observada{
+  background:#fff8ef !important;
+}
+
+.mesas-card-pdf-fijo .mesas-pdf-cell.pdf-hora-cell,
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-cell.pdf-hora-cell{
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  border-right:1px solid color-mix(in srgb, var(--mov-border, #D6E2F3) 80%, #fff);
+}
+
+.mesas-card-pdf-fijo .pdf-hora-stack,
+.mesas-shell-card.mesas-card-pdf-fijo .pdf-hora-stack{
+  width:100%;
+  min-height:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:2px;
+  text-align:center;
+  text-transform:uppercase;
+}
+
+.mesas-card-pdf-fijo .pdf-hora-stack strong,
+.mesas-shell-card.mesas-card-pdf-fijo .pdf-hora-stack strong{
+  color:var(--balto-ink, #0A2540);
+  font-size:13px;
+  font-weight:720;
+  line-height:1.1;
+}
+
+.mesas-card-pdf-fijo .pdf-materia-line-cell,
+.mesas-card-pdf-fijo .pdf-docente-line-cell,
+.mesas-shell-card.mesas-card-pdf-fijo .pdf-materia-line-cell,
+.mesas-shell-card.mesas-card-pdf-fijo .pdf-docente-line-cell{
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:center;
+  gap:5px;
+}
+
+.mesas-card-pdf-fijo .pdf-materia-line-cell{
+  border-right:1px solid color-mix(in srgb, var(--mov-border, #D6E2F3) 60%, #fff);
+}
+
+.mesas-card-pdf-fijo .pdf-materia-line-cell strong,
+.mesas-card-pdf-fijo .pdf-docente-line-cell strong,
+.mesas-shell-card.mesas-card-pdf-fijo .pdf-materia-line-cell strong,
+.mesas-shell-card.mesas-card-pdf-fijo .pdf-docente-line-cell strong{
+  color:var(--balto-ink, #0A2540);
+  font-size:13px;
+  font-weight:720;
+  line-height:1.2;
+  text-transform:uppercase;
+}
+
+.mesas-card-pdf-fijo .pdf-materia-line-cell small,
+.mesas-shell-card.mesas-card-pdf-fijo .pdf-materia-line-cell small{
+  margin:0;
+  color:#d43d0c;
+  font-size:11px;
+  font-weight:720;
+  line-height:1.25;
+  text-transform:none;
+}
+
+.mesas-card-pdf-fijo .pdf-estudiante-cell,
+.mesas-shell-card.mesas-card-pdf-fijo .pdf-estudiante-cell{
+  text-transform:uppercase;
+}
+
+.mesas-card-pdf-fijo .pdf-dni-cell,
+.mesas-card-pdf-fijo .pdf-curso-cell,
+.mesas-card-pdf-fijo .pdf-nota-cell,
+.mesas-card-pdf-fijo .mesas-pdf-headCell.pdf-col-dni,
+.mesas-card-pdf-fijo .mesas-pdf-headCell.pdf-col-curso,
+.mesas-card-pdf-fijo .mesas-pdf-headCell.pdf-col-nota,
+.mesas-shell-card.mesas-card-pdf-fijo .pdf-dni-cell,
+.mesas-shell-card.mesas-card-pdf-fijo .pdf-curso-cell,
+.mesas-shell-card.mesas-card-pdf-fijo .pdf-nota-cell,
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-headCell.pdf-col-dni,
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-headCell.pdf-col-curso,
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-headCell.pdf-col-nota{
+  justify-content:center;
+  text-align:center;
+}
+
+.mesas-card-pdf-fijo .mesas-pdf-observacion,
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-observacion{
+  margin:10px 16px 10px;
+  padding:9px 12px;
+  border-radius:10px;
+  font-size:12px;
+  font-weight:660;
+  line-height:1.25;
+}
+
+.mesas-card-pdf-fijo .mesas-pdf-observacion-info,
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-observacion-info{
+  background:#eef6ff;
+  border-color:#b9d4ff;
+  color:#173263;
+}
+
+.mesas-card-pdf-fijo .mesas-pdf-actions,
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-actions{
+  border-top:1px solid color-mix(in srgb, var(--mov-border, #D6E2F3) 72%, #fff);
+  background:#fff;
+}
+
+@media (max-width:1100px){
+  .mesas-card-pdf-fijo .mesas-pdf-divTable,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-divTable,
+  .mesas-card-pdf-fijo .mesas-pdf-table.mesas-pdf-divTable,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-table.mesas-pdf-divTable{
+    min-width:920px;
   }
 }

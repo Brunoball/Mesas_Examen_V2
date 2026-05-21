@@ -1,5 +1,5 @@
 // src/components/Mesas_examen/modales/mas/ModalAgregarPreviaMesa.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -12,6 +12,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 import "./mas.css";
+import TextoExpandibleGlobal from "../../../Global/Modales/TextoExpandibleGlobal";
 
 const normalizar = (valor) => String(valor || "").toLowerCase().trim();
 
@@ -38,6 +39,46 @@ const previaCoincide = (previa, busqueda) => {
   ].some((valor) => normalizar(valor).includes(textoBusqueda));
 };
 
+const MAS_GRID_COLS = "0.75fr 0.9fr 1.45fr 0.85fr 1.45fr 1.2fr";
+
+const isTopMesaModal = (node) => {
+  if (typeof document === "undefined" || !node) return true;
+  const modales = Array.from(document.querySelectorAll("[data-mesa-modal-root='true'], .gdel-overlay, [data-global-info-modal-root='true']"));
+  return modales[modales.length - 1] === node;
+};
+
+const useEscapeClose = (abierto, onClose, disabled = false) => {
+  const overlayRef = useRef(null);
+
+  useEffect(() => {
+    if (!abierto) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key !== "Escape" || disabled) return;
+      if (!isTopMesaModal(overlayRef.current)) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      onClose?.();
+    };
+
+    document.addEventListener("keydown", handleKeyDown, true);
+    return () => document.removeEventListener("keydown", handleKeyDown, true);
+  }, [abierto, onClose, disabled]);
+
+  return overlayRef;
+};
+
+const GridHead = ({ columns, gridCols }) => (
+  <div className="mas-grid-row mas-grid-head" style={{ gridTemplateColumns: gridCols }} role="row">
+    {columns.map((column) => (
+      <div key={column.key} className="mas-grid-cell mas-grid-cell-head" role="columnheader">
+        {column.label}
+      </div>
+    ))}
+  </div>
+);
+
 const ModalAgregarPreviaMesa = ({
   abierto,
   numero,
@@ -50,6 +91,7 @@ const ModalAgregarPreviaMesa = ({
 }) => {
   const [busqueda, setBusqueda] = useState("");
   const [previaSeleccionada, setPreviaSeleccionada] = useState(null);
+  const overlayRef = useEscapeClose(abierto, onClose, agregando);
 
   const previas = useMemo(() => {
     const lista = Array.isArray(data?.previas) ? data.previas : [];
@@ -72,13 +114,29 @@ const ModalAgregarPreviaMesa = ({
     onConfirm(previaSeleccionada);
   };
 
+  const columns = [
+    { key: "seleccionar", label: "Seleccionar" },
+    { key: "dni", label: "DNI" },
+    { key: "alumno", label: "Alumno" },
+    { key: "curso", label: "Curso" },
+    { key: "materia", label: "Materia" },
+    { key: "docente", label: "Docente" },
+  ];
+
   return createPortal((
-    <div className="mas-modal-overlay" role="dialog" aria-modal="true">
+    <div ref={overlayRef} className="mas-modal-overlay" role="dialog" aria-modal="true" data-mesa-modal-root="true">
       <div className="mas-modal-panel">
         <header className="mas-modal-header">
-          <div>
-            <h3>Agregar alumno a la mesa N° {texto(numeroMesa)}</h3>
-            <p>{texto(data?.area || data?.meta?.area, "Área sin definir")}</p>
+          <div className="mas-header-title">
+            <span className="mas-header-icon" aria-hidden="true">
+              <FontAwesomeIcon icon={faPlus} />
+            </span>
+            <div className="mas-header-text">
+              <h3>Agregar alumno a la mesa N° {texto(numeroMesa)}</h3>
+              <div className="mas-header-meta">
+                <span>{texto(data?.area || data?.meta?.area, "Área sin definir")}</span>
+              </div>
+            </div>
           </div>
           <button type="button" onClick={onClose} disabled={agregando} aria-label="Cerrar">
             <FontAwesomeIcon icon={faTimes} />
@@ -115,23 +173,19 @@ const ModalAgregarPreviaMesa = ({
             </div>
           ) : (
             <div className="mas-tabla-wrap">
-              <table className="mas-tabla">
-                <thead>
-                  <tr>
-                    <th>Seleccionar</th>
-                    <th>DNI</th>
-                    <th>Alumno</th>
-                    <th>Curso</th>
-                    <th>Materia</th>
-                    <th>Docente</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <div className="mas-tabla mas-div-table" role="table" aria-label="Previas disponibles para agregar">
+                <GridHead columns={columns} gridCols={MAS_GRID_COLS} />
+                <div className="mas-grid-body" role="rowgroup">
                   {previas.map((previa) => {
                     const activa = String(previaSeleccionada?.id_previa) === String(previa.id_previa);
                     return (
-                      <tr key={previa.id_previa} className={activa ? "seleccionada" : ""}>
-                        <td>
+                      <div
+                        key={previa.id_previa}
+                        className={`mas-grid-row mas-grid-data-row ${activa ? "seleccionada" : ""}`}
+                        style={{ gridTemplateColumns: MAS_GRID_COLS }}
+                        role="row"
+                      >
+                        <div className="mas-grid-cell mas-grid-cell-actions" role="cell" data-label="Seleccionar">
                           <button
                             type="button"
                             className={`mas-radio ${activa ? "activo" : ""}`}
@@ -140,17 +194,23 @@ const ModalAgregarPreviaMesa = ({
                           >
                             {activa && <FontAwesomeIcon icon={faCheck} />}
                           </button>
-                        </td>
-                        <td>{texto(previa.dni)}</td>
-                        <td>{texto(previa.alumno)}</td>
-                        <td>{texto(previa.curso)}</td>
-                        <td>{texto(previa.materia)}</td>
-                        <td>{texto(previa.docente)}</td>
-                      </tr>
+                        </div>
+                        <div className="mas-grid-cell" role="cell" data-label="DNI">{texto(previa.dni)}</div>
+                        <div className="mas-grid-cell is-strong" role="cell" data-label="Alumno">
+                          <TextoExpandibleGlobal value={previa.alumno} title="Alumno" subtitle={`Mesa N° ${texto(numeroMesa)}`} />
+                        </div>
+                        <div className="mas-grid-cell" role="cell" data-label="Curso">{texto(previa.curso)}</div>
+                        <div className="mas-grid-cell" role="cell" data-label="Materia">
+                          <TextoExpandibleGlobal value={previa.materia} title="Materia" subtitle={`Mesa N° ${texto(numeroMesa)}`} />
+                        </div>
+                        <div className="mas-grid-cell" role="cell" data-label="Docente">
+                          <TextoExpandibleGlobal value={previa.docente} title="Docente" subtitle={`Mesa N° ${texto(numeroMesa)}`} />
+                        </div>
+                      </div>
                     );
                   })}
-                </tbody>
-              </table>
+                </div>
+              </div>
             </div>
           )}
         </section>

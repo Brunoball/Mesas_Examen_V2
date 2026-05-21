@@ -36,8 +36,10 @@
   height:100dvh;
   padding:18px;
   display:flex;
-  align-items:center;
+  align-items:flex-start;
   justify-content:center;
+  overflow-y:auto;
+  overflow-x:auto;
   background:rgba(8,16,30,.52);
   backdrop-filter:blur(4px);
   animation:gmi-fade .14s ease-out;
@@ -45,11 +47,14 @@
 
 .docentes-modal--info{
   width:min(980px, 96vw);
-  max-height:94vh;
-  max-height:94dvh;
-  display:flex;
-  flex-direction:column;
-  overflow:hidden;
+  height:min(94vh, 860px);
+  height:min(94dvh, 860px);
+  max-height:min(94vh, 860px);
+  max-height:min(94dvh, 860px);
+  margin:auto 0;
+  display:grid;
+  grid-template-rows:auto minmax(0, 1fr) auto;
+  overflow:auto;
   background:var(--gmi-bg);
   border:1px solid rgba(255,255,255,.22);
   border-radius:var(--gmi-radius);
@@ -227,9 +232,12 @@
    ========================================================= */
 
 .docentes-modal--info .docentes-info-content{
-  flex:1;
   min-height:0;
-  overflow:auto;
+  height:100%;
+  overflow-y:auto;
+  overflow-x:auto;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
   padding:14px;
   background:linear-gradient(180deg, #fff 0%, var(--gmi-bg) 100%);
 }
@@ -246,7 +254,6 @@
     radial-gradient(circle at 20% 0%, rgba(0,85,187,.16), transparent 34%),
     linear-gradient(135deg, #fff 0%, color-mix(in srgb, var(--gmi-bg) 70%, #fff) 100%);
   box-shadow:var(--gmi-shadow-soft);
-  overflow:hidden;
 }
 
 .docentes-modal--info .docentes-info-icon{
@@ -268,7 +275,7 @@
   line-height:1.1;
   font-weight:680;
   letter-spacing:-.02em;
-  overflow:hidden;
+  overflow:auto;
   text-overflow:ellipsis;
   white-space:nowrap;
 }
@@ -297,31 +304,88 @@
 }
 
 .docentes-modal--info .docentes-info-card{
+  position:relative;
   min-height:86px;
-  padding:13px;
-  border:1px solid color-mix(in srgb, var(--gmi-border) 78%, #fff);
-  border-radius:14px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:14px;
+  border:1px solid var(--gmi-border);
+  border-radius:22px;
   background:var(--gmi-white);
-  box-shadow:var(--gmi-shadow-soft);
+  box-shadow:0 1px 4px rgba(10,37,64,.08);
+  overflow: hidden;
+
+}
+
+.docentes-modal--info .docentes-info-card::after{
+  content:"";
+  position:absolute;
+  right:-30px;
+  bottom:-30px;
+  width:76px;
+  height:76px;
+  border-radius:50%;
+  opacity:.10;
+  background:currentColor;
+  pointer-events:none;
+}
+
+.docentes-modal--info .docentes-info-card__icon{
+  flex:0 0 auto;
+  width:42px;
+  height:42px;
+  border-radius:14px;
+  display:grid;
+  place-items:center;
+  background:rgba(0,85,187,.11);
+  font-size:17px;
+}
+
+.docentes-modal--info .docentes-info-card__body{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
 }
 
 .docentes-modal--info .docentes-info-card span{
   display:block;
   color:var(--gmi-muted);
   font-size:11px;
-  font-weight:750;
+  font-weight:900;
   text-transform:uppercase;
-  letter-spacing:.06em;
+  letter-spacing:.055em;
+  white-space:nowrap;
+  overflow:auto;
+  text-overflow:ellipsis;
 }
 
 .docentes-modal--info .docentes-info-card strong{
   display:block;
-  margin-top:8px;
   color:var(--gmi-ink);
-  font-size:24px;
-  line-height:1;
-  font-weight:680;
+  font-size:clamp(22px, 1.7vw, 30px);
+  line-height:1.05;
+  font-weight:900;
+  letter-spacing:-.04em;
 }
+
+.docentes-modal--info .docentes-info-card small{
+  display:block;
+  color:var(--gmi-muted);
+  font-size:12px;
+  font-weight:700;
+  white-space:nowrap;
+  overflow:auto;
+  text-overflow:ellipsis;
+}
+
+.docentes-modal--info .docentes-info-card--blue{ color:var(--gmi-action); }
+.docentes-modal--info .docentes-info-card--green{ color:var(--gmi-success); }
+.docentes-modal--info .docentes-info-card--purple{ color:#7c3aed; }
+
+.docentes-modal--info .docentes-info-card--green .docentes-info-card__icon{ background:rgba(34,173,92,.12); }
+.docentes-modal--info .docentes-info-card--purple .docentes-info-card__icon{ background:rgba(124,58,237,.12); }
 
 /* =========================================================
    SECCIONES
@@ -334,7 +398,6 @@
   border-radius:14px;
   background:var(--gmi-white);
   box-shadow:var(--gmi-shadow-soft);
-  overflow:hidden;
 }
 
 .docentes-modal--info .docentes-info-section > h3{
@@ -357,32 +420,41 @@
 }
 
 /* =========================================================
-   TABLA
+   GRILLA DE CÁTEDRAS — solo divs
    ========================================================= */
 
-.docentes-modal--info .docentes-info-table-wrap{
+.docentes-modal--info .docentes-info-catedras-wrap{
   margin:12px;
-  overflow:auto;
+  overflow-y:visible;
+  overflow-x:auto;
   border:1px solid rgba(10,37,64,.10);
   border-radius:13px;
   background:#fff;
 }
 
-.docentes-modal--info .docentes-info-table{
+.docentes-modal--info .docentes-info-divtable{
   width:100%;
-  min-width:580px;
-  border-collapse:separate;
-  border-spacing:0;
+  min-width:0;
+  overflow-x:auto;
 }
 
-.docentes-modal--info .docentes-info-table thead th{
-  position:sticky;
-  top:0;
-  z-index:1;
-  height:42px;
-  padding:0 13px;
+.docentes-modal--info .docentes-info-divtable-head,
+.docentes-modal--info .docentes-info-divtable-row{
+  display:grid;
+  grid-template-columns:minmax(76px, .75fr) minmax(86px, .75fr) minmax(0, 2fr);
+  align-items:center;
+  min-width:0;
+}
+
+.docentes-modal--info .docentes-info-divtable-head{
+  min-height:42px;
   background:color-mix(in srgb, var(--gmi-bg) 70%, #fff);
   border-bottom:1px solid rgba(10,37,64,.10);
+}
+
+.docentes-modal--info .docentes-info-divtable-head > div{
+  min-width:0;
+  padding:0 13px;
   color:color-mix(in srgb, var(--gmi-text) 82%, #000);
   font-size:11px;
   font-weight:760;
@@ -390,33 +462,49 @@
   text-align:left;
   text-transform:uppercase;
   white-space:nowrap;
+  overflow:auto;
+  text-overflow:ellipsis;
 }
 
-.docentes-modal--info .docentes-info-table tbody td{
-  height:52px;
-  padding:10px 13px;
+.docentes-modal--info .docentes-info-divtable-body{
+  min-width:0;
+}
+
+.docentes-modal--info .docentes-info-divtable-row{
+  min-height:52px;
   border-bottom:1px solid rgba(10,37,64,.07);
-  color:var(--gmi-ink);
-  font-size:13px;
-  font-weight:520;
-  vertical-align:middle;
-}
-
-.docentes-modal--info .docentes-info-table tbody tr:last-child td{
-  border-bottom:0;
-}
-
-.docentes-modal--info .docentes-info-table tbody tr{
   transition:background var(--gmi-trans);
 }
 
-.docentes-modal--info .docentes-info-table tbody tr:hover{
+.docentes-modal--info .docentes-info-divtable-row:last-child{
+  border-bottom:0;
+}
+
+.docentes-modal--info .docentes-info-divtable-row:hover{
   background:rgba(0,85,187,.045);
 }
 
-.docentes-modal--info .docentes-info-table td svg{
+.docentes-modal--info .docentes-info-divtable-cell{
+  min-width:0;
+  max-width:100%;
+  padding:10px 13px;
+  color:var(--gmi-ink);
+  font-size:13px;
+  font-weight:520;
+  overflow:auto;
+  text-overflow:ellipsis;
+}
+
+.docentes-modal--info .docentes-info-divtable-cell svg{
   margin-right:7px;
   color:var(--gmi-action);
+}
+
+.docentes-modal--info .docentes-info-divtable-empty{
+  min-height:52px;
+  display:flex;
+  align-items:center;
+  border-bottom:0;
 }
 
 /* =========================================================
@@ -461,7 +549,7 @@
   text-align:center;
 }
 
-.docentes-modal--info .docentes-info-table .docentes-empty{
+.docentes-modal--info .docentes-info-divtable-empty{
   border:0;
   border-radius:0;
   background:transparent;
@@ -498,7 +586,7 @@
 .docentes-modal--info .docentes-bloque-chip strong,
 .docentes-modal--info .docentes-bloque-chip span,
 .docentes-modal--info .docentes-bloque-chip small{
-  overflow:hidden;
+  overflow:auto;
   text-overflow:ellipsis;
   white-space:nowrap;
 }
@@ -581,6 +669,8 @@
 .docentes-modal--info{
   width:min(940px, 96vw);
   border-radius:20px;
+  display:grid;
+  grid-template-rows:auto minmax(0, 1fr) auto;
 }
 
 .docentes-modal--info .docentes-info-modal-header{
@@ -589,10 +679,16 @@
 }
 
 .docentes-modal--info .docentes-info-content{
+  min-height:0;
+  height:100%;
   padding:16px;
   display:flex;
   flex-direction:column;
   gap:12px;
+  overflow-y:auto;
+  overflow-x:auto;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
 }
 
 .docentes-modal--info .docentes-info-head{
@@ -655,36 +751,12 @@
 }
 
 .docentes-modal--info .docentes-info-card{
-  position:relative;
-  overflow:hidden;
-  min-height:96px;
-  display:flex;
-  flex-direction:column;
-  justify-content:space-between;
+  min-height:86px;
 }
 
-.docentes-modal--info .docentes-info-card::after{
-  content:'';
-  position:absolute;
-  right:-34px;
-  top:-34px;
-  width:84px;
-  height:84px;
-  border-radius:50%;
-  background:rgba(0,85,187,.055);
-  pointer-events:none;
-}
-
-.docentes-modal--info .docentes-info-card strong{
-  margin-top:8px;
-}
-
+.docentes-modal--info .docentes-info-card strong,
 .docentes-modal--info .docentes-info-card small{
-  display:block;
-  margin-top:6px;
-  color:var(--gmi-muted);
-  font-size:12px;
-  font-weight:520;
+  margin-top:0;
 }
 
 .docentes-modal--info .docentes-info-section{
@@ -696,9 +768,10 @@
   padding:12px 14px;
 }
 
-.docentes-modal--info .docentes-info-table-wrap{
+.docentes-modal--info .docentes-info-catedras-wrap{
   margin:12px;
-  max-height:260px;
+  overflow-y:visible;
+  overflow-x:auto;
 }
 
 .docentes-modal--info .docentes-info-materia{
@@ -707,7 +780,7 @@
   gap:8px;
   min-width:0;
   max-width:100%;
-  overflow:hidden;
+  overflow:auto;
   text-overflow:ellipsis;
   white-space:nowrap;
 }
@@ -744,7 +817,7 @@
 .docentes-modal--info .docentes-bloque-chip__main span{
   display:block;
   min-width:0;
-  overflow:hidden;
+  overflow:auto;
   text-overflow:ellipsis;
   white-space:nowrap;
 }
@@ -802,7 +875,7 @@
   }
 
   .docentes-modal--info .docentes-info-grid{
-    grid-template-columns:1fr;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -814,7 +887,8 @@
 
   .docentes-modal--info{
     width:100%;
-    max-height:100%;
+    height:calc(100dvh - 20px);
+    max-height:calc(100dvh - 20px);
     border-radius:16px;
   }
 
@@ -869,6 +943,10 @@
   .docentes-modal--info .docentes-info-head{
     min-height:auto;
     align-items:center;
+  }
+
+  .docentes-modal--info .docentes-info-grid{
+    grid-template-columns:1fr;
   }
 
   .docentes-modal--info .docentes-info-head h3{

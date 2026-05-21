@@ -374,13 +374,16 @@ background:rgba(0,85,187,.07);
 
 .docentes-modal{
   width:min(620px, 100%);
-  max-height:min(88vh, 860px);
-  overflow:auto;
   background:#fff;
   border:1px solid rgba(10,37,64,.14);
   border-radius:18px;
   box-shadow:0 24px 70px rgba(10,37,64,.24);
   color:var(--balto-ink);
+}
+
+.docentes-modal:not(.docentes-modal--info){
+  max-height:min(88vh, 860px);
+  overflow:auto;
 }
 
 .docentes-modal-sm{ width:min(460px, 100%); }

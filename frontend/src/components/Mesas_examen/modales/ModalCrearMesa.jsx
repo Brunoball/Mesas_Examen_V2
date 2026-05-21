@@ -6,9 +6,9 @@ import {
   faCalendarDays,
   faCheck,
   faClock,
+  faLayerGroup,
   faSpinner,
   faTimes,
-  faTriangleExclamation,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "../../Global/Global_css/Global_Modals.css";
@@ -85,6 +85,20 @@ const ModalCrearMesa = ({
 
   const totalPrevias = parametros?.total_previas_para_armar || 0;
   const turnos = parametros?.turnos || [];
+
+  const abrirCalendario = (e) => {
+    const input = e.currentTarget;
+
+    if (!input || input.disabled || typeof input.showPicker !== "function") {
+      return;
+    }
+
+    try {
+      input.showPicker();
+    } catch (_) {
+      // Algunos navegadores solo permiten abrir el calendario desde una acción directa del usuario.
+    }
+  };
 
   const handleFechaInicioChange = (e) => {
     const nuevaFecha = e.target.value;
@@ -178,10 +192,13 @@ const ModalCrearMesa = ({
         </div>
 
         <form onSubmit={handleSubmit} className="mesas-modal-body">
-          <div className="mesas-modal-alert">
-            <FontAwesomeIcon icon={faTriangleExclamation} />
+          <div className="mesas-modal-indicator">
+            <span className="mesas-modal-indicator__icon" aria-hidden="true">
+              <FontAwesomeIcon icon={faCalendarDays} />
+            </span>
             <span>
-              Esta acción inserta/actualiza registros en la tabla <strong>mesas</strong>, genera el número de mesa y carga <strong>fecha_mesa</strong> e <strong>id_turno</strong>.
+              El armado usa únicamente días hábiles. Si el rango incluye sábado o domingo,
+              el sistema los descarta automáticamente y continúa con el siguiente día hábil.
             </span>
           </div>
 
@@ -195,6 +212,7 @@ const ModalCrearMesa = ({
                 type="date"
                 value={fechaInicio}
                 onChange={handleFechaInicioChange}
+                onClick={abrirCalendario}
                 disabled={cargando}
               />
             </label>
@@ -209,28 +227,33 @@ const ModalCrearMesa = ({
                 value={fechaFin}
                 min={fechaInicio || undefined}
                 onChange={handleFechaFinChange}
+                onClick={abrirCalendario}
                 disabled={cargando}
               />
             </label>
           </div>
 
-          <div className="mesas-modal-alert">
-            <FontAwesomeIcon icon={faCalendarDays} />
-            <span>
-              El armado usa únicamente días hábiles. Si el rango incluye sábado o domingo,
-              el sistema los descarta automáticamente y continúa con el siguiente día hábil.
-            </span>
-          </div>
-
           <div className="mesas-modal-info">
-            <div>
-              <strong>{totalPrevias}</strong>
-              <span>previas inscriptas para armar</span>
+            <div className="mesas-modal-info-card mesas-modal-info-card--blue">
+              <span className="mesas-modal-info-card__icon" aria-hidden="true">
+                <FontAwesomeIcon icon={faLayerGroup} />
+              </span>
+              <div className="mesas-modal-info-card__body">
+                <span>Previas</span>
+                <strong>{totalPrevias}</strong>
+                <small>inscriptas para armar</small>
+              </div>
             </div>
 
-            <div>
-              <strong>{turnos.length}</strong>
-              <span>turnos activos disponibles</span>
+            <div className="mesas-modal-info-card mesas-modal-info-card--green">
+              <span className="mesas-modal-info-card__icon" aria-hidden="true">
+                <FontAwesomeIcon icon={faClock} />
+              </span>
+              <div className="mesas-modal-info-card__body">
+                <span>Turnos</span>
+                <strong>{turnos.length}</strong>
+                <small>activos disponibles</small>
+              </div>
             </div>
           </div>
 
@@ -264,6 +287,9 @@ const ModalCrearMesa = ({
                   onChange={() => setTipoArmado("area")}
                   disabled={cargando}
                 />
+                <span className="mesas-check-visual" aria-hidden="true">
+                  <FontAwesomeIcon icon={faCheck} />
+                </span>
                 <div>
                   <strong>Armado por área</strong>
                   <span>Usa el armado actual: compacta por área y valida disponibilidad docente.</span>
@@ -277,6 +303,9 @@ const ModalCrearMesa = ({
                   onChange={() => setTipoArmado("docentes")}
                   disabled={cargando}
                 />
+                <span className="mesas-check-visual" aria-hidden="true">
+                  <FontAwesomeIcon icon={faCheck} />
+                </span>
                 <div>
                   <strong>Armado por disponibilidad docente</strong>
                   <span>Prioriza días/turnos disponibles del docente y usa el área como criterio secundario.</span>
@@ -286,19 +315,27 @@ const ModalCrearMesa = ({
           </div>
 
           <div className="mesas-modal-options">
-            <label>
+            <label className={`mesas-option-check ${limpiarBorrador ? "activo" : ""}`}>
               <input
                 type="checkbox"
                 checked={limpiarBorrador}
                 onChange={(e) => setLimpiarBorrador(e.target.checked)}
                 disabled={cargando}
               />
-              Eliminar borradores anteriores antes de armar
+              <span className="mesas-check-visual" aria-hidden="true">
+                <FontAwesomeIcon icon={faCheck} />
+              </span>
+              <span className="mesas-option-check__text">
+                <strong>Limpiar borradores</strong>
+                <small>Eliminar borradores anteriores antes de armar</small>
+              </span>
             </label>
           </div>
 
           {error && <div className="mesas-modal-error">{error}</div>}
 
+        </form>
+        
           <div className="mesas-modal-actions">
             <button
               type="button"
@@ -327,7 +364,6 @@ const ModalCrearMesa = ({
               )}
             </button>
           </div>
-        </form>
       </div>
     </div>
   ), portalTarget);

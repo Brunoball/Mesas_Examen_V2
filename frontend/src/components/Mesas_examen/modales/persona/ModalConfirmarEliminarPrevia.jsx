@@ -1,5 +1,5 @@
 // src/components/Mesas_examen/modales/persona/ModalConfirmarEliminarPrevia.jsx
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner, faTrash } from "@fortawesome/free-solid-svg-icons";
@@ -11,14 +11,44 @@ const texto = (valor, fallback = "-") => {
   return salida || fallback;
 };
 
+const isTopMesaModal = (node) => {
+  if (typeof document === "undefined" || !node) return true;
+  const modales = Array.from(document.querySelectorAll("[data-mesa-modal-root='true'], .gdel-overlay, [data-global-info-modal-root='true']"));
+  return modales[modales.length - 1] === node;
+};
+
+const useEscapeClose = (abierto, onClose, disabled = false) => {
+  const overlayRef = useRef(null);
+
+  useEffect(() => {
+    if (!abierto) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key !== "Escape" || disabled) return;
+      if (!isTopMesaModal(overlayRef.current)) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      onClose?.();
+    };
+
+    document.addEventListener("keydown", handleKeyDown, true);
+    return () => document.removeEventListener("keydown", handleKeyDown, true);
+  }, [abierto, onClose, disabled]);
+
+  return overlayRef;
+};
+
 const ModalConfirmarEliminarPrevia = ({ abierto, previa, eliminando, onCancel, onConfirm }) => {
+  const overlayRef = useEscapeClose(abierto, onCancel, eliminando);
+
   if (!abierto) return null;
 
   const portalTarget = typeof document !== "undefined" ? document.body : null;
   if (!portalTarget) return null;
 
   return createPortal((
-    <div className="persona-modal-overlay persona-modal-overlay-top" role="dialog" aria-modal="true">
+    <div ref={overlayRef} className="persona-modal-overlay persona-modal-overlay-top" role="dialog" aria-modal="true" data-mesa-modal-root="true">
       <div className="persona-confirm-card">
         <div className="persona-confirm-icon">
           <FontAwesomeIcon icon={faTrash} />

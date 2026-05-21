@@ -10,6 +10,7 @@ import {
   faSpinner,
   faTriangleExclamation,
   faCheckCircle,
+  faChartLine,
   faEdit,
   faTimes,
   faFilePdf,
@@ -29,6 +30,7 @@ import Toast from "../Global/Toast";
 import ModalTituloPdfMesas from "./modales/exportar_pdf/ModalTituloPdfMesas";
 import { descargarPdfMesas } from "./modales/exportar_pdf/mesasPdfExporter";
 import ModalExportarHistorial from "./modales/exportar_historial/ModalExportarHistorial";
+import TextoExpandibleGlobal from "../Global/Modales/TextoExpandibleGlobal";
 import {
   contarMesasHistorial,
   contarRegistrosHistorialExportacion,
@@ -290,7 +292,7 @@ const obtenerBloquesVistaPdf = (grupo) => {
       numeroMesa: textoCorto(numero?.numero_mesa),
       tipoMesa: textoCorto(numero?.tipo_mesa, "-"),
       prioridad: numero?.prioridad ?? grupo?.prioridad_max ?? 0,
-      observacion: textoCorto(bloque.observacion || numero?.observacion, ""),
+      observacion: textoCorto(bloque.observacion || numero?.observacion || grupo?.motivo || grupo?.observacion, ""),
     }))
   );
 };
@@ -329,6 +331,20 @@ const construirPayloadEliminar = (item, tab) => ({
   numero_mesa: item.numero_mesa || item.numeros?.[0]?.numero_mesa || null,
 });
 
+const PDF_GRID_COLS = "9% 22% 24% 8% 8% 7% 22%";
+
+const PdfGridHead = () => (
+  <div className="mesas-pdf-gridHead" style={{ gridTemplateColumns: PDF_GRID_COLS }} role="row">
+    <div className="mesas-pdf-headCell pdf-col-hora" role="columnheader">Hora</div>
+    <div className="mesas-pdf-headCell pdf-col-materia" role="columnheader">Espacio Curricular</div>
+    <div className="mesas-pdf-headCell pdf-col-estudiante" role="columnheader">Estudiante</div>
+    <div className="mesas-pdf-headCell pdf-col-dni" role="columnheader">DNI</div>
+    <div className="mesas-pdf-headCell pdf-col-curso" role="columnheader">Curso</div>
+    <div className="mesas-pdf-headCell pdf-col-nota" role="columnheader">Nota</div>
+    <div className="mesas-pdf-headCell pdf-col-docente" role="columnheader">Docentes</div>
+  </div>
+);
+
 const MesaPdfCard = ({ grupo, esNoAgrupada = false, onEdit, onDelete, onGuardarNota, guardandoNotas = {} }) => {
   const bloques = obtenerBloquesVistaPdf(grupo);
   const totalFilas = Math.max(
@@ -339,7 +355,7 @@ const MesaPdfCard = ({ grupo, esNoAgrupada = false, onEdit, onDelete, onGuardarN
   let horaMostrada = false;
 
   return (
-    <article className={`mesas-pdf-sheet ${esNoAgrupada ? "mesas-pdf-sheet-observada" : ""}`}>
+    <article className={`mesas-pdf-sheet ${(esNoAgrupada || grupo?.motivo || grupo?.observacion) ? "mesas-pdf-sheet-observada" : ""}`}>
       <header className="mesas-pdf-header">
         <div className="mesas-pdf-brand">
           <img src={logo} alt="IPET 50" />
@@ -354,85 +370,87 @@ const MesaPdfCard = ({ grupo, esNoAgrupada = false, onEdit, onDelete, onGuardarN
         </div>
       </header>
 
-      {esNoAgrupada && (grupo?.motivo || grupo?.observacion) && (
-        <div className="mesas-pdf-observacion">
-          <strong>Motivo sin agrupar:</strong>{" "}
+      {(esNoAgrupada || grupo?.motivo || grupo?.observacion) && (grupo?.motivo || grupo?.observacion) && (
+        <div className={`mesas-pdf-observacion ${!esNoAgrupada ? "mesas-pdf-observacion-info" : ""}`}>
+          <strong>{esNoAgrupada ? "Motivo sin agrupar:" : "Observación:"}</strong>{" "}
           {textoCorto(grupo.motivo || grupo.observacion)}
         </div>
       )}
 
       <div className="mesas-pdf-table-wrap">
-        <table className="mesas-pdf-table">
-          <thead>
-            <tr>
-              <th className="pdf-col-hora">Hora</th>
-              <th className="pdf-col-materia">Espacio Curricular</th>
-              <th className="pdf-col-estudiante">Estudiante</th>
-              <th className="pdf-col-dni">DNI</th>
-              <th className="pdf-col-curso">Curso</th>
-              <th className="pdf-col-nota">Nota</th>
-              <th className="pdf-col-docente">Docentes</th>
-            </tr>
-          </thead>
-          <tbody>
+        <div className="mesas-pdf-table mesas-pdf-divTable" role="table" aria-label="Detalle de mesa">
+          <PdfGridHead />
+          <div className="mesas-pdf-gridBody" style={{ gridTemplateColumns: PDF_GRID_COLS }} role="rowgroup">
             {bloques.map((bloque) =>
               bloque.alumnos.map((alumno, alumnoIndex) => {
                 const debeMostrarHora = !horaMostrada;
                 if (debeMostrarHora) horaMostrada = true;
+                const rowSpanMateria = Math.max(1, bloque.alumnos.length);
 
                 return (
-                  <tr
-                    key={`${bloque.id}-${alumno?.id_mesa || alumno?.id_previa || alumnoIndex}`}
-                    className={`${alumnoIndex === 0 ? "pdf-row-inicio-materia" : ""} ${bloque.observacion ? "pdf-row-observada" : ""}`}
-                  >
+                  <React.Fragment key={`${bloque.id}-${alumno?.id_mesa || alumno?.id_previa || alumnoIndex}`}>
                     {debeMostrarHora && (
-                      <td className="pdf-hora-cell" rowSpan={totalFilas}>
+                      <div className="mesas-pdf-cell pdf-hora-cell" style={{ gridRow: `span ${totalFilas}` }} role="cell" data-label="Hora">
                         <FechaVerticalMesa grupo={grupo} />
-                      </td>
+                      </div>
                     )}
 
                     {alumnoIndex === 0 && (
-                      <td className="pdf-materia-line-cell" rowSpan={Math.max(1, bloque.alumnos.length)}>
+                      <div
+                        className={`mesas-pdf-cell pdf-materia-line-cell ${bloque.observacion ? "pdf-row-observada" : ""}`}
+                        style={{ gridRow: `span ${rowSpanMateria}` }}
+                        role="cell"
+                        data-label="Espacio Curricular"
+                      >
                         <strong>{bloque.materia}</strong>
                         {bloque.observacion && <small>{bloque.observacion}</small>}
-                      </td>
+                      </div>
                     )}
 
-                    <td className="pdf-estudiante-cell">
+                    <div className={`mesas-pdf-cell pdf-estudiante-cell ${bloque.observacion ? "pdf-row-observada" : ""}`} role="cell" data-label="Estudiante">
                       {alumno ? textoCorto(alumno.estudiante || alumno.alumno, "Sin estudiante") : "Sin alumnos vinculados"}
-                    </td>
-                    <td className="pdf-dni-cell">{alumno ? textoCorto(alumno.dni) : "-"}</td>
-                    <td className="pdf-curso-cell">{alumno ? obtenerCursoAlumno(alumno) : "-"}</td>
-                    <td className="pdf-nota-cell">
+                    </div>
+                    <div className={`mesas-pdf-cell pdf-dni-cell ${bloque.observacion ? "pdf-row-observada" : ""}`} role="cell" data-label="DNI">
+                      {alumno ? textoCorto(alumno.dni) : "-"}
+                    </div>
+                    <div className={`mesas-pdf-cell pdf-curso-cell ${bloque.observacion ? "pdf-row-observada" : ""}`} role="cell" data-label="Curso">
+                      {alumno ? obtenerCursoAlumno(alumno) : "-"}
+                    </div>
+                    <div className={`mesas-pdf-cell pdf-nota-cell ${bloque.observacion ? "pdf-row-observada" : ""}`} role="cell" data-label="Nota">
                       <SelectorNotaAlumno
                         alumno={alumno}
                         guardando={alumno ? !!guardandoNotas[obtenerKeyNotaAlumno(alumno)] : false}
                         onGuardarNota={onGuardarNota}
                       />
-                    </td>
+                    </div>
 
                     {alumnoIndex === 0 && (
-                      <td className="pdf-docente-line-cell" rowSpan={Math.max(1, bloque.alumnos.length)}>
+                      <div
+                        className={`mesas-pdf-cell pdf-docente-line-cell ${bloque.observacion ? "pdf-row-observada" : ""}`}
+                        style={{ gridRow: `span ${rowSpanMateria}` }}
+                        role="cell"
+                        data-label="Docentes"
+                      >
                         <strong>{bloque.docente}</strong>
-                      </td>
+                      </div>
                     )}
-                  </tr>
+                  </React.Fragment>
                 );
               })
             )}
-          </tbody>
-        </table>
+          </div>
+        </div>
       </div>
 
-      <footer className="mesas-pdf-actions">
-        <button type="button" className="mesas-pdf-action mesas-pdf-action-edit" onClick={onEdit}>
-          <FontAwesomeIcon icon={faEdit} />
-          Editar
-        </button>
-        <button type="button" className="mesas-pdf-action mesas-pdf-action-delete" onClick={onDelete}>
-          <FontAwesomeIcon icon={faTrash} />
-          Eliminar
-        </button>
+      <footer className="mesas-pdf-actions" aria-label="Acciones de mesa">
+        <div className="mov-actionsInline mesas-pdf-actionsInline">
+          <button type="button" className="mov-iconBtn materias-icon-btn mesas-pdf-iconBtn" onClick={onEdit} title="Editar" aria-label="Editar">
+            <FontAwesomeIcon icon={faEdit} />
+          </button>
+          <button type="button" className="mov-iconBtn mov-iconBtn--danger materias-icon-btn materias-icon-danger mesas-pdf-iconBtn" onClick={onDelete} title="Eliminar" aria-label="Eliminar">
+            <FontAwesomeIcon icon={faTrash} />
+          </button>
+        </div>
       </footer>
     </article>
   );
@@ -457,6 +475,19 @@ const HistorialGridHead = ({ columns, gridCols }) => (
   </div>
 );
 
+const HistorialDescripcionExpandible = ({ value, title = "Descripción completa", subtitle = "" }) => (
+  <TextoExpandibleGlobal
+    value={value}
+    fallback="Sin descripción"
+    title={title}
+    subtitle={subtitle}
+    className="mesas-historial-expandible"
+    textClassName="mesas-historial-expandible__text"
+    buttonClassName="mesas-historial-expandible__button"
+    modalCloseLabel="Cerrar"
+  />
+);
+
 const HistorialMesasPanel = ({ historial }) => {
   const resultados = Array.isArray(historial?.resultados) ? historial.resultados : [];
   const armados = Array.isArray(historial?.armados) ? historial.armados : [];
@@ -464,15 +495,45 @@ const HistorialMesasPanel = ({ historial }) => {
   const detalle = historial?.detalleArmado || null;
   const detalleFilas = Array.isArray(detalle?.detalle) ? detalle.detalle : [];
 
+  const totalAprobadas = resumen.total_aprobadas ?? resultados.filter((item) => Number(item.aprobado) === 1).length;
+  const totalDesaprobadas = resumen.total_desaprobadas ?? resultados.filter((item) => Number(item.aprobado) !== 1).length;
+  const tarjetasHistorial = [
+    {
+      key: "resultados",
+      titulo: "Resultados",
+      valor: resumen.total_resultados ?? resultados.length,
+      detalle: "notas registradas",
+      icono: faChartLine,
+      tono: "blue",
+    },
+    {
+      key: "aprobadas",
+      titulo: "Aprobadas",
+      valor: totalAprobadas,
+      detalle: "previas aprobadas",
+      icono: faCheckCircle,
+      tono: "green",
+    },
+    {
+      key: "no-aprobadas",
+      titulo: "No aprobadas",
+      valor: totalDesaprobadas,
+      detalle: "previas pendientes",
+      icono: faTriangleExclamation,
+      tono: "red",
+    },
+    {
+      key: "armados",
+      titulo: "Armados eliminados",
+      valor: resumen.total_armados ?? armados.length,
+      detalle: "guardados en historial",
+      icono: faLayerGroup,
+      tono: "purple",
+    },
+  ];
+
   return (
     <div className="mesas-historial-panel">
-      <div className="mesas-historial-head">
-        <div className="mesas-historial-title">
-          <h3>Historial completo de mesas</h3>
-          <p>Acá quedan registradas las notas cargadas, las previas aprobadas/desaprobadas y los armados eliminados.</p>
-        </div>
-      </div>
-
       {historial?.error && (
         <div className="mov-alert mesas-alert mesas-alert-error mesas-historial-error">
           <FontAwesomeIcon icon={faTriangleExclamation} />
@@ -480,23 +541,19 @@ const HistorialMesasPanel = ({ historial }) => {
         </div>
       )}
 
-      <div className="mesas-historial-resumen">
-        <div className="mesas-historial-kpi">
-          <span>Resultados</span>
-          <strong>{resumen.total_resultados ?? resultados.length}</strong>
-        </div>
-        <div className="mesas-historial-kpi is-ok">
-          <span>Aprobadas</span>
-          <strong>{resumen.total_aprobadas ?? resultados.filter((item) => Number(item.aprobado) === 1).length}</strong>
-        </div>
-        <div className="mesas-historial-kpi is-warn">
-          <span>No aprobadas</span>
-          <strong>{resumen.total_desaprobadas ?? resultados.filter((item) => Number(item.aprobado) !== 1).length}</strong>
-        </div>
-        <div className="mesas-historial-kpi">
-          <span>Armados guardados</span>
-          <strong>{resumen.total_armados ?? armados.length}</strong>
-        </div>
+      <div className="mesas-historial-resumen" aria-label="Resumen del historial">
+        {tarjetasHistorial.map((tarjeta) => (
+          <article key={tarjeta.key} className={`mesas-historial-kpi mesas-historial-kpi--${tarjeta.tono}`}>
+            <div className="mesas-historial-kpiIcon">
+              <FontAwesomeIcon icon={tarjeta.icono} />
+            </div>
+            <div className="mesas-historial-kpiBody">
+              <span>{tarjeta.titulo}</span>
+              <strong>{Number(tarjeta.valor || 0).toLocaleString("es-AR")}</strong>
+              <small>{tarjeta.detalle}</small>
+            </div>
+          </article>
+        ))}
       </div>
 
       {historial?.cargando ? (
@@ -559,8 +616,12 @@ const HistorialMesasPanel = ({ historial }) => {
                                 {aprobado ? "Aprobada" : "No aprobada"}
                               </span>
                             </div>
-                            <div className="mov-gridCell" role="cell" data-label="Motivo" title={textoCorto(item.motivo)}>
-                              {textoCorto(item.motivo)}
+                            <div className="mov-gridCell mesas-historial-descriptionCell" role="cell" data-label="Motivo">
+                              <HistorialDescripcionExpandible
+                                value={item.descripcion || item.motivo}
+                                title="Descripción completa"
+                                subtitle={`Historial de ${textoCorto(item.alumno, "alumno")}`}
+                              />
                             </div>
                           </div>
                         );
@@ -605,8 +666,12 @@ const HistorialMesasPanel = ({ historial }) => {
                           <div className="mov-gridCell is-strong" role="cell" data-label="Código" title={textoCorto(item.codigo_armado)}>
                             {textoCorto(item.codigo_armado)}
                           </div>
-                          <div className="mov-gridCell" role="cell" data-label="Motivo" title={textoCorto(item.motivo)}>
-                            {textoCorto(item.motivo)}
+                          <div className="mov-gridCell mesas-historial-descriptionCell" role="cell" data-label="Motivo">
+                            <HistorialDescripcionExpandible
+                              value={item.descripcion || item.motivo}
+                              title="Descripción completa"
+                              subtitle={`Armado ${textoCorto(item.codigo_armado, "sin código")}`}
+                            />
                           </div>
                           <div className="mov-gridCell is-center" role="cell" data-label="Mesas">{item.total_mesas ?? 0}</div>
                           <div className="mov-gridCell is-center" role="cell" data-label="Previas">{item.total_previas ?? 0}</div>
@@ -999,7 +1064,7 @@ const MesasExamen = () => {
           </div>
         )}
 
-        <div className="mesas-pdf-view">
+        <div className={`mesas-pdf-view ${tab === "historial" ? "mesas-pdf-view--historial" : ""}`}>
           {tab === "historial" ? (
             <HistorialMesasPanel historial={historial} />
           ) : cargando ? (

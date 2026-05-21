@@ -102,7 +102,6 @@
 
 .flechas-search span {
   display: block;
-  margin-bottom: 8px;
   color: #506176;
   font-weight: 800;
 }
@@ -394,4 +393,601 @@
     width:100%;
     max-height:calc(100dvh - 24px);
   }
+}
+
+/* =========================================================
+   Mover número: header liviano + contexto en tarjeta interna.
+========================================================= */
+.flechas-header-compact h3{
+  margin-bottom:7px;
+}
+
+.flechas-info-card{
+  margin:0 0 14px;
+  padding:13px;
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:10px;
+  border:1px solid rgba(10,37,64,.09);
+  border-radius:16px;
+  background:linear-gradient(180deg, #fff, #f7f9fc);
+  box-shadow:0 12px 26px -24px rgba(10,37,64,.42);
+}
+
+.flechas-info-card div{
+  min-width:0;
+  padding:10px 11px;
+  border:1px solid rgba(10,37,64,.075);
+  border-radius:13px;
+  background:#fff;
+}
+
+.flechas-info-card span{
+  display:block;
+  margin-bottom:4px;
+  color:var(--gm-muted, #718096);
+  font-size:11px;
+  line-height:1.2;
+  font-weight:760;
+  letter-spacing:.035em;
+  text-transform:uppercase;
+}
+
+.flechas-info-card strong{
+  display:block;
+  min-width:0;
+  color:var(--gm-ink, #0A2540);
+  font-size:12.5px;
+  line-height:1.25;
+  font-weight:680;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+@media (max-width:720px){
+  .flechas-info-card{
+    grid-template-columns:1fr;
+  }
+}
+
+/* =========================================================
+   Header mover número — icono + título + subtítulos en línea
+========================================================= */
+.flechas-header-title{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  position:relative;
+  z-index:1;
+}
+
+.flechas-header-icon{
+  flex:0 0 auto;
+  width:40px;
+  height:40px;
+  display:grid;
+  place-items:center;
+  border-radius:13px;
+  color:#fff;
+  background:rgba(255,255,255,.13);
+  border:1px solid rgba(255,255,255,.18);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14);
+}
+
+.flechas-header-text{
+  min-width:0;
+}
+
+.flechas-header-meta{
+  margin-top:4px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.flechas-header-meta span{
+  min-width:0;
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  padding:4px 8px;
+  border-radius:999px;
+  color:rgba(255,255,255,.76);
+  background:rgba(255,255,255,.10);
+  border:1px solid rgba(255,255,255,.12);
+  font-size:12px;
+  line-height:1.15;
+  font-weight:560;
+  white-space:nowrap;
+}
+
+.flechas-header-meta b{
+  color:#fff;
+  font-weight:740;
+}
+
+/* =========================================================
+   Tarjetas internas con estética Dashboard
+========================================================= */
+.flechas-info-card .flechas-dashboard-card{
+  position:relative;
+  min-width:0;
+  min-height:82px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:13px !important;
+  border:1px solid rgba(10,37,64,.12) !important;
+  border-radius:22px !important;
+  background:#fff !important;
+  box-shadow:0 1px 4px rgba(10,37,64,.08);
+  overflow:hidden;
+}
+
+.flechas-info-card .flechas-dashboard-card::after{
+  content:"";
+  position:absolute;
+  right:-30px;
+  bottom:-30px;
+  width:76px;
+  height:76px;
+  border-radius:50%;
+  opacity:.10;
+  background:currentColor;
+}
+
+.flechas-dashboard-card__icon{
+  flex:0 0 auto;
+  width:42px;
+  height:42px;
+  margin:0 !important;
+  display:grid !important;
+  place-items:center;
+  border-radius:14px !important;
+  color:currentColor !important;
+  background:rgba(0,85,187,.11) !important;
+  border:0 !important;
+  font-size:16px !important;
+}
+
+.flechas-dashboard-card__body{
+  min-width:0;
+  padding:0 !important;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  position:relative;
+  z-index:1;
+}
+
+.flechas-dashboard-card__body span{
+  margin:0 !important;
+  color:rgba(66,84,102,.72) !important;
+  font-size:11px !important;
+  font-weight:900 !important;
+  letter-spacing:.055em !important;
+  text-transform:uppercase;
+}
+
+.flechas-dashboard-card__body strong{
+  color:var(--gm-ink, #0A2540) !important;
+  font-size:clamp(17px, 1.18vw, 22px) !important;
+  line-height:1.05 !important;
+  font-weight:900 !important;
+  letter-spacing:-.04em;
+}
+
+.flechas-dashboard-card--blue{ color:#0055BB; }
+.flechas-dashboard-card--green{ color:#22ad5c; }
+.flechas-dashboard-card--purple{ color:#7c3aed; }
+.flechas-dashboard-card--green .flechas-dashboard-card__icon{ background:rgba(34,173,92,.12) !important; }
+.flechas-dashboard-card--purple .flechas-dashboard-card__icon{ background:rgba(124,58,237,.12) !important; }
+
+.flechas-card,
+.flechas-destino{
+  border:1px solid rgba(10,37,64,.12);
+  border-radius:22px;
+  background:#fff;
+  box-shadow:0 1px 4px rgba(10,37,64,.08);
+}
+
+@media (max-width:720px){
+  .flechas-header-meta span{
+    white-space:normal;
+  }
+
+  .flechas-info-card .flechas-dashboard-card{
+    min-height:76px;
+  }
+}
+
+.flechas-destino.is-disabled{
+  cursor:not-allowed;
+  opacity:.58;
+  pointer-events:none;
+}
+
+.flechas-numero-item,
+.flechas-numeros li{
+  min-width:0;
+}
+
+.flechas-numero-detail{
+  min-width:0;
+  max-width:100%;
+  display:flex;
+  margin-top:3px;
+}
+
+/* =========================================================
+   Mover número — destinos con estética Dashboard
+   Tarjetas minimalistas, 2 por fila en escritorio.
+========================================================= */
+.flechas-card{
+  padding:18px;
+  border-color:rgba(10,37,64,.10);
+  border-radius:22px;
+  background:linear-gradient(180deg, #fff 0%, #fbfdff 100%);
+  box-shadow:0 1px 4px rgba(10,37,64,.08);
+}
+
+.flechas-card h4{
+  margin:0 0 6px;
+  color:var(--gm-ink, #0A2540);
+  font-size:18px;
+  line-height:1.15;
+  font-weight:780;
+  letter-spacing:-.025em;
+}
+
+.flechas-card > p{
+  max-width:920px;
+  margin:0 0 14px;
+  color:var(--gm-muted, #718096);
+  font-size:13px;
+  line-height:1.45;
+  font-weight:500;
+}
+
+.flechas-search{
+  margin-bottom:16px;
+  padding:10px 12px;
+  border-color:rgba(10,37,64,.10);
+  border-radius:18px;
+  background:#fff;
+  box-shadow:0 1px 3px rgba(10,37,64,.05);
+}
+
+.flechas-search span{
+  margin-bottom:8px;
+  color:rgba(66,84,102,.76);
+  font-size:11px;
+  line-height:1.2;
+  font-weight:850;
+  letter-spacing:.045em;
+  text-transform:uppercase;
+}
+
+.flechas-search div{
+  min-height:42px;
+  padding:0 13px;
+  gap:10px;
+  border-color:rgba(10,37,64,.10);
+  box-shadow:inset 0 1px 2px rgba(10,37,64,.04);
+}
+
+.flechas-search input{
+  height:42px;
+  color:var(--gm-ink, #0A2540);
+  font-size:13px;
+  font-weight:560;
+}
+
+.flechas-lista{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:12px;
+  align-items:stretch;
+}
+
+.flechas-destino{
+  position:relative;
+  min-width:0;
+  min-height:178px;
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  padding:14px;
+  border:1px solid rgba(10,37,64,.11);
+  border-radius:22px;
+  color:#0055BB;
+  background:#fff;
+  box-shadow:0 1px 4px rgba(10,37,64,.08);
+  overflow:hidden;
+  outline:none;
+  transition:border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease, background 160ms ease;
+}
+
+.flechas-destino::after{
+  content:"";
+  position:absolute;
+  right:-34px;
+  bottom:-34px;
+  width:88px;
+  height:88px;
+  border-radius:50%;
+  opacity:.09;
+  background:currentColor;
+  pointer-events:none;
+}
+
+.flechas-destino:hover,
+.flechas-destino:focus-visible{
+  border-color:rgba(0,85,187,.42);
+  box-shadow:0 14px 26px rgba(10,37,64,.11);
+  transform:translateY(-1px);
+}
+
+.flechas-destino.activo{
+  border-color:rgba(0,85,187,.56);
+  background:linear-gradient(180deg, #fff 0%, #f4f8ff 100%);
+  box-shadow:0 16px 30px rgba(0,85,187,.13);
+}
+
+.flechas-destino.activo::before{
+  content:"";
+  position:absolute;
+  top:12px;
+  right:12px;
+  width:9px;
+  height:9px;
+  border-radius:999px;
+  background:#0055BB;
+  box-shadow:0 0 0 5px rgba(0,85,187,.10);
+}
+
+.flechas-destino-top{
+  position:relative;
+  z-index:1;
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) auto;
+  align-items:start;
+  gap:12px;
+  margin:0;
+}
+
+.flechas-destino-top > div:first-child{
+  min-width:0;
+  display:grid;
+  grid-template-columns:42px minmax(0, 1fr);
+  column-gap:10px;
+  align-items:center;
+}
+
+.flechas-destino-top > div:first-child::before{
+  content:"";
+  grid-row:1 / span 2;
+  width:42px;
+  height:42px;
+  border-radius:14px;
+  background:rgba(0,85,187,.11);
+}
+
+.flechas-destino-top strong{
+  min-width:0;
+  margin:0;
+  color:var(--gm-ink, #0A2540);
+  font-size:clamp(18px, 1.2vw, 22px);
+  line-height:1.05;
+  font-weight:900;
+  letter-spacing:-.04em;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.flechas-destino-top span{
+  min-width:0;
+  margin-top:3px;
+  color:var(--gm-muted, #718096);
+  font-size:12px;
+  line-height:1.25;
+  font-weight:700;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.flechas-libres{
+  min-width:112px;
+  text-align:right;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:7px;
+  padding-right:2px;
+}
+
+.flechas-libres b{
+  margin:0;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:28px;
+  padding:6px 10px;
+  border-radius:999px;
+  color:#0055BB;
+  background:rgba(0,85,187,.10);
+  border:1px solid rgba(0,85,187,.13);
+  font-size:12px;
+  line-height:1;
+  font-weight:900;
+  white-space:nowrap;
+}
+
+.flechas-libres span{
+  max-width:150px;
+  color:var(--gm-muted, #718096);
+  font-size:12px;
+  line-height:1.25;
+  font-weight:650;
+}
+
+.flechas-numeros{
+  position:relative;
+  z-index:1;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding-top:10px;
+  border-top:1px solid rgba(10,37,64,.08);
+}
+
+.flechas-numeros > b{
+  margin:0;
+  color:rgba(66,84,102,.72);
+  font-size:11px;
+  line-height:1.2;
+  font-weight:900;
+  letter-spacing:.055em;
+  text-transform:uppercase;
+}
+
+.flechas-numeros ul{
+  width:100%;
+  margin:0;
+  padding:0;
+  display:grid;
+  gap:8px;
+  color:var(--gm-ink, #0A2540);
+  font-size:12px;
+  line-height:1.35;
+  list-style:none;
+}
+
+.flechas-numeros li{
+  min-width:0;
+  display:grid;
+  grid-template-columns:auto minmax(0, 1fr);
+  gap:4px 8px;
+  align-items:start;
+  padding:9px 10px;
+  border:1px solid rgba(10,37,64,.08);
+  border-radius:14px;
+  background:#f8fbff;
+}
+
+.flechas-numeros li > strong{
+  grid-row:1 / span 2;
+  align-self:center;
+  margin:0;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:28px;
+  padding:6px 9px;
+  border-radius:999px;
+  color:var(--gm-ink, #0A2540);
+  background:#fff;
+  border:1px solid rgba(10,37,64,.08);
+  font-size:12px;
+  line-height:1;
+  font-weight:900;
+  white-space:nowrap;
+}
+
+.flechas-numero-detail{
+  min-width:0;
+  max-width:100%;
+  margin:0;
+  display:block;
+  color:var(--gm-muted, #718096);
+  font-size:12px;
+  line-height:1.25;
+  font-weight:650;
+}
+
+@media (max-width:900px){
+  .flechas-lista{
+    grid-template-columns:1fr;
+  }
+
+  .flechas-destino{
+    min-height:0;
+  }
+}
+
+@media (max-width:560px){
+  .flechas-card{
+    padding:14px;
+  }
+
+  .flechas-destino-top{
+    grid-template-columns:1fr;
+  }
+
+  .flechas-libres{
+    min-width:0;
+    align-items:flex-start;
+    text-align:left;
+  }
+
+  .flechas-libres span{
+    max-width:100%;
+  }
+
+  .flechas-numeros li{
+    grid-template-columns:1fr;
+  }
+
+  .flechas-numeros li > strong{
+    grid-row:auto;
+    width:max-content;
+  }
+}
+
+/* Ajuste del encabezado interno con icono real, igual al patrón de tarjetas del Dashboard. */
+.flechas-destino-top > div:first-child{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.flechas-destino-top > div:first-child::before{
+  display:none;
+}
+
+.flechas-destino-title{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.flechas-destino-icon{
+  flex:0 0 auto;
+  width:42px;
+  height:42px;
+  margin:0 !important;
+  display:grid !important;
+  place-items:center;
+  border-radius:14px;
+  color:#0055BB !important;
+  background:rgba(0,85,187,.11);
+  border:0;
+  font-size:16px !important;
+}
+
+.flechas-destino-heading{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
 }

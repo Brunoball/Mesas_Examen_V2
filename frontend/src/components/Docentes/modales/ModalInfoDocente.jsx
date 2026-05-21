@@ -120,22 +120,40 @@ export default function ModalInfoDocente({ item, onCerrar }) {
           </div>
 
           <div className="docentes-info-grid">
-            <div className="docentes-info-card">
-              <span>Registros internos</span>
-              <strong>{totalRegistros}</strong>
-              <small>Unificados en la ficha</small>
+            <div className="docentes-info-card docentes-info-card--blue">
+              <div className="docentes-info-card__icon" aria-hidden="true">
+                <FontAwesomeIcon icon={faUserTie} />
+              </div>
+
+              <div className="docentes-info-card__body">
+                <span>Registros internos</span>
+                <strong>{totalRegistros}</strong>
+                <small>Unificados en la ficha</small>
+              </div>
             </div>
 
-            <div className="docentes-info-card">
-              <span>Cátedras asignadas</span>
-              <strong>{catedras.length}</strong>
-              <small>Materias vinculadas</small>
+            <div className="docentes-info-card docentes-info-card--purple">
+              <div className="docentes-info-card__icon" aria-hidden="true">
+                <FontAwesomeIcon icon={faChalkboardTeacher} />
+              </div>
+
+              <div className="docentes-info-card__body">
+                <span>Cátedras asignadas</span>
+                <strong>{catedras.length}</strong>
+                <small>Materias vinculadas</small>
+              </div>
             </div>
 
-            <div className="docentes-info-card">
-              <span>Días disponibles</span>
-              <strong>{disponibilidades.length}</strong>
-              <small>Reglas cargadas</small>
+            <div className="docentes-info-card docentes-info-card--green">
+              <div className="docentes-info-card__icon" aria-hidden="true">
+                <FontAwesomeIcon icon={faCalendarDays} />
+              </div>
+
+              <div className="docentes-info-card__body">
+                <span>Días disponibles</span>
+                <strong>{disponibilidades.length}</strong>
+                <small>Reglas cargadas</small>
+              </div>
             </div>
           </div>
 
@@ -145,49 +163,45 @@ export default function ModalInfoDocente({ item, onCerrar }) {
               Materias, cursos y divisiones
             </h3>
 
-            <div className="docentes-info-table-wrap">
-              <table className="docentes-info-table">
-                <thead>
-                  <tr>
-                    <th>Curso</th>
-                    <th>División</th>
-                    <th>Materia</th>
-                  </tr>
-                </thead>
+            <div className="docentes-info-catedras-wrap">
+              <div className="docentes-info-divtable" role="list" aria-label="Materias, cursos y divisiones del docente">
+                <div className="docentes-info-divtable-head" aria-hidden="true">
+                  <div>Curso</div>
+                  <div>División</div>
+                  <div>Materia</div>
+                </div>
 
-                <tbody>
+                <div className="docentes-info-divtable-body">
                   {catedras.length === 0 && (
-                    <tr>
-                      <td colSpan="3" className="docentes-empty">
-                        No tiene cátedras asignadas.
-                      </td>
-                    </tr>
+                    <div className="docentes-empty docentes-info-divtable-empty">
+                      No tiene cátedras asignadas.
+                    </div>
                   )}
 
                   {catedras.map((cat) => (
-                    <tr key={cat.id_catedra}>
-                      <td>
+                    <div className="docentes-info-divtable-row" role="listitem" key={cat.id_catedra}>
+                      <div className="docentes-info-divtable-cell">
                         <span className="docentes-badge">
                           {cat.nombre_curso}
                         </span>
-                      </td>
+                      </div>
 
-                      <td>
+                      <div className="docentes-info-divtable-cell">
                         <span className="docentes-badge docentes-badge-soft">
                           {cat.nombre_division}
                         </span>
-                      </td>
+                      </div>
 
-                      <td>
+                      <div className="docentes-info-divtable-cell docentes-info-divtable-cell--materia">
                         <span className="docentes-info-materia">
                           <FontAwesomeIcon icon={faBookOpen} />
                           {cat.materia}
                         </span>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </div>
             </div>
           </section>
 

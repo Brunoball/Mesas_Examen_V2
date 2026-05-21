@@ -161,6 +161,42 @@
   font-weight:600;
 }
 
+.mesas-modal-indicator{
+  position:relative;
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  padding:14px 16px;
+  margin-bottom:18px;
+  border-radius:18px;
+  border:1px solid rgba(0,85,187,.14);
+  background:linear-gradient(135deg, rgba(0,85,187,.075), rgba(10,37,64,.035));
+  color:var(--mesas-midnight, #0a2540);
+  font-size:13.5px;
+  line-height:1.45;
+  font-weight:650;
+  overflow:hidden;
+}
+
+
+
+.mesas-modal-indicator__icon{
+  width:34px;
+  height:34px;
+  flex:0 0 auto;
+  display:grid;
+  place-items:center;
+  border-radius:12px;
+  color:var(--mesas-blue, #0055bb);
+  background:rgba(0,85,187,.10);
+  border:1px solid rgba(0,85,187,.12);
+}
+
+.mesas-modal-indicator > span:last-child{
+  position:relative;
+  z-index:1;
+}
+
 .mesas-modal-grid{
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -198,32 +234,100 @@
   box-shadow:0 0 0 4px rgba(0,85,187,.12);
 }
 
+.mesas-field input[type="date"]{
+  cursor:pointer;
+  min-width:0;
+}
+
+.mesas-field input[type="date"]::-webkit-calendar-picker-indicator{
+  cursor:pointer;
+}
+
 .mesas-modal-info{
   display:grid;
   grid-template-columns:1fr 1fr;
-  gap:14px;
+  gap:12px;
   margin:18px 0;
 }
 
-.mesas-modal-info > div{
+.mesas-modal-info-card{
+  position:relative;
+  min-height:86px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:14px;
+  border:1px solid var(--mesas-border, rgba(10,37,64,.12));
+  border-radius:22px;
+  background:#fff;
+  box-shadow:var(--mesas-shadow-sm, 0 1px 3px rgba(10,37,64,.08));
+  color:var(--mesas-blue, #0055bb);
+  overflow:hidden;
+}
+
+.mesas-modal-info-card::after{
+  content:"";
+  position:absolute;
+  right:-30px;
+  bottom:-30px;
+  width:76px;
+  height:76px;
+  border-radius:50%;
+  opacity:.1;
+  background:currentColor;
+  pointer-events:none;
+}
+
+.mesas-modal-info-card__icon{
+  width:42px;
+  height:42px;
+  flex:0 0 auto;
+  display:grid;
+  place-items:center;
+  border-radius:14px;
+  background:rgba(0,85,187,.11);
+  font-size:17px;
+}
+
+.mesas-modal-info-card__body{
+  min-width:0;
   display:flex;
   flex-direction:column;
-  gap:4px;
-  padding:16px;
-  background:#f8fafc;
-  border:1px solid #e2e8f0;
-  border-radius:16px;
+  gap:2px;
 }
 
-.mesas-modal-info strong{
-  color:var(--mesas-midnight, #0a2540);
-  font-size:24px;
-  font-weight:800;
-}
-
-.mesas-modal-info span{
+.mesas-modal-info-card__body span{
   color:var(--mesas-muted, rgba(66,84,102,.72));
-  font-size:14px;
+  font-size:11px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.055em;
+}
+
+.mesas-modal-info-card__body strong{
+  color:var(--mesas-midnight, #0a2540);
+  font-size:clamp(22px, 1.7vw, 30px);
+  line-height:1.05;
+  font-weight:900;
+  letter-spacing:-.04em;
+}
+
+.mesas-modal-info-card__body small{
+  color:var(--mesas-muted, rgba(66,84,102,.72));
+  font-size:12px;
+  font-weight:700;
+}
+
+.mesas-modal-info-card--blue{
+  color:var(--mesas-blue, #0055bb);
+}
+
+.mesas-modal-info-card--green{
+  color:var(--mesas-success, #22ad5c);
+}
+
+.mesas-modal-info-card--green .mesas-modal-info-card__icon{
+  background:rgba(34,173,92,.12);
 }
 
 .mesas-turnos-preview{
@@ -282,35 +386,64 @@
 }
 
 .mesas-tipo-armado-card{
+  position:relative;
   display:flex;
   align-items:flex-start;
-  gap:10px;
-  padding:13px 14px;
+  gap:12px;
+  padding:14px 15px;
   border:1px solid var(--mesas-border, rgba(10,37,64,.12));
-  border-radius:16px;
-  background:rgba(255,255,255,.74);
+  border-radius:18px;
+  background:#fff;
   color:var(--mesas-text, #425466);
   cursor:pointer;
+  box-shadow:var(--mesas-shadow-sm, 0 1px 3px rgba(10,37,64,.08));
   transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
 }
 
 .mesas-tipo-armado-card:hover{
   transform:translateY(-1px);
-  border-color:rgba(37,99,235,.35);
-  box-shadow:0 12px 28px rgba(15,23,42,.08);
+  border-color:rgba(0,85,187,.28);
+  box-shadow:0 12px 28px rgba(10,37,64,.09);
 }
 
 .mesas-tipo-armado-card.activo{
-  border-color:rgba(37,99,235,.7);
-  background:rgba(37,99,235,.08);
-  box-shadow:0 12px 28px rgba(37,99,235,.10);
+  border-color:rgba(0,85,187,.48);
+  background:linear-gradient(135deg, rgba(0,85,187,.07), #fff 54%);
+  box-shadow:0 12px 28px rgba(0,85,187,.10);
 }
 
 .mesas-tipo-armado-card input{
-  width:17px;
-  height:17px;
-  margin-top:2px;
-  accent-color:#2563eb;
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+}
+
+.mesas-check-visual{
+  width:22px;
+  height:22px;
+  flex:0 0 auto;
+  margin-top:1px;
+  display:grid;
+  place-items:center;
+  border-radius:8px;
+  border:1px solid rgba(10,37,64,.18);
+  background:#fff;
+  color:#fff;
+  font-size:11px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7);
+  transition:background .16s ease, border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+
+.mesas-tipo-armado-card.activo .mesas-check-visual,
+.mesas-option-check.activo .mesas-check-visual{
+  background:var(--mesas-blue, #0055bb);
+  border-color:var(--mesas-blue, #0055bb);
+  box-shadow:0 8px 16px rgba(0,85,187,.18);
+}
+
+.mesas-tipo-armado-card:hover .mesas-check-visual,
+.mesas-option-check:hover .mesas-check-visual{
+  transform:translateY(-1px);
 }
 
 .mesas-tipo-armado-card strong{
@@ -320,7 +453,7 @@
   font-weight:800;
 }
 
-.mesas-tipo-armado-card span{
+.mesas-tipo-armado-card > div > span{
   display:block;
   color:var(--mesas-muted, rgba(66,84,102,.72));
   font-size:12.5px;
@@ -334,18 +467,59 @@
   margin:16px 0;
 }
 
-.mesas-modal-options label{
+.mesas-option-check{
+  position:relative;
   display:flex;
   align-items:center;
-  gap:10px;
+  gap:12px;
+  width:100%;
+  padding:13px 14px;
+  border:1px solid var(--mesas-border, rgba(10,37,64,.12));
+  border-radius:18px;
+  background:#fff;
   color:var(--mesas-text, #425466);
   font-size:14px;
   cursor:pointer;
+  box-shadow:var(--mesas-shadow-sm, 0 1px 3px rgba(10,37,64,.08));
+  transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
 }
 
-.mesas-modal-options input{
-  width:16px;
-  height:16px;
+.mesas-option-check:hover{
+  transform:translateY(-1px);
+  border-color:rgba(0,85,187,.28);
+  box-shadow:0 12px 28px rgba(10,37,64,.09);
+}
+
+.mesas-option-check.activo{
+  border-color:rgba(0,85,187,.42);
+  background:linear-gradient(135deg, rgba(0,85,187,.065), #fff 58%);
+}
+
+.mesas-option-check input{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+}
+
+.mesas-option-check__text{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  min-width:0;
+}
+
+.mesas-option-check__text strong{
+  color:var(--mesas-midnight, #0a2540);
+  font-size:14px;
+  line-height:1.15;
+  font-weight:850;
+}
+
+.mesas-option-check__text small{
+  color:var(--mesas-muted, rgba(66,84,102,.72));
+  font-size:12.5px;
+  line-height:1.25;
+  font-weight:650;
 }
 
 .mesas-modal-error{
@@ -366,8 +540,8 @@
   display:flex;
   justify-content:flex-end;
   gap:12px;
-  margin:18px -2px 0;
-  padding:14px 2px 2px;
+  margin:0 -2px 0;
+  padding:14px;
   background:linear-gradient(180deg, rgba(255,255,255,.72), #fff 34%);
 }
 
@@ -429,6 +603,14 @@
   .mesas-modal-info,
   .mesas-tipo-armado-grid{
     grid-template-columns:1fr;
+  }
+
+  .mesas-modal-info-card{
+    min-height:78px;
+  }
+
+  .mesas-modal-indicator{
+    padding:13px 14px;
   }
 
   .mesas-modal-actions{

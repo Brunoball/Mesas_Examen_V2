@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loginApi } from './api/loginApi';
 import './inicio.css';
-import logoRH from '../../imagenes/Escudo.png';
+import logoLerna from '../../imagenes/lerna_azul.png';
 import Toast from '../Global/Toast';
 
 const STORAGE_KEYS = {
@@ -199,109 +199,125 @@ const Inicio = () => {
 
   return (
     <div className="ini_contenedor-principal">
-      <div className="ini_contenedor">
-        <div className="ini_encabezado">
-          <img src={logoRH} alt="Cooperadora IPET 50" className="ini_logo" />
-          <h1 className="ini_titulo">Iniciar Sesión</h1>
-          <p className="ini_subtitulo">
-            Ingresá tus credenciales para acceder al sistema
-          </p>
-        </div>
-
-        <form
-          onSubmit={manejarEnvio}
-          className="ini_formulario"
-          autoComplete="on"
-          noValidate
-        >
-          <div className="ini_campo">
-            <input
-              type="text"
-              placeholder="Usuario"
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              required
-              className="ini_input"
-              autoComplete="username"
-              inputMode="text"
-            />
+      <main className="ini_login-shell" aria-label="Acceso al sistema Lerna">
+        <section className="ini_brand-panel" aria-label="Identidad Lerna">
+          <div className="ini_brand-glow" aria-hidden="true" />
+          <div className="ini_brand-content">
+            <span className="ini_brand-kicker">Sistema institucional</span>
+            <img src={logoLerna} alt="Lerna Mesas de Examen" className="ini_brand-logo" />
+            <div className="ini_brand-copy">
+              <h2>Gestión de mesas de examen</h2>
+              <p>Acceso seguro, ordenado y simple para administrar la información académica.</p>
+            </div>
           </div>
+        </section>
 
-          <div className="ini_campo ini_campo-password">
-            <input
-              type={showPassword ? 'text' : 'password'}
-              className="ini_input"
-              placeholder="Contraseña"
-              value={contrasena}
-              onChange={(e) => setContrasena(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
-            <button
-              type="button"
-              className="ini_toggle-password"
-              onClick={togglePasswordVisibility}
-              aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-              title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-              >
-                {showPassword ? (
-                  <>
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                    <line x1="1" y1="1" x2="23" y2="23"></line>
-                  </>
-                ) : (
-                  <>
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
-                  </>
-                )}
-              </svg>
-            </button>
-          </div>
-
-          <div className="ini_check-row">
-            <div className="ini_recordar-wrap">
-              <input
-                id="recordar"
-                type="checkbox"
-                className="ini_checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-              />
-              <label htmlFor="recordar" className="ini_check-label">
-                Recordar cuenta
-              </label>
+        <section className="ini_access-panel" aria-label="Formulario de acceso">
+          <div className="ini_contenedor">
+            <div className="ini_encabezado">
+              <span className="ini_login-badge">Acceso privado</span>
+              <h1 className="ini_titulo">Iniciar sesión</h1>
+              <p className="ini_subtitulo">
+                Ingresá tus credenciales para continuar al panel del sistema.
+              </p>
             </div>
 
-            <button
-              type="button"
-              className="ini_link-recuperar"
-              onClick={abrirModalRecuperacion}
+            <form
+              onSubmit={manejarEnvio}
+              className="ini_formulario"
+              autoComplete="on"
+              noValidate
             >
-              Olvidé mi contraseña
-            </button>
-          </div>
+              <div className="ini_campo">
+                <input
+                  type="text"
+                  placeholder="Usuario"
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  required
+                  className="ini_input"
+                  autoComplete="username"
+                  inputMode="text"
+                />
+              </div>
 
-          <div className="ini_footer">
-            <button
-              type="submit"
-              className="ini_boton"
-              disabled={cargando}
-              aria-busy={cargando ? 'true' : 'false'}
-              aria-live="polite"
-            >
-              {cargando ? 'Iniciando...' : 'Iniciar Sesión'}
-            </button>
+              <div className="ini_campo ini_campo-password">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className="ini_input"
+                  placeholder="Contraseña"
+                  value={contrasena}
+                  onChange={(e) => setContrasena(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  className="ini_toggle-password"
+                  onClick={togglePasswordVisibility}
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  >
+                    {showPassword ? (
+                      <>
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                      </>
+                    ) : (
+                      <>
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </>
+                    )}
+                  </svg>
+                </button>
+              </div>
+
+              <div className="ini_check-row">
+                <div className="ini_recordar-wrap">
+                  <input
+                    id="recordar"
+                    type="checkbox"
+                    className="ini_checkbox"
+                    checked={remember}
+                    onChange={(e) => setRemember(e.target.checked)}
+                  />
+                  <label htmlFor="recordar" className="ini_check-label">
+                    Recordar cuenta
+                  </label>
+                </div>
+
+                <button
+                  type="button"
+                  className="ini_link-recuperar"
+                  onClick={abrirModalRecuperacion}
+                >
+                  Olvidé mi contraseña
+                </button>
+              </div>
+
+              <div className="ini_footer">
+                <button
+                  type="submit"
+                  className="ini_boton"
+                  disabled={cargando}
+                  aria-busy={cargando ? 'true' : 'false'}
+                  aria-live="polite"
+                >
+                  {cargando ? 'Iniciando...' : 'Iniciar sesión'}
+                </button>
+              </div>
+            </form>
           </div>
-        </form>
-      </div>
+        </section>
+      </main>
 
       {modalRecuperarAbierto && (
         <div

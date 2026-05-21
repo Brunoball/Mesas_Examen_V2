@@ -1,12 +1,10 @@
 // src/components/Mesas_examen/modales/ModalEditarMesa.jsx
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faArrowLeft,
   faChevronLeft,
   faChevronRight,
-  faClock,
   faExchangeAlt,
   faSave,
   faEdit,
@@ -14,13 +12,14 @@ import {
   faSpinner,
   faTrash,
   faUser,
+  faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "../../Global/Global_css/Global_Modals.css";
 import "./ModalEditarMesa.css";
 import ModalPreviasMesa from "./persona/ModalPreviasMesa";
 import ModalMoverPreviaMesa from "./persona/ModalMoverPreviaMesa";
-import ModalConfirmarEliminarPrevia from "./persona/ModalConfirmarEliminarPrevia";
+import ModalEliminarGlobal from "../../Global/Modales/ModalEliminarGlobal";
 import ModalAgregarPreviaMesa from "./mas/ModalAgregarPreviaMesa";
 import ModalMoverNumeroMesa from "./flechas/ModalMoverNumeroMesa";
 import ModalAgregarNumeroGrupo from "./agregar_numero/ModalAgregarNumeroGrupo";
@@ -35,6 +34,35 @@ const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const texto = (valor, fallback = "-") => {
   const salida = String(valor ?? "").trim();
   return salida || fallback;
+};
+
+
+const isTopMesaModal = (node) => {
+  if (typeof document === "undefined" || !node) return true;
+  const modales = Array.from(document.querySelectorAll("[data-mesa-modal-root='true'], .gdel-overlay, [data-global-info-modal-root='true']"));
+  return modales[modales.length - 1] === node;
+};
+
+const useEscapeClose = (abierto, onClose, disabled = false) => {
+  const overlayRef = useRef(null);
+
+  useEffect(() => {
+    if (!abierto) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key !== "Escape" || disabled) return;
+      if (!isTopMesaModal(overlayRef.current)) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      onClose?.();
+    };
+
+    document.addEventListener("keydown", handleKeyDown, true);
+    return () => document.removeEventListener("keydown", handleKeyDown, true);
+  }, [abierto, onClose, disabled]);
+
+  return overlayRef;
 };
 
 const normalizarFechaInput = (valor) => {
@@ -67,7 +95,10 @@ const ajustarHoraARango = (hora, turno = "") => {
   const valor = horaAMinutos(base);
   const min = horaAMinutos(rango.min);
   const max = horaAMinutos(rango.max);
-  if (valor === null || valor < min || valor > max) return rango.default;
+
+  if (valor === null) return rango.default;
+  if (valor < min) return rango.min;
+  if (valor > max) return rango.max;
   return base;
 };
 
@@ -310,6 +341,8 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
   const [fechaMesa, setFechaMesa] = useState("");
   const [idTurno, setIdTurno] = useState("");
   const [hora, setHora] = useState("07:30");
+  const horaInputRef = useRef(null);
+  const overlayRef = useEscapeClose(abierto, onClose, guardando);
   const esNoAgrupada = tipo === "no_agrupada";
 
   const numeros = useMemo(() => {
@@ -400,6 +433,9 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
   const handleSave = () => {
     if (!grupo || !slotSeleccionadoValido) return;
 
+    const horaAjustada = ajustarHoraARango(hora, turnoSeleccionado);
+    setHora(horaAjustada);
+
     onSave({
       tipo,
       numero_grupo: grupo.numero_grupo || grupo.id_grupo || null,
@@ -408,19 +444,22 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
       numero_mesa: tipo === "no_agrupada" ? numeros?.[0]?.numero_mesa : null,
       fecha_mesa: fechaMesa,
       id_turno: Number(idTurno),
-      hora,
+      hora: horaAjustada,
     });
   };
 
   const handleCrearGrupoUnico = () => {
     if (!grupo || !slotSeleccionadoValido || typeof onCrearGrupoUnico !== "function") return;
 
+    const horaAjustada = ajustarHoraARango(hora, turnoSeleccionado);
+    setHora(horaAjustada);
+
     onCrearGrupoUnico({
       id_no_agrupada: grupo.id_no_agrupada || null,
       numero_mesa: numeros?.[0]?.numero_mesa || grupo.numero_mesa || null,
       fecha_mesa: fechaMesa,
       id_turno: Number(idTurno),
-      hora,
+      hora: horaAjustada,
     });
   };
 
@@ -446,8 +485,31 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
     agregarNumero.eliminarSlotExtra(grupo);
   };
 
+  const abrirSelectorHora = () => {
+    const input = horaInputRef.current;
+    if (!input) return;
+
+    input.focus({ preventScroll: true });
+
+    if (typeof input.showPicker === "function") {
+      try {
+        input.showPicker();
+      } catch (_) {
+        // Algunos navegadores solo permiten showPicker con una acción directa del usuario.
+      }
+    }
+  };
+
+  const handleHoraChange = (event) => {
+    setHora(ajustarHoraARango(event.target.value, turnoSeleccionado));
+  };
+
+  const handleHoraBlur = (event) => {
+    setHora(ajustarHoraARango(event.target.value, turnoSeleccionado));
+  };
+
   return createPortal((
-    <div className="editar-mesa-overlay" role="dialog" aria-modal="true">
+    <div ref={overlayRef} className="editar-mesa-overlay" role="dialog" aria-modal="true" data-mesa-modal-root="true">
       <div className="editar-mesa-panel">
         <header className="editar-mesa-header">
           <div className="editar-mesa-title">
@@ -458,9 +520,8 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
             </div>
           </div>
 
-          <button type="button" className="editar-mesa-back" onClick={onClose} disabled={guardando}>
-            <FontAwesomeIcon icon={faArrowLeft} />
-            Volver
+          <button type="button" className="editar-mesa-close" onClick={onClose} disabled={guardando} aria-label="Cerrar" title="Cerrar">
+            <FontAwesomeIcon icon={faTimes} />
           </button>
         </header>
 
@@ -495,15 +556,17 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
 
                   <label>
                     <span>Horario</span>
-                    <div className="editar-mesa-time-input">
+                    <div className="editar-mesa-time-input" onClick={abrirSelectorHora} title={`Permitido: ${rangoHorario.texto}`}>
                       <input
+                        ref={horaInputRef}
                         type="time"
                         value={hora}
                         min={rangoHorario.min}
                         max={rangoHorario.max}
-                        onChange={(e) => setHora(ajustarHoraARango(e.target.value, turnoSeleccionado))}
+                        step="60"
+                        onChange={handleHoraChange}
+                        onBlur={handleHoraBlur}
                       />
-                      <FontAwesomeIcon icon={faClock} />
                     </div>
                     <small className="editar-mesa-help">Permitido: {rangoHorario.texto}</small>
                   </label>
@@ -626,22 +689,24 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
                 )}
 
                 {error && <div className="editar-mesa-error">{error}</div>}
-
-                <footer className="editar-mesa-footer">
-                  <button type="button" className="editar-mesa-btn eliminar" onClick={handleDelete} disabled={guardando}>
-                    <FontAwesomeIcon icon={guardando ? faSpinner : faTrash} spin={guardando} />
-                    Eliminar
-                  </button>
-
-                  <button type="button" className="editar-mesa-btn guardar" onClick={handleSave} disabled={guardando || cargandoSlots || !fechaMesa || !idTurno || !slotSeleccionadoValido}>
-                    <FontAwesomeIcon icon={guardando ? faSpinner : faSave} spin={guardando} />
-                    Guardar Cambios
-                  </button>
-                </footer>
               </div>
             </>
           )}
         </section>
+
+        {!cargando && (
+          <footer className="editar-mesa-footer">
+            <button type="button" className="editar-mesa-btn eliminar" onClick={handleDelete} disabled={guardando}>
+              <FontAwesomeIcon icon={guardando ? faSpinner : faTrash} spin={guardando} />
+              Eliminar
+            </button>
+
+            <button type="button" className="editar-mesa-btn guardar" onClick={handleSave} disabled={guardando || cargandoSlots || !fechaMesa || !idTurno || !slotSeleccionadoValido}>
+              <FontAwesomeIcon icon={guardando ? faSpinner : faSave} spin={guardando} />
+              Guardar Cambios
+            </button>
+          </footer>
+        )}
       </div>
 
       <ModalPreviasMesa
@@ -666,11 +731,24 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
         onConfirm={persona.confirmarMover}
       />
 
-      <ModalConfirmarEliminarPrevia
-        abierto={persona.modalEliminarAbierto}
-        previa={persona.previaEliminar}
-        eliminando={persona.eliminando}
-        onCancel={persona.cerrarEliminar}
+      <ModalEliminarGlobal
+        open={!!persona.modalEliminarAbierto}
+        operacion="eliminar"
+        loading={!!persona.eliminando}
+        title="Quitar alumno de la mesa"
+        message={`¿Quitar a ${texto(persona.previaEliminar?.alumno)} de la mesa N° ${texto(persona.previaEliminar?.numero_mesa)}?`}
+        warning="El alumno se quita solamente de este número de mesa. La previa no se elimina del sistema."
+        confirmLabel="Quitar"
+        loadingLabel="Quitando..."
+        successMessage="Alumno quitado correctamente."
+        errorMessage="No se pudo quitar el alumno de la mesa."
+        details={[
+          { label: "Mesa", value: `N° ${texto(persona.previaEliminar?.numero_mesa)}` },
+          { label: "Alumno", value: texto(persona.previaEliminar?.alumno) },
+          { label: "DNI", value: texto(persona.previaEliminar?.dni) },
+          { label: "Curso", value: texto(persona.previaEliminar?.curso) },
+        ]}
+        onClose={persona.cerrarEliminar}
         onConfirm={persona.confirmarEliminar}
       />
 

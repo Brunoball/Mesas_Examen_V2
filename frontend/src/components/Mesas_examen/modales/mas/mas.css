@@ -127,34 +127,6 @@
   min-width: 880px;
 }
 
-.mas-tabla th,
-.mas-tabla td {
-  padding: 14px 12px;
-  border-bottom: 1px solid #e2e8f0;
-  text-align: left;
-  vertical-align: middle;
-}
-
-.mas-tabla th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: #f1f5f9;
-  color: #334155;
-  font-size: 14px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.mas-tabla td {
-  color: #0f172a;
-  font-size: 15px;
-}
-
-.mas-tabla tr.seleccionada td {
-  background: #eff6ff;
-}
-
 .mas-radio {
   width: 24px;
   height: 24px;
@@ -343,5 +315,144 @@
   .mas-modal-panel{
     width:100%;
     max-height:calc(100dvh - 24px);
+  }
+}
+
+/* =========================================================
+   Tabla interna sin etiquetas tablas HTML
+========================================================= */
+.mas-div-table{
+  width:100%;
+  min-width:880px;
+  display:block;
+  border-collapse:initial;
+}
+
+.mas-grid-row{
+  display:grid;
+  min-width:100%;
+}
+
+.mas-grid-head{
+  position:sticky;
+  top:0;
+  z-index:2;
+  background:#f1f5f9;
+  border-bottom:1px solid #e2e8f0;
+}
+
+.mas-grid-data-row{
+  border-bottom:1px solid #e2e8f0;
+  background:#fff;
+}
+
+.mas-grid-data-row:hover,
+.mas-grid-data-row.seleccionada{
+  background:#eff6ff;
+}
+
+.mas-grid-cell{
+  min-width:0;
+  min-height:52px;
+  padding:13px 12px;
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:8px;
+  color:#0f172a;
+  font-size:14px;
+  line-height:1.25;
+  font-weight:520;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.mas-grid-cell-head{
+  min-height:44px;
+  color:#334155;
+  font-size:12px;
+  font-weight:760;
+  text-transform:uppercase;
+  letter-spacing:.02em;
+}
+
+.mas-grid-cell-actions{
+  justify-content:center;
+  text-align:center;
+}
+
+.mas-grid-cell.is-strong{
+  color:var(--gm-ink, #0A2540);
+  font-weight:600;
+}
+
+@media (max-width:720px){
+  .mas-div-table{
+    min-width:760px;
+  }
+
+  .mas-grid-cell{
+    padding:11px 12px;
+    font-size:13px;
+  }
+}
+
+/* =========================================================
+   Header agregar previa — icono + título + subtítulo
+========================================================= */
+.mas-header-title{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  position:relative;
+  z-index:1;
+}
+
+.mas-header-icon{
+  flex:0 0 auto;
+  width:40px;
+  height:40px;
+  display:grid;
+  place-items:center;
+  border-radius:13px;
+  color:#fff;
+  background:rgba(255,255,255,.13);
+  border:1px solid rgba(255,255,255,.18);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14);
+}
+
+.mas-header-text{
+  min-width:0;
+}
+
+.mas-header-meta{
+  margin-top:6px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.mas-header-meta span{
+  min-width:0;
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  padding:4px 8px;
+  border-radius:999px;
+  color:rgba(255,255,255,.76);
+  background:rgba(255,255,255,.10);
+  border:1px solid rgba(255,255,255,.12);
+  font-size:12px;
+  line-height:1.15;
+  font-weight:560;
+  white-space:nowrap;
+}
+
+@media (max-width:720px){
+  .mas-header-meta span{
+    white-space:normal;
   }
 }
