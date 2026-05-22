@@ -2,10 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faExclamationTriangle, faTimes } from '@fortawesome/free-solid-svg-icons';
 
-export default function ModalConfirmarDocente({ tipo, item, onConfirmar, onCerrar }) {
+export default function ModalConfirmarDocente({ tipo, item, onConfirmar, onCerrar, onToast }) {
   const [motivo, setMotivo] = useState('');
   const [procesando, setProcesando] = useState(false);
-  const [error, setError] = useState('');
 
   const esBaja = tipo === 'baja';
   const esAlta = tipo === 'alta';
@@ -41,14 +40,13 @@ export default function ModalConfirmarDocente({ tipo, item, onConfirmar, onCerra
 
   async function handleConfirmar() {
     setProcesando(true);
-    setError('');
     const res = await onConfirmar(motivo.trim());
     setProcesando(false);
 
     if (res.ok) {
       onCerrar();
     } else {
-      setError(res.mensaje || 'No se pudo completar la operación.');
+      onToast?.('error', res.mensaje || 'No se pudo completar la operación.');
     }
   }
 
@@ -64,8 +62,6 @@ export default function ModalConfirmarDocente({ tipo, item, onConfirmar, onCerra
             <FontAwesomeIcon icon={faTimes} />
           </button>
         </div>
-
-        {error && <div className="docentes-alerta docentes-alerta-error">{error}</div>}
 
         <div className="docentes-confirm-box">
           <strong>{item?.docente}</strong>

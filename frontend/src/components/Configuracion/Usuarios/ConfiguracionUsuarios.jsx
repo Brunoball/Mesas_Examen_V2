@@ -26,12 +26,13 @@ import {
   faUsers,
   faXmark,
 } from '@fortawesome/free-solid-svg-icons';
-import { useConfiguracionUsuarios } from './hooks/useConfiguracionUsuarios';
+import { esUsuarioSesionActual, useConfiguracionUsuarios } from './hooks/useConfiguracionUsuarios';
 import ModalEliminarGlobal from '../../Global/Modales/ModalEliminarGlobal';
 import '../../Global/Global_css/roots.css';
 import '../../Global/Global_css/Global_Section.css';
 import '../../Global/Global_css/Global_Modals.css';
 import './ConfiguracionUsuarios.css';
+import Toast from '../../Global/Toast';
 
 function EstadoPill({ activo }) {
   return (
@@ -193,7 +194,7 @@ function UsuarioModal({ open, form, guardando, onClose, onChange, onSave }) {
             <h3>{esEdicion ? 'Editar usuario' : 'Crear usuario'}</h3>
             <p>
               {esEdicion
-                ? 'Actualizá los datos, el rol, el estado o la contraseña del usuario.'
+                ? 'Actualizá los datos, el rol o la contraseña del usuario.'
                 : 'Cargá un nuevo acceso para Mesas con rol y contraseña inicial.'}
             </p>
           </div>
@@ -247,14 +248,16 @@ function UsuarioModal({ open, form, guardando, onClose, onChange, onSave }) {
                   <span>Rol</span>
                 </label>
 
-                <label className="cfgUsersMuField">
-                  <FontAwesomeIcon icon={faToggleOn} className="cfgUsersMuFieldIcon" />
-                  <select value={Number(form.activo)} onChange={(e) => onChange('activo', Number(e.target.value))} disabled={guardando}>
-                    <option value={1}>Activo</option>
-                    <option value={0}>Baja</option>
-                  </select>
-                  <span>Estado</span>
-                </label>
+                {!esEdicion && (
+                  <label className="cfgUsersMuField">
+                    <FontAwesomeIcon icon={faToggleOn} className="cfgUsersMuFieldIcon" />
+                    <select value={Number(form.activo)} onChange={(e) => onChange('activo', Number(e.target.value))} disabled={guardando}>
+                      <option value={1}>Activo</option>
+                      <option value={0}>Baja</option>
+                    </select>
+                    <span>Estado</span>
+                  </label>
+                )}
               </div>
             </section>
 
@@ -345,7 +348,6 @@ export default function ConfiguracionUsuarios({ onVolver = null }) {
     resumen,
     loading,
     guardando,
-    error,
     mensaje,
     setMensaje,
     busqueda,
@@ -417,16 +419,26 @@ export default function ConfiguracionUsuarios({ onVolver = null }) {
     return eliminar(usuarioAEliminar);
   }
 
+  function mostrarToastGlobal(tipo, texto, duracion) {
+    const tipoNormalizado = tipo === 'success' || tipo === 'ok' ? 'exito' : tipo;
+    setMensaje({
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      tipo: tipoNormalizado,
+      texto,
+      duracion,
+    });
+  }
+
   return (
     <div className="cfgUsersPage mov-page">
       {mensaje && (
-        <div className={`mov-alert cfgUsersToast cfgUsersToast--${mensaje.tipo}`} role="status" aria-live="polite">
-          <FontAwesomeIcon icon={mensaje.tipo === 'success' ? faCheck : faCircleInfo} />
-          <span>{mensaje.texto}</span>
-          <button type="button" onClick={() => setMensaje(null)} aria-label="Cerrar mensaje">
-            <FontAwesomeIcon icon={faXmark} />
-          </button>
-        </div>
+        <Toast
+          key={mensaje.id}
+          tipo={mensaje.tipo}
+          mensaje={mensaje.texto}
+          duracion={mensaje.duracion}
+          onClose={() => setMensaje(null)}
+        />
       )}
 
       <section className="cfgUsersRoot mov-card mov-card--table">
@@ -524,7 +536,6 @@ export default function ConfiguracionUsuarios({ onVolver = null }) {
           <span className="cfgUsersCount">Mostrando {usuarios.length} usuario{usuarios.length === 1 ? '' : 's'}</span>
         </div>
 
-        {error && <div className="mov-alert cfgUsersInlineError">{error}</div>}
 
         <div className="cfgUsersTableWrap">
           <table className="cfgUsersTable">
@@ -546,44 +557,73 @@ export default function ConfiguracionUsuarios({ onVolver = null }) {
                   <td colSpan="6" className="cfgUsersEmpty">No hay usuarios para mostrar.</td>
                 </tr>
               ) : (
-                usuarios.map((usuario) => (
-                  <tr key={usuario.id_usuario} className={usuario.es_usuario_actual ? 'cfgUsersCurrentRow' : ''}>
-                    <td>
-                      <div className="cfgUsersUserCell">
-                        <span className="cfgUsersAvatar">{iniciales(usuario.usuario)}</span>
-                        <div>
-                          <strong>{usuario.usuario}</strong>
-                          {usuario.es_usuario_actual ? <em>Sesión actual</em> : null}
+                usuarios.map((usuario) => {
+                  const usuarioActual = esUsuarioSesionActual(usuario);
+                  const accionSesionActualBloqueada = usuarioActual || guardando;
+
+                  return (
+                    <tr key={usuario.id_usuario} className={usuarioActual ? 'cfgUsersCurrentRow' : ''}>
+                      <td>
+                        <div className="cfgUsersUserCell">
+                          <span className="cfgUsersAvatar">{iniciales(usuario.usuario)}</span>
+                          <div>
+                            <strong>{usuario.usuario}</strong>
+                            {usuarioActual ? <em>Sesión actual</em> : null}
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td>{usuario.email_recuperacion || <span className="cfgUsersMuted">Sin email</span>}</td>
-                    <td><RolPill rol={usuario.rol} /></td>
-                    <td><EstadoPill activo={usuario.activo} /></td>
-                    <td>{usuario.fecha_creacion || '-'}</td>
-                    <td>
-                      <div className="cfgUsersActions">
-                        <button type="button" className="cfgUsersActionBtn" onClick={() => abrirEditar(usuario)} title="Editar usuario">
-                          <FontAwesomeIcon icon={faEdit} />
-                        </button>
-
-                        {Number(usuario.activo) === 1 ? (
-                          <button type="button" className="cfgUsersActionBtn is-warning" onClick={() => setUsuarioACambiarEstado(usuario)} title="Dar de baja">
-                            <FontAwesomeIcon icon={faEyeSlash} />
+                      </td>
+                      <td>{usuario.email_recuperacion || <span className="cfgUsersMuted">Sin email</span>}</td>
+                      <td><RolPill rol={usuario.rol} /></td>
+                      <td><EstadoPill activo={usuario.activo} /></td>
+                      <td>{usuario.fecha_creacion || '-'}</td>
+                      <td>
+                        <div className="cfgUsersActions">
+                          <button type="button" className="cfgUsersActionBtn" onClick={() => abrirEditar(usuario)} title="Editar usuario" disabled={guardando}>
+                            <FontAwesomeIcon icon={faEdit} />
                           </button>
-                        ) : (
-                          <button type="button" className="cfgUsersActionBtn is-success" onClick={() => setUsuarioACambiarEstado(usuario)} title="Dar de alta">
-                            <FontAwesomeIcon icon={faCheck} />
-                          </button>
-                        )}
 
-                        <button type="button" className="cfgUsersActionBtn is-danger" onClick={() => setUsuarioAEliminar(usuario)} title="Eliminar usuario">
-                          <FontAwesomeIcon icon={faTrash} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                          {Number(usuario.activo) === 1 ? (
+                            <button
+                              type="button"
+                              className="cfgUsersActionBtn is-warning"
+                              onClick={() => {
+                                if (!usuarioActual) setUsuarioACambiarEstado(usuario);
+                              }}
+                              title={usuarioActual ? 'No podés dar de baja la sesión actual' : 'Dar de baja'}
+                              disabled={accionSesionActualBloqueada}
+                            >
+                              <FontAwesomeIcon icon={faEyeSlash} />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="cfgUsersActionBtn is-success"
+                              onClick={() => {
+                                if (!usuarioActual) setUsuarioACambiarEstado(usuario);
+                              }}
+                              title={usuarioActual ? 'No podés cambiar el estado de la sesión actual' : 'Dar de alta'}
+                              disabled={accionSesionActualBloqueada}
+                            >
+                              <FontAwesomeIcon icon={faCheck} />
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            className="cfgUsersActionBtn is-danger"
+                            onClick={() => {
+                              if (!usuarioActual) setUsuarioAEliminar(usuario);
+                            }}
+                            title={usuarioActual ? 'No podés eliminar la sesión actual' : 'Eliminar usuario'}
+                            disabled={accionSesionActualBloqueada}
+                          >
+                            <FontAwesomeIcon icon={faTrash} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -613,6 +653,8 @@ export default function ConfiguracionUsuarios({ onVolver = null }) {
         loadingMessage={cambioEstadoActivo ? 'Dando de baja usuario…' : 'Activando usuario…'}
         successMessage={cambioEstadoActivo ? 'Usuario dado de baja correctamente.' : 'Usuario dado de alta correctamente.'}
         errorMessage="No se pudo cambiar el estado del usuario."
+        onToast={mostrarToastGlobal}
+        hideLocalError
         details={detallesCambioEstado}
       />
 
@@ -630,6 +672,8 @@ export default function ConfiguracionUsuarios({ onVolver = null }) {
         loadingMessage="Eliminando usuario…"
         successMessage="Usuario eliminado correctamente."
         errorMessage="No se pudo eliminar el usuario."
+        onToast={mostrarToastGlobal}
+        hideLocalError
         details={detallesEliminar}
       />
     </div>

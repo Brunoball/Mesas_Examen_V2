@@ -97,6 +97,7 @@ export default function ModalDocente({
   catalogos,
   onGuardar,
   onCerrar,
+  onToast,
 }) {
   const estadoInicial = useMemo(() => obtenerEstadoInicial(modo, item), [modo, item]);
 
@@ -108,7 +109,6 @@ export default function ModalDocente({
   const [disponibilidades, setDisponibilidades] = useState(() => estadoInicial.disponibilidades);
   const [mostrarTutorial, setMostrarTutorial] = useState(() => estadoInicial.mostrarTutorial);
   const [guardando, setGuardando] = useState(false);
-  const [error, setError] = useState(() => estadoInicial.error);
 
   const primerRender = useRef(true);
   const editando = modo === 'editar' && item?.id_docente;
@@ -123,7 +123,6 @@ export default function ModalDocente({
     setComentarios(nuevoEstado.comentarios);
     setDisponibilidades(nuevoEstado.disponibilidades);
     setMostrarTutorial(nuevoEstado.mostrarTutorial);
-    setError(nuevoEstado.error);
   }, [modo, item]);
 
   useEffect(() => {
@@ -173,7 +172,6 @@ export default function ModalDocente({
   const puedeAgregarDisponibilidad = disponibilidades.length < MAX_REGLAS_DISPONIBILIDAD;
 
   function agregarDisponibilidad() {
-    setError('');
     setDisponibilidades((prev) => {
       if (prev.length >= MAX_REGLAS_DISPONIBILIDAD) return prev;
       return [...prev, { id_dia_semana: '', id_turno: '', fecha: '' }];
@@ -190,18 +188,21 @@ export default function ModalDocente({
     setDisponibilidades((prev) => prev.filter((_, i) => i !== index));
   }
 
+  function mostrarToastError(texto) {
+    if (typeof onToast === 'function') onToast('error', texto);
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
-    setError('');
 
     if (!docente.trim()) {
       setPestaniaActiva(TAB_FICHA);
-      setError('El nombre del docente es obligatorio.');
+      mostrarToastError('El nombre del docente es obligatorio.');
       return;
     }
     if (!idCargo) {
       setPestaniaActiva(TAB_FICHA);
-      setError('Debe seleccionar un cargo.');
+      mostrarToastError('Debe seleccionar un cargo.');
       return;
     }
 
@@ -209,7 +210,7 @@ export default function ModalDocente({
     const reglaInvalida = reglasConDatosActuales.find((bloque) => !reglaTieneConfiguracionValida(bloque));
     if (reglaInvalida) {
       setPestaniaActiva(TAB_ORGANIZACION);
-      setError('Cada regla debe tener al menos un turno o una fecha. Los slots vacíos se ignoran.');
+      mostrarToastError('Cada regla debe tener al menos un turno o una fecha. Los slots vacíos se ignoran.');
       return;
     }
 
@@ -218,7 +219,7 @@ export default function ModalDocente({
     );
     if (reglasSoloTurno.length > 1) {
       setPestaniaActiva(TAB_ORGANIZACION);
-      setError('Solo se permite una regla de "solo turno" sin fecha.');
+      mostrarToastError('Solo se permite una regla de "solo turno" sin fecha.');
       return;
     }
 
@@ -244,9 +245,9 @@ export default function ModalDocente({
         disponibilidades: disponibilidadesValidas,
       });
       if (res?.ok) { onCerrar(); }
-      else { setError(res?.mensaje || 'No se pudo guardar el docente.'); }
+      else if (!res?.mensaje) { mostrarToastError('No se pudo guardar el docente.'); }
     } catch (err) {
-      setError(err?.message || 'No se pudo guardar el docente.');
+      mostrarToastError(err?.message || 'No se pudo guardar el docente.');
     } finally {
       setGuardando(false);
     }
@@ -288,13 +289,7 @@ export default function ModalDocente({
         <form onSubmit={handleSubmit} className="gm-modal__form">
           <div className="gm-modal__content">
 
-            {/* ALERTS */}
-            {error && (
-              <div className="gm-alert gm-alert--error gm-alert--banner">
-                <FontAwesomeIcon icon={faInfoCircle} />
-                <span>{error}</span>
-              </div>
-            )}
+            {/* INDICADORES */}
             {resumenRegistros && (
               <div className="gm-alert gm-alert--info gm-alert--banner">
                 <FontAwesomeIcon icon={faInfoCircle} />

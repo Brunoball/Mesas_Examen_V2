@@ -95,6 +95,7 @@ export default function Previas() {
     mensaje,
     cerrarMensaje,
     cerrarError,
+    mostrarMensaje,
     busqueda,
     setBusqueda,
     vista,
@@ -191,21 +192,19 @@ export default function Previas() {
 
     const resumen = riesgoEliminacion?.resumen || {};
     return (
-      <div className="previas-delete-risk">
-        <strong>Atención: esta previa ya está vinculada.</strong>
-        <p>Eliminarla puede dejar una mesa actual sin referencia directa o perder trazabilidad contra el historial. Para continuar, confirmá dos veces.</p>
-        <ul>
-          <li>Mesas actuales: <b>{Number(resumen.mesas_actuales || 0)}</b></li>
-          <li>Historial de mesas: <b>{Number(resumen.historial_mesas || 0)}</b></li>
-          <li>Historial de resultados: <b>{Number(resumen.historial_resultados || 0)}</b></li>
-        </ul>
+      <div className="previas-delete-risk" aria-label="Indicadores de vinculación">
+        <div className="previas-delete-risk__summary">
+          <span>Mesas actuales: <b>{Number(resumen.mesas_actuales || 0)}</b></span>
+          <span>Historial de mesas: <b>{Number(resumen.historial_mesas || 0)}</b></span>
+          <span>Historial de resultados: <b>{Number(resumen.historial_resultados || 0)}</b></span>
+        </div>
         <label className="previas-delete-risk__check">
           <input
             type="checkbox"
             checked={confirmacionRiesgo}
             onChange={(event) => setConfirmacionRiesgo(event.target.checked)}
           />
-          <span>Entiendo el riesgo y confirmo que quiero eliminar esta previa igualmente.</span>
+          <span>Confirmar eliminación de una previa vinculada.</span>
         </label>
       </div>
     );
@@ -215,7 +214,7 @@ export default function Previas() {
     baja: {
       operacion: 'baja',
       title: 'Dar de baja previa',
-      message: 'La previa pasará a dados de baja y vas a poder restaurarla cuando la necesites.',
+      message: 'Confirmá el cambio de estado de la previa seleccionada.',
       warning: '',
       confirmLabel: 'Dar de baja',
       loadingLabel: 'Procesando...',
@@ -229,7 +228,7 @@ export default function Previas() {
     alta: {
       operacion: 'alta',
       title: 'Dar de alta previa',
-      message: 'La previa volverá a mostrarse dentro del listado principal de previas activas.',
+      message: 'Confirmá el alta de la previa seleccionada.',
       warning: '',
       confirmLabel: 'Dar de alta',
       loadingLabel: 'Procesando...',
@@ -241,13 +240,9 @@ export default function Previas() {
     eliminar: {
       operacion: 'eliminar',
       title: previaVinculada ? 'Eliminar previa vinculada' : 'Eliminar previa',
-      message: previaVinculada
-        ? 'Esta previa aparece en una mesa armada o en el historial. Revisá la advertencia antes de continuar.'
-        : 'Esta acción elimina el registro de forma permanente.',
-      warning: previaVinculada
-        ? 'Recomendación: si no estás completamente seguro, usá Dar de baja en lugar de eliminar.'
-        : 'Esta acción no se puede deshacer.',
-      confirmLabel: previaVinculada ? 'Eliminar igualmente' : 'Eliminar',
+      message: 'Confirmá la eliminación de la previa seleccionada.',
+      warning: '',
+      confirmLabel: previaVinculada ? 'Eliminar vinculada' : 'Eliminar',
       loadingLabel: 'Eliminando...',
       successMessage: 'Previa eliminada correctamente.',
       errorMessage: 'No se pudo eliminar la previa.',
@@ -530,6 +525,7 @@ export default function Previas() {
           catalogos={catalogos}
           onObtenerMateriasPorCurso={obtenerMateriasPorCurso}
           onGuardar={guardar}
+          onToast={mostrarMensaje}
           onCerrar={() => setModalPrevia({ abierto: false, modo: 'crear', item: null, cargando: false })}
         />
       )}
@@ -541,6 +537,7 @@ export default function Previas() {
           onDescargarPlantilla={descargarPlantillaImportacion}
           onPrevisualizar={previsualizarPreviasExcel}
           onImportar={importarPreviasExcel}
+          onToast={mostrarMensaje}
         />
       )}
 
@@ -554,6 +551,7 @@ export default function Previas() {
             setModalConfirmar({ abierto: false, tipo: '', item: null, riesgo: null, cargandoRiesgo: false });
           }}
           onConfirm={confirmarOperacion}
+          hideLocalError
           {...modalGlobalConfig}
         />
       )}

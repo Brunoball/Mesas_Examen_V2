@@ -58,6 +58,7 @@ const ModalCorrelativa = ({
   onPrecargarMateriasDeCursos,
   onClose,
   onSave,
+  onToast,
 }) => {
   const esEdicion = !!item?.id_materia_correlativa;
 
@@ -91,7 +92,6 @@ const ModalCorrelativa = ({
 
     return [nuevaRelacionVacia()];
   });
-  const [error, setError] = useState("");
 
   const mountedRef = useRef(false);
   const cacheRef = useRef(materiasCursoCache);
@@ -238,7 +238,7 @@ const ModalCorrelativa = ({
           console.error(`No se pudieron obtener materias del curso ${id}:`, error);
 
           if (mountedRef.current) {
-            setError("No se pudieron cargar las materias del curso seleccionado.");
+            onToast?.("error", "No se pudieron cargar las materias del curso seleccionado.");
           }
 
           return [];
@@ -251,7 +251,7 @@ const ModalCorrelativa = ({
       peticionesCursoRef.current[clave] = promesa;
       return promesa;
     },
-    [marcarCursoCargando, onObtenerMateriasPorCurso]
+    [marcarCursoCargando, onObtenerMateriasPorCurso, onToast]
   );
 
   const idsCursosNecesarios = useMemo(() => {
@@ -374,7 +374,7 @@ const ModalCorrelativa = ({
           mountedRef.current &&
           autoRequestIdRef.current === requestId
         ) {
-          setError("No se pudieron precargar las materias para el modo automático.");
+          onToast?.("error", "No se pudieron precargar las materias para el modo automático.");
         }
       } finally {
         if (
@@ -399,6 +399,7 @@ const ModalCorrelativa = ({
     idsCursosAuto,
     onPrecargarMateriasDeCursos,
     cargarMateriasCurso,
+    onToast,
   ]);
 
   const materiasPorCursoCompletas = useMemo(() => {
@@ -526,7 +527,6 @@ const ModalCorrelativa = ({
       return nuevoModo;
     });
 
-    setError("");
   };
 
   const validarManual = () => {
@@ -646,11 +646,9 @@ const ModalCorrelativa = ({
       const msg = validarAuto();
 
       if (msg) {
-        setError(msg);
+        onToast?.("error", msg);
         return;
       }
-
-      setError("");
 
       onSave({
         modo: "auto_por_materia",
@@ -667,11 +665,9 @@ const ModalCorrelativa = ({
     const msg = validarManual();
 
     if (msg) {
-      setError(msg);
+      onToast?.("error", msg);
       return;
     }
-
-    setError("");
 
     if (esEdicion) {
       const unica = relaciones[0];
@@ -772,8 +768,6 @@ const ModalCorrelativa = ({
               </button>
             </div>
           )}
-
-          {error && <div className="modal-corr-error">{error}</div>}
 
           <div className="modal-corr-summary" aria-label="Resumen de correlatividad">
             <div className="modal-corr-summary-item">

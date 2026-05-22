@@ -11,7 +11,7 @@ export default function ModalConfirmarPrevia({ tipo, item, onConfirmar, onCerrar
     baja: {
       operacion: 'baja',
       title: 'Dar de baja previa',
-      message: 'La previa pasará a la sección de dados de baja. Podrás darla de alta nuevamente cuando lo necesites.',
+      message: 'Confirmá el cambio de estado de la previa seleccionada.',
       warning: '',
       confirmLabel: 'Dar de baja',
       loadingLabel: 'Procesando...',
@@ -25,7 +25,7 @@ export default function ModalConfirmarPrevia({ tipo, item, onConfirmar, onCerrar
     alta: {
       operacion: 'alta',
       title: 'Dar de alta previa',
-      message: 'La previa volverá a figurar en el listado principal de previas activas.',
+      message: 'Confirmá el alta de la previa seleccionada.',
       warning: '',
       confirmLabel: 'Dar de alta',
       loadingLabel: 'Procesando...',
@@ -37,8 +37,8 @@ export default function ModalConfirmarPrevia({ tipo, item, onConfirmar, onCerrar
     eliminar: {
       operacion: 'eliminar',
       title: 'Eliminar previa',
-      message: 'Esta acción eliminará el registro de forma permanente.',
-      warning: 'Si la previa está vinculada a una mesa, el backend puede bloquear la eliminación.',
+      message: 'Confirmá la eliminación de la previa seleccionada.',
+      warning: '',
       confirmLabel: 'Eliminar',
       loadingLabel: 'Eliminando...',
       successMessage: 'Previa eliminada correctamente.',

@@ -52,7 +52,7 @@ const GridHead = ({ columns, gridCols }) => (
   </div>
 );
 
-const ModalMoverPreviaMesa = ({ abierto, previa, destinosData, cargando, moviendo, error, onClose, onConfirm }) => {
+const ModalMoverPreviaMesa = ({ abierto, previa, destinosData, cargando, moviendo, onClose, onConfirm }) => {
   const [numeroSeleccionado, setNumeroSeleccionado] = useState("");
   const overlayRef = useEscapeClose(abierto, onClose, moviendo);
 
@@ -141,8 +141,6 @@ const ModalMoverPreviaMesa = ({ abierto, previa, destinosData, cargando, moviend
             <div className="persona-loading">
               <FontAwesomeIcon icon={faSpinner} spin /> Buscando números compatibles del área...
             </div>
-          ) : error ? (
-            <div className="persona-error">{error}</div>
           ) : destinos.length === 0 ? (
             <div className="persona-empty">No hay otros números de mesa disponibles dentro del área de esta materia.</div>
           ) : (
@@ -193,11 +191,6 @@ const ModalMoverPreviaMesa = ({ abierto, previa, destinosData, cargando, moviend
             </div>
           )}
 
-          {!cargando && !error && destinoSeleccionado && !destinoSeleccionado.valido && (
-            <div className="persona-error persona-error-small">
-              {(destinoSeleccionado.errores || ["El destino seleccionado no es válido."]).join(" ")}
-            </div>
-          )}
         </section>
 
         <footer className="persona-modal-footer persona-modal-footer-actions">

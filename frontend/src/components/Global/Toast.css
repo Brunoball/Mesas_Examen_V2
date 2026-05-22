@@ -3,7 +3,7 @@
   top: 20px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 9999;
+  z-index: 2147483647;
   display: flex;
   align-items: center;
   background-color: white;
@@ -107,3 +107,45 @@
 .toast-advertencia .toast-icon{ color:#F59E0B !important; }
 .toast-cargando .toast-icon,
 .toast-info .toast-icon{ color:#0055BB !important; }
+
+/* Cierre manual para toasts persistentes: error / advertencia / alerta */
+.toast-close{
+  width:28px;
+  height:28px;
+  margin-left:12px;
+  border:0;
+  border-radius:999px;
+  background:rgba(10,37,64,.06);
+  color:#0A2540;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-size:1.25rem;
+  line-height:1;
+  font-weight:500;
+  cursor:pointer;
+  transition:background .18s ease, transform .18s ease;
+}
+
+.toast-close:hover{
+  background:rgba(10,37,64,.1);
+  transform:translateY(-1px);
+}
+
+.toast-close:focus-visible{
+  outline:2px solid rgba(0,85,187,.35);
+  outline-offset:2px;
+}
+
+/* Ajuste final: la animación de salida coincide con el cierre manual y temporizado. */
+.desaparecer{
+  animation:fadeOutUp .28s ease forwards !important;
+}
+
+
+/* El toast queda por encima de cualquier modal global y no depende del contenedor de la sección. */
+.toast-container{
+  top:18px !important;
+  z-index:2147483647 !important;
+  isolation:isolate;
+}

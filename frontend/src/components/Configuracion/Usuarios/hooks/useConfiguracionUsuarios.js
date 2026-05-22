@@ -9,6 +9,50 @@ function normalizar(texto) {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
+function normalizarBooleano(valor) {
+  return valor === true || Number(valor) === 1 || String(valor).toLowerCase() === 'true';
+}
+
+function obtenerUsuarioSesionLocal() {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = window.localStorage?.getItem('usuario');
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (_) {
+    return null;
+  }
+}
+
+function obtenerIdUsuario(usuario = {}) {
+  return Number(
+    usuario?.id_usuario ||
+    usuario?.idUsuario ||
+    usuario?.idUsuarioMaster ||
+    usuario?.id_usuario_master ||
+    usuario?.id ||
+    0
+  );
+}
+
+export function esUsuarioSesionActual(usuario = {}) {
+  if (normalizarBooleano(usuario?.es_usuario_actual)) return true;
+
+  const usuarioSesion = obtenerUsuarioSesionLocal();
+  if (!usuarioSesion) return false;
+
+  const idFila = obtenerIdUsuario(usuario);
+  const idSesion = obtenerIdUsuario(usuarioSesion);
+
+  if (idFila > 0 && idSesion > 0) return idFila === idSesion;
+
+  const nombreFila = normalizar(usuario?.usuario || usuario?.username || usuario?.nombre_usuario);
+  const nombreSesion = normalizar(usuarioSesion?.usuario || usuarioSesion?.username || usuarioSesion?.nombre_usuario);
+
+  return Boolean(nombreFila && nombreSesion && nombreFila === nombreSesion);
+}
+
 export const USUARIO_FORM_INICIAL = {
   id_usuario: 0,
   usuario: '',
@@ -31,10 +75,14 @@ export function useConfiguracionUsuarios() {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [form, setForm] = useState(USUARIO_FORM_INICIAL);
 
-  const mostrarMensaje = useCallback((tipo, texto) => {
-    setMensaje({ tipo, texto });
-    window.clearTimeout(window.__cfgUsuariosTimer);
-    window.__cfgUsuariosTimer = window.setTimeout(() => setMensaje(null), 3600);
+  const mostrarMensaje = useCallback((tipo, texto, duracion = undefined) => {
+    const tipoNormalizado = tipo === 'success' || tipo === 'ok' ? 'exito' : tipo;
+    setMensaje({
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      tipo: tipoNormalizado,
+      texto,
+      duracion,
+    });
   }, []);
 
   const cargar = useCallback(async () => {
@@ -49,11 +97,12 @@ export function useConfiguracionUsuarios() {
     } catch (e) {
       const msg = e.message || 'No se pudieron cargar los usuarios.';
       setError(msg);
+      mostrarMensaje('error', msg);
       setUsuariosBase([]);
     } finally {
       setLoading(false);
     }
-  }, [vista]);
+  }, [vista, mostrarMensaje]);
 
   useEffect(() => {
     cargar();
@@ -84,7 +133,7 @@ export function useConfiguracionUsuarios() {
 
   function abrirEditar(usuario) {
     setForm({
-      id_usuario: Number(usuario?.id_usuario || usuario?.idUsuarioMaster || 0),
+      id_usuario: obtenerIdUsuario(usuario),
       usuario: usuario?.usuario || '',
       email_recuperacion: usuario?.email_recuperacion || '',
       rol: usuario?.rol || 'vista',
@@ -150,7 +199,7 @@ export function useConfiguracionUsuarios() {
       await cargar();
       setModalAbierto(false);
       setForm({ ...USUARIO_FORM_INICIAL });
-      mostrarMensaje('success', res?.mensaje || 'Usuario guardado correctamente.');
+      mostrarMensaje('exito', res?.mensaje || 'Usuario guardado correctamente.', 2800);
       return { ok: true };
     } catch (e) {
       const msg = e.message || 'No se pudo guardar el usuario.';
@@ -162,11 +211,17 @@ export function useConfiguracionUsuarios() {
   }
 
   async function cambiarEstado(usuario, activo) {
+    if (esUsuarioSesionActual(usuario)) {
+      const msg = 'No podés cambiar el estado del usuario con la sesión actual.';
+      mostrarMensaje('error', msg);
+      return { ok: false, mensaje: msg };
+    }
+
     try {
-      const id = Number(usuario?.id_usuario || usuario?.idUsuarioMaster || 0);
+      const id = obtenerIdUsuario(usuario);
       const res = await configuracionUsuariosApi.cambiarEstado(id, activo);
       await cargar();
-      mostrarMensaje('success', res?.mensaje || (activo ? 'Usuario dado de alta.' : 'Usuario dado de baja.'));
+      mostrarMensaje('exito', res?.mensaje || (activo ? 'Usuario dado de alta.' : 'Usuario dado de baja.'), 2800);
       return { ok: true };
     } catch (e) {
       const msg = e.message || 'No se pudo cambiar el estado del usuario.';
@@ -176,11 +231,17 @@ export function useConfiguracionUsuarios() {
   }
 
   async function eliminar(usuario) {
+    if (esUsuarioSesionActual(usuario)) {
+      const msg = 'No podés eliminar el usuario con la sesión actual.';
+      mostrarMensaje('error', msg);
+      return { ok: false, mensaje: msg };
+    }
+
     try {
-      const id = Number(usuario?.id_usuario || usuario?.idUsuarioMaster || 0);
+      const id = obtenerIdUsuario(usuario);
       const res = await configuracionUsuariosApi.eliminar(id);
       await cargar();
-      mostrarMensaje('success', res?.mensaje || 'Usuario eliminado correctamente.');
+      mostrarMensaje('exito', res?.mensaje || 'Usuario eliminado correctamente.', 2800);
       return { ok: true };
     } catch (e) {
       const msg = e.message || 'No se pudo eliminar el usuario.';

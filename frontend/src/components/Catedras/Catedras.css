@@ -89,6 +89,7 @@
 
 .catedras-filterSelect{
   width:100%;
+  min-width: 144px;
   height:44px;
   border-radius:10px;
   border:1.5px solid rgba(10,37,64,.14);

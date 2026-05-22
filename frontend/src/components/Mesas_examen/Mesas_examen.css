@@ -2043,9 +2043,8 @@
   flex:1;
 }
 
-.mesas-searchFilter{
-  min-width:320px;
-}
+
+
 
 .mesas-floatingSearch,
 .mesas-searchInput{
@@ -2057,8 +2056,24 @@
   padding-right:42px;
 }
 
-.mesas-searchLabel{
+.mesas-floatingSearch .mesas-searchLabel{
+  position:absolute !important;
+  left:14px !important;
+  top:0 !important;
+  transform:translateY(-50%) !important;
+  z-index:3 !important;
+  display:inline-flex;
+  align-items:center;
   gap:6px;
+  background:#fff;
+  color:var(--balto-action);
+  padding:0 6px;
+  margin-left:-6px;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.02em;
+  line-height:1;
+  pointer-events:none;
 }
 
 .mesas-clearSearch{
@@ -2493,10 +2508,7 @@
 /* =========================================================
    MESAS — pestañas debajo del título + contador fuera del header
    ========================================================= */
-.mesas-titleBox{
-  min-width:min(100%, 430px);
-  gap:0 !important;
-}
+
 
 .mesas-titleTabs{
   width:max-content;

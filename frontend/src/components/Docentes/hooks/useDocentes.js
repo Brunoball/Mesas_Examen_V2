@@ -29,10 +29,21 @@ export function useDocentes() {
   // Igual que Cátedras: se muestran 100 registros por página.
   const paginacion = usePaginacion(100);
 
-  const mostrarMensaje = useCallback((tipo, texto) => {
-    setMensaje({ tipo, texto });
-    window.clearTimeout(window.__docentesMsgTimer);
-    window.__docentesMsgTimer = window.setTimeout(() => setMensaje(null), 3800);
+  const limpiarMensaje = useCallback(() => {
+    setMensaje(null);
+  }, []);
+
+  const mostrarMensaje = useCallback((tipo, texto, duracion) => {
+    if (!texto) return;
+
+    const tipoNormalizado = tipo === 'success' || tipo === 'ok' ? 'exito' : tipo;
+
+    setMensaje({
+      tipo: tipoNormalizado,
+      texto,
+      duracion,
+      id: Date.now(),
+    });
   }, []);
 
   const cargarCatalogos = useCallback(async () => {
@@ -57,12 +68,14 @@ export function useDocentes() {
 
       setDocentesBase(Array.isArray(res.data) ? res.data : []);
     } catch (e) {
-      setError(e.message || 'No se pudieron cargar los docentes.');
+      const msg = e.message || 'No se pudieron cargar los docentes.';
+      setError(msg);
+      mostrarMensaje('error', msg);
       setDocentesBase([]);
     } finally {
       setLoading(false);
     }
-  }, [vista]);
+  }, [vista, mostrarMensaje]);
 
   useEffect(() => {
     cargarCatalogos();
@@ -136,54 +149,54 @@ export function useDocentes() {
     }
   }
 
-  async function guardar(payload) {
+  async function guardar(payload, opciones = {}) {
     try {
       await docentesApi.guardar(payload);
       await cargar();
-      mostrarMensaje('success', 'Docente guardado correctamente.');
+      if (!opciones?.silent) mostrarMensaje('exito', 'Docente guardado correctamente.');
       return { ok: true };
     } catch (e) {
       const msg = e.message || 'No se pudo guardar el docente.';
-      mostrarMensaje('error', msg);
+      if (!opciones?.silent) mostrarMensaje('error', msg);
       return { ok: false, mensaje: msg };
     }
   }
 
-  async function darBaja(item, motivo = '') {
+  async function darBaja(item, motivo = '', opciones = {}) {
     try {
       await docentesApi.cambiarEstado(idsDesdeItem(item), 0, motivo);
       await cargar();
-      mostrarMensaje('success', 'Docente dado de baja correctamente.');
+      if (!opciones?.silent) mostrarMensaje('exito', 'Docente dado de baja correctamente.');
       return { ok: true };
     } catch (e) {
       const msg = e.message || 'No se pudo dar de baja el docente.';
-      mostrarMensaje('error', msg);
+      if (!opciones?.silent) mostrarMensaje('error', msg);
       return { ok: false, mensaje: msg };
     }
   }
 
-  async function darAlta(item) {
+  async function darAlta(item, opciones = {}) {
     try {
       await docentesApi.cambiarEstado(idsDesdeItem(item), 1);
       await cargar();
-      mostrarMensaje('success', 'Docente dado de alta correctamente.');
+      if (!opciones?.silent) mostrarMensaje('exito', 'Docente dado de alta correctamente.');
       return { ok: true };
     } catch (e) {
       const msg = e.message || 'No se pudo dar de alta el docente.';
-      mostrarMensaje('error', msg);
+      if (!opciones?.silent) mostrarMensaje('error', msg);
       return { ok: false, mensaje: msg };
     }
   }
 
-  async function eliminar(item) {
+  async function eliminar(item, opciones = {}) {
     try {
       await docentesApi.eliminar(idsDesdeItem(item));
       await cargar();
-      mostrarMensaje('success', 'Docente eliminado correctamente.');
+      if (!opciones?.silent) mostrarMensaje('exito', 'Docente eliminado correctamente.');
       return { ok: true };
     } catch (e) {
       const msg = e.message || 'No se pudo eliminar el docente.';
-      mostrarMensaje('error', msg);
+      if (!opciones?.silent) mostrarMensaje('error', msg);
       return { ok: false, mensaje: msg };
     }
   }
@@ -198,6 +211,8 @@ export function useDocentes() {
     loading,
     error,
     mensaje,
+    mostrarMensaje,
+    limpiarMensaje,
     busqueda,
     setBusqueda: actualizarBusqueda,
     vista,

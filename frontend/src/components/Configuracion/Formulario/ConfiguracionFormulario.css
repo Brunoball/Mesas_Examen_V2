@@ -442,35 +442,6 @@
   animation:cfgFormSpin .85s linear infinite;
 }
 
-.cfgFormToast.mov-alert{
-  position:fixed;
-  top:22px;
-  right:22px;
-  z-index:1300;
-  margin:0;
-  min-height:44px;
-  max-width:min(420px, calc(100vw - 44px));
-  display:flex;
-  align-items:center;
-  gap:9px;
-  font-size:13px;
-  font-weight:560;
-  box-shadow:0 18px 48px rgba(10,37,64,.18);
-  animation:cfgToastIn .18s ease both;
-}
-
-.cfgFormToast--ok{
-  background:color-mix(in srgb, var(--balto-success) 10%, #fff) !important;
-  border-color:color-mix(in srgb, var(--balto-success) 24%, #fff) !important;
-  color:color-mix(in srgb, var(--balto-success) 58%, var(--balto-ink)) !important;
-}
-
-.cfgFormToast--error{
-  background:color-mix(in srgb, var(--balto-danger) 10%, #fff) !important;
-  border-color:color-mix(in srgb, var(--balto-danger) 24%, #fff) !important;
-  color:color-mix(in srgb, var(--balto-danger) 60%, var(--balto-ink)) !important;
-}
-
 .cfgFormActionsMobile{
   display:none;
 }
@@ -479,14 +450,9 @@
   to{ transform:rotate(360deg); }
 }
 
-@keyframes cfgToastIn{
-  from{ transform:translateY(-8px); opacity:0; }
-  to{ transform:translateY(0); opacity:1; }
-}
 
 @media (prefers-reduced-motion:reduce){
-  .cfgFormLoadingIcon,
-  .cfgFormToast{
+  .cfgFormLoadingIcon{
     animation:none !important;
   }
 }

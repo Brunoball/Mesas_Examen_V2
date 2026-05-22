@@ -114,7 +114,7 @@ const FilaPrevia = ({ item, agregando, onAgregar }) => (
   </div>
 );
 
-const ModalAgregarNumeroGrupo = ({ abierto, data, cargando, agregando, error, onClose, onAgregar }) => {
+const ModalAgregarNumeroGrupo = ({ abierto, data, cargando, agregando, onClose, onAgregar }) => {
   const [tab, setTab] = useState("no_agrupadas");
   const [busqueda, setBusqueda] = useState("");
   const overlayRef = useEscapeClose(abierto, onClose, agregando);
@@ -207,8 +207,6 @@ const ModalAgregarNumeroGrupo = ({ abierto, data, cargando, agregando, error, on
               placeholder={placeholder}
             />
           </label>
-
-          {error && <div className="ag-num-error">{error}</div>}
 
           {cargando ? (
             <div className="ag-num-empty">

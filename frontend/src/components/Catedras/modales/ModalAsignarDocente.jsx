@@ -16,7 +16,92 @@ function normalizar(texto) {
   return String(texto || '')
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
+function valorDocente(docente, claves = []) {
+  if (!docente || typeof docente !== 'object') return '';
+
+  for (const clave of claves) {
+    const valor = docente[clave];
+    if (valor !== null && valor !== undefined && String(valor).trim() !== '') {
+      return String(valor).trim();
+    }
+  }
+
+  return '';
+}
+
+function obtenerIdDocente(docente) {
+  return valorDocente(docente, ['id_docente', 'idDocente', 'id', 'value']);
+}
+
+function obtenerNombreDocente(docente) {
+  const nombreDirecto = valorDocente(docente, [
+    'docente',
+    'nombre_docente',
+    'nombreDocente',
+    'nombre_completo',
+    'nombreCompleto',
+    'text',
+    'label',
+  ]);
+
+  if (nombreDirecto) return nombreDirecto;
+
+  const apellido = valorDocente(docente, ['apellido', 'apellidos', 'apellido_docente', 'apellidos_docente']);
+  const nombre = valorDocente(docente, ['nombre', 'nombres', 'nombre_persona', 'nombres_docente']);
+  const compuesto = `${apellido} ${nombre}`.trim();
+
+  return compuesto || 'Docente sin nombre';
+}
+
+function obtenerCargoDocente(docente) {
+  return valorDocente(docente, ['cargo', 'cargo_docente', 'nombre_cargo', 'nombreCargo', 'rol']);
+}
+
+function obtenerDocumentoDocente(docente) {
+  return valorDocente(docente, ['dni', 'documento', 'cuil', 'cuit', 'legajo']);
+}
+
+function docenteEstaActivo(docente) {
+  const clavesEstado = ['activo', 'activa', 'estado', 'estado_docente', 'estadoDocente', 'habilitado'];
+  const claveExistente = clavesEstado.find((clave) => Object.prototype.hasOwnProperty.call(docente || {}, clave));
+
+  if (!claveExistente) return true;
+
+  const valor = docente[claveExistente];
+
+  if (typeof valor === 'boolean') return valor;
+  if (typeof valor === 'number') return valor === 1;
+
+  const estado = normalizar(valor);
+  if (!estado) return true;
+
+  return ![
+    '0',
+    'false',
+    'no',
+    'inactivo',
+    'inactiva',
+    'baja',
+    'dado de baja',
+    'dada de baja',
+    'deshabilitado',
+    'deshabilitada',
+    'eliminado',
+    'eliminada',
+  ].includes(estado);
+}
+
+function textoBusquedaDocente(docente) {
+  return normalizar([
+    obtenerNombreDocente(docente),
+    obtenerCargoDocente(docente),
+    obtenerDocumentoDocente(docente),
+    valorDocente(docente, ['email', 'correo', 'telefono', 'teléfono']),
+  ].filter(Boolean).join(' '));
 }
 
 export default function ModalAsignarDocente({ item, docentes = [], onGuardar, onCerrar }) {
@@ -47,20 +132,41 @@ export default function ModalAsignarDocente({ item, docentes = [], onGuardar, on
 
   const listaDocentes = useMemo(() => (Array.isArray(docentes) ? docentes : []), [docentes]);
 
+  const docentesActivos = useMemo(() => (
+    listaDocentes.filter((docente) => docenteEstaActivo(docente))
+  ), [listaDocentes]);
+
   const docentesFiltrados = useMemo(() => {
     const q = normalizar(busqueda);
-    if (!q) return listaDocentes;
+    if (!q) return docentesActivos;
 
-    return listaDocentes.filter((docente) => (
-      normalizar(docente.docente).includes(q) ||
-      normalizar(docente.cargo).includes(q)
-    ));
-  }, [listaDocentes, busqueda]);
+    return docentesActivos.filter((docente) => textoBusquedaDocente(docente).includes(q));
+  }, [docentesActivos, busqueda]);
+
+  useEffect(() => {
+    const q = normalizar(busqueda);
+    if (!q) return;
+
+    const primerDocente = docentesFiltrados[0];
+    const primerId = primerDocente ? String(obtenerIdDocente(primerDocente)) : '';
+
+    setIdDocente((actual) => (actual === primerId ? actual : primerId));
+  }, [busqueda, docentesFiltrados]);
 
   const docenteSeleccionado = useMemo(() => {
     if (!idDocente) return null;
-    return listaDocentes.find((docente) => String(docente.id_docente) === String(idDocente)) || null;
+    return listaDocentes.find((docente) => String(obtenerIdDocente(docente)) === String(idDocente)) || null;
   }, [listaDocentes, idDocente]);
+
+  const docentesParaSelect = useMemo(() => {
+    if (!docenteSeleccionado) return docentesFiltrados;
+
+    const seleccionadoEstaEnFiltro = docentesFiltrados.some(
+      (docente) => String(obtenerIdDocente(docente)) === String(idDocente)
+    );
+
+    return seleccionadoEstaEnFiltro ? docentesFiltrados : [docenteSeleccionado, ...docentesFiltrados];
+  }, [docenteSeleccionado, docentesFiltrados, idDocente]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -161,6 +267,9 @@ export default function ModalAsignarDocente({ item, docentes = [], onGuardar, on
                   type="text"
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') e.preventDefault();
+                  }}
                   placeholder=" "
                   autoFocus
                 />
@@ -185,11 +294,20 @@ export default function ModalAsignarDocente({ item, docentes = [], onGuardar, on
                   disabled={guardando}
                 >
                   <option value="">Sin docente asignado</option>
-                  {docentesFiltrados.map((docente) => (
-                    <option key={docente.id_docente} value={docente.id_docente}>
-                      {docente.docente}{docente.cargo ? ` — ${docente.cargo}` : ''}
-                    </option>
-                  ))}
+                  {docentesParaSelect.length === 0 && busqueda.trim() !== '' ? (
+                    <option value="" disabled>No se encontraron docentes activos</option>
+                  ) : null}
+                  {docentesParaSelect.map((docente) => {
+                    const docenteId = obtenerIdDocente(docente);
+                    const nombreDocente = obtenerNombreDocente(docente);
+                    const cargoDocente = obtenerCargoDocente(docente);
+
+                    return (
+                      <option key={docenteId || nombreDocente} value={docenteId}>
+                        {nombreDocente}{cargoDocente ? ` — ${cargoDocente}` : ''}
+                      </option>
+                    );
+                  })}
                 </select>
                 <span className="gm-label">Docente</span>
               </label>
@@ -202,7 +320,7 @@ export default function ModalAsignarDocente({ item, docentes = [], onGuardar, on
                   <span>{docenteSeleccionado ? 'Nuevo docente seleccionado' : 'Asignación vacía'}</span>
                   <strong>
                     {docenteSeleccionado
-                      ? `${docenteSeleccionado.docente}${docenteSeleccionado.cargo ? ` · ${docenteSeleccionado.cargo}` : ''}`
+                      ? `${obtenerNombreDocente(docenteSeleccionado)}${obtenerCargoDocente(docenteSeleccionado) ? ` · ${obtenerCargoDocente(docenteSeleccionado)}` : ''}`
                       : 'La cátedra quedará sin docente asignado.'}
                   </strong>
                 </div>

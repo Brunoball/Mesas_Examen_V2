@@ -82,6 +82,15 @@ export function useConfiguracionFormulario() {
   const [guardando, setGuardando] = useState(false);
   const [toast, setToast] = useState(null);
 
+  const mostrarToast = useCallback((tipo, texto, duracion = undefined) => {
+    setToast({
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      tipo,
+      texto,
+      duracion,
+    });
+  }, []);
+
   const inicioMysql = useMemo(
     () => fechaMysql(inicioFecha, inicioHora, inicioMinuto),
     [inicioFecha, inicioHora, inicioMinuto]
@@ -118,11 +127,11 @@ export function useConfiguracionFormulario() {
         setActivo(Number(data.activo ?? 1));
       }
     } catch (error) {
-      setToast({ tipo: "error", texto: error.message || "No se pudo cargar la configuración." });
+      mostrarToast("error", error.message || "No se pudo cargar la configuración.");
     } finally {
       setCargando(false);
     }
-  }, []);
+  }, [mostrarToast]);
 
   useEffect(() => {
     let vivo = true;
@@ -150,7 +159,7 @@ export function useConfiguracionFormulario() {
         }
       } catch (error) {
         if (vivo) {
-          setToast({ tipo: "error", texto: error.message || "No se pudo cargar la configuración." });
+          mostrarToast("error", error.message || "No se pudo cargar la configuración.");
         }
       } finally {
         if (vivo) setCargando(false);
@@ -161,13 +170,7 @@ export function useConfiguracionFormulario() {
     return () => {
       vivo = false;
     };
-  }, []);
-
-  useEffect(() => {
-    if (!toast) return undefined;
-    const t = setTimeout(() => setToast(null), 3200);
-    return () => clearTimeout(t);
-  }, [toast]);
+  }, [mostrarToast]);
 
   const validar = useCallback(() => {
     if (!titulo.trim()) {
@@ -191,7 +194,7 @@ export function useConfiguracionFormulario() {
   const guardar = useCallback(async () => {
     const errorValidacion = validar();
     if (errorValidacion) {
-      setToast({ tipo: "error", texto: errorValidacion });
+      mostrarToast("error", errorValidacion);
       return false;
     }
 
@@ -208,15 +211,15 @@ export function useConfiguracionFormulario() {
 
       setIdConfig(Number(data?.id_config || idConfig || 0));
       setActivo(1);
-      setToast({ tipo: "ok", texto: data?.mensaje || "Configuración guardada correctamente." });
+      mostrarToast("exito", data?.mensaje || "Configuración guardada correctamente.", 2800);
       return true;
     } catch (error) {
-      setToast({ tipo: "error", texto: error.message || "No se pudo guardar la configuración." });
+      mostrarToast("error", error.message || "No se pudo guardar la configuración.");
       return false;
     } finally {
       setGuardando(false);
     }
-  }, [validar, idConfig, titulo, inicioMysql, finMysql, mensajeCerrado]);
+  }, [validar, idConfig, titulo, inicioMysql, finMysql, mensajeCerrado, mostrarToast]);
 
   return {
     idConfig,

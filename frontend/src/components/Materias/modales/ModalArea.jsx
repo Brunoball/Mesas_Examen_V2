@@ -24,7 +24,7 @@ const parseIds = (valor) => {
     .filter((x) => x > 0);
 };
 
-const ModalArea = ({ item, materias = [], onClose, onSave }) => {
+const ModalArea = ({ item, materias = [], onClose, onSave, onToast }) => {
   const idsIniciales = useMemo(() => parseIds(item?.ids_materias), [item]);
 
   const [pestaniaActiva, setPestaniaActiva] = useState(TAB_FICHA);
@@ -32,7 +32,6 @@ const ModalArea = ({ item, materias = [], onClose, onSave }) => {
   const [activo, setActivo] = useState(item ? Number(item.activo) === 1 : true);
   const [idsMaterias, setIdsMaterias] = useState(idsIniciales);
   const [idMateriaSeleccionada, setIdMateriaSeleccionada] = useState("");
-  const [error, setError] = useState("");
 
   useEffect(() => {
     const overflowAnterior = document.body.style.overflow;
@@ -87,11 +86,9 @@ const ModalArea = ({ item, materias = [], onClose, onSave }) => {
 
     if (!area.trim()) {
       setPestaniaActiva(TAB_FICHA);
-      setError("El nombre del área es obligatorio.");
+      onToast?.("error", "El nombre del área es obligatorio.");
       return;
     }
-
-    setError("");
     onSave({
       id_area: item?.id_area || null,
       area: area.trim(),
@@ -135,12 +132,6 @@ const ModalArea = ({ item, materias = [], onClose, onSave }) => {
         </div>
 
         <div className="gm-modal__content materias-editor-content">
-          {error && (
-            <div className="gm-alert gm-alert--error gm-alert--banner materias-editor-alert">
-              {error}
-            </div>
-          )}
-
           <div className="materias-editor-summary" aria-label="Resumen del área">
             <div className={`materias-editor-summaryItem ${activo ? "is-active" : "is-inactive"}`}>
               <span>Estado</span>

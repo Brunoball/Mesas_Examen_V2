@@ -107,6 +107,10 @@ function tipoToast(tipo) {
   return tipo || 'info';
 }
 
+function esToastPersistente(tipo) {
+  return ['error', 'advertencia', 'alerta'].includes(tipoToast(tipo));
+}
+
 export function usePrevias() {
   const [previasBase, setPreviasBase] = useState([]);
   const [catalogos, setCatalogos] = useState({ cursos: [], divisiones: [], condiciones: [] });
@@ -123,6 +127,7 @@ export function usePrevias() {
   const cerrarMensaje = useCallback(() => {
     window.clearTimeout(window.__previasMsgTimer);
     setMensaje(null);
+    setError('');
   }, []);
 
   const cerrarError = useCallback(() => {
@@ -131,8 +136,13 @@ export function usePrevias() {
 
   const mostrarMensaje = useCallback((tipo, texto, duracion = 3800) => {
     if (!texto) return;
-    setMensaje({ tipo: tipoToast(tipo), texto, duracion });
+
+    const tipoNormalizado = tipoToast(tipo);
     window.clearTimeout(window.__previasMsgTimer);
+    setMensaje({ tipo: tipoNormalizado, texto, duracion });
+
+    if (esToastPersistente(tipoNormalizado)) return;
+
     window.__previasMsgTimer = window.setTimeout(() => setMensaje(null), duracion);
   }, []);
 
@@ -364,7 +374,6 @@ export function usePrevias() {
       };
     } catch (e) {
       const msg = mensajeErrorUsuario(e, 'No se pudo previsualizar el Excel. Corregí el archivo y volvé a intentar.');
-      mostrarMensaje('error', msg, 5200);
       return {
         ok: false,
         mensaje: msg,
@@ -405,7 +414,6 @@ export function usePrevias() {
       };
     } catch (e) {
       const msg = mensajeErrorUsuario(e, 'No se pudo importar el Excel. Corregí el archivo y volvé a intentar.');
-      mostrarMensaje('error', msg, 5200);
       return {
         ok: false,
         mensaje: msg,

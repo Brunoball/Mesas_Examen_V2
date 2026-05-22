@@ -8,7 +8,6 @@ import {
   faPlus,
   faSpinner,
   faTimes,
-  faTriangleExclamation,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "./mas.css";
@@ -85,7 +84,6 @@ const ModalAgregarPreviaMesa = ({
   data,
   cargando = false,
   agregando = false,
-  error = "",
   onClose,
   onConfirm,
 }) => {
@@ -155,12 +153,6 @@ const ModalAgregarPreviaMesa = ({
             />
           </div>
 
-          {error && (
-            <div className="mas-alerta-error">
-              <FontAwesomeIcon icon={faTriangleExclamation} />
-              {error}
-            </div>
-          )}
 
           {cargando ? (
             <div className="mas-empty">

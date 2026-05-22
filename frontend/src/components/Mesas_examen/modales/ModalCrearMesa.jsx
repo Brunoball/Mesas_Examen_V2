@@ -56,12 +56,18 @@ const ModalCrearMesa = ({
   cargando = false,
   onClose,
   onConfirm,
+  onToast,
 }) => {
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
   const [limpiarBorrador, setLimpiarBorrador] = useState(true);
   const [tipoArmado, setTipoArmado] = useState("area");
-  const [error, setError] = useState("");
+  const [, setError] = useState("");
+
+  const mostrarError = (mensaje) => {
+    setError(mensaje);
+    onToast?.("error", mensaje, 4200);
+  };
 
   useEffect(() => {
     if (abierto && parametros) {
@@ -104,7 +110,7 @@ const ModalCrearMesa = ({
     const nuevaFecha = e.target.value;
 
     if (esFinDeSemana(nuevaFecha)) {
-      setError("No se puede elegir sábado ni domingo como fecha de inicio. Seleccioná un día hábil.");
+      mostrarError("No se puede elegir sábado ni domingo como fecha de inicio. Seleccioná un día hábil.");
       return;
     }
 
@@ -121,7 +127,7 @@ const ModalCrearMesa = ({
     const nuevaFecha = e.target.value;
 
     if (esFinDeSemana(nuevaFecha)) {
-      setError("No se puede elegir sábado ni domingo como fecha de finalización. Seleccioná un día hábil.");
+      mostrarError("No se puede elegir sábado ni domingo como fecha de finalización. Seleccioná un día hábil.");
       return;
     }
 
@@ -133,27 +139,27 @@ const ModalCrearMesa = ({
     e.preventDefault();
 
     if (!fechaInicio) {
-      setError("Seleccioná una fecha de inicio.");
+      mostrarError("Seleccioná una fecha de inicio.");
       return;
     }
 
     if (!fechaFin) {
-      setError("Seleccioná una fecha de finalización.");
+      mostrarError("Seleccioná una fecha de finalización.");
       return;
     }
 
     if (esFinDeSemana(fechaInicio)) {
-      setError("La fecha de inicio no puede ser sábado ni domingo.");
+      mostrarError("La fecha de inicio no puede ser sábado ni domingo.");
       return;
     }
 
     if (esFinDeSemana(fechaFin)) {
-      setError("La fecha de finalización no puede ser sábado ni domingo.");
+      mostrarError("La fecha de finalización no puede ser sábado ni domingo.");
       return;
     }
 
     if (fechaFin < fechaInicio) {
-      setError("La fecha de finalización no puede ser menor que la fecha de inicio.");
+      mostrarError("La fecha de finalización no puede ser menor que la fecha de inicio.");
       return;
     }
 
@@ -191,7 +197,8 @@ const ModalCrearMesa = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mesas-modal-body">
+        <form onSubmit={handleSubmit} className="mesas-modal-form">
+          <div className="mesas-modal-body">
           <div className="mesas-modal-indicator">
             <span className="mesas-modal-indicator__icon" aria-hidden="true">
               <FontAwesomeIcon icon={faCalendarDays} />
@@ -332,7 +339,7 @@ const ModalCrearMesa = ({
             </label>
           </div>
 
-          {error && <div className="mesas-modal-error">{error}</div>}
+          </div>
 
           <div className="mesas-modal-actions">
             <button

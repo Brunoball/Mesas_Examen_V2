@@ -30,6 +30,7 @@ import SeccionTalleres from "./secciones/SeccionTalleres";
 import SeccionAreas from "./secciones/SeccionAreas";
 import { useMaterias } from "./hooks/useMaterias";
 import Principal, { MesasShellContext } from "../Principal/Principal";
+import Toast from "../Global/Toast";
 
 const MATERIAS_GRID_COLS = "1.35fr 1.1fr 1.05fr 1.05fr .85fr .75fr .8fr";
 const SKELETON_ROWS = 7;
@@ -55,6 +56,20 @@ function alignClass(align) {
   if (align === "right") return "is-right";
   if (align === "center") return "is-center";
   return "";
+}
+
+function normalizarTipoToast(tipo) {
+  if (tipo === "ok" || tipo === "success" || tipo === "exito") return "exito";
+  if (tipo === "warning" || tipo === "advertencia") return "advertencia";
+  if (tipo === "alerta") return "alerta";
+  if (tipo === "cargando") return "cargando";
+  if (tipo === "error") return "error";
+  return "info";
+}
+
+function obtenerDuracionToast(tipo) {
+  const tipoToast = normalizarTipoToast(tipo);
+  return ["error", "advertencia", "alerta"].includes(tipoToast) ? undefined : 3800;
 }
 
 function renderSkeletonRow(index) {
@@ -112,6 +127,8 @@ const Materias = () => {
     setSoloActivas,
     cargando,
     mensaje,
+    mostrarMensaje,
+    limpiarMensaje,
     catalogos,
     materias,
     correlativas,
@@ -191,7 +208,6 @@ const Materias = () => {
         icon: faDiagramProject,
         title: 'Eliminar correlatividad',
         message: 'Se eliminará esta relación de correlatividad.',
-        warning: 'Esta acción puede afectar inscripciones o armado de mesas si esa relación estaba en uso.',
         confirmLabel: 'Eliminar',
         loadingLabel: 'Eliminando...',
         successMessage: 'Correlatividad eliminada correctamente.',
@@ -210,7 +226,6 @@ const Materias = () => {
         icon: faFlask,
         title: 'Eliminar taller',
         message: 'Se eliminará o desactivará el taller según las reglas del backend.',
-        warning: 'Revisá que no tenga materias asignadas que todavía necesites conservar.',
         confirmLabel: 'Eliminar',
         loadingLabel: 'Eliminando...',
         successMessage: 'Taller eliminado correctamente.',
@@ -229,7 +244,6 @@ const Materias = () => {
         icon: faLayerGroup,
         title: 'Eliminar área',
         message: 'Se eliminará o desactivará el área según las reglas del backend.',
-        warning: 'Las materias asociadas pueden quedar sin esta agrupación.',
         confirmLabel: 'Eliminar',
         loadingLabel: 'Eliminando...',
         successMessage: 'Área eliminada correctamente.',
@@ -247,7 +261,6 @@ const Materias = () => {
       icon: faBook,
       title: 'Eliminar materia',
       message: 'Se eliminará o desactivará la materia según las reglas del backend.',
-      warning: 'Si la materia está relacionada con cátedras, talleres o correlatividades, revisá el impacto antes de continuar.',
       confirmLabel: 'Eliminar',
       loadingLabel: 'Eliminando...',
       successMessage: 'Materia eliminada correctamente.',
@@ -493,9 +506,13 @@ const Materias = () => {
   const contenido = (
     <div className="materias-page mov-page">
       {mensaje && (
-        <div className={`mov-alert materias-alerta ${mensaje.tipo === "success" || mensaje.tipo === "ok" ? "materias-alerta-success" : "materias-alerta-error"}`}>
-          {mensaje.texto}
-        </div>
+        <Toast
+          key={mensaje.id || `${mensaje.tipo}-${mensaje.texto}`}
+          tipo={normalizarTipoToast(mensaje.tipo)}
+          mensaje={mensaje.texto}
+          duracion={obtenerDuracionToast(mensaje.tipo)}
+          onClose={limpiarMensaje}
+        />
       )}
 
       <main className="materias-content">{renderContenido()}</main>
@@ -506,6 +523,7 @@ const Materias = () => {
           areas={catalogos.areas}
           onClose={() => setModalMateria({ abierto: false, item: null })}
           onSave={guardarMateria}
+          onToast={mostrarMensaje}
         />
       )}
 
@@ -519,6 +537,7 @@ const Materias = () => {
           onPrecargarMateriasDeCursos={precargarMateriasDeCursos}
           onClose={() => setModalCorrelativa({ abierto: false, item: null })}
           onSave={guardarCorrelativa}
+          onToast={mostrarMensaje}
         />
       )}
 
@@ -534,6 +553,7 @@ const Materias = () => {
           onSave={guardarTaller}
           onAddMateria={agregarMateriaTaller}
           onRemoveMateria={quitarMateriaTaller}
+          onToast={mostrarMensaje}
         />
       )}
 
@@ -543,6 +563,7 @@ const Materias = () => {
           materias={catalogos.materias}
           onClose={() => setModalArea({ abierto: false, item: null })}
           onSave={guardarArea}
+          onToast={mostrarMensaje}
         />
       )}
 
@@ -553,7 +574,7 @@ const Materias = () => {
         icon={confirmacionConfig.icon}
         title={confirmacionConfig.title}
         message={confirmacionConfig.message}
-        warning={confirmacionConfig.warning}
+        warning={confirmacionConfig.warning ?? ""}
         confirmLabel={confirmacionConfig.confirmLabel}
         loadingLabel={confirmacionConfig.loadingLabel}
         successMessage={confirmacionConfig.successMessage}
@@ -561,6 +582,8 @@ const Materias = () => {
         details={confirmacionConfig.details}
         onClose={cerrarConfirmacion}
         onConfirm={confirmarAccion}
+        onToast={mostrarMensaje}
+        hideLocalError
       />
     </div>
   );

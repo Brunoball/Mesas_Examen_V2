@@ -52,7 +52,7 @@ const GridHead = ({ columns, gridCols }) => (
   </div>
 );
 
-const ModalPreviasMesa = ({ abierto, numero, data, cargando, error, onClose, onMover, onEliminar }) => {
+const ModalPreviasMesa = ({ abierto, numero, data, cargando, onClose, onMover, onEliminar }) => {
   const overlayRef = useEscapeClose(abierto, onClose);
 
   if (!abierto) return null;
@@ -99,8 +99,6 @@ const ModalPreviasMesa = ({ abierto, numero, data, cargando, error, onClose, onM
             <div className="persona-loading">
               <FontAwesomeIcon icon={faSpinner} spin /> Cargando previas...
             </div>
-          ) : error ? (
-            <div className="persona-error">{error}</div>
           ) : previas.length === 0 ? (
             <div className="persona-empty">Este número de mesa no tiene previas vinculadas.</div>
           ) : (

@@ -56,6 +56,7 @@ const ModalTaller = ({
   onObtenerCatedrasTaller,
   onClose,
   onSave,
+  onToast,
 }) => {
   const [taller, setTaller] = useState(item?.taller || "");
   const [idCurso, setIdCurso] = useState(item?.id_curso || "");
@@ -70,8 +71,6 @@ const ModalTaller = ({
   );
   const [catedrasCurso, setCatedrasCurso] = useState([]);
   const [cargandoCatedras, setCargandoCatedras] = useState(false);
-  const [errorCatedras, setErrorCatedras] = useState("");
-  const [errorGeneral, setErrorGeneral] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [pestaniaActiva, setPestaniaActiva] = useState(TAB_DIVISIONES);
 
@@ -105,7 +104,6 @@ const ModalTaller = ({
     setSeleccionadas(extraerIdsCatedras(item));
     setIdArea("");
     setBusqueda("");
-    setErrorGeneral("");
     setPestaniaActiva(TAB_DIVISIONES);
   }, [item]);
 
@@ -117,8 +115,6 @@ const ModalTaller = ({
       const divisionesSeleccionadas = idsDivisiones
         .map(Number)
         .filter((x) => x > 0);
-
-      setErrorCatedras("");
 
       if (id <= 0 || divisionesSeleccionadas.length === 0) {
         setCatedrasCurso([]);
@@ -140,9 +136,7 @@ const ModalTaller = ({
           );
           lista = resultados.flat();
         } else {
-          setErrorCatedras(
-            "No está configurada la carga de cátedras del taller."
-          );
+          onToast?.("error", "No está configurada la carga de cátedras del taller.");
         }
 
         if (!cancelado) {
@@ -153,9 +147,7 @@ const ModalTaller = ({
 
         if (!cancelado) {
           setCatedrasCurso([]);
-          setErrorCatedras(
-            "No se pudieron cargar las cátedras de ese curso y división."
-          );
+          onToast?.("error", "No se pudieron cargar las cátedras de ese curso y división.");
         }
       } finally {
         if (!cancelado) setCargandoCatedras(false);
@@ -172,6 +164,7 @@ const ModalTaller = ({
     idsDivisiones,
     onObtenerCatedrasTaller,
     onObtenerMateriasPorCurso,
+    onToast,
   ]);
 
   const cursosActivos = useMemo(() => {
@@ -283,7 +276,6 @@ const ModalTaller = ({
     setSeleccionadas([]);
     setIdArea("");
     setBusqueda("");
-    setErrorGeneral("");
     setPestaniaActiva(TAB_DIVISIONES);
   };
 
@@ -352,28 +344,27 @@ const ModalTaller = ({
     const nombre = taller.trim().toUpperCase();
 
     if (!nombre) {
-      setErrorGeneral("El nombre del taller es obligatorio.");
+      onToast?.("error", "El nombre del taller es obligatorio.");
       return;
     }
 
     if (!idCurso) {
-      setErrorGeneral("Tenés que seleccionar el curso/año al que pertenece el taller.");
+      onToast?.("error", "Tenés que seleccionar el curso/año al que pertenece el taller.");
       return;
     }
 
     if (idsDivisiones.length === 0) {
       setPestaniaActiva(TAB_DIVISIONES);
-      setErrorGeneral("Tenés que seleccionar al menos una división.");
+      onToast?.("error", "Tenés que seleccionar al menos una división.");
       return;
     }
 
     if (seleccionadas.length === 0) {
       setPestaniaActiva(TAB_CATEDRAS);
-      setErrorGeneral("Tenés que seleccionar las cátedras específicas de ese taller.");
+      onToast?.("error", "Tenés que seleccionar las cátedras específicas de ese taller.");
       return;
     }
 
-    setErrorGeneral("");
     setGuardando(true);
 
     try {
@@ -480,11 +471,6 @@ const ModalTaller = ({
               </div>
             </div>
 
-            {errorGeneral && (
-              <div className="gm-alert gm-alert--error gm-alert--banner taller-alert">
-                {errorGeneral}
-              </div>
-            )}
 
             <div className="taller-summary-strip" aria-label="Resumen del taller">
               <div className="taller-summary-card">
@@ -620,9 +606,6 @@ const ModalTaller = ({
                   </div>
                 </div>
 
-                {errorCatedras && (
-                  <div className="modal-inline-error">{errorCatedras}</div>
-                )}
 
                 <div className="taller-toolbar">
                   <label className="form-label mini">

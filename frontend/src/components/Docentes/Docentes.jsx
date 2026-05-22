@@ -17,6 +17,7 @@ import { useDocentes } from './hooks/useDocentes.js';
 import ModalDocente from './modales/ModalDocente.jsx';
 import ModalInfoDocente from './modales/ModalInfoDocente.jsx';
 import ModalEliminarGlobal from '../Global/Modales/ModalEliminarGlobal.jsx';
+import Toast from '../Global/Toast';
 import '../Global/Global_css/roots.css';
 import '../Global/Global_css/Global_Section.css';
 import '../Global/Global_css/Global_DivTable.css';
@@ -48,6 +49,22 @@ function alignClass(align) {
   if (align === 'center') return 'is-center';
   return '';
 }
+
+function normalizarTipoToast(tipo) {
+  if (tipo === 'ok' || tipo === 'success' || tipo === 'exito') return 'exito';
+  if (tipo === 'warning' || tipo === 'advertencia') return 'advertencia';
+  if (tipo === 'alerta') return 'alerta';
+  if (tipo === 'cargando') return 'cargando';
+  if (tipo === 'error') return 'error';
+  return 'info';
+}
+
+function obtenerDuracionToast(tipo, duracion) {
+  if (duracion !== undefined && duracion !== null) return duracion;
+  const tipoToast = normalizarTipoToast(tipo);
+  return ['error', 'advertencia', 'alerta'].includes(tipoToast) ? undefined : 3800;
+}
+
 
 function renderSkeletonRow(index) {
   return (
@@ -91,8 +108,9 @@ export default function Docentes() {
     docentes,
     catalogos,
     loading,
-    error,
     mensaje,
+    mostrarMensaje,
+    limpiarMensaje,
     busqueda,
     setBusqueda,
     vista,
@@ -136,9 +154,9 @@ export default function Docentes() {
   }
 
   async function confirmarOperacion({ motivo = '' } = {}) {
-    if (modalConfirmar.tipo === 'baja') return darBaja(modalConfirmar.item, motivo);
-    if (modalConfirmar.tipo === 'alta') return darAlta(modalConfirmar.item);
-    if (modalConfirmar.tipo === 'eliminar') return eliminar(modalConfirmar.item);
+    if (modalConfirmar.tipo === 'baja') return darBaja(modalConfirmar.item, motivo, { silent: true });
+    if (modalConfirmar.tipo === 'alta') return darAlta(modalConfirmar.item, { silent: true });
+    if (modalConfirmar.tipo === 'eliminar') return eliminar(modalConfirmar.item, { silent: true });
     return { ok: false, mensaje: 'Operación inválida.' };
   }
 
@@ -207,12 +225,14 @@ export default function Docentes() {
   const contenido = (
     <div className="docentes-page mov-page">
       {mensaje && (
-        <div className={`mov-alert docentes-alerta ${mensaje.tipo === 'success' ? 'docentes-alerta-success' : 'docentes-alerta-error'}`}>
-          {mensaje.texto}
-        </div>
+        <Toast
+          key={mensaje.id || `${mensaje.tipo}-${mensaje.texto}`}
+          tipo={normalizarTipoToast(mensaje.tipo)}
+          mensaje={mensaje.texto}
+          duracion={obtenerDuracionToast(mensaje.tipo, mensaje.duracion)}
+          onClose={limpiarMensaje}
+        />
       )}
-
-      {error && <div className="mov-alert docentes-alerta docentes-alerta-error">{error}</div>}
 
       <section className="docentes-card mov-card mov-card--table">
         <div className="mov-card__head docentes-card__head">
@@ -433,6 +453,7 @@ export default function Docentes() {
           item={modalDocente.item}
           catalogos={catalogos}
           onGuardar={guardar}
+          onToast={mostrarMensaje}
           onCerrar={() => setModalDocente({ abierto: false, modo: 'crear', item: null })}
         />
       )}
@@ -452,6 +473,8 @@ export default function Docentes() {
           row={modalConfirmar.item}
           onConfirm={confirmarOperacion}
           onClose={() => setModalConfirmar({ abierto: false, tipo: '', item: null })}
+          onToast={mostrarMensaje}
+          hideLocalError
           {...obtenerConfigModalConfirmar()}
         />
       )}

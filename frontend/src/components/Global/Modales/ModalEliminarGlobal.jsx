@@ -111,6 +111,7 @@ export default function ModalEliminarGlobal({
 
   closeOnSuccess = true,
   confirmDisabled = false,
+  hideLocalError = false,
 }) {
   const cancelRef = useRef(null);
   const [procesandoInterno, setProcesandoInterno] = useState(false);
@@ -291,7 +292,7 @@ export default function ModalEliminarGlobal({
           ) : null}
         </p>
 
-        {localError && <div className="gdel-alert gdel-alert--error">{localError}</div>}
+        {localError && !hideLocalError && <div className="gdel-alert gdel-alert--error">{localError}</div>}
 
         {!hideDefaultCard && resolvedDetails.length > 0 && (
           <div className="gdel-card">

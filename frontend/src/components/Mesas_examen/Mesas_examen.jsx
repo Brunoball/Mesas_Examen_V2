@@ -1,5 +1,5 @@
 // src/components/Mesas_examen/Mesas_examen.jsx
-import React, { useCallback, useContext, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -533,13 +533,6 @@ const HistorialMesasPanel = ({ historial }) => {
 
   return (
     <div className="mesas-historial-panel">
-      {historial?.error && (
-        <div className="mov-alert mesas-alert mesas-alert-error mesas-historial-error">
-          <FontAwesomeIcon icon={faTriangleExclamation} />
-          {historial.error}
-        </div>
-      )}
-
       <div className="mesas-historial-resumen" aria-label="Resumen del historial">
         {tarjetasHistorial.map((tarjeta) => (
           <article key={tarjeta.key} className={`mesas-historial-kpi mesas-historial-kpi--${tarjeta.tono}`}>
@@ -775,6 +768,7 @@ const HistorialMesasPanel = ({ historial }) => {
 const MesasExamen = () => {
   const dentroDeShell = useContext(MesasShellContext);
   const [toastGlobal, setToastGlobal] = useState(null);
+  const erroresToastRef = useRef({});
 
   const mostrarToastGlobal = useCallback((tipo = "exito", mensaje = "Operación realizada con éxito.", duracion = 2800) => {
     setToastGlobal({
@@ -845,6 +839,43 @@ const MesasExamen = () => {
   const [exportandoPdf, setExportandoPdf] = useState(false);
   const [modalExportarHistorialAbierto, setModalExportarHistorialAbierto] = useState(false);
   const [exportandoHistorial, setExportandoHistorial] = useState(false);
+
+  useEffect(() => {
+    const errores = {
+      principal: error,
+      edicion: errorEdicion,
+      persona: personaEdicion?.errorPersona,
+      moverPersona: personaEdicion?.errorMover,
+      mas: masEdicion?.error,
+      flechas: flechasEdicion?.error,
+      agregarNumero: agregarNumeroEdicion?.error,
+      historial: historial?.error,
+    };
+
+    Object.entries(errores).forEach(([clave, mensaje]) => {
+      const texto = String(mensaje || "").trim();
+
+      if (!texto) {
+        delete erroresToastRef.current[clave];
+        return;
+      }
+
+      if (erroresToastRef.current[clave] === texto) return;
+
+      erroresToastRef.current[clave] = texto;
+      mostrarToastGlobal("error", texto, 4200);
+    });
+  }, [
+    error,
+    errorEdicion,
+    personaEdicion?.errorPersona,
+    personaEdicion?.errorMover,
+    masEdicion?.error,
+    flechasEdicion?.error,
+    agregarNumeroEdicion?.error,
+    historial?.error,
+    mostrarToastGlobal,
+  ]);
 
   const abrirModalExportarPdf = useCallback(() => {
     if (!Array.isArray(mesasFiltradas) || mesasFiltradas.length === 0) {
@@ -978,9 +1009,9 @@ const MesasExamen = () => {
                         type="text"
                         value={busqueda}
                         onChange={(e) => setBusqueda(e.target.value)}
-                        placeholder="Buscar"
+                        placeholder="Busqueda"
                       />
-                      <span className="cc-floatingLabel mesas-searchLabel">
+                      <span className="mesas-filterTabs__label mesas-searchLabel">
                         <FontAwesomeIcon icon={faMagnifyingGlass} /> Búsqueda
                       </span>
                       {hayBusquedaActiva && (
@@ -1037,17 +1068,9 @@ const MesasExamen = () => {
           </div>
         </div>
 
-        {(error || resumenArmado) && (
+        {resumenArmado && (
           <div className="mesas-statusAlerts">
-            {error && (
-              <div className="mov-alert mesas-alert mesas-alert-error">
-                <FontAwesomeIcon icon={faTriangleExclamation} />
-                {error}
-              </div>
-            )}
-
-            {resumenArmado && (
-              <div className="mov-alert mesas-alert mesas-alert-ok">
+            <div className="mov-alert mesas-alert mesas-alert-ok">
                 <FontAwesomeIcon icon={faCheckCircle} />
                 <div>
                   {resumenArmado.eliminadas !== undefined ? (
@@ -1072,7 +1095,6 @@ const MesasExamen = () => {
                   )}
                 </div>
               </div>
-            )}
           </div>
         )}
 
@@ -1122,6 +1144,7 @@ const MesasExamen = () => {
         cargando={armando}
         onClose={cerrarModalCrear}
         onConfirm={crearMesas}
+        onToast={mostrarToastGlobal}
       />
 
       <ModalEditarMesa
@@ -1181,6 +1204,7 @@ const MesasExamen = () => {
         errorMessage="No se pudieron eliminar las mesas."
         onClose={eliminarArmado?.cerrar}
         onConfirm={eliminarArmado?.confirmar}
+        hideLocalError
       />
 
       <ModalEliminarGlobal
@@ -1198,6 +1222,7 @@ const MesasExamen = () => {
         errorMessage="No se pudo completar la eliminación."
         onClose={eliminarEdicion?.cerrar}
         onConfirm={eliminarEdicion?.confirmar}
+        hideLocalError
       />
 
       {toastGlobal && (typeof document !== "undefined"

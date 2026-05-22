@@ -337,7 +337,7 @@ const SlotVacio = ({ onClick, esExtraLibre = false, eliminando = false, onElimin
   </div>
 );
 
-const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardando, slotsDisponibles, cargandoSlots = false, error, onClose, onSave, onCrearGrupoUnico, onDelete, onLoadSlots, persona = {}, mas = {}, flechas = {}, eliminar = {}, agregarNumero = {} }) => {
+const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardando, slotsDisponibles, cargandoSlots = false, onClose, onSave, onCrearGrupoUnico, onDelete, onLoadSlots, persona = {}, mas = {}, flechas = {}, eliminar = {}, agregarNumero = {} }) => {
   const [fechaMesa, setFechaMesa] = useState("");
   const [idTurno, setIdTurno] = useState("");
   const [hora, setHora] = useState("07:30");
@@ -688,7 +688,6 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
                   </div>
                 )}
 
-                {error && <div className="editar-mesa-error">{error}</div>}
               </div>
             </>
           )}
@@ -750,6 +749,7 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
         ]}
         onClose={persona.cerrarEliminar}
         onConfirm={persona.confirmarEliminar}
+        hideLocalError
       />
 
       <ModalAgregarPreviaMesa

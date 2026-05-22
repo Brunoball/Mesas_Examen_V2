@@ -82,7 +82,6 @@ const ModalMoverNumeroMesa = ({
   destinosData,
   cargando,
   moviendo,
-  error,
   onClose,
   onConfirm,
 }) => {
@@ -182,8 +181,6 @@ const ModalMoverNumeroMesa = ({
                 />
               </div>
             </label>
-
-            {error && <div className="flechas-error">{error}</div>}
 
             {cargando ? (
               <div className="flechas-loading">

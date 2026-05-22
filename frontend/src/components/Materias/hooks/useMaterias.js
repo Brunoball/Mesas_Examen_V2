@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { materiasApi } from '../api/materiasApi';
 
 function normalizar(texto) {
@@ -45,6 +45,7 @@ export function useMaterias() {
   const [soloActivas, setSoloActivas] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
+  const mensajeTimerRef = useRef(null);
 
   const [catalogos, setCatalogos] = useState({
     areas: [],
@@ -74,10 +75,35 @@ export function useMaterias() {
     nuevoEstado: null,
   });
 
+  const limpiarMensaje = useCallback(() => {
+    if (mensajeTimerRef.current) {
+      window.clearTimeout(mensajeTimerRef.current);
+      mensajeTimerRef.current = null;
+    }
+
+    setMensaje(null);
+  }, []);
+
   const mostrarMensaje = useCallback((tipo, texto) => {
-    setMensaje({ tipo, texto });
-    window.clearTimeout(window.__materiasMsgTimer);
-    window.__materiasMsgTimer = window.setTimeout(() => setMensaje(null), 3800);
+    const tipoNormalizado = tipo === 'success' || tipo === 'ok' ? 'exito' : tipo;
+    const esPersistente = ['error', 'advertencia', 'alerta', 'warning'].includes(tipoNormalizado);
+
+    if (mensajeTimerRef.current) {
+      window.clearTimeout(mensajeTimerRef.current);
+      mensajeTimerRef.current = null;
+    }
+
+    setMensaje({ tipo: tipoNormalizado, texto, id: Date.now() });
+
+    if (!esPersistente) {
+      mensajeTimerRef.current = window.setTimeout(() => setMensaje(null), 3800);
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (mensajeTimerRef.current) window.clearTimeout(mensajeTimerRef.current);
+    };
   }, []);
 
   const cerrarConfirmacion = useCallback(() => {
@@ -315,6 +341,11 @@ export function useMaterias() {
   };
 
   const eliminarMateria = (item) => {
+    mostrarMensaje(
+      'advertencia',
+      'Si la materia está relacionada con cátedras, talleres o correlatividades, revisá el impacto antes de continuar.'
+    );
+
     abrirConfirmacion({
       tipo: 'eliminar_materia',
       operacion: 'eliminar',
@@ -354,6 +385,11 @@ export function useMaterias() {
   };
 
   const eliminarCorrelativa = (item) => {
+    mostrarMensaje(
+      'advertencia',
+      'Esta acción puede afectar inscripciones o armado de mesas si esa relación estaba en uso.'
+    );
+
     abrirConfirmacion({
       tipo: 'eliminar_correlativa',
       operacion: 'eliminar',
@@ -380,6 +416,11 @@ export function useMaterias() {
   };
 
   const eliminarTaller = (item) => {
+    mostrarMensaje(
+      'advertencia',
+      'Revisá que no tenga materias asignadas que todavía necesites conservar.'
+    );
+
     abrirConfirmacion({
       tipo: 'eliminar_taller',
       operacion: 'eliminar',
@@ -432,6 +473,11 @@ export function useMaterias() {
   };
 
   const eliminarArea = (item) => {
+    mostrarMensaje(
+      'advertencia',
+      'Las materias asociadas pueden quedar sin esta agrupación.'
+    );
+
     abrirConfirmacion({
       tipo: 'eliminar_area',
       operacion: 'eliminar',
@@ -493,6 +539,8 @@ export function useMaterias() {
     setSoloActivas,
     cargando,
     mensaje,
+    mostrarMensaje,
+    limpiarMensaje,
     catalogos,
     materiasPorCursoCache,
     materias,

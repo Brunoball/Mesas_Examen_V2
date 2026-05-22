@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -122,7 +122,7 @@ function InputField({ label, value, onChange, placeholder, type = 'text', disabl
   );
 }
 
-export default function ModalPrevia({ modo = 'crear', item = null, catalogos, onObtenerMateriasPorCurso, onGuardar, onCerrar }) {
+export default function ModalPrevia({ modo = 'crear', item = null, catalogos, onObtenerMateriasPorCurso, onGuardar, onToast, onCerrar }) {
   const editando = modo === 'editar';
   const condiciones = catalogos?.condiciones || [];
   const cursos = catalogos?.cursos || [];
@@ -139,11 +139,16 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
   const [tabPrincipal, setTabPrincipal] = useState('alumno');
   const [tabMateria, setTabMateria] = useState(0);
   const [guardando, setGuardando] = useState(false);
-  const [error, setError] = useState('');
+  const [, setError] = useState('');
   const materiaTabsRef = useRef(null);
   const [materiasPorClave, setMateriasPorClave] = useState({});
   const [cargandoMateriasPorClave, setCargandoMateriasPorClave] = useState({});
   const [erroresMateriasPorClave, setErroresMateriasPorClave] = useState({});
+
+  const mostrarToast = useCallback((tipo, texto, duracion = 4200) => {
+    if (!texto || typeof onToast !== 'function') return;
+    onToast(tipo, texto, duracion);
+  }, [onToast]);
 
   const [datosAlumno, setDatosAlumno] = useState({
     dni: item?.dni || '',
@@ -253,10 +258,12 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
         console.error('No se pudieron cargar las materias desde global:', e);
         if (!cancelado) {
           setMateriasPorClave((prev) => ({ ...prev, [clave]: [] }));
+          const mensajeErrorMaterias = 'No se pudieron cargar las materias de ese curso y división.';
           setErroresMateriasPorClave((prev) => ({
             ...prev,
-            [clave]: 'No se pudieron cargar las materias de ese curso y división.',
+            [clave]: mensajeErrorMaterias,
           }));
+          mostrarToast('error', mensajeErrorMaterias, 5200);
         }
       } finally {
         if (!cancelado) {
@@ -270,7 +277,7 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
     return () => {
       cancelado = true;
     };
-  }, [materiaActual?.materia_id_curso, materiaActual?.materia_id_division, materiasPorClave, onObtenerMateriasPorCurso]);
+  }, [materiaActual?.materia_id_curso, materiaActual?.materia_id_division, materiasPorClave, onObtenerMateriasPorCurso, mostrarToast]);
 
   function actualizarAlumno(campo, valor) {
     setDatosAlumno((prev) => ({ ...prev, [campo]: valor }));
@@ -334,7 +341,7 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
   function textoOpcionMateria() {
     if (!materiaActual?.materia_id_curso || !materiaActual?.materia_id_division) return 'Elegí curso y división de materia';
     if (cargandoMateriasActuales) return 'Cargando materias...';
-    if (errorMateriasActuales) return 'No se pudieron cargar materias';
+    if (errorMateriasActuales) return 'Seleccionar...';
     return 'Seleccionar...';
   }
 
@@ -363,6 +370,7 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
     const msg = validar();
     if (msg) {
       setError(msg);
+      mostrarToast('advertencia', msg, 5200);
       return;
     }
 
@@ -462,11 +470,6 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
           ))}
         </SelectField>
 
-        {errorMateriasActuales && (
-          <div className="gm-alert gm-alert--error gm-alert--banner previas-form-error">
-            {errorMateriasActuales}
-          </div>
-        )}
       </div>
     </section>
   );
@@ -712,11 +715,6 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
             </>
           )}
 
-          {error && (
-            <div className="gm-alert gm-alert--error gm-alert--banner previas-form-error">
-              {error}
-            </div>
-          )}
         </div>
 
         <div className="gm-modal__actions">

@@ -5,10 +5,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowLeft,
   faCalendarAlt,
-  faCheckCircle,
   faClock,
   faCog,
-  faExclamationTriangle,
   faInfoCircle,
   faSave,
 } from "@fortawesome/free-solid-svg-icons";
@@ -22,6 +20,7 @@ import Principal, { MesasShellContext } from "../../Principal/Principal";
 import "../../Global/Global_css/roots.css";
 import "../../Global/Global_css/Global_Section.css";
 import "./ConfiguracionFormulario.css";
+import Toast from "../../Global/Toast";
 
 function fieldClass(value = "") {
   return `cc-floatingField cfgFormFloating ${String(value).trim() ? "is-active" : ""}`;
@@ -67,6 +66,7 @@ export default function ConfiguracionFormulario({ onVolver = null }) {
     cargando,
     guardando,
     toast,
+    setToast,
     estaAbierta,
     guardar,
   } = useConfiguracionFormulario();
@@ -88,14 +88,13 @@ export default function ConfiguracionFormulario({ onVolver = null }) {
   const contenido = (
     <div className="cfgFormPage mov-page">
       {toast && (
-        <div
-          className={`mov-alert cfgFormToast cfgFormToast--${toast.tipo}`}
-          role="status"
-          aria-live="polite"
-        >
-          <FontAwesomeIcon icon={toast.tipo === "ok" ? faCheckCircle : faExclamationTriangle} />
-          <span>{toast.texto}</span>
-        </div>
+        <Toast
+          key={toast.id}
+          tipo={toast.tipo}
+          mensaje={toast.texto}
+          duracion={toast.duracion}
+          onClose={() => setToast(null)}
+        />
       )}
 
       <section className="cfgFormCardRoot mov-card mov-card--table">
