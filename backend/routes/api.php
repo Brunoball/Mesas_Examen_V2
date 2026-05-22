@@ -92,6 +92,7 @@ try {
     require_once __DIR__ . '/../modules/dashbord/route.php';
     require_once __DIR__ . '/../modules/configuracion/route.php';
     require_once __DIR__ . '/../modules/formulario/route.php';
+    require_once __DIR__ . '/../modules/perfil/route.php';
     require_once __DIR__ . '/../modules/materias/route.php';
     require_once __DIR__ . '/../modules/catedras/route.php';
     require_once __DIR__ . '/../modules/docentes/route.php';
@@ -122,6 +123,10 @@ try {
     }
 
     if (route_formulario($action)) {
+        exit;
+    }
+
+    if (route_perfil($action)) {
         exit;
     }
 

@@ -27,6 +27,7 @@ import {
 import "./principal.css";
 import logoLernaBlanco from "../../imagenes/lerna_blancov3.png";
 import Dashbord from "../Dashbord/Dashbord";
+import ModalPerfil from "../Perfil/Perfil";
 import BASE_URL from "../../config/config";
 
 export const MesasShellContext = createContext(false);
@@ -332,6 +333,7 @@ const Principal = ({ children = null }) => {
 
   const [usuario, setUsuario] = useState(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showPerfilModal, setShowPerfilModal] = useState(false);
   const [closingUI, setClosingUI] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -571,10 +573,12 @@ const Principal = ({ children = null }) => {
           <div className="mov-topbar__right">
             <div className="mov-topbar__section">{activeLabel}</div>
 
-            <div
+            <button
               className={`mov-topbar__usericon ${logoTenantUrl && !logoTenantError ? "has-logo" : ""}`}
-              title={usuario?.tenant?.nombre || usuario?.tenant_nombre || usuario?.Nombre_Completo || usuario?.nombre || "Usuario"}
-              aria-label="Usuario"
+              type="button"
+              onClick={() => setShowPerfilModal(true)}
+              title={`Ver perfil de ${usuario?.Nombre_Completo || usuario?.usuario || usuario?.nombre || "usuario"}`}
+              aria-label="Abrir perfil de usuario"
             >
               {logoTenantUrl && !logoTenantError ? (
                 <img
@@ -587,7 +591,7 @@ const Principal = ({ children = null }) => {
               ) : (
                 <FontAwesomeIcon icon={faUserCircle} />
               )}
-            </div>
+            </button>
 
             <button
               className={`pp-topbarConfig ${activeKey === "configuracion" ? "is-active" : ""}`}
@@ -739,6 +743,13 @@ const Principal = ({ children = null }) => {
             {hasChildren ? children : esPanelInicio ? <Dashbord /> : <StableOutlet />}
           </div>
         </main>
+
+        <ModalPerfil
+          open={showPerfilModal}
+          onClose={() => setShowPerfilModal(false)}
+          usuarioInicial={usuario}
+          logoInicialUrl={logoTenantUrl}
+        />
 
         <ConfirmLogoutModal
           open={showLogoutModal}
