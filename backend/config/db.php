@@ -140,6 +140,128 @@ function tenant_context(?string $sessionKey = null): ?array
     return $ctx;
 }
 
+
+
+/**
+ * Intenta leer un id de tenant para endpoints publicos.
+ * Prioridad: query/body/header y, si no viene nada, DEFAULT_TENANT_ID del .env.
+ */
+function public_tenant_id_from_request(): int
+{
+    $body = function_exists('request_body') ? request_body() : [];
+
+    $candidates = [
+        $_GET['idTenant'] ?? null,
+        $_GET['id_tenant'] ?? null,
+        $_GET['tenant_id'] ?? null,
+        $_POST['idTenant'] ?? null,
+        $_POST['id_tenant'] ?? null,
+        $_POST['tenant_id'] ?? null,
+        $body['idTenant'] ?? null,
+        $body['id_tenant'] ?? null,
+        $body['tenant_id'] ?? null,
+        $_SERVER['HTTP_X_TENANT_ID'] ?? null,
+        env_value('DEFAULT_TENANT_ID', '0'),
+    ];
+
+    foreach ($candidates as $value) {
+        $id = (int)$value;
+        if ($id > 0) {
+            return $id;
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * Resuelve el tenant para acciones publicas del formulario.
+ * Si viene Authorization/X-Session valido, usa ese tenant. Si no, usa DEFAULT_TENANT_ID.
+ */
+function public_tenant_context(): ?array
+{
+    $sessionKey = request_session_key();
+    if ($sessionKey !== '') {
+        $ctx = tenant_context($sessionKey);
+        if ($ctx) {
+            return $ctx;
+        }
+    }
+
+    $idTenant = public_tenant_id_from_request();
+    if ($idTenant <= 0) {
+        return null;
+    }
+
+    $master = master_db();
+    $stmt = $master->prepare("
+        SELECT
+            t.idTenant,
+            t.nombre AS tenant_nombre,
+            t.logo_url,
+            t.logo_url AS logo_icono_url,
+            t.db_host,
+            t.db_name,
+            t.db_user,
+            t.db_pass,
+            t.activo AS tenant_activo
+        FROM tenants t
+        WHERE t.idTenant = :idTenant
+          AND t.activo = 1
+        LIMIT 1
+    ");
+    $stmt->execute([':idTenant' => $idTenant]);
+
+    $ctx = $stmt->fetch();
+    if (!$ctx) {
+        return null;
+    }
+
+    return $ctx;
+}
+
+/**
+ * Conexion segura para endpoints publicos del formulario.
+ * Evita que form_obtener_config_inscripcion explote cuando no hay sesion,
+ * pero conserva el tenant correcto si el panel esta logueado y envia token.
+ */
+function public_tenant_db(): PDO
+{
+    static $connections = [];
+
+    $ctx = public_tenant_context();
+    if ($ctx) {
+        $host = trim((string)$ctx['db_host']);
+        $name = trim((string)$ctx['db_name']);
+        $user = trim((string)$ctx['db_user']);
+        $pass = trim((string)$ctx['db_pass']);
+
+        $key = "public_tenant|{$host}|{$name}|{$user}";
+        if (!isset($connections[$key])) {
+            $connections[$key] = pdo_connect($host, $name, $user, $pass);
+        }
+
+        return $connections[$key];
+    }
+
+    $allowFallback = strtolower((string)env_value('ALLOW_DEFAULT_TENANT_DB', 'false')) === 'true';
+    if (!$allowFallback) {
+        throw new RuntimeException('No se pudo resolver el tenant publico del formulario. Revisar DEFAULT_TENANT_ID o enviar X-Tenant-Id.');
+    }
+
+    $host = env_value('DB_HOST', 'localhost') ?? 'localhost';
+    $name = env_value('DB_NAME', 'mesas_examen_ena') ?? 'mesas_examen_ena';
+    $user = env_value('DB_USER', 'root') ?? 'root';
+    $pass = env_value('DB_PASS', '') ?? '';
+    $key = "public_fallback|{$host}|{$name}|{$user}";
+
+    if (!isset($connections[$key])) {
+        $connections[$key] = pdo_connect($host, $name, $user, $pass);
+    }
+
+    return $connections[$key];
+}
+
 function tenant_db(): PDO
 {
     static $connections = [];

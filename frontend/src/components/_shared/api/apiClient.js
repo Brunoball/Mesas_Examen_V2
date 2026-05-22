@@ -122,14 +122,27 @@ function crearErrorApi(action, res, data) {
   return error;
 }
 
+function getTenantId() {
+  return (
+    localStorage.getItem('idTenant') ||
+    sessionStorage.getItem('idTenant') ||
+    ''
+  );
+}
+
 function buildHeaders(action, extraHeaders = {}, options = {}) {
-  const token = esAccionPublica(action) ? '' : getAuthToken();
+  // Aunque algunas acciones del formulario son publicas, si el usuario esta logueado
+  // conviene mandar el token para que el backend resuelva la DB del tenant correcto.
+  // Si no hay token, siguen funcionando como endpoints publicos usando DEFAULT_TENANT_ID.
+  const token = getAuthToken();
+  const idTenant = getTenantId();
   const hasBody = Boolean(options.hasBody);
 
   return {
     Accept: 'application/json',
     ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(idTenant ? { 'X-Tenant-Id': idTenant } : {}),
     ...extraHeaders,
   };
 }
