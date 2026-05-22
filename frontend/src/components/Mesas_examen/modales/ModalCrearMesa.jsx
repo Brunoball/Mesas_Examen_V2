@@ -60,7 +60,6 @@ const ModalCrearMesa = ({
 }) => {
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
-  const [limpiarBorrador, setLimpiarBorrador] = useState(true);
   const [tipoArmado, setTipoArmado] = useState("area");
   const [, setError] = useState("");
 
@@ -76,7 +75,6 @@ const ModalCrearMesa = ({
 
       setFechaInicio(inicioSugerido);
       setFechaFin(finSugerido && finSugerido >= inicioSugerido ? finSugerido : inicioSugerido);
-      setLimpiarBorrador(true);
       setTipoArmado("area");
       setError("");
     }
@@ -168,7 +166,7 @@ const ModalCrearMesa = ({
     await onConfirm({
       fecha_inicio: fechaInicio,
       fecha_fin: fechaFin,
-      limpiar_borrador: limpiarBorrador,
+      limpiar_borrador: true,
       excluir_fines_semana: true,
       tipo_armado: tipoArmado,
     });
@@ -321,23 +319,6 @@ const ModalCrearMesa = ({
             </div>
           </div>
 
-          <div className="mesas-modal-options">
-            <label className={`mesas-option-check ${limpiarBorrador ? "activo" : ""}`}>
-              <input
-                type="checkbox"
-                checked={limpiarBorrador}
-                onChange={(e) => setLimpiarBorrador(e.target.checked)}
-                disabled={cargando}
-              />
-              <span className="mesas-check-visual" aria-hidden="true">
-                <FontAwesomeIcon icon={faCheck} />
-              </span>
-              <span className="mesas-option-check__text">
-                <strong>Limpiar borradores</strong>
-                <small>Eliminar borradores anteriores antes de armar</small>
-              </span>
-            </label>
-          </div>
 
           </div>
 

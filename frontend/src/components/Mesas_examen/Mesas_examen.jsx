@@ -60,7 +60,7 @@ const DIAS_ES = ["DOMINGO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES"
 
 const HISTORIAL_RESULTADOS_GRID_COLS = "0.65fr 1.35fr 0.65fr 1.2fr 0.55fr 1.15fr 0.45fr 1.15fr";
 const HISTORIAL_ARMADOS_GRID_COLS = "0.95fr 1fr 1.35fr 0.65fr 0.75fr 0.7fr 0.95fr 0.9fr";
-const HISTORIAL_DETALLE_GRID_COLS = "0.9fr 0.65fr 0.65fr 1.25fr 0.75fr 1.15fr 1.15fr 0.75fr 0.55fr 0.65fr";
+const HISTORIAL_DETALLE_GRID_COLS = "0.48fr 0.35fr 0.3fr 1.25fr 0.45fr 1.15fr 1.15fr 0.35fr 0.3fr 0.35fr";
 
 const HISTORIAL_RESULTADOS_COLUMNS = [
   { key: "fecha", label: "Fecha nota" },
@@ -788,8 +788,6 @@ const MesasExamen = () => {
     setBusqueda,
     tab,
     setTab,
-    gruposFinales,
-    noAgrupadas,
     mesasFiltradas,
     totalGrupos,
     totalNoAgrupadas,
@@ -833,6 +831,7 @@ const MesasExamen = () => {
     + (Array.isArray(historial?.armados) ? historial.armados.length : 0);
   const totalVisible = tab === "historial" ? totalHistorialVisible : (Array.isArray(mesasFiltradas) ? mesasFiltradas.length : 0);
   const totalReferencia = tab === "historial" ? totalHistorialVisible : tab === "no-agrupadas" ? totalNoAgrupadas : totalGrupos;
+  const hayMesasCreadas = totalGrupos > 0 || totalNoAgrupadas > 0;
   const hayBusquedaActiva = String(busqueda || "").trim() !== "";
 
   const [modalTituloPdfAbierto, setModalTituloPdfAbierto] = useState(false);
@@ -1046,7 +1045,8 @@ const MesasExamen = () => {
               className="mov-btn mov-btn--primary mesas-actionBtn mesas-createBtn"
               type="button"
               onClick={abrirModalCrear}
-              disabled={armando || agrupando}
+              disabled={cargando || armando || agrupando || hayMesasCreadas}
+              title={hayMesasCreadas ? "Ya hay mesas creadas. Eliminá el armado actual para crear uno nuevo." : "Crear mesas"}
             >
               {armando ? (
                 <FontAwesomeIcon icon={faSpinner} spin />
@@ -1060,7 +1060,8 @@ const MesasExamen = () => {
               className="mov-btn mov-btn--danger mesas-actionBtn mesas-deleteBtn"
               type="button"
               onClick={eliminarBorrador}
-              disabled={armando || agrupando || (gruposFinales.length === 0 && noAgrupadas.length === 0)}
+              disabled={cargando || armando || agrupando || !hayMesasCreadas}
+              title={!hayMesasCreadas ? "No hay mesas creadas para eliminar." : "Eliminar mesas"}
             >
               <FontAwesomeIcon icon={faTrash} />
               Eliminar mesas
