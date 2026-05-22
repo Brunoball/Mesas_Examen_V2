@@ -1,7 +1,7 @@
 <?php
 // backend/config/cors.php
 // CORS robusto para producción + desarrollo local.
-// Permite usar el frontend local (localhost:3000/5173) contra la API subida en Hostinger.
+// Permite usar el frontend local contra la API subida en Hostinger.
 declare(strict_types=1);
 
 require_once __DIR__ . '/env.php';
@@ -14,15 +14,13 @@ $origin = trim((string)($_SERVER['HTTP_ORIGIN'] ?? ''));
 |--------------------------------------------------------------------------
 | ALLOWED_ORIGIN puede venir del .env, por ejemplo:
 | ALLOWED_ORIGIN=https://lerna.3devsnet.com,http://localhost:3000
-|
-| Además se agregan siempre los orígenes locales típicos para poder probar
-| desde React local contra la API de Hostinger sin romper producción.
 */
 $envAllowedRaw = (string)env_value('ALLOWED_ORIGIN', '');
 $envAllowed = array_values(array_filter(array_map('trim', explode(',', $envAllowedRaw))));
 
 $defaultAllowed = [
     'https://lerna.3devsnet.com',
+    'https://www.lerna.3devsnet.com',
     'http://localhost:3000',
     'http://localhost:3001',
     'http://localhost:5173',
@@ -40,7 +38,7 @@ if ($origin !== '') {
         $originPermitido = true;
     }
 
-    // Modo desarrollo: permite cualquier puerto de localhost/127.0.0.1.
+    // Desarrollo: permite cualquier puerto local.
     if (!$originPermitido && preg_match('#^http://(localhost|127\.0\.0\.1):\d+$#', $origin)) {
         $originPermitido = true;
     }
@@ -48,12 +46,9 @@ if ($origin !== '') {
 
 if ($originPermitido) {
     header('Access-Control-Allow-Origin: ' . $origin);
-} else {
-    // Sin Origin normalmente es acceso directo/navegador/Postman.
-    // No forzamos un Origin incorrecto porque eso rompe el preflight.
-    if ($origin === '') {
-        header('Access-Control-Allow-Origin: https://lerna.3devsnet.com');
-    }
+} elseif ($origin === '') {
+    // Acceso directo/Postman/navegador sin Origin.
+    header('Access-Control-Allow-Origin: https://lerna.3devsnet.com');
 }
 
 header('Vary: Origin');
@@ -73,7 +68,8 @@ $allowedHeaders = [
     'X-Tenant-Id',
 ];
 
-// Si el navegador pide headers específicos en el preflight, se respetan.
+// Si el navegador pide headers específicos en el preflight, se devuelven exactamente esos.
+// Esto evita errores como: "Request header field x-auth-token is not allowed".
 $requestHeaders = trim((string)($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS'] ?? ''));
 if ($requestHeaders !== '') {
     header('Access-Control-Allow-Headers: ' . $requestHeaders);

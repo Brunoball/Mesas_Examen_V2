@@ -397,12 +397,18 @@ const Principal = ({ children = null }) => {
       credentials: "include",
       headers: {
         Accept: "application/json",
-        "X-Session": token,
         Authorization: `Bearer ${token}`,
       },
       signal: controller.signal,
     })
-      .then((res) => (res.ok ? res.json() : null))
+      .then((res) => {
+        if (res.status === 401) {
+          window.dispatchEvent(new CustomEvent("lerna:session-expired"));
+          return null;
+        }
+
+        return res.ok ? res.json() : null;
+      })
       .then((data) => {
         if (!data?.exito || !data?.usuario) return;
 
@@ -536,9 +542,27 @@ const Principal = ({ children = null }) => {
     setIsExiting(true);
 
     setTimeout(() => {
-      sessionStorage.clear();
-      localStorage.removeItem("token");
-      localStorage.removeItem("usuario");
+      [
+        "token",
+        "session_key",
+        "sessionKey",
+        "auth_token",
+        "csrf_token",
+        "usuario",
+        "tenant",
+        "idTenant",
+        "auth_last_activity",
+        "session_expired_reason",
+      ].forEach((key) => localStorage.removeItem(key));
+
+      [
+        "token",
+        "session_key",
+        "sessionKey",
+        "auth_token",
+        "csrf_token",
+      ].forEach((key) => sessionStorage.removeItem(key));
+
       setShowLogoutModal(false);
       navigate("/", { replace: true });
     }, 350);

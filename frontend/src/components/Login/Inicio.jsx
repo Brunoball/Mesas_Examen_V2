@@ -12,6 +12,9 @@ const STORAGE_KEYS = {
   pass: 'remember_contrasena', // base64
 };
 
+const AUTH_LAST_ACTIVITY_KEY = 'auth_last_activity';
+const SESSION_EXPIRED_REASON_KEY = 'session_expired_reason';
+
 function decodeJwtPayload(token) {
   try {
     const [, payloadB64] = token.split('.');
@@ -53,6 +56,16 @@ const Inicio = () => {
     setToast({ tipo, mensaje, duracion });
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const sesionExpirada = localStorage.getItem(SESSION_EXPIRED_REASON_KEY) === '1';
+
+    if (sesionExpirada) {
+      localStorage.removeItem(SESSION_EXPIRED_REASON_KEY);
+      mostrarToast('advertencia', 'Tu sesión expiró por inactividad. Volvé a iniciar sesión.', 4500);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.rememberFlag) === '1';
@@ -163,6 +176,8 @@ const Inicio = () => {
 
       if (token) localStorage.setItem('token', token);
       if (sessionKey) localStorage.setItem('session_key', sessionKey);
+      localStorage.setItem(AUTH_LAST_ACTIVITY_KEY, String(Date.now()));
+      localStorage.removeItem(SESSION_EXPIRED_REASON_KEY);
       if (data.csrf_token) localStorage.setItem('csrf_token', data.csrf_token);
       if (data.tenant) localStorage.setItem('tenant', JSON.stringify(data.tenant));
       if (data.tenant?.idTenant) localStorage.setItem('idTenant', String(data.tenant.idTenant));

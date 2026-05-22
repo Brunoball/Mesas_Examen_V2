@@ -97,7 +97,7 @@ function tenant_context(?string $sessionKey = null): ?array
 
     $master = master_db();
 
-    $stmt = $master->prepare("\n        SELECT\n            s.idSesion,\n            s.session_key,\n            s.idUsuarioMaster,\n            s.idTenant,\n            s.expira_en,\n            u.usuario,\n            u.email_recuperacion,\n            u.rol,\n            u.tema,\n            u.activo AS usuario_activo,\n            t.nombre AS tenant_nombre,\n            t.logo_url,\n            t.logo_url AS logo_icono_url,\n            t.db_host,\n            t.db_name,\n            t.db_user,\n            t.db_pass,\n            t.activo AS tenant_activo\n        FROM sesiones s\n        INNER JOIN usuarios_master u ON u.idUsuarioMaster = s.idUsuarioMaster\n        INNER JOIN tenants t ON t.idTenant = s.idTenant\n        WHERE s.session_key = :session_key\n          AND s.activo = 1\n        LIMIT 1\n    ");
+    $stmt = $master->prepare("\n        SELECT\n            s.idSesion,\n            s.session_key,\n            s.idUsuarioMaster,\n            s.idTenant,\n            s.expira_en,\n            s.ultimo_uso,\n            u.usuario,\n            u.email_recuperacion,\n            u.rol,\n            u.tema,\n            u.activo AS usuario_activo,\n            t.nombre AS tenant_nombre,\n            t.logo_url,\n            t.logo_url AS logo_icono_url,\n            t.db_host,\n            t.db_name,\n            t.db_user,\n            t.db_pass,\n            t.activo AS tenant_activo\n        FROM sesiones s\n        INNER JOIN usuarios_master u ON u.idUsuarioMaster = s.idUsuarioMaster\n        INNER JOIN tenants t ON t.idTenant = s.idTenant\n        WHERE s.session_key = :session_key\n          AND s.activo = 1\n        LIMIT 1\n    ");
     $stmt->execute([':session_key' => $sessionKey]);
     $ctx = $stmt->fetch();
 
@@ -116,7 +116,24 @@ function tenant_context(?string $sessionKey = null): ?array
         return null;
     }
 
-    $upd = $master->prepare("UPDATE sesiones SET ultimo_uso = NOW() WHERE idSesion = :idSesion");
+    // Expiración por inactividad: si pasa 1 hora sin uso real de la sesión, se invalida.
+    // Se puede cambiar desde .env con SESSION_IDLE_MINUTES, pero por defecto es 60 minutos.
+    $idleMinutes = max(1, (int)(env_value('SESSION_IDLE_MINUTES', '60') ?? '60'));
+    $ultimoUso = strtotime((string)($ctx['ultimo_uso'] ?? ''));
+
+    if ($ultimoUso !== false && $ultimoUso < (time() - ($idleMinutes * 60))) {
+        $upd = $master->prepare("UPDATE sesiones SET activo = 0 WHERE idSesion = :idSesion");
+        $upd->execute([':idSesion' => (int)$ctx['idSesion']]);
+        return null;
+    }
+
+    $horasSesion = max(1, (int)(env_value('SESSION_HOURS', '24') ?? '24'));
+    $upd = $master->prepare("
+        UPDATE sesiones
+        SET ultimo_uso = NOW(),
+            expira_en = DATE_ADD(NOW(), INTERVAL {$horasSesion} HOUR)
+        WHERE idSesion = :idSesion
+    " );
     $upd->execute([':idSesion' => (int)$ctx['idSesion']]);
 
     $cache[$sessionKey] = $ctx;

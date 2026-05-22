@@ -9,32 +9,33 @@ require_once __DIR__ . '/recuperar_contrasena.php';
 
 function route_login(string $action): bool
 {
-    switch ($action) {
-        case 'inicio':
-            login_inicio();
-            return true;
+    $routes = [
+        'inicio' => 'login_inicio',
+        'registro' => 'login_registro',
 
-        case 'registro':
-            login_registro();
-            return true;
+        // Alias para consultar el usuario autenticado desde el frontend.
+        'auth_usuario_actual' => 'login_usuario_actual',
+        'usuario_actual' => 'login_usuario_actual',
 
-        case 'recuperar_contrasena_solicitar':
-            login_recuperar_contrasena_solicitar();
-            return true;
+        // Recuperación de contraseña.
+        'recuperar_contrasena_solicitar' => 'login_recuperar_contrasena_solicitar',
+        'recuperar_contrasena_validar' => 'login_recuperar_contrasena_validar',
+        'recuperar_contrasena_guardar' => 'login_recuperar_contrasena_guardar',
 
-        case 'recuperar_contrasena_validar':
-            login_recuperar_contrasena_validar();
-            return true;
+        // Debug opcional SaaS.
+        'debug_saas_login' => 'debug_saas_login',
+    ];
 
-        case 'recuperar_contrasena_guardar':
-            login_recuperar_contrasena_guardar();
-            return true;
-
-        case 'debug_saas_login':
-            debug_saas_login();
-            return true;
-
-        default:
-            return false;
+    if (!isset($routes[$action])) {
+        return false;
     }
+
+    $handler = $routes[$action];
+
+    if (!function_exists($handler)) {
+        throw new RuntimeException("No existe el handler de login: {$handler}");
+    }
+
+    $handler();
+    return true;
 }
