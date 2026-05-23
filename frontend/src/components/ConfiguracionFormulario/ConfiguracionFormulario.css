@@ -292,7 +292,7 @@
 .cfgFormSide{
   min-width:0;
   display:grid;
-  grid-template-rows:auto 1fr;
+  grid-template-rows:auto auto;
   gap:16px;
 }
 
@@ -366,8 +366,8 @@
 }
 
 .cfgFormTip{
-  min-height:126px;
-  border:1px solid rgba(0,85,187,.14);
+  height: min-content;
+   border:1px solid rgba(0,85,187,.14);
   border-radius:16px;
   background:linear-gradient(180deg, rgba(0,85,187,.07), #fff);
   box-shadow:var(--mov-shadow-sm);
