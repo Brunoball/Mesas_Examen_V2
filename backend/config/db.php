@@ -262,6 +262,44 @@ function public_tenant_db(): PDO
     return $connections[$key];
 }
 
+
+
+/**
+ * Valida, cuando el frontend envía idTenant/id_tenant/tenant_id, que coincida
+ * con el tenant real asociado a la sesión. No se usa para resolver la sesión:
+ * la sesión siempre manda por Authorization/X-Session.
+ */
+function assert_request_tenant_matches_context(array $ctx): void
+{
+    $body = function_exists('request_body') ? request_body() : [];
+
+    $candidates = [
+        $_SERVER['HTTP_X_TENANT_ID'] ?? null,
+        $_GET['idTenant'] ?? null,
+        $_GET['id_tenant'] ?? null,
+        $_GET['tenant_id'] ?? null,
+        $_POST['idTenant'] ?? null,
+        $_POST['id_tenant'] ?? null,
+        $_POST['tenant_id'] ?? null,
+        $body['idTenant'] ?? null,
+        $body['id_tenant'] ?? null,
+        $body['tenant_id'] ?? null,
+    ];
+
+    $requestTenantId = 0;
+    foreach ($candidates as $value) {
+        $id = (int)$value;
+        if ($id > 0) {
+            $requestTenantId = $id;
+            break;
+        }
+    }
+
+    if ($requestTenantId > 0 && $requestTenantId !== (int)($ctx['idTenant'] ?? 0)) {
+        throw new RuntimeException('TENANT_MISMATCH');
+    }
+}
+
 function tenant_db(): PDO
 {
     static $connections = [];

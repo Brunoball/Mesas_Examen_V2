@@ -133,16 +133,16 @@ function getTenantId() {
 function buildHeaders(action, extraHeaders = {}, options = {}) {
   // Aunque algunas acciones del formulario son publicas, si el usuario esta logueado
   // conviene mandar el token para que el backend resuelva la DB del tenant correcto.
-  // Si no hay token, siguen funcionando como endpoints publicos usando DEFAULT_TENANT_ID.
+  // No mandamos X-Tenant-Id por header en llamadas normales para evitar preflights
+  // innecesarios; si hace falta para formularios publicos, va como query param.
   const token = getAuthToken();
-  const idTenant = getTenantId();
   const hasBody = Boolean(options.hasBody);
 
   return {
     Accept: 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',
     ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(idTenant ? { 'X-Tenant-Id': idTenant } : {}),
     ...extraHeaders,
   };
 }
@@ -167,7 +167,17 @@ function agregarCsrfEnBody(action, method, payload) {
 }
 
 function buildUrl(action, params = {}) {
-  const qs = new URLSearchParams({ action, ...params }).toString();
+  const normalizedAction = normalizarAction(action);
+  const mergedParams = { action: normalizedAction, ...params };
+  const idTenant = getTenantId();
+
+  // Para acciones publicas, el backend puede necesitar saber el tenant aunque no haya login.
+  // Lo enviamos por query param y no por header para evitar el error CORS de X-Tenant-Id.
+  if (idTenant && esAccionPublica(normalizedAction)) {
+    mergedParams.idTenant = mergedParams.idTenant || mergedParams.id_tenant || mergedParams.tenant_id || idTenant;
+  }
+
+  const qs = new URLSearchParams(mergedParams).toString();
   return `${BASE_URL}/api.php?${qs}`;
 }
 
