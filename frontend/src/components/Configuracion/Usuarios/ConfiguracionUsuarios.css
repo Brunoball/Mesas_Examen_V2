@@ -1,23 +1,23 @@
 /* src/components/Configuracion/Usuarios/ConfiguracionUsuarios.css */
 
 .cfgUsersPage.mov-page{
-  --cfgUsers-midnight:#0a2540;
-  --cfgUsers-blue:#0055bb;
+  --cfgUsers-midnight:#3A2E2B;
+  --cfgUsers-blue:#C48B3B;
   --cfgUsers-green:#22ad5c;
   --cfgUsers-red:#e13d45;
   --cfgUsers-purple:#7c3aed;
-  --cfgUsers-bg:#f6f9fc;
+  --cfgUsers-bg:#FDFBF7;
   --cfgUsers-muted:rgba(66,84,102,.72);
-  --cfgUsers-border:rgba(10,37,64,.12);
-  --cfgUsers-shadow:0 12px 28px rgba(10,37,64,.09);
-  --cfgUsers-shadow-sm:0 1px 4px rgba(10,37,64,.08);
+  --cfgUsers-border:rgba(58,46,43,.12);
+  --cfgUsers-shadow:0 12px 28px rgba(58,46,43,.09);
+  --cfgUsers-shadow-sm:0 1px 4px rgba(58,46,43,.08);
 
   width:100%;
   height:100%;
   min-height:0;
   padding:0;
   background:
-    radial-gradient(780px 320px at 16% 0%, rgba(0,85,187,.06), transparent 58%),
+    radial-gradient(780px 320px at 16% 0%, rgba(196,139,59,.06), transparent 58%),
     radial-gradient(740px 300px at 100% 4%, rgba(34,173,92,.045), transparent 58%),
     transparent;
   color:var(--cfgUsers-midnight);
@@ -138,8 +138,8 @@
 }
 .cfgUsersStat:hover{
   transform:translateY(-1px);
-  border-color:rgba(0,85,187,.18);
-  box-shadow:0 12px 22px rgba(10,37,64,.08);
+  border-color:rgba(196,139,59,.18);
+  box-shadow:0 12px 22px rgba(58,46,43,.08);
 }
 .cfgUsersStat__icon{
   flex:0 0 auto;
@@ -149,7 +149,7 @@
   display:grid;
   place-items:center;
   font-size:17px;
-  background:rgba(0,85,187,.11);
+  background:rgba(196,139,59,.11);
 }
 .cfgUsersStat__body{
   min-width:0;
@@ -233,7 +233,7 @@
   vertical-align:middle;
 }
 
-.cfgUsersTable tbody tr:hover td{ background:#fbfdff; }
+.cfgUsersTable tbody tr:hover td{ background:#FFFCF7; }
 .cfgUsersActionsTh{ width:150px; text-align:center !important; }
 
 .cfgUsersUserCell{
@@ -254,7 +254,7 @@
   color:#fff;
   font-size:12px;
   font-weight:760;
-  box-shadow:0 11px 20px rgba(0,85,187,.13);
+  box-shadow:0 11px 20px rgba(196,139,59,.13);
 }
 .cfgUsersUserCell strong{
   display:block;
@@ -306,14 +306,14 @@
 }
 .cfgUsersPill.is-inactive i{ background:var(--balto-danger); }
 .cfgUsersRol.is-admin{
-  background:rgba(0,85,187,.10);
+  background:rgba(196,139,59,.10);
   color:var(--balto-action);
-  border-color:rgba(0,85,187,.23);
+  border-color:rgba(196,139,59,.23);
 }
 .cfgUsersRol.is-view{
-  background:#f2f5f8;
-  color:#5f6d7c;
-  border-color:#dce3ea;
+  background:#F6F0E8;
+  color:#786661;
+  border-color:#E8DED3;
 }
 
 .cfgUsersActions{
@@ -340,9 +340,9 @@
 .cfgUsersIconBtn:hover{
   transform:translateY(-1px);
   box-shadow:var(--mov-shadow-sm);
-  border-color:rgba(0,85,187,.20);
+  border-color:rgba(196,139,59,.20);
   color:var(--balto-action);
-  background:#fbfdff;
+  background:#FFFCF7;
 }
 .cfgUsersActionBtn.is-danger:hover{
   color:var(--balto-danger);
@@ -367,7 +367,7 @@
   transform:none;
   box-shadow:none;
   color:color-mix(in srgb, var(--balto-text) 42%, #fff);
-  border-color:rgba(10,37,64,.10);
+  border-color:rgba(58,46,43,.10);
   background:#f3f6f9;
 }
 
@@ -377,7 +377,7 @@
   display:inline-block;
   overflow:hidden;
   border-radius:999px;
-  background:linear-gradient(90deg, rgba(10,37,64,.055), rgba(10,37,64,.095), rgba(10,37,64,.055));
+  background:linear-gradient(90deg, rgba(58,46,43,.055), rgba(58,46,43,.095), rgba(58,46,43,.055));
   background-size:220% 100%;
   animation:cfgUsersSkeletonPulse 1.25s ease-in-out infinite;
 }
@@ -465,7 +465,7 @@
    Mantiene las tarjetas resumen sin cambios.
    ========================================================= */
 .cfgUsersTable tbody tr.cfgUsersCurrentRow td{
-  background:rgba(0,85,187,.035);
+  background:rgba(196,139,59,.035);
 }
 
 .cfgUsersModalOverlay{
@@ -575,7 +575,7 @@
   display:flex;
   flex-direction:column;
   gap:12px;
-  background:#f7f9fc;
+  background:#FBF7EF;
 }
 
 .cfgUsersModalSection{
@@ -592,7 +592,7 @@
   padding:9px 14px;
   border-bottom:1px solid rgba(15,23,42,.10);
   border-radius:14px 14px 0 0;
-  background:#f0f4fa;
+  background:#F4EDE4;
 }
 
 .cfgUsersModalSectionHead i{
@@ -602,10 +602,10 @@
   background:var(--balto-action);
   flex:0 0 auto;
 }
-.cfgUsersModalSectionHead--muted i{ background:#64748b; }
+.cfgUsersModalSectionHead--muted i{ background:#786661; }
 
 .cfgUsersModalSectionHead span{
-  color:#5a6a7e;
+  color:#786661;
   font-size:10px;
   font-weight:700;
   letter-spacing:.07em;
@@ -634,7 +634,7 @@
   top:50%;
   transform:translateY(-50%);
   font-size:12px;
-  color:#5a6a7e;
+  color:#786661;
   pointer-events:none;
   z-index:2;
   transition:color .14s ease;
@@ -647,7 +647,7 @@
   border:1px solid rgba(15,23,42,.16);
   border-radius:11px;
   background:#fff;
-  color:#0a2540;
+  color:#3A2E2B;
   padding:0 12px 0 34px;
   outline:none;
   font-family:inherit;
@@ -669,7 +669,7 @@
 .cfgUsersMuField input:focus,
 .cfgUsersMuField select:focus{
   border-color:var(--balto-action);
-  box-shadow:0 0 0 3px rgba(0,85,187,.10);
+  box-shadow:0 0 0 3px rgba(196,139,59,.10);
   background:#fff;
 }
 
@@ -688,7 +688,7 @@
   z-index:2;
   padding:0 3px;
   background:transparent;
-  color:#5a6a7e;
+  color:#786661;
   font-size:13px;
   pointer-events:none;
   transform-origin:left top;
@@ -722,7 +722,7 @@
   display:grid;
   place-items:center;
   background:transparent;
-  color:#5a6a7e;
+  color:#786661;
   cursor:pointer;
   transition:background .14s ease, color .14s ease;
 }
@@ -738,8 +738,8 @@
   margin:12px 14px 0;
   padding:10px 12px;
   border-radius:12px;
-  border:1px solid rgba(0,85,187,.18);
-  background:rgba(0,85,187,.07);
+  border:1px solid rgba(196,139,59,.18);
+  background:rgba(196,139,59,.07);
   color:var(--balto-action);
   font-size:12px;
   line-height:1.4;
@@ -756,7 +756,7 @@
   align-items:center;
   gap:10px;
   padding:0 14px 13px;
-  color:#5a6a7e;
+  color:#786661;
   font-size:11px;
   font-weight:700;
 }
@@ -771,12 +771,12 @@
   display:block;
   height:100%;
   border-radius:999px;
-  background:#0055bb;
+  background:#C48B3B;
   transition:width .18s ease;
 }
 .cfgUsersStrength.is-weak .cfgUsersStrength__bar span{ background:#e13d45; }
 .cfgUsersStrength.is-regular .cfgUsersStrength__bar span{ background:#f59e0b; }
-.cfgUsersStrength.is-good .cfgUsersStrength__bar span{ background:#3b82f6; }
+.cfgUsersStrength.is-good .cfgUsersStrength__bar span{ background:#D4AF37; }
 .cfgUsersStrength.is-strong .cfgUsersStrength__bar span{ background:#22ad5c; }
 
 .cfgUsersModal--balto .cfgUsersModalActions{

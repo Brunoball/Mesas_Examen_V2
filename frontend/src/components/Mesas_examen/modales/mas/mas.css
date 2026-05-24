@@ -7,7 +7,7 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgba(15, 23, 42, 0.72);
+  background: rgba(58, 46, 43, 0.72);
   backdrop-filter: blur(2px);
 }
 
@@ -19,7 +19,7 @@
   overflow: hidden;
   border-radius: 12px;
   background: #f8fafc;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
+  box-shadow: 0 24px 60px rgba(58, 46, 43, 0.35);
 }
 
 .mas-modal-header {
@@ -78,7 +78,7 @@
   border: 1px solid #cbd5e1;
   border-radius: 999px;
   background: #fff;
-  color: #64748b;
+  color: #786661;
 }
 
 .mas-buscador input {
@@ -109,7 +109,7 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  color: #64748b;
+  color: #786661;
   font-size: 17px;
 }
 
@@ -141,8 +141,8 @@
 }
 
 .mas-radio.activo {
-  border-color: #2563eb;
-  background: #2563eb;
+  border-color: #C48B3B;
+  background: #C48B3B;
 }
 
 .mas-modal-footer {
@@ -174,8 +174,8 @@
 }
 
 .mas-btn.confirmar {
-  border: 1px solid #1d4ed8;
-  background: #2563eb;
+  border: 1px solid #A96F2E;
+  background: #C48B3B;
   color: #fff;
 }
 
@@ -232,9 +232,9 @@
   max-height:94dvh;
   border-radius:var(--gm-radius, 20px);
   border:1px solid rgba(255,255,255,.22);
-  background:var(--gm-bg, #F6F9FC);
-  box-shadow:var(--gm-shadow, 0 32px 80px rgba(10,37,64,.26), 0 2px 8px rgba(10,37,64,.08));
-  color:var(--gm-ink, #0A2540);
+  background:var(--gm-bg, #FDFBF7);
+  box-shadow:var(--gm-shadow, 0 32px 80px rgba(58,46,43,.26), 0 2px 8px rgba(58,46,43,.08));
+  color:var(--gm-ink, #3A2E2B);
   font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   animation:gm-pop .18s cubic-bezier(.34, 1.56, .64, 1);
 }
@@ -242,7 +242,7 @@
 .mas-modal-header{
   min-height:70px;
   padding:16px 20px;
-  background:linear-gradient(135deg, var(--gm-ink, #0A2540) 0%, color-mix(in srgb, var(--gm-ink, #0A2540) 78%, #0055BB) 100%);
+  background:linear-gradient(135deg, var(--gm-ink, #3A2E2B) 0%, color-mix(in srgb, var(--gm-ink, #3A2E2B) 78%, #C48B3B) 100%);
   border-bottom:1px solid rgba(255,255,255,.07);
   position:relative;
   overflow:hidden;
@@ -303,7 +303,7 @@
 }
 
 .mas-modal-body{
-  background:linear-gradient(180deg, #fff 0%, #F7FAFD 100%);
+  background:linear-gradient(180deg, #fff 0%, #FFFCF7 100%);
 }
 
 @media (max-width:720px){
@@ -383,7 +383,7 @@
 }
 
 .mas-grid-cell.is-strong{
-  color:var(--gm-ink, #0A2540);
+  color:var(--gm-ink, #3A2E2B);
   font-weight:600;
 }
 

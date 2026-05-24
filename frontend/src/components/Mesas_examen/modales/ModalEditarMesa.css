@@ -22,7 +22,7 @@
   overflow-y:auto;
   background:rgba(8,16,30,.56);
   backdrop-filter:blur(6px);
-  color:var(--gm-ink, #0A2540);
+  color:var(--gm-ink, #3A2E2B);
   font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   animation:gm-fade .14s ease-out;
 }
@@ -34,10 +34,10 @@
   display:flex;
   flex-direction:column;
   overflow:hidden;
-  background:var(--gm-bg, #F6F9FC);
+  background:var(--gm-bg, #FDFBF7);
   border:1px solid rgba(255,255,255,.22);
   border-radius:var(--gm-radius, 20px);
-  box-shadow:var(--gm-shadow, 0 32px 80px rgba(10,37,64,.26), 0 2px 8px rgba(10,37,64,.08));
+  box-shadow:var(--gm-shadow, 0 32px 80px rgba(58,46,43,.26), 0 2px 8px rgba(58,46,43,.08));
   animation:gm-pop .18s cubic-bezier(.34, 1.56, .64, 1);
 }
 
@@ -49,7 +49,7 @@
   align-items:center;
   justify-content:space-between;
   gap:14px;
-  background:linear-gradient(135deg, var(--gm-ink, #0A2540) 0%, color-mix(in srgb, var(--gm-ink, #0A2540) 78%, #0055BB) 100%);
+  background:linear-gradient(135deg, var(--gm-ink, #3A2E2B) 0%, color-mix(in srgb, var(--gm-ink, #3A2E2B) 78%, #C48B3B) 100%);
   color:#fff;
   border-bottom:1px solid rgba(255,255,255,.07);
   position:relative;
@@ -161,11 +161,11 @@
   gap:14px;
   overflow-y:auto;
   overflow-x:hidden;
-  background:linear-gradient(180deg, #fff 0%, #F7FAFD 100%);
+  background:linear-gradient(180deg, #fff 0%, #FFFCF7 100%);
   overscroll-behavior:contain;
   scrollbar-gutter:stable;
   scrollbar-width:thin;
-  scrollbar-color:rgba(10,37,64,.18) transparent;
+  scrollbar-color:rgba(58,46,43,.18) transparent;
 }
 
 .editar-mesa-body::-webkit-scrollbar{
@@ -177,7 +177,7 @@
 }
 
 .editar-mesa-body::-webkit-scrollbar-thumb{
-  background:rgba(10,37,64,.18);
+  background:rgba(58,46,43,.18);
   border-radius:999px;
 }
 
@@ -188,7 +188,7 @@
   align-items:center;
   justify-content:center;
   gap:10px;
-  color:var(--gm-action, #0055BB);
+  color:var(--gm-action, #C48B3B);
   font-size:14px;
   font-weight:700;
 }
@@ -196,10 +196,10 @@
 .editar-mesa-programacion,
 .editar-mesa-slots-card{
   min-width:0;
-  border:1px solid rgba(10,37,64,.085);
+  border:1px solid rgba(58,46,43,.085);
   border-radius:15px;
   background:#fff;
-  box-shadow:0 14px 30px -28px rgba(10,37,64,.42);
+  box-shadow:0 14px 30px -28px rgba(58,46,43,.42);
   overflow:hidden;
 }
 
@@ -225,7 +225,7 @@
   display:flex;
   align-items:center;
   gap:8px;
-  color:var(--gm-ink, #0A2540);
+  color:var(--gm-ink, #3A2E2B);
   font-size:14px;
   line-height:1.15;
   font-weight:700;
@@ -236,7 +236,7 @@
   width:76px;
   height:3px;
   border-radius:999px;
-  background:var(--gm-action, #0055BB);
+  background:var(--gm-action, #C48B3B);
   opacity:.42;
   margin:9px 0 14px;
 }
@@ -262,7 +262,7 @@
   max-width:calc(100% - 22px);
   padding:0 4px;
   background:#fff;
-  color:var(--gm-action, #0055BB);
+  color:var(--gm-action, #C48B3B);
   font-size:10.8px;
   font-weight:760;
   letter-spacing:.035em;
@@ -277,10 +277,10 @@
   width:100%;
   min-width:0;
   height:45px;
-  border:1.5px solid rgba(10,37,64,.13);
+  border:1.5px solid rgba(58,46,43,.13);
   border-radius:12px;
   background:#fff;
-  color:var(--gm-ink, #0A2540);
+  color:var(--gm-ink, #3A2E2B);
   outline:none;
   padding:0 13px;
   font:inherit;
@@ -291,13 +291,13 @@
 
 .editar-mesa-fields select:hover:not(:disabled):not(:focus),
 .editar-mesa-time-input:hover:not(:focus-within){
-  border-color:rgba(10,37,64,.22);
+  border-color:rgba(58,46,43,.22);
 }
 
 .editar-mesa-fields select:focus,
 .editar-mesa-time-input:focus-within{
-  border-color:color-mix(in srgb, var(--gm-action, #0055BB) 55%, #fff);
-  box-shadow:var(--gm-focus, 0 0 0 4px rgba(0,85,187,.14));
+  border-color:color-mix(in srgb, var(--gm-action, #C48B3B) 55%, #fff);
+  box-shadow:var(--gm-focus, 0 0 0 4px rgba(196,139,59,.14));
   background:#fff;
 }
 
@@ -315,7 +315,7 @@
   border:0;
   outline:0;
   background:transparent;
-  color:var(--gm-ink, #0A2540);
+  color:var(--gm-ink, #3A2E2B);
   font:inherit;
   cursor:pointer;
 }
@@ -323,7 +323,7 @@
 .editar-mesa-help{
   display:block;
   margin:6px 0 0;
-  color:var(--gm-muted, #718096);
+  color:var(--gm-muted, #786661);
   font-size:11.5px;
   font-weight:560;
 }
@@ -331,10 +331,10 @@
 .editar-mesa-calendar-card{
   width:100%;
   padding:12px;
-  background:linear-gradient(180deg, #fff, color-mix(in srgb, var(--gm-bg, #F6F9FC) 68%, #fff));
-  border:1px solid rgba(10,37,64,.09);
+  background:linear-gradient(180deg, #fff, color-mix(in srgb, var(--gm-bg, #FDFBF7) 68%, #fff));
+  border:1px solid rgba(58,46,43,.09);
   border-radius:14px;
-  box-shadow:0 10px 22px -21px rgba(10,37,64,.32);
+  box-shadow:0 10px 22px -21px rgba(58,46,43,.32);
 }
 
 .editar-mesa-calendar-head{
@@ -346,7 +346,7 @@
 }
 
 .editar-mesa-calendar-head strong{
-  color:var(--gm-ink, #0A2540);
+  color:var(--gm-ink, #3A2E2B);
   font-size:14px;
   font-weight:720;
   text-transform:capitalize;
@@ -356,10 +356,10 @@
 .editar-mesa-calendar-head button{
   width:32px;
   height:32px;
-  border:1px solid rgba(10,37,64,.11);
+  border:1px solid rgba(58,46,43,.11);
   border-radius:10px;
   background:#fff;
-  color:var(--gm-action, #0055BB);
+  color:var(--gm-action, #C48B3B);
   display:inline-flex;
   align-items:center;
   justify-content:center;
@@ -369,8 +369,8 @@
 
 .editar-mesa-calendar-head button:hover:not(:disabled){
   transform:translateY(-1px);
-  border-color:rgba(0,85,187,.18);
-  box-shadow:0 4px 10px rgba(10,37,64,.08);
+  border-color:rgba(196,139,59,.18);
+  box-shadow:0 4px 10px rgba(58,46,43,.08);
 }
 
 .editar-mesa-calendar-weekdays,
@@ -383,7 +383,7 @@
 
 .editar-mesa-calendar-weekdays span{
   padding:7px 0;
-  color:var(--gm-muted, #718096);
+  color:var(--gm-muted, #786661);
   font-size:10.5px;
 
   text-transform:uppercase;
@@ -395,7 +395,7 @@
   border:1px solid transparent;
   border-radius:10px;
   background:transparent;
-  color:var(--gm-ink, #0A2540);
+  color:var(--gm-ink, #3A2E2B);
   font:inherit;
   font-size:12px;
   font-weight:760;
@@ -405,9 +405,9 @@
 
 .editar-mesa-day:hover:not(:disabled){
   transform:translateY(-1px);
-  background:rgba(0,85,187,.07);
-  border-color:rgba(0,85,187,.14);
-  color:var(--gm-action, #0055BB);
+  background:rgba(196,139,59,.07);
+  border-color:rgba(196,139,59,.14);
+  color:var(--gm-action, #C48B3B);
 }
 
 .editar-mesa-day.muted{
@@ -426,7 +426,7 @@
 
 .editar-mesa-day.blocked:not(.active),
 .editar-mesa-day:disabled.blocked{
-  background:rgba(10,37,64,.035);
+  background:rgba(58,46,43,.035);
   color:rgba(113,128,150,.62);
   cursor:not-allowed;
   opacity:.7;
@@ -434,10 +434,10 @@
 
 .editar-mesa-day.active.available,
 .editar-mesa-day.active{
-  background:var(--gm-action, #0055BB);
-  border-color:var(--gm-action, #0055BB);
+  background:var(--gm-action, #C48B3B);
+  border-color:var(--gm-action, #C48B3B);
   color:#fff;
-  box-shadow:0 8px 20px -12px rgba(0,85,187,.72);
+  box-shadow:0 8px 20px -12px rgba(196,139,59,.72);
 }
 
 .editar-mesa-disponibilidad-info,
@@ -456,15 +456,15 @@
 
 .editar-mesa-disponibilidad-info{
   margin-top:12px;
-  color:color-mix(in srgb, var(--gm-action, #0055BB) 74%, #000);
-  background:rgba(0,85,187,.07);
-  border:1px solid rgba(0,85,187,.16);
-  border-left:3px solid var(--gm-action, #0055BB);
+  color:color-mix(in srgb, var(--gm-action, #C48B3B) 74%, #000);
+  background:rgba(196,139,59,.07);
+  border:1px solid rgba(196,139,59,.16);
+  border-left:3px solid var(--gm-action, #C48B3B);
 }
 
 .editar-mesa-disponibilidad-error,
 .editar-mesa-error{
-  color:color-mix(in srgb, var(--gm-danger, #E13D45) 58%, var(--gm-ink, #0A2540));
+  color:color-mix(in srgb, var(--gm-danger, #E13D45) 58%, var(--gm-ink, #3A2E2B));
   background:color-mix(in srgb, var(--gm-danger, #E13D45) 9%, #fff);
   border:1px solid color-mix(in srgb, var(--gm-danger, #E13D45) 22%, #fff);
   border-left:3px solid var(--gm-danger, #E13D45);
@@ -485,17 +485,17 @@
 
 .editar-mesa-slots-head small{
   display:block;
-  color:var(--gm-muted, #718096);
+  color:var(--gm-muted, #786661);
   font-size:11.5px;
   line-height:1.3;
   font-weight:600;
 }
 
 .editar-mesa-btn-slot-extra{
-  border:1px solid rgba(0,85,187,.16);
+  border:1px solid rgba(196,139,59,.16);
   border-radius:999px;
-  background:rgba(0,85,187,.06);
-  color:var(--gm-action, #0055BB);
+  background:rgba(196,139,59,.06);
+  color:var(--gm-action, #C48B3B);
   min-height:31px;
   padding:7px 11px;
   display:inline-flex;
@@ -512,9 +512,9 @@
 
 .editar-mesa-btn-slot-extra:hover:not(:disabled){
   transform:translateY(-1px);
-  background:rgba(0,85,187,.10);
-  border-color:rgba(0,85,187,.24);
-  box-shadow:0 8px 18px -14px rgba(0,85,187,.55);
+  background:rgba(196,139,59,.10);
+  border-color:rgba(196,139,59,.24);
+  box-shadow:0 8px 18px -14px rgba(196,139,59,.55);
 }
 
 .editar-mesa-btn-slot-extra:disabled{
@@ -526,9 +526,9 @@
   margin:0 0 10px;
   padding:9px 11px;
   border-radius:12px;
-  background:rgba(0,85,187,.055);
-  border:1px solid rgba(0,85,187,.12);
-  color:color-mix(in srgb, var(--gm-action, #0055BB) 72%, #000);
+  background:rgba(196,139,59,.055);
+  border:1px solid rgba(196,139,59,.12);
+  color:color-mix(in srgb, var(--gm-action, #C48B3B) 72%, #000);
   font-size:12px;
   line-height:1.35;
   font-weight:600;
@@ -545,10 +545,10 @@
 .editar-mesa-no-agrupada-numero{
   min-width:0;
   min-height:116px;
-  border:1px solid rgba(10,37,64,.09);
+  border:1px solid rgba(58,46,43,.09);
   border-radius:14px;
   background:#fff;
-  box-shadow:0 10px 22px -21px rgba(10,37,64,.32), 0 1px 0 rgba(10,37,64,.03);
+  box-shadow:0 10px 22px -21px rgba(58,46,43,.32), 0 1px 0 rgba(58,46,43,.03);
 }
 
 .editar-mesa-slot-card{
@@ -561,14 +561,14 @@
 
 .editar-mesa-slot-card:hover{
   transform:translateY(-1px);
-  border-color:rgba(0,85,187,.20);
-  background:rgba(0,85,187,.025);
-  box-shadow:0 14px 26px -22px rgba(10,37,64,.40), 0 0 0 4px rgba(0,85,187,.035);
+  border-color:rgba(196,139,59,.20);
+  background:rgba(196,139,59,.025);
+  box-shadow:0 14px 26px -22px rgba(58,46,43,.40), 0 0 0 4px rgba(196,139,59,.035);
 }
 
 .editar-mesa-slot-card h3{
   margin:0;
-  color:var(--gm-ink, #0A2540);
+  color:var(--gm-ink, #3A2E2B);
   font-size:13.2px;
   line-height:1.2;
   font-weight:710;
@@ -580,7 +580,7 @@
 
 .editar-mesa-slot-card p{
   margin:0;
-  color:var(--gm-muted, #718096);
+  color:var(--gm-muted, #786661);
   font-size:12px;
   line-height:1.35;
   font-weight:500;
@@ -599,9 +599,9 @@
   display:inline-flex;
   align-items:center;
   border-radius:999px;
-  background:rgba(0,85,187,.07);
-  border:1px solid rgba(0,85,187,.14);
-  color:var(--gm-action, #0055BB);
+  background:rgba(196,139,59,.07);
+  border:1px solid rgba(196,139,59,.14);
+  color:var(--gm-action, #C48B3B);
   font-size:11.5px;
   font-weight:760;
 }
@@ -609,10 +609,10 @@
 .editar-mesa-slot-actions button{
   width:29px;
   height:29px;
-  border:1px solid rgba(10,37,64,.10);
+  border:1px solid rgba(58,46,43,.10);
   border-radius:10px;
   background:#fff;
-  color:var(--gm-text, #425466);
+  color:var(--gm-text, #786661);
   display:inline-flex;
   align-items:center;
   justify-content:center;
@@ -622,10 +622,10 @@
 
 .editar-mesa-slot-actions button:hover:not(:disabled){
   transform:translateY(-1px);
-  background:rgba(0,85,187,.06);
-  border-color:rgba(0,85,187,.18);
-  color:var(--gm-action, #0055BB);
-  box-shadow:0 4px 10px rgba(10,37,64,.08);
+  background:rgba(196,139,59,.06);
+  border-color:rgba(196,139,59,.18);
+  color:var(--gm-action, #C48B3B);
+  box-shadow:0 4px 10px rgba(58,46,43,.08);
 }
 
 .editar-mesa-slot-empty{
@@ -636,7 +636,7 @@
   justify-content:center;
   gap:8px;
   border-style:dashed;
-  color:var(--gm-action, #0055BB);
+  color:var(--gm-action, #C48B3B);
   font:inherit;
   font-size:12.5px;
   font-weight:700;
@@ -646,9 +646,9 @@
 
 .editar-mesa-slot-empty:hover:not(:disabled){
   transform:translateY(-1px);
-  border-color:rgba(0,85,187,.26);
-  background:rgba(0,85,187,.04);
-  box-shadow:0 14px 26px -22px rgba(10,37,64,.40);
+  border-color:rgba(196,139,59,.26);
+  background:rgba(196,139,59,.04);
+  box-shadow:0 14px 26px -22px rgba(58,46,43,.40);
 }
 
 .editar-mesa-slot-empty svg{
@@ -666,7 +666,7 @@
   align-items:center;
   gap:10px;
   background:rgba(255,255,255,.96);
-  border-top:1px solid rgba(10,37,64,.09);
+  border-top:1px solid rgba(58,46,43,.09);
 }
 
 .editar-mesa-btn,
@@ -710,21 +710,21 @@
   background:color-mix(in srgb, var(--gm-danger, #E13D45) 9%, #fff);
   border-color:color-mix(in srgb, var(--gm-danger, #E13D45) 38%, #fff);
   color:var(--gm-danger, #E13D45);
-  box-shadow:0 6px 16px rgba(10,37,64,.07);
+  box-shadow:0 6px 16px rgba(58,46,43,.07);
 }
 
 .editar-mesa-btn.guardar,
 .editar-mesa-btn-crear-grupo-unico{
-  background:var(--gm-action, #0055BB);
-  border-color:color-mix(in srgb, var(--gm-action, #0055BB) 68%, #fff);
+  background:var(--gm-action, #C48B3B);
+  border-color:color-mix(in srgb, var(--gm-action, #C48B3B) 68%, #fff);
   color:#fff;
-  box-shadow:0 8px 20px rgba(0,85,187,.22);
+  box-shadow:0 8px 20px rgba(196,139,59,.22);
 }
 
 .editar-mesa-btn.guardar:hover:not(:disabled),
 .editar-mesa-btn-crear-grupo-unico:hover:not(:disabled){
-  background:color-mix(in srgb, var(--gm-action, #0055BB) 86%, #000);
-  box-shadow:0 12px 26px rgba(0,85,187,.26);
+  background:color-mix(in srgb, var(--gm-action, #C48B3B) 86%, #000);
+  box-shadow:0 12px 26px rgba(196,139,59,.26);
 }
 
 .editar-mesa-no-agrupada-card{
@@ -735,14 +735,14 @@
 
 .editar-mesa-no-agrupada-texto{
   margin:0;
-  color:var(--gm-text, #425466);
+  color:var(--gm-text, #786661);
   font-size:13px;
   line-height:1.45;
   font-weight:500;
 }
 
 .editar-mesa-no-agrupada-texto strong{
-  color:var(--gm-ink, #0A2540);
+  color:var(--gm-ink, #3A2E2B);
   font-weight:720;
 }
 
@@ -762,7 +762,7 @@
 }
 
 .editar-mesa-no-agrupada-numero strong{
-  color:var(--gm-ink, #0A2540);
+  color:var(--gm-ink, #3A2E2B);
   font-size:13.2px;
   font-weight:710;
 }
@@ -770,7 +770,7 @@
 .editar-mesa-no-agrupada-numero p,
 .editar-mesa-no-agrupada-nota{
   margin:0;
-  color:var(--gm-muted, #718096);
+  color:var(--gm-muted, #786661);
   font-size:12px;
   line-height:1.35;
   font-weight:500;
@@ -778,10 +778,10 @@
 
 .editar-mesa-no-agrupada-nota{
   padding:10px 12px;
-  border:1px solid rgba(0,85,187,.13);
+  border:1px solid rgba(196,139,59,.13);
   border-radius:12px;
-  background:rgba(0,85,187,.05);
-  color:color-mix(in srgb, var(--gm-action, #0055BB) 78%, #000);
+  background:rgba(196,139,59,.05);
+  color:color-mix(in srgb, var(--gm-action, #C48B3B) 78%, #000);
 }
 
 @media (max-width:1080px){
@@ -886,9 +886,9 @@
 
 .editar-mesa-slot-empty:hover{
   transform:translateY(-1px);
-  border-color:rgba(0,85,187,.26);
-  background:rgba(0,85,187,.04);
-  box-shadow:0 14px 26px -22px rgba(10,37,64,.40);
+  border-color:rgba(196,139,59,.26);
+  background:rgba(196,139,59,.04);
+  box-shadow:0 14px 26px -22px rgba(58,46,43,.40);
 }
 
 .editar-mesa-slot-empty-extra{
@@ -940,8 +940,8 @@
   align-items:center;
   gap:10px;
   background:rgba(255,255,255,.98);
-  border-top:1px solid rgba(10,37,64,.10);
-  box-shadow:0 -14px 28px -26px rgba(10,37,64,.55);
+  border-top:1px solid rgba(58,46,43,.10);
+  box-shadow:0 -14px 28px -26px rgba(58,46,43,.55);
 }
 
 .editar-mesa-panel > .editar-mesa-body{

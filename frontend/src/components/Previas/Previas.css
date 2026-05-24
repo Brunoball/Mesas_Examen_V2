@@ -82,7 +82,7 @@
 .previas-tabsInline{
   height:44px;
   border-radius:10px;
-  border:1.5px solid rgba(10,37,64,.14);
+  border:1.5px solid rgba(58,46,43,.14);
   background:#fff;
   padding:8px;
   gap:6px;
@@ -97,13 +97,13 @@
 }
 
 .previas-tabsInline .previas-tab.is-active{
-  background:rgba(0,85,187,.07);
+  background:rgba(196,139,59,.07);
   border-left:2px solid var(--balto-ink);
   box-shadow:none;
 }
 
 .previas-tabsInline .previas-tab:not(.is-active):hover{
-  background:rgba(0,85,187,.07);
+  background:rgba(196,139,59,.07);
 }
 
 .previas-actionsHead{
@@ -181,8 +181,8 @@
 
 .previas-icon-warning:hover{
   color:var(--balto-action) !important;
-  border-color:rgba(0,85,187,.25) !important;
-  background:rgba(0,85,187,.08) !important;
+  border-color:rgba(196,139,59,.25) !important;
+  background:rgba(196,139,59,.08) !important;
 }
 
 .previas-icon-success{

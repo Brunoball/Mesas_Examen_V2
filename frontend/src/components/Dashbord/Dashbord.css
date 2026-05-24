@@ -6,16 +6,16 @@
 }
 
 .dashbord-page {
-  --dash-midnight: #0a2540;
-  --dash-blue: #0055bb;
-  --dash-blue-soft: rgba(0, 85, 187, 0.1);
-  --dash-ink: #102a43;
+  --dash-midnight: #3A2E2B;
+  --dash-blue: #C48B3B;
+  --dash-blue-soft: rgba(196, 139, 59, 0.1);
+  --dash-ink: #3A2E2B;
   --dash-action: var(--dash-blue);
-  --dash-text: #243b53;
-  --dash-muted: rgba(36, 59, 83, 0.68);
-  --dash-border: rgba(10, 37, 64, 0.11);
-  --dash-border-strong: rgba(10, 37, 64, 0.16);
-  --dash-bg: #f5f7fb;
+  --dash-text: #786661;
+  --dash-muted: rgba(120, 102, 97, 0.68);
+  --dash-border: rgba(58, 46, 43, 0.11);
+  --dash-border-strong: rgba(58, 46, 43, 0.16);
+  --dash-bg: #FDFBF7;
   --dash-panel: rgba(255, 255, 255, 0.95);
   --dash-card: #ffffff;
   --dash-alert: #c93a3a;
@@ -23,9 +23,9 @@
   --dash-success: #176f49;
   --dash-warning: #e0a72e;
   --dash-soft: var(--dash-blue-soft);
-  --dash-shadow: 0 18px 42px rgba(10, 37, 64, 0.08);
-  --dash-shadow-soft: 0 8px 22px rgba(10, 37, 64, 0.055);
-  --dash-shadow-card: 0 1px 0 rgba(10, 37, 64, 0.03);
+  --dash-shadow: 0 18px 42px rgba(58, 46, 43, 0.08);
+  --dash-shadow-soft: 0 8px 22px rgba(58, 46, 43, 0.055);
+  --dash-shadow-card: 0 1px 0 rgba(58, 46, 43, 0.03);
   --dash-radius: 20px;
   --dash-radius-lg: 24px;
   --dash-trans: 160ms ease;
@@ -41,7 +41,7 @@
   color: var(--dash-midnight);
   font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   background:
-    linear-gradient(180deg, rgba(0, 85, 187, 0.055), transparent 190px),
+    linear-gradient(180deg, rgba(196, 139, 59, 0.055), transparent 190px),
     var(--dash-bg);
 }
 
@@ -80,7 +80,7 @@
   height: 18px;
   border-radius: 999px;
   background: var(--dash-action);
-  box-shadow: 0 8px 16px rgba(0, 85, 187, 0.18);
+  box-shadow: 0 8px 16px rgba(196, 139, 59, 0.18);
 }
 
 .dashbord-header h1 {
@@ -122,7 +122,7 @@
   border-radius: 999px;
   color: var(--dash-ink);
   background: rgba(255, 255, 255, 0.74);
-  box-shadow: 0 1px 0 rgba(10, 37, 64, 0.02);
+  box-shadow: 0 1px 0 rgba(58, 46, 43, 0.02);
   font-size: 12px;
   font-weight: 560;
   white-space: nowrap;
@@ -146,11 +146,11 @@
   justify-content: center;
   gap: 8px;
   padding: 0 13px;
-  border: 1px solid rgba(0, 85, 187, 0.18);
+  border: 1px solid rgba(196, 139, 59, 0.18);
   border-radius: 999px;
   color: #fff;
   background: var(--dash-action);
-  box-shadow: 0 12px 24px -18px rgba(0, 85, 187, 0.75);
+  box-shadow: 0 12px 24px -18px rgba(196, 139, 59, 0.75);
   font-family: inherit;
   font-size: 12px;
   font-weight: 580;
@@ -160,7 +160,7 @@
 
 .dashbord-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 16px 28px -20px rgba(0, 85, 187, 0.85);
+  box-shadow: 0 16px 28px -20px rgba(196, 139, 59, 0.85);
 }
 
 .dashbord-layout {
@@ -200,7 +200,7 @@
   position: absolute;
   inset: 0 0 auto 0;
   height: 3px;
-  background: linear-gradient(90deg, transparent, rgba(0, 85, 187, 0.4), transparent);
+  background: linear-gradient(90deg, transparent, rgba(196, 139, 59, 0.4), transparent);
   opacity: 0;
   transition: opacity var(--dash-trans);
 }
@@ -216,7 +216,7 @@
   place-items: center;
   border-radius: 50%;
   color: var(--dash-action);
-  background: rgba(0, 85, 187, 0.085);
+  background: rgba(196, 139, 59, 0.085);
   font-size: 17px;
 }
 
@@ -295,7 +295,7 @@
   border: 1px solid var(--dash-border);
   border-radius: 22px;
   background: var(--dash-card);
-  box-shadow: 0 1px 4px rgba(10, 37, 64, 0.08);
+  box-shadow: 0 1px 4px rgba(58, 46, 43, 0.08);
   color: var(--dash-action);
   overflow: hidden;
   transition: transform var(--dash-trans), box-shadow var(--dash-trans), border-color var(--dash-trans);
@@ -317,7 +317,7 @@
 .dashbord-card:hover {
   transform: translateY(-1px);
   border-color: var(--dash-border-strong);
-  box-shadow: 0 10px 24px rgba(10, 37, 64, 0.09);
+  box-shadow: 0 10px 24px rgba(58, 46, 43, 0.09);
 }
 
 .dashbord-card--alert {
@@ -441,7 +441,7 @@
 
 .dashbord-panel__head--chart {
   padding-bottom: 14px;
-  border-bottom: 1px solid rgba(10, 37, 64, 0.075);
+  border-bottom: 1px solid rgba(58, 46, 43, 0.075);
 }
 
 .dashbord-panel__head--progress {
@@ -476,12 +476,12 @@
 
 .dashbord-legend .is-primary,
 .dashbord-stackBar__segment.is-primary {
-  background: rgba(0, 85, 187, 0.72);
+  background: rgba(196, 139, 59, 0.72);
 }
 
 .dashbord-legend .is-secondary,
 .dashbord-stackBar__segment.is-secondary {
-  background: rgba(10, 37, 64, 0.72);
+  background: rgba(58, 46, 43, 0.72);
 }
 
 .dashbord-legend .is-alert,
@@ -532,7 +532,7 @@
 .dashbord-chart__grid span {
   width: 100%;
   height: 1px;
-  background: rgba(10, 37, 64, 0.07);
+  background: rgba(58, 46, 43, 0.07);
 }
 
 .dashbord-chart__bars {
@@ -569,8 +569,8 @@
   flex-direction: column-reverse;
   justify-content: flex-start;
   border-radius: 10px 10px 4px 4px;
-  background: rgba(10, 37, 64, 0.035);
-  box-shadow: 0 12px 22px -20px rgba(10, 37, 64, 0.7);
+  background: rgba(58, 46, 43, 0.035);
+  box-shadow: 0 12px 22px -20px rgba(58, 46, 43, 0.7);
   overflow: hidden;
 }
 
@@ -615,7 +615,7 @@
   padding: 16px;
   overflow: hidden;
   background:
-    linear-gradient(135deg, rgba(0, 85, 187, 0.095), rgba(255, 255, 255, 0.92) 58%),
+    linear-gradient(135deg, rgba(196, 139, 59, 0.095), rgba(255, 255, 255, 0.92) 58%),
     #fff;
 }
 
@@ -634,7 +634,7 @@
   border-radius: 15px;
   color: #fff;
   background: var(--dash-action);
-  box-shadow: 0 12px 24px -17px rgba(0, 85, 187, 0.72);
+  box-shadow: 0 12px 24px -17px rgba(196, 139, 59, 0.72);
 }
 
 .dashbord-status--completo .dashbord-status__icon {
@@ -705,7 +705,7 @@
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  border: 1px solid rgba(10, 37, 64, 0.09);
+  border: 1px solid rgba(58, 46, 43, 0.09);
   border-radius: 16px;
   background: #fff;
 }
@@ -749,14 +749,14 @@
   height: 8px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(10, 37, 64, 0.07);
+  background: rgba(58, 46, 43, 0.07);
 }
 
 .dashbord-progressTrack span {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, rgba(0, 85, 187, 0.68), rgba(0, 85, 187, 0.92));
+  background: linear-gradient(90deg, rgba(196, 139, 59, 0.68), rgba(196, 139, 59, 0.92));
 }
 
 .dashbord-state {
@@ -806,7 +806,7 @@
   justify-content: center;
   gap: 8px;
   margin-top: 16px;
-  border: 1px dashed rgba(10, 37, 64, 0.17);
+  border: 1px dashed rgba(58, 46, 43, 0.17);
   border-radius: 18px;
   background: rgba(246, 249, 252, 0.78);
   text-align: center;

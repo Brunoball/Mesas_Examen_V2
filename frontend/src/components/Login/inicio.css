@@ -1,23 +1,23 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap');
 
 .ini_contenedor-principal {
-  --ini-primary: var(--blue-inst-primary, #0A2540);
-  --ini-action: var(--blue-inst-primary-light, #0055BB);
-  --ini-action-soft: rgba(0, 85, 187, 0.12);
-  --ini-bg: var(--blue-inst-light, #F6F9FC);
-  --ini-text: var(--blue-inst-gray-700, #425466);
-  --ini-muted: var(--blue-inst-gray-500, #64748B);
-  --ini-border: var(--blue-inst-gray-200, #D9E2EF);
-  --ini-border-strong: var(--blue-inst-gray-300, #C9D6E6);
+  --ini-primary: var(--blue-inst-primary, #3A2E2B);
+  --ini-action: var(--blue-inst-primary-light, #C48B3B);
+  --ini-action-soft: rgba(196, 139, 59, 0.12);
+  --ini-bg: var(--blue-inst-light, #FDFBF7);
+  --ini-text: var(--blue-inst-gray-700, #786661);
+  --ini-muted: var(--blue-inst-gray-500, #786661);
+  --ini-border: var(--blue-inst-gray-200, #E8DED3);
+  --ini-border-strong: var(--blue-inst-gray-300, #D8C9BB);
   --ini-white: #FFFFFF;
   --ini-danger: var(--blue-inst-danger, #E13D45);
   --ini-radius: var(--blue-inst-radius, 12px);
   --ini-radius-lg: var(--blue-inst-radius-lg, 18px);
   --ini-radius-xl: var(--blue-inst-radius-xl, 22px);
   --ini-transition: var(--blue-inst-transition, 180ms ease);
-  --ini-shadow-sm: var(--blue-inst-shadow-sm, 0 1px 2px rgba(10, 37, 64, .06));
-  --ini-shadow-md: var(--blue-inst-shadow-md, 0 14px 34px -22px rgba(10, 37, 64, .28));
-  --ini-shadow-xl: var(--blue-inst-shadow-xl, 0 28px 64px -24px rgba(10, 37, 64, .28));
+  --ini-shadow-sm: var(--blue-inst-shadow-sm, 0 1px 2px rgba(58, 46, 43, .06));
+  --ini-shadow-md: var(--blue-inst-shadow-md, 0 14px 34px -22px rgba(58, 46, 43, .28));
+  --ini-shadow-xl: var(--blue-inst-shadow-xl, 0 28px 64px -24px rgba(58, 46, 43, .28));
 
   position: relative;
   width: 100%;
@@ -28,9 +28,9 @@
   padding: clamp(18px, 3vh, 34px) clamp(22px, 4vw, 54px);
   color: var(--ini-primary);
   background:
-    radial-gradient(circle at 11% 16%, rgba(0, 85, 187, .16), transparent 34%),
-    radial-gradient(circle at 86% 12%, rgba(10, 37, 64, .09), transparent 30%),
-    linear-gradient(135deg, #ffffff 0%, #f8fbff 44%, rgba(0, 85, 187, .17) 100%);
+    radial-gradient(circle at 11% 16%, rgba(196, 139, 59, .16), transparent 34%),
+    radial-gradient(circle at 86% 12%, rgba(58, 46, 43, .09), transparent 30%),
+    linear-gradient(135deg, #ffffff 0%, #FFFCF7 44%, rgba(196, 139, 59, .17) 100%);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   overflow: hidden;
   isolation: isolate;
@@ -57,7 +57,7 @@
   height: 310px;
   left: -126px;
   bottom: -124px;
-  background: rgba(0, 85, 187, .12);
+  background: rgba(196, 139, 59, .12);
 }
 
 .ini_contenedor-principal::after {
@@ -65,7 +65,7 @@
   height: 240px;
   right: -90px;
   top: -84px;
-  background: rgba(10, 37, 64, .10);
+  background: rgba(58, 46, 43, .10);
 }
 
 .ini_login-shell {
@@ -102,7 +102,7 @@
   right: -30%;
   bottom: -20%;
   border-radius: 50%;
-  background: rgba(0, 85, 187, .075);
+  background: rgba(196, 139, 59, .075);
 }
 
 .ini_brand-glow {
@@ -112,7 +112,7 @@
   left: -92px;
   top: 13%;
   border-radius: 50%;
-  background: rgba(0, 85, 187, .10);
+  background: rgba(196, 139, 59, .10);
   filter: blur(6px);
 }
 
@@ -141,8 +141,8 @@
 
 .ini_brand-kicker {
   color: var(--ini-action);
-  background: rgba(0, 85, 187, .08);
-  border: 1px solid rgba(0, 85, 187, .12);
+  background: rgba(196, 139, 59, .08);
+  border: 1px solid rgba(196, 139, 59, .12);
 }
 
 .ini_brand-logo {
@@ -150,7 +150,7 @@
   width: min(420px, 100%);
   max-height: 215px;
   object-fit: contain;
-  filter: drop-shadow(0 18px 34px rgba(10, 37, 64, .14));
+  filter: drop-shadow(0 18px 34px rgba(58, 46, 43, .14));
   user-select: none;
   pointer-events: none;
 }
@@ -195,7 +195,7 @@
   background: rgba(255, 255, 255, .88);
   border: 1px solid rgba(217, 226, 239, .86);
   border-radius: 24px;
-  box-shadow: 0 28px 70px -34px rgba(10, 37, 64, .42);
+  box-shadow: 0 28px 70px -34px rgba(58, 46, 43, .42);
   backdrop-filter: blur(18px);
   overflow: visible;
 }
@@ -210,8 +210,8 @@
 
 .ini_login-badge {
   color: var(--ini-action);
-  background: rgba(0, 85, 187, .08);
-  border: 1px solid rgba(0, 85, 187, .12);
+  background: rgba(196, 139, 59, .08);
+  border: 1px solid rgba(196, 139, 59, .12);
 }
 
 .ini_titulo {
@@ -255,7 +255,7 @@
   border: 1px solid var(--ini-border);
   border-radius: 14px;
   outline: none;
-  box-shadow: 0 1px 2px rgba(10, 37, 64, .04);
+  box-shadow: 0 1px 2px rgba(58, 46, 43, .04);
   caret-color: var(--ini-action);
   font-family: 'Inter', sans-serif;
   font-size: .96rem;
@@ -274,7 +274,7 @@
 .ini_input:focus {
   border-color: var(--ini-action);
   background: #fff;
-  box-shadow: 0 0 0 4px var(--ini-action-soft), 0 10px 24px -20px rgba(10, 37, 64, .36);
+  box-shadow: 0 0 0 4px var(--ini-action-soft), 0 10px 24px -20px rgba(58, 46, 43, .36);
 }
 
 .ini_campo::before {
@@ -330,7 +330,7 @@
 
 .ini_toggle-password:hover {
   color: var(--ini-action);
-  background: rgba(0, 85, 187, .08);
+  background: rgba(196, 139, 59, .08);
 }
 
 .ini_check-row {
@@ -430,7 +430,7 @@
   background: var(--ini-action);
   border: 1px solid var(--ini-action);
   border-radius: 14px;
-  box-shadow: 0 14px 28px -18px rgba(0, 85, 187, .65);
+  box-shadow: 0 14px 28px -18px rgba(196, 139, 59, .65);
   font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
   font-size: .96rem;
   font-weight: 600;
@@ -442,7 +442,7 @@
 .ini_boton:hover:not(:disabled) {
   transform: translateY(-2px);
   background: color-mix(in srgb, var(--ini-action) 88%, var(--ini-primary));
-  box-shadow: 0 18px 34px -18px rgba(0, 85, 187, .72);
+  box-shadow: 0 18px 34px -18px rgba(196, 139, 59, .72);
 }
 
 .ini_boton:active:not(:disabled) {
@@ -461,7 +461,7 @@
   display: grid;
   place-items: center;
   padding: 24px;
-  background: rgba(10, 37, 64, .48);
+  background: rgba(58, 46, 43, .48);
   backdrop-filter: blur(4px);
 }
 
@@ -471,7 +471,7 @@
   background: #fff;
   border: 1px solid rgba(217, 226, 239, .86);
   border-radius: 22px;
-  box-shadow: 0 32px 78px -30px rgba(10, 37, 64, .44);
+  box-shadow: 0 32px 78px -30px rgba(58, 46, 43, .44);
   animation: iniModalIn .18s ease-out;
 }
 
@@ -496,8 +496,8 @@
   display: grid;
   place-items: center;
   color: var(--ini-action);
-  background: rgba(0, 85, 187, .08);
-  border: 1px solid rgba(0, 85, 187, .12);
+  background: rgba(196, 139, 59, .08);
+  border: 1px solid rgba(196, 139, 59, .12);
   border-radius: 14px;
 }
 
@@ -536,7 +536,7 @@
 
 .ini_modal-close:hover:not(:disabled) {
   color: var(--ini-primary);
-  background: rgba(10, 37, 64, .06);
+  background: rgba(58, 46, 43, .06);
 }
 
 .ini_modal-close:disabled {
@@ -619,7 +619,7 @@
 .ini_modal-btn-pri {
   color: #fff;
   background: var(--ini-action);
-  box-shadow: 0 14px 28px -18px rgba(0, 85, 187, .68);
+  box-shadow: 0 14px 28px -18px rgba(196, 139, 59, .68);
 }
 
 .ini_modal-btn-pri:hover:not(:disabled) {

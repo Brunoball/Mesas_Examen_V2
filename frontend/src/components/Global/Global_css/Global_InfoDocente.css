@@ -5,20 +5,20 @@
    ========================================================= */
 
 :root{
-  --gmi-ink:var(--gm-ink, var(--balto-ink, #0A2540));
-  --gmi-action:var(--gm-action, var(--balto-action, #0055BB));
-  --gmi-bg:var(--gm-bg, var(--balto-bg, #F6F9FC));
-  --gmi-text:var(--gm-text, var(--balto-text, #425466));
-  --gmi-muted:var(--gm-muted, var(--mov-muted, #718096));
-  --gmi-border:var(--gm-border, var(--mov-border, rgba(10,37,64,.14)));
+  --gmi-ink:var(--gm-ink, var(--balto-ink, #3A2E2B));
+  --gmi-action:var(--gm-action, var(--balto-action, #C48B3B));
+  --gmi-bg:var(--gm-bg, var(--balto-bg, #FDFBF7));
+  --gmi-text:var(--gm-text, var(--balto-text, #786661));
+  --gmi-muted:var(--gm-muted, var(--mov-muted, #786661));
+  --gmi-border:var(--gm-border, var(--mov-border, rgba(58,46,43,.14)));
   --gmi-danger:var(--gm-danger, var(--balto-danger, #E13D45));
   --gmi-success:var(--gm-success, var(--balto-success, #22AD5C));
   --gmi-white:#fff;
   --gmi-radius:18px;
   --gmi-radius-sm:13px;
-  --gmi-shadow:0 28px 70px rgba(10,37,64,.24);
-  --gmi-shadow-soft:0 16px 38px -24px rgba(10,37,64,.35);
-  --gmi-focus:0 0 0 4px rgba(0,85,187,.12);
+  --gmi-shadow:0 28px 70px rgba(58,46,43,.24);
+  --gmi-shadow-soft:0 16px 38px -24px rgba(58,46,43,.35);
+  --gmi-focus:0 0 0 4px rgba(196,139,59,.12);
   --gmi-trans:160ms cubic-bezier(.4,0,.2,1);
 }
 
@@ -78,7 +78,7 @@
   background:linear-gradient(
     135deg,
     var(--gmi-ink),
-    color-mix(in srgb, var(--gmi-ink) 82%, #0055BB)
+    color-mix(in srgb, var(--gmi-ink) 82%, #C48B3B)
   );
   color:#fff;
   border-bottom:1px solid rgba(255,255,255,.08);
@@ -161,7 +161,7 @@
   background:linear-gradient(
     135deg,
     var(--gmi-ink),
-    color-mix(in srgb, var(--gmi-ink) 82%, #0055BB)
+    color-mix(in srgb, var(--gmi-ink) 82%, #C48B3B)
   );
   color:#fff;
   border-bottom:1px solid rgba(255,255,255,.08);
@@ -251,7 +251,7 @@
   border:1px solid color-mix(in srgb, var(--gmi-border) 78%, #fff);
   border-radius:14px;
   background:
-    radial-gradient(circle at 20% 0%, rgba(0,85,187,.16), transparent 34%),
+    radial-gradient(circle at 20% 0%, rgba(196,139,59,.16), transparent 34%),
     linear-gradient(135deg, #fff 0%, color-mix(in srgb, var(--gmi-bg) 70%, #fff) 100%);
   box-shadow:var(--gmi-shadow-soft);
 }
@@ -263,7 +263,7 @@
   display:grid;
   place-items:center;
   flex:0 0 auto;
-  background:rgba(0,85,187,.10);
+  background:rgba(196,139,59,.10);
   color:var(--gmi-action);
   font-size:18px;
 }
@@ -313,7 +313,7 @@
   border:1px solid var(--gmi-border);
   border-radius:22px;
   background:var(--gmi-white);
-  box-shadow:0 1px 4px rgba(10,37,64,.08);
+  box-shadow:0 1px 4px rgba(58,46,43,.08);
   overflow: hidden;
 
 }
@@ -338,7 +338,7 @@
   border-radius:14px;
   display:grid;
   place-items:center;
-  background:rgba(0,85,187,.11);
+  background:rgba(196,139,59,.11);
   font-size:17px;
 }
 
@@ -427,7 +427,7 @@
   margin:12px;
   overflow-y:visible;
   overflow-x:auto;
-  border:1px solid rgba(10,37,64,.10);
+  border:1px solid rgba(58,46,43,.10);
   border-radius:13px;
   background:#fff;
 }
@@ -449,7 +449,7 @@
 .docentes-modal--info .docentes-info-divtable-head{
   min-height:42px;
   background:color-mix(in srgb, var(--gmi-bg) 70%, #fff);
-  border-bottom:1px solid rgba(10,37,64,.10);
+  border-bottom:1px solid rgba(58,46,43,.10);
 }
 
 .docentes-modal--info .docentes-info-divtable-head > div{
@@ -472,7 +472,7 @@
 
 .docentes-modal--info .docentes-info-divtable-row{
   min-height:52px;
-  border-bottom:1px solid rgba(10,37,64,.07);
+  border-bottom:1px solid rgba(58,46,43,.07);
   transition:background var(--gmi-trans);
 }
 
@@ -481,7 +481,7 @@
 }
 
 .docentes-modal--info .docentes-info-divtable-row:hover{
-  background:rgba(0,85,187,.045);
+  background:rgba(196,139,59,.045);
 }
 
 .docentes-modal--info .docentes-info-divtable-cell{
@@ -519,8 +519,8 @@
   align-items:center;
   justify-content:center;
   border-radius:999px;
-  background:rgba(0,85,187,.08);
-  border:1px solid rgba(0,85,187,.16);
+  background:rgba(196,139,59,.08);
+  border:1px solid rgba(196,139,59,.16);
   color:var(--gmi-action);
   font-size:12px;
   font-weight:700;
@@ -528,8 +528,8 @@
 }
 
 .docentes-modal--info .docentes-badge-soft{
-  background:rgba(10,37,64,.055);
-  border-color:rgba(10,37,64,.10);
+  background:rgba(58,46,43,.055);
+  border-color:rgba(58,46,43,.10);
   color:color-mix(in srgb, var(--gmi-ink) 78%, #000);
 }
 
@@ -540,7 +540,7 @@
   display:flex;
   align-items:center;
   justify-content:center;
-  border:1px dashed rgba(10,37,64,.16);
+  border:1px dashed rgba(58,46,43,.16);
   border-radius:13px;
   background:linear-gradient(180deg, #fff, color-mix(in srgb, var(--gmi-bg) 72%, #fff));
   color:var(--gmi-muted);
@@ -574,9 +574,9 @@
   gap:8px;
   max-width:100%;
   padding:7px 10px;
-  border:1px solid rgba(0,85,187,.18);
+  border:1px solid rgba(196,139,59,.18);
   border-radius:999px;
-  background:rgba(0,85,187,.075);
+  background:rgba(196,139,59,.075);
   color:var(--gmi-action);
   font-size:12px;
   line-height:1;
@@ -598,7 +598,7 @@
 
 .docentes-modal--info .docentes-bloque-chip small{
   padding-left:8px;
-  border-left:1px solid rgba(0,85,187,.20);
+  border-left:1px solid rgba(196,139,59,.20);
   color:color-mix(in srgb, var(--gmi-action) 78%, #000);
   font-weight:620;
 }
@@ -615,7 +615,7 @@
   align-items:center;
   gap:10px;
   background:#fff;
-  border-top:1px solid rgba(10,37,64,.10);
+  border-top:1px solid rgba(58,46,43,.10);
 }
 
 .docentes-modal--info .docentes-btn{
@@ -652,13 +652,13 @@
   background:var(--gmi-action);
   border-color:color-mix(in srgb, var(--gmi-action) 70%, #fff);
   color:#fff;
-  box-shadow:0 10px 22px rgba(0,85,187,.20);
+  box-shadow:0 10px 22px rgba(196,139,59,.20);
 }
 
 .docentes-modal--info .docentes-btn-primary:hover:not(:disabled){
   transform:translateY(-1px);
   background:color-mix(in srgb, var(--gmi-action) 88%, #000);
-  box-shadow:0 14px 26px rgba(0,85,187,.24);
+  box-shadow:0 14px 26px rgba(196,139,59,.24);
 }
 
 
@@ -697,7 +697,7 @@
   padding:16px;
   border-radius:16px;
   background:
-    radial-gradient(circle at 0% 0%, rgba(0,85,187,.13), transparent 34%),
+    radial-gradient(circle at 0% 0%, rgba(196,139,59,.13), transparent 34%),
     linear-gradient(135deg, #fff 0%, color-mix(in srgb, var(--gmi-bg) 76%, #fff) 100%);
 }
 
@@ -737,13 +737,13 @@
 .docentes-modal--info .docentes-info-status.is-active{
   background:color-mix(in srgb, var(--gmi-success) 10%, #fff);
   border-color:color-mix(in srgb, var(--gmi-success) 24%, #fff);
-  color:color-mix(in srgb, var(--gmi-success) 64%, #0A2540);
+  color:color-mix(in srgb, var(--gmi-success) 64%, #3A2E2B);
 }
 
 .docentes-modal--info .docentes-info-status.is-inactive{
   background:color-mix(in srgb, var(--gmi-danger) 10%, #fff);
   border-color:color-mix(in srgb, var(--gmi-danger) 24%, #fff);
-  color:color-mix(in srgb, var(--gmi-danger) 64%, #0A2540);
+  color:color-mix(in srgb, var(--gmi-danger) 64%, #3A2E2B);
 }
 
 .docentes-modal--info .docentes-info-grid{
@@ -803,7 +803,7 @@
   gap:12px;
   border-radius:14px;
   background:#fff;
-  box-shadow:0 8px 20px -16px rgba(10,37,64,.32);
+  box-shadow:0 8px 20px -16px rgba(58,46,43,.32);
 }
 
 .docentes-modal--info .docentes-bloque-chip__main{
@@ -833,8 +833,8 @@
   padding:5px 8px;
   border-left:0;
   border-radius:999px;
-  background:rgba(0,85,187,.08);
-  border:1px solid rgba(0,85,187,.14);
+  background:rgba(196,139,59,.08);
+  border:1px solid rgba(196,139,59,.14);
 }
 
 .docentes-modal--info .docentes-modal-actions{

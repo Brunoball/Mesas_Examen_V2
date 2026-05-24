@@ -12,7 +12,7 @@
   width: min(562px, 100%);
   background: #ffffff;
   border-radius: 18px;
-  box-shadow: 0 34px 95px rgba(15, 23, 42, 0.32);
+  box-shadow: 0 34px 95px rgba(58, 46, 43, 0.32);
   overflow: hidden;
   animation: rstIn 0.18s ease-out;
 }
@@ -37,7 +37,7 @@
   display: grid;
   place-items: center;
   border-radius: 13px;
-  color: #2563eb;
+  color: #C48B3B;
   background: #eef5ff;
 }
 
@@ -51,7 +51,7 @@
 
 .rst_title_wrap p {
   margin: 0;
-  color: #64748b;
+  color: #786661;
   font-size: 16px;
   font-weight: 500;
 }
@@ -106,7 +106,7 @@
 }
 
 .rst_input_wrap input:focus {
-  border-color: #3b82f6;
+  border-color: #D4AF37;
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
 }
 
@@ -167,7 +167,7 @@
 }
 
 .rst_btn_pri:hover:not(:disabled) {
-  background: #2563eb;
+  background: #C48B3B;
 }
 
 .rst_state,
@@ -180,7 +180,7 @@
 
 .rst_state {
   background: #eff6ff;
-  color: #1d4ed8;
+  color: #A96F2E;
   border: 1px solid #bfdbfe;
 }
 

@@ -17,7 +17,7 @@
   overflow: hidden;
   border-radius: 16px;
   background: #fff;
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+  box-shadow: 0 24px 70px rgba(58, 46, 43, 0.28);
 }
 
 .ag-num-header {
@@ -211,9 +211,9 @@
   max-height:94dvh;
   border-radius:var(--gm-radius, 20px);
   border:1px solid rgba(255,255,255,.22);
-  background:var(--gm-bg, #F6F9FC);
-  box-shadow:var(--gm-shadow, 0 32px 80px rgba(10,37,64,.26), 0 2px 8px rgba(10,37,64,.08));
-  color:var(--gm-ink, #0A2540);
+  background:var(--gm-bg, #FDFBF7);
+  box-shadow:var(--gm-shadow, 0 32px 80px rgba(58,46,43,.26), 0 2px 8px rgba(58,46,43,.08));
+  color:var(--gm-ink, #3A2E2B);
   font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   animation:gm-pop .18s cubic-bezier(.34, 1.56, .64, 1);
 }
@@ -222,7 +222,7 @@
   min-height:70px;
   padding:16px 20px;
   align-items:center;
-  background:linear-gradient(135deg, var(--gm-ink, #0A2540) 0%, color-mix(in srgb, var(--gm-ink, #0A2540) 78%, #0055BB) 100%);
+  background:linear-gradient(135deg, var(--gm-ink, #3A2E2B) 0%, color-mix(in srgb, var(--gm-ink, #3A2E2B) 78%, #C48B3B) 100%);
   border-bottom:1px solid rgba(255,255,255,.07);
   position:relative;
   overflow:hidden;
@@ -283,7 +283,7 @@
 }
 
 .ag-num-content{
-  background:linear-gradient(180deg, #fff 0%, #F7FAFD 100%);
+  background:linear-gradient(180deg, #fff 0%, #FFFCF7 100%);
 }
 
 @media (max-width:720px){
@@ -331,7 +331,7 @@
 }
 
 .ag-num-grid-data-row:hover{
-  background:#f8fbff;
+  background:#FFFCF7;
 }
 
 .ag-num-grid-cell{
@@ -361,7 +361,7 @@
 }
 
 .ag-num-grid-cell.is-strong{
-  color:var(--gm-ink, #0A2540);
+  color:var(--gm-ink, #3A2E2B);
   font-weight:600;
 }
 
@@ -387,9 +387,9 @@
 
 .ag-num-add-btn.mov-iconBtn:hover:not(:disabled){
   transform:translateY(-1px);
-  background:rgba(0,85,187,.08) !important;
-  border-color:rgba(0,85,187,.25) !important;
-  color:var(--balto-action, #0055BB) !important;
+  background:rgba(196,139,59,.08) !important;
+  border-color:rgba(196,139,59,.25) !important;
+  color:var(--balto-action, #C48B3B) !important;
   filter:none;
 }
 

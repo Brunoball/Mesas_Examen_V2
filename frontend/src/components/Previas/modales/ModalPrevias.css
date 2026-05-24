@@ -117,7 +117,7 @@
   border:1px solid color-mix(in srgb, var(--gm-action) 18%, #fff);
   border-radius:12px;
   background:#fff;
-  box-shadow:0 10px 24px rgba(10, 37, 64, .08);
+  box-shadow:0 10px 24px rgba(58, 46, 43, .08);
 }
 
 .previas-materia-tab-add:hover{
@@ -185,8 +185,8 @@
 
 .previas-delete-loading {
   margin-top: 12px;
-  border: 1px solid rgba(0, 85, 187, .14);
-  background: rgba(0, 85, 187, .06);
+  border: 1px solid rgba(196, 139, 59, .14);
+  background: rgba(196, 139, 59, .06);
   color: #0a4a8f;
   border-radius: 14px;
   padding: 12px;
@@ -197,9 +197,9 @@
 .previas-delete-risk{
   display:grid;
   gap:10px;
-  border-color:rgba(0,85,187,.14) !important;
-  background:rgba(0,85,187,.055) !important;
-  color:#0A2540 !important;
+  border-color:rgba(196,139,59,.14) !important;
+  background:rgba(196,139,59,.055) !important;
+  color:#3A2E2B !important;
 }
 
 .previas-delete-risk__summary{
@@ -215,7 +215,7 @@
   justify-content:space-between;
   gap:8px;
   padding:7px 10px;
-  border:1px solid rgba(10,37,64,.08);
+  border:1px solid rgba(58,46,43,.08);
   border-radius:12px;
   background:#fff;
   color:#5b6878;
@@ -224,18 +224,18 @@
 }
 
 .previas-delete-risk__summary b{
-  color:#0055BB;
+  color:#C48B3B;
   font-weight:720;
 }
 
 .previas-delete-risk__check{
-  color:#0A2540 !important;
+  color:#3A2E2B !important;
   font-size:12.5px !important;
   font-weight:620 !important;
 }
 
 .previas-delete-risk__check input{
-  accent-color:#0055BB !important;
+  accent-color:#C48B3B !important;
 }
 
 @media (max-width:680px){

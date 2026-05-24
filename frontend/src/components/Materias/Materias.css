@@ -150,7 +150,7 @@
 .materias-tabsInline{
   height:44px;
   border-radius:10px;
-  border:1.5px solid rgba(10,37,64,.14);
+  border:1.5px solid rgba(58,46,43,.14);
   background:#fff;
   padding:8px;
   gap:6px;
@@ -165,13 +165,13 @@
 }
 
 .materias-tabsInline .materias-tab.is-active{
-  background:rgba(0,85,187,.07);
+  background:rgba(196,139,59,.07);
   border-left:2px solid var(--balto-ink);
   box-shadow:none;
 }
 
 .materias-tabsInline .materias-tab:not(.is-active):hover{
-  background:rgba(0,85,187,.07);
+  background:rgba(196,139,59,.07);
 }
 
 .materias-actionsHead{
@@ -307,7 +307,7 @@
 
 .materias-subsections-bar{
   background:#fff;
-  border:1px solid rgba(10,37,64,.12);
+  border:1px solid rgba(58,46,43,.12);
   border-radius:var(--mov-radius);
   box-shadow:var(--mov-shadow-md);
   padding:13px 16px;
@@ -366,8 +366,8 @@
 
 .materias-section-btn:hover{
   transform:translateY(-1px);
-  background:rgba(0,85,187,.08);
-  border-color:rgba(0,85,187,.25);
+  background:rgba(196,139,59,.08);
+  border-color:rgba(196,139,59,.25);
   color:var(--balto-action);
   box-shadow:var(--mov-shadow-sm);
 }
@@ -376,8 +376,8 @@
   min-width:24px;
   height:24px;
   border-radius:999px;
-  background:rgba(0,85,187,.08);
-  border:1px solid rgba(0,85,187,.18);
+  background:rgba(196,139,59,.08);
+  border:1px solid rgba(196,139,59,.18);
   color:var(--balto-action);
   display:inline-flex;
   align-items:center;
@@ -431,8 +431,8 @@
 .icon-btn:hover{
   transform:translateY(-1px);
   box-shadow:var(--mov-shadow-sm);
-  background:rgba(0,85,187,.08);
-  border-color:rgba(0,85,187,.25);
+  background:rgba(196,139,59,.08);
+  border-color:rgba(196,139,59,.25);
   color:var(--balto-action);
 }
 
@@ -456,8 +456,8 @@
   padding:4px 10px;
   font-size:12px;
   font-weight:560;
-  border:1px solid rgba(0,85,187,.20);
-  background:rgba(0,85,187,.08);
+  border:1px solid rgba(196,139,59,.20);
+  background:rgba(196,139,59,.08);
   color:var(--balto-action);
 }
 
@@ -469,14 +469,14 @@
 
 .badge.off{
   background:rgba(148,163,184,.14);
-  color:#64748b;
+  color:#786661;
   border-color:rgba(148,163,184,.22);
 }
 
 .badge.info{
-  background:rgba(0,85,187,.08);
+  background:rgba(196,139,59,.08);
   color:var(--balto-action);
-  border-color:rgba(0,85,187,.20);
+  border-color:rgba(196,139,59,.20);
 }
 
 .mini-text{
@@ -565,7 +565,7 @@
   padding:16px 20px;
   align-items:flex-end;
   gap:18px;
-  border-bottom:1px solid rgba(10,37,64,.10);
+  border-bottom:1px solid rgba(58,46,43,.10);
   background:linear-gradient(180deg, #fff 0%, color-mix(in srgb, var(--balto-bg) 36%, #fff) 100%);
 }
 
@@ -638,7 +638,7 @@
 .materias-stateFilter select:focus{
   border-color:color-mix(in srgb, var(--balto-action) 58%, #fff);
   background:#fff;
-  box-shadow:0 0 0 4px rgba(0,85,187,.11), inset 0 1px 0 rgba(255,255,255,.86);
+  box-shadow:0 0 0 4px rgba(196,139,59,.11), inset 0 1px 0 rgba(255,255,255,.86);
 }
 
 .materias-searchBox input::placeholder{

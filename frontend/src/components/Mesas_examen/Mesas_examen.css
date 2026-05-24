@@ -6,19 +6,19 @@
 }
 
 .mesas-page {
-  --mesas-midnight: #0a2540;
-  --mesas-blue: #0055bb;
-  --mesas-blue-hover: #004aa3;
-  --mesas-bg: #f6f9fc;
+  --mesas-midnight: #3A2E2B;
+  --mesas-blue: #C48B3B;
+  --mesas-blue-hover: #A96F2E;
+  --mesas-bg: #FDFBF7;
   --mesas-card: #ffffff;
-  --mesas-text: #425466;
-  --mesas-muted: rgba(66, 84, 102, 0.72);
-  --mesas-border: rgba(10, 37, 64, 0.12);
-  --mesas-soft-border: #d9e2ef;
+  --mesas-text: #786661;
+  --mesas-muted: rgba(120, 102, 97, 0.72);
+  --mesas-border: rgba(58, 46, 43, 0.12);
+  --mesas-soft-border: #E8DED3;
   --mesas-success: #22ad5c;
   --mesas-danger: #e13d45;
-  --mesas-shadow-sm: 0 1px 3px rgba(10, 37, 64, 0.08);
-  --mesas-shadow-md: 0 10px 22px rgba(10, 37, 64, 0.1);
+  --mesas-shadow-sm: 0 1px 3px rgba(58, 46, 43, 0.08);
+  --mesas-shadow-md: 0 10px 22px rgba(58, 46, 43, 0.1);
 
   width: 100%;
   height: 100%;
@@ -30,8 +30,8 @@
   flex-direction: column;
 
   background:
-    radial-gradient(900px 360px at 50% 6%, rgba(0, 85, 187, 0.08), transparent 56%),
-    radial-gradient(900px 340px at 50% 96%, rgba(10, 37, 64, 0.05), transparent 58%),
+    radial-gradient(900px 360px at 50% 6%, rgba(196, 139, 59, 0.08), transparent 56%),
+    radial-gradient(900px 340px at 50% 96%, rgba(58, 46, 43, 0.05), transparent 58%),
     var(--mesas-bg);
 
   color: var(--mesas-midnight);
@@ -111,7 +111,7 @@
 
 .mesas-search input:focus {
   border-color: var(--mesas-blue);
-  box-shadow: 0 0 0 4px rgba(0, 85, 187, 0.12);
+  box-shadow: 0 0 0 4px rgba(196, 139, 59, 0.12);
 }
 
 .mesas-search-icon {
@@ -159,13 +159,13 @@
 
   cursor: pointer;
 
-  box-shadow: 0 8px 18px rgba(10, 37, 64, 0.14);
+  box-shadow: 0 8px 18px rgba(58, 46, 43, 0.14);
   transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, opacity 160ms ease;
 }
 
 .btn-action:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(10, 37, 64, 0.18);
+  box-shadow: 0 12px 24px rgba(58, 46, 43, 0.18);
 }
 
 .btn-action:disabled {
@@ -310,14 +310,14 @@
 }
 
 .mesas-tab:hover {
-  background: rgba(0, 85, 187, 0.06);
+  background: rgba(196, 139, 59, 0.06);
   color: var(--mesas-midnight);
 }
 
 .mesas-tab.active {
   background: var(--mesas-midnight);
   color: #ffffff;
-  box-shadow: 0 10px 22px rgba(10, 37, 64, 0.18);
+  box-shadow: 0 10px 22px rgba(58, 46, 43, 0.18);
 }
 
 /* =========================================================
@@ -441,7 +441,7 @@
 .hora-cell {
   width: 160px;
   text-align: center;
-  border-right: 1px solid rgba(10, 37, 64, 0.08);
+  border-right: 1px solid rgba(58, 46, 43, 0.08);
 }
 
 .hora-box {
@@ -504,9 +504,9 @@
   padding: 6px 10px;
 
   border-radius: 999px;
-  border: 1px solid rgba(0, 85, 187, 0.18);
+  border: 1px solid rgba(196, 139, 59, 0.18);
 
-  background: rgba(0, 85, 187, 0.08);
+  background: rgba(196, 139, 59, 0.08);
   color: var(--mesas-blue);
 
   font-size: 11px;
@@ -516,9 +516,9 @@
 }
 
 .tipo-simple {
-  background: rgba(0, 85, 187, 0.08);
+  background: rgba(196, 139, 59, 0.08);
   color: var(--mesas-blue);
-  border-color: rgba(0, 85, 187, 0.18);
+  border-color: rgba(196, 139, 59, 0.18);
 }
 
 .tipo-taller {
@@ -528,9 +528,9 @@
 }
 
 .tipo-correlativa {
-  background: rgba(0, 85, 187, 0.08);
+  background: rgba(196, 139, 59, 0.08);
   color: var(--mesas-blue);
-  border-color: rgba(0, 85, 187, 0.18);
+  border-color: rgba(196, 139, 59, 0.18);
 }
 
 /* =========================================================
@@ -689,7 +689,7 @@
 .numero-mesa-cell {
   width: 130px;
   text-align: center;
-  border-right: 1px solid rgba(10, 37, 64, 0.08);
+  border-right: 1px solid rgba(58, 46, 43, 0.08);
 }
 
 .numero-mesa-cell small {
@@ -712,7 +712,7 @@
 
   background: linear-gradient(135deg, var(--mesas-midnight), #173263);
   color: #ffffff;
-  box-shadow: 0 10px 20px rgba(10, 37, 64, 0.22);
+  box-shadow: 0 10px 20px rgba(58, 46, 43, 0.22);
 
   font-size: 22px;
   font-weight: 900;
@@ -737,9 +737,9 @@
   padding: 5px 8px;
   border-radius: 999px;
 
-  background: rgba(0, 85, 187, 0.08);
+  background: rgba(196, 139, 59, 0.08);
   color: var(--mesas-blue);
-  border: 1px solid rgba(0, 85, 187, 0.14);
+  border: 1px solid rgba(196, 139, 59, 0.14);
 
   font-size: 11px;
   font-weight: 800;
@@ -779,7 +779,7 @@
 
   padding: 0 13px;
   border-radius: 12px;
-  border: 1px solid rgba(0, 85, 187, 0.18);
+  border: 1px solid rgba(196, 139, 59, 0.18);
 
   background: #ffffff;
   color: var(--mesas-blue);
@@ -795,17 +795,17 @@
 
 .btn-ver-alumnos:hover {
   transform: translateY(-1px);
-  background: rgba(0, 85, 187, 0.06);
-  box-shadow: 0 10px 18px rgba(10, 37, 64, 0.12);
+  background: rgba(196, 139, 59, 0.06);
+  box-shadow: 0 10px 18px rgba(58, 46, 43, 0.12);
 }
 
 .alumnos-panel {
   padding: 18px;
-  border-top: 1px solid rgba(0, 85, 187, 0.12);
-  border-bottom: 1px solid rgba(0, 85, 187, 0.12);
+  border-top: 1px solid rgba(196, 139, 59, 0.12);
+  border-bottom: 1px solid rgba(196, 139, 59, 0.12);
   background:
-    radial-gradient(700px 180px at 8% 0%, rgba(0, 85, 187, 0.07), transparent 58%),
-    #f8fbff;
+    radial-gradient(700px 180px at 8% 0%, rgba(196, 139, 59, 0.07), transparent 58%),
+    #FFFCF7;
 }
 
 .alumnos-panel-header {
@@ -843,7 +843,7 @@
 
   padding: 14px;
   border-radius: 16px;
-  border: 1px solid rgba(10, 37, 64, 0.1);
+  border: 1px solid rgba(58, 46, 43, 0.1);
   background: #ffffff;
   box-shadow: var(--mesas-shadow-sm);
 }
@@ -949,8 +949,8 @@
   min-height: 28px;
   padding: 5px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(0, 85, 187, 0.18);
-  background: rgba(0, 85, 187, 0.08);
+  border: 1px solid rgba(196, 139, 59, 0.18);
+  background: rgba(196, 139, 59, 0.08);
   color: var(--mesas-blue);
   font-size: 12px;
   font-weight: 850;
@@ -977,7 +977,7 @@
   height: 36px;
   border-radius: 12px;
   background: #f1f5f9;
-  border: 1px solid #d9e2ef;
+  border: 1px solid #E8DED3;
   color: var(--mesas-midnight);
   font-size: 15px;
   font-weight: 900;
@@ -1072,7 +1072,7 @@
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   padding: 12px 16px;
-  border-top: 1px solid rgba(10, 37, 64, 0.08);
+  border-top: 1px solid rgba(58, 46, 43, 0.08);
   background: #ffffff;
 }
 
@@ -1117,7 +1117,7 @@
   color: #ffffff;
   font-size: 16px;
   font-weight: 900;
-  box-shadow: 0 8px 16px rgba(0, 85, 187, 0.18);
+  box-shadow: 0 8px 16px rgba(196, 139, 59, 0.18);
 }
 
 .numero-mesa-cell small {
@@ -1171,7 +1171,7 @@
 }
 
 .btn-ver-alumnos:hover {
-  background: #f8fbff;
+  background: #FFFCF7;
 }
 
 .alumnos-panel {
@@ -1327,9 +1327,9 @@
   overflow: visible !important;
   background: #ffffff;
   border: 1px solid #d7e3f5;
-  border-bottom: 2px solid #0055bb;
+  border-bottom: 2px solid #C48B3B;
   border-radius: 14px;
-  box-shadow: 0 12px 28px rgba(10, 37, 64, 0.1);
+  box-shadow: 0 12px 28px rgba(58, 46, 43, 0.1);
 }
 
 .mesas-pdf-sheet-observada {
@@ -1344,7 +1344,7 @@
   justify-content: space-between;
   gap: 20px;
   padding: 14px 22px 12px;
-  border-bottom: 1px solid rgba(10, 37, 64, 0.08);
+  border-bottom: 1px solid rgba(58, 46, 43, 0.08);
   background: #ffffff;
   border-radius: 14px 14px 0 0;
 }
@@ -1414,7 +1414,7 @@
 
 .mesas-pdf-observacion-info {
   background: #eff6ff;
-  border-color: rgba(0, 85, 187, 0.2);
+  border-color: rgba(196, 139, 59, 0.2);
   color: #173263;
 }
 
@@ -1651,12 +1651,12 @@
 .btn-editar-mesa:hover,
 .btn-eliminar-mesa:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 16px rgba(10, 37, 64, 0.12);
+  box-shadow: 0 8px 16px rgba(58, 46, 43, 0.12);
 }
 
 .btn-editar-mesa {
-  border: 1px solid rgba(0, 85, 187, 0.22);
-  background: rgba(0, 85, 187, 0.08);
+  border: 1px solid rgba(196, 139, 59, 0.22);
+  background: rgba(196, 139, 59, 0.08);
   color: var(--mesas-blue);
 }
 
@@ -1672,7 +1672,7 @@
 ========================================================= */
 
 .mesas-search input::placeholder {
-  color: rgba(66, 84, 102, 0.62);
+  color: rgba(120, 102, 97, 0.62);
 }
 
 .mesas-card-pdf-fijo {
@@ -1704,7 +1704,7 @@
   border: 1px solid #d6e2f3;
   border-bottom: 1px solid #d6e2f3;
   border-radius: 11px;
-  box-shadow: 0 6px 16px rgba(10, 37, 64, 0.08);
+  box-shadow: 0 6px 16px rgba(58, 46, 43, 0.08);
 }
 
 .mesas-card-pdf-fijo .mesas-pdf-sheet-observada {
@@ -1790,7 +1790,7 @@
 
 .mesas-card-pdf-fijo .mesas-pdf-observacion-info {
   background: #eff6ff;
-  border-color: rgba(0, 85, 187, 0.18);
+  border-color: rgba(196, 139, 59, 0.18);
   color: #173263;
 }
 
@@ -2104,7 +2104,7 @@
 .mesas-tabsInline.mov-tabs{
   height:44px;
   border-radius:10px;
-  border:1.5px solid rgba(10,37,64,.14);
+  border:1.5px solid rgba(58,46,43,.14);
   background:#fff;
   padding:8px;
   gap:6px;
@@ -2128,14 +2128,14 @@
 }
 
 .mesas-tabsInline .mesas-tab.mov-tab:hover{
-  background:rgba(0,85,187,.07);
+  background:rgba(196,139,59,.07);
   color:var(--balto-action);
   transform:none;
   box-shadow:none;
 }
 
 .mesas-tabsInline .mesas-tab.mov-tab.is-active{
-  background:rgba(0,85,187,.07);
+  background:rgba(196,139,59,.07);
   color:var(--balto-action);
   border-left:2px solid var(--balto-ink);
   box-shadow:none;
@@ -2269,8 +2269,8 @@
 }
 
 .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-action:hover{
-  background:rgba(0,85,187,.08);
-  border-color:rgba(0,85,187,.25);
+  background:rgba(196,139,59,.08);
+  border-color:rgba(196,139,59,.25);
   color:var(--balto-action);
   opacity:1;
 }
@@ -2473,14 +2473,14 @@
   text-align: center;
   outline: none;
   cursor: pointer;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 8px 18px rgba(58, 46, 43, 0.06);
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
 .mesas-nota-select:hover,
 .mesas-nota-select:focus {
-  border-color: rgba(0, 85, 187, 0.45);
-  box-shadow: 0 10px 22px rgba(0, 85, 187, 0.12);
+  border-color: rgba(196, 139, 59, 0.45);
+  box-shadow: 0 10px 22px rgba(196, 139, 59, 0.12);
 }
 
 .mesas-nota-select.is-selected {
@@ -2497,7 +2497,7 @@
   position: absolute;
   right: -16px;
   font-size: 11px;
-  color: #0055bb;
+  color: #C48B3B;
 }
 
 .mesas-nota-placeholder {
@@ -2606,10 +2606,10 @@
   min-width:0;
   min-height:86px;
   padding:14px;
-  border:1px solid rgba(10,37,64,.12);
+  border:1px solid rgba(58,46,43,.12);
   border-radius:22px;
   background:#fff;
-  box-shadow:0 1px 4px rgba(10,37,64,.08);
+  box-shadow:0 1px 4px rgba(58,46,43,.08);
   color:var(--balto-action);
   display:flex;
   align-items:center;
@@ -2641,7 +2641,7 @@
   display:grid;
   place-items:center;
   font-size:17px;
-  background:rgba(0,85,187,.11);
+  background:rgba(196,139,59,.11);
 }
 
 .mesas-historial-kpiBody{
@@ -2705,7 +2705,7 @@
   overflow:hidden;
   border-radius:18px;
   background:#fff;
-  box-shadow:0 1px 4px rgba(10,37,64,.08);
+  box-shadow:0 1px 4px rgba(58,46,43,.08);
 }
 
 .mesas-historial-sectionTitle{
@@ -2889,7 +2889,7 @@
   padding:0 9px;
   border-radius:999px;
   border:1px solid color-mix(in srgb, var(--balto-action) 18%, #fff);
-  background:rgba(0,85,187,.07);
+  background:rgba(196,139,59,.07);
   color:var(--balto-action);
   font-size:11px;
   font-weight:620;
@@ -2947,8 +2947,8 @@
 .mesas-historial-detailBtn:hover:not(:disabled),
 .mesas-historial-closeBtn:hover:not(:disabled){
   transform:translateY(-1px);
-  background:rgba(0,85,187,.08);
-  border-color:rgba(0,85,187,.25);
+  background:rgba(196,139,59,.08);
+  border-color:rgba(196,139,59,.25);
   color:var(--balto-action);
   box-shadow:var(--mov-shadow-sm);
 }
@@ -3111,7 +3111,7 @@
 
 .mesas-pdf-cell{
   padding:9px 10px;
-  border-bottom:1px dashed rgba(10,37,64,.08);
+  border-bottom:1px dashed rgba(58,46,43,.08);
   background:#fff;
   font-size:12px;
   font-weight:500;
@@ -3131,7 +3131,7 @@
 .mesas-pdf-cell.pdf-hora-cell{
   justify-content:center;
   text-align:center;
-  background:#f8fbff;
+  background:#FFFCF7;
   border-right:1px solid #dbe2f3;
 }
 
@@ -3158,8 +3158,8 @@
   align-items:center;
   gap:7px;
   padding:8px 12px 10px;
-  border-top:1px solid rgba(10,37,64,.08);
-  background:linear-gradient(180deg, #fff, #f8fbff);
+  border-top:1px solid rgba(58,46,43,.08);
+  background:linear-gradient(180deg, #fff, #FFFCF7);
 }
 
 .mesas-pdf-actionsInline{
@@ -3218,7 +3218,7 @@
   table-layout:initial !important;
   border-collapse:initial !important;
   border-spacing:0 !important;
-  color:var(--balto-ink, #0A2540);
+  color:var(--balto-ink, #3A2E2B);
 }
 
 .mesas-card-pdf-fijo .mesas-pdf-gridHead,
@@ -3234,7 +3234,7 @@
 .mesas-card-pdf-fijo .mesas-pdf-gridHead,
 .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-gridHead{
   min-height:44px;
-  background:color-mix(in srgb, var(--balto-bg, #F6F9FC) 72%, #fff);
+  background:color-mix(in srgb, var(--balto-bg, #FDFBF7) 72%, #fff);
   border-bottom:1px solid color-mix(in srgb, var(--mov-border, #D6E2F3) 78%, #fff);
 }
 
@@ -3272,8 +3272,8 @@
   overflow:visible;
   text-overflow:clip;
   white-space:normal;
-  color:var(--balto-ink, #0A2540);
-  background:color-mix(in srgb, var(--balto-bg, #F6F9FC) 72%, #fff);
+  color:var(--balto-ink, #3A2E2B);
+  background:color-mix(in srgb, var(--balto-bg, #FDFBF7) 72%, #fff);
   border-bottom:1px solid color-mix(in srgb, var(--mov-border, #D6E2F3) 78%, #fff);
   font-size:12px;
   font-weight:680;
@@ -3292,7 +3292,7 @@
   overflow:visible;
   text-overflow:clip;
   white-space:normal;
-  color:var(--balto-ink, #0A2540);
+  color:var(--balto-ink, #3A2E2B);
   background:#fff;
   border-bottom:1px solid color-mix(in srgb, var(--mov-border, #D6E2F3) 64%, #fff);
   font-size:13px;
@@ -3330,7 +3330,7 @@
 
 .mesas-card-pdf-fijo .pdf-hora-stack strong,
 .mesas-shell-card.mesas-card-pdf-fijo .pdf-hora-stack strong{
-  color:var(--balto-ink, #0A2540);
+  color:var(--balto-ink, #3A2E2B);
   font-size:13px;
   font-weight:720;
   line-height:1.1;
@@ -3354,7 +3354,7 @@
 .mesas-card-pdf-fijo .pdf-docente-line-cell strong,
 .mesas-shell-card.mesas-card-pdf-fijo .pdf-materia-line-cell strong,
 .mesas-shell-card.mesas-card-pdf-fijo .pdf-docente-line-cell strong{
-  color:var(--balto-ink, #0A2540);
+  color:var(--balto-ink, #3A2E2B);
   font-size:13px;
   font-weight:720;
   line-height:1.2;

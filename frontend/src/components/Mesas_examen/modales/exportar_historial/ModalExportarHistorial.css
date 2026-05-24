@@ -24,9 +24,9 @@
   overflow:hidden;
   border-radius:var(--gm-radius, 20px);
   border:1px solid rgba(255,255,255,.22);
-  background:var(--gm-bg, #F6F9FC);
-  box-shadow:var(--gm-shadow, 0 32px 80px rgba(10,37,64,.26), 0 2px 8px rgba(10,37,64,.08));
-  color:var(--gm-ink, #0A2540);
+  background:var(--gm-bg, #FDFBF7);
+  box-shadow:var(--gm-shadow, 0 32px 80px rgba(58,46,43,.26), 0 2px 8px rgba(58,46,43,.08));
+  color:var(--gm-ink, #3A2E2B);
   font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   animation:gm-pop .18s cubic-bezier(.34, 1.56, .64, 1);
 }
@@ -38,7 +38,7 @@
   align-items:center;
   justify-content:space-between;
   gap:18px;
-  background:linear-gradient(135deg, var(--gm-ink, #0A2540) 0%, color-mix(in srgb, var(--gm-ink, #0A2540) 78%, #0055BB) 100%);
+  background:linear-gradient(135deg, var(--gm-ink, #3A2E2B) 0%, color-mix(in srgb, var(--gm-ink, #3A2E2B) 78%, #C48B3B) 100%);
   color:#fff;
   border-bottom:1px solid rgba(255,255,255,.07);
 }
@@ -98,18 +98,18 @@
   border:1px solid #dbe4f0;
   border-radius:16px;
   background:#fff;
-  box-shadow:0 10px 24px -20px rgba(10,37,64,.3);
+  box-shadow:0 10px 24px -20px rgba(58,46,43,.3);
 }
 
 .mesas-export-historial-info strong{
-  color:#0A2540;
+  color:#3A2E2B;
   font-size:25px;
   font-weight:900;
   line-height:1;
 }
 
 .mesas-export-historial-info span{
-  color:#425466;
+  color:#786661;
   font-size:13px;
   font-weight:800;
   text-align:right;
@@ -118,14 +118,14 @@
 .mesas-export-historial-scope,
 .mesas-export-historial-note{
   margin:12px 2px 0;
-  color:#425466;
+  color:#786661;
   font-size:13px;
   font-weight:650;
   line-height:1.42;
 }
 
 .mesas-export-historial-note b{
-  color:#0A2540;
+  color:#3A2E2B;
   font-weight:900;
 }
 
@@ -146,22 +146,22 @@
   border:1px solid #dbe4f0;
   border-radius:16px;
   background:#fff;
-  color:#0A2540;
+  color:#3A2E2B;
   cursor:pointer;
-  box-shadow:0 12px 28px -24px rgba(10,37,64,.38);
+  box-shadow:0 12px 28px -24px rgba(58,46,43,.38);
   transition:border-color .16s ease, box-shadow .16s ease, transform .16s ease, background .16s ease;
 }
 
 .mesas-export-historial-option:hover{
   transform:translateY(-1px);
-  border-color:rgba(0,85,187,.28);
-  box-shadow:0 18px 38px -26px rgba(10,37,64,.5);
+  border-color:rgba(196,139,59,.28);
+  box-shadow:0 18px 38px -26px rgba(58,46,43,.5);
 }
 
 .mesas-export-historial-option.is-active{
-  border-color:rgba(0,85,187,.46);
-  background:linear-gradient(180deg, rgba(0,85,187,.06), #fff 74%);
-  box-shadow:0 0 0 3px rgba(0,85,187,.11), 0 16px 34px -26px rgba(10,37,64,.45);
+  border-color:rgba(196,139,59,.46);
+  background:linear-gradient(180deg, rgba(196,139,59,.06), #fff 74%);
+  box-shadow:0 0 0 3px rgba(196,139,59,.11), 0 16px 34px -26px rgba(58,46,43,.45);
 }
 
 .mesas-export-historial-option input{
@@ -202,7 +202,7 @@
 }
 
 .mesas-export-historial-option small{
-  color:#64748b;
+  color:#786661;
   font-size:12px;
   font-weight:700;
   line-height:1.35;

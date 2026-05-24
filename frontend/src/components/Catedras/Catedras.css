@@ -92,11 +92,11 @@
   min-width: 144px;
   height:44px;
   border-radius:10px;
-  border:1.5px solid rgba(10,37,64,.14);
+  border:1.5px solid rgba(58,46,43,.14);
   background:#fff;
   padding:0 36px 0 14px;
   outline:none;
-  color:rgba(10,37,64,.90);
+  color:rgba(58,46,43,.90);
   font-family:inherit;
   font-size:13px;
   font-weight:500;
@@ -104,13 +104,13 @@
 }
 
 .catedras-filterSelect:hover{
-  border-color:rgba(10,37,64,.28);
+  border-color:rgba(58,46,43,.28);
 }
 
 .catedras-filterSelect:focus{
-  border-color:rgba(0,85,187,.55);
+  border-color:rgba(196,139,59,.55);
   box-shadow:0 0 0 3px var(--cc-focus);
-  background:#fafcff;
+  background:#FFFCF7;
 }
 
 .catedras-actionsHead{
@@ -147,7 +147,7 @@
 
 
 .catedras-gridRow:hover{
-  background:rgba(0,85,187,.05);
+  background:rgba(196,139,59,.05);
 }
 
 .catedras-materia{
@@ -170,7 +170,7 @@
 
 .catedras-badge-soft{
   background:rgba(148,163,184,.14) !important;
-  color:#64748b !important;
+  color:#786661 !important;
   border-color:rgba(148,163,184,.22) !important;
 }
 

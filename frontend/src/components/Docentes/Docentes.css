@@ -83,7 +83,7 @@
 .docentes-tabsInline{
   height:44px;
   border-radius:10px;
-  border:1.5px solid rgba(10,37,64,.14);
+  border:1.5px solid rgba(58,46,43,.14);
   background:#fff;
   padding:8px;
   gap:6px;
@@ -98,13 +98,13 @@
 }
 
 .docentes-tabsInline .docentes-tab.is-active{
-background:rgba(0,85,187,.07);
+background:rgba(196,139,59,.07);
   border-left: 2px solid var(--balto-ink);
   box-shadow:none;
 }
 
 .docentes-tabsInline .docentes-tab:not(.is-active):hover{
-  background:rgba(0,85,187,.07);
+  background:rgba(196,139,59,.07);
 }
 
 .docentes-actionsHead{
@@ -182,8 +182,8 @@ background:rgba(0,85,187,.07);
 
 .docentes-icon-warning:hover{
   color:var(--balto-action) !important;
-  border-color:rgba(0,85,187,.25) !important;
-  background:rgba(0,85,187,.08) !important;
+  border-color:rgba(196,139,59,.25) !important;
+  background:rgba(196,139,59,.08) !important;
 }
 
 .docentes-icon-success{
@@ -287,9 +287,9 @@ background:rgba(0,85,187,.07);
 }
 
 .docentes-alerta-info{
-  background:rgba(0,85,187,.08);
+  background:rgba(196,139,59,.08);
   color:var(--balto-action);
-  border:1px solid rgba(0,85,187,.18);
+  border:1px solid rgba(196,139,59,.18);
   border-radius:12px;
   padding:10px 12px;
   font-size:13px;
@@ -333,12 +333,12 @@ background:rgba(0,85,187,.07);
   background:var(--balto-action);
   border-color:color-mix(in srgb, var(--balto-action) 60%, #fff);
   color:#fff;
-  box-shadow:0 10px 22px rgba(0,85,187,.18);
+  box-shadow:0 10px 22px rgba(196,139,59,.18);
 }
 
 .docentes-btn-primary:hover:not(:disabled){
   background:color-mix(in srgb, var(--balto-action) 88%, #000);
-  box-shadow:0 14px 26px rgba(0,85,187,.22);
+  box-shadow:0 14px 26px rgba(196,139,59,.22);
 }
 
 .docentes-btn-light{
@@ -368,16 +368,16 @@ background:rgba(0,85,187,.07);
   align-items:center;
   justify-content:center;
   padding:24px;
-  background:rgba(10,37,64,.42);
+  background:rgba(58,46,43,.42);
   backdrop-filter:blur(3px);
 }
 
 .docentes-modal{
   width:min(620px, 100%);
   background:#fff;
-  border:1px solid rgba(10,37,64,.14);
+  border:1px solid rgba(58,46,43,.14);
   border-radius:18px;
-  box-shadow:0 24px 70px rgba(10,37,64,.24);
+  box-shadow:0 24px 70px rgba(58,46,43,.24);
   color:var(--balto-ink);
 }
 
@@ -434,8 +434,8 @@ background:rgba(0,85,187,.07);
 
 .docentes-modal-close:hover{
   transform:translateY(-1px);
-  background:rgba(0,85,187,.08);
-  border-color:rgba(0,85,187,.25);
+  background:rgba(196,139,59,.08);
+  border-color:rgba(196,139,59,.25);
   color:var(--balto-action);
 }
 
@@ -469,10 +469,10 @@ background:rgba(0,85,187,.07);
 .docentes-bloque-row input,
 .docentes-bloque-row select{
   width:100%;
-  border:1.5px solid rgba(10,37,64,.14);
+  border:1.5px solid rgba(58,46,43,.14);
   border-radius:10px;
   background:#fff;
-  color:rgba(10,37,64,.90);
+  color:rgba(58,46,43,.90);
   outline:none;
   font:inherit;
   font-size:13px;
@@ -499,9 +499,9 @@ background:rgba(0,85,187,.07);
 .docentes-label textarea:focus,
 .docentes-bloque-row input:focus,
 .docentes-bloque-row select:focus{
-  border-color:rgba(0,85,187,.55);
-  box-shadow:0 0 0 3px rgba(0,85,187,.18);
-  background:#fafcff;
+  border-color:rgba(196,139,59,.55);
+  box-shadow:0 0 0 3px rgba(196,139,59,.18);
+  background:#FFFCF7;
 }
 
 .docentes-bloques-box{
@@ -543,7 +543,7 @@ background:rgba(0,85,187,.07);
   margin:14px;
   padding:14px;
   border-radius:12px;
-  background:rgba(10,37,64,.035);
+  background:rgba(58,46,43,.035);
   color:var(--mov-muted);
   font-size:13px;
   font-weight:500;
@@ -594,7 +594,7 @@ background:rgba(0,85,187,.07);
   border-radius:14px;
   display:grid;
   place-items:center;
-  background:rgba(0,85,187,.10);
+  background:rgba(196,139,59,.10);
   color:var(--balto-action);
 }
 
@@ -676,7 +676,7 @@ background:rgba(0,85,187,.07);
 }
 
 .docentes-info-gridRow:hover{
-  background:rgba(0,85,187,.05);
+  background:rgba(196,139,59,.05);
 }
 
 .docentes-info-empty{
@@ -705,8 +705,8 @@ background:rgba(0,85,187,.07);
   display:inline-flex;
   align-items:center;
   gap:8px;
-  border:1px solid rgba(0,85,187,.20);
-  background:rgba(0,85,187,.08);
+  border:1px solid rgba(196,139,59,.20);
+  background:rgba(196,139,59,.08);
   color:var(--balto-action);
   border-radius:999px;
   padding:6px 10px;

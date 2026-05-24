@@ -48,9 +48,9 @@
   display:grid;
   gap:8px;
   padding:13px;
-  border:1px solid rgba(0, 85, 187, .12);
+  border:1px solid rgba(196, 139, 59, .12);
   border-radius:14px;
-  background:rgba(0, 85, 187, .055);
+  background:rgba(196, 139, 59, .055);
   color:color-mix(in srgb, var(--gm-action) 76%, #000);
 }
 
@@ -89,7 +89,7 @@
   justify-content:center;
   gap:13px;
   padding:24px;
-  border:1.5px dashed rgba(0, 85, 187, .24);
+  border:1.5px dashed rgba(196, 139, 59, .24);
   border-radius:16px;
   background:linear-gradient(180deg, #fff 0%, color-mix(in srgb, var(--gm-bg) 70%, #fff) 100%);
   color:var(--gm-ink);
@@ -103,9 +103,9 @@
 .modal-importar-previas__drop:focus-visible,
 .modal-importar-previas__drop.is-dragging{
   transform:translateY(-1px);
-  border-color:rgba(0, 85, 187, .48);
+  border-color:rgba(196, 139, 59, .48);
   background:color-mix(in srgb, var(--gm-action) 7%, #fff);
-  box-shadow:var(--gm-focus), 0 12px 26px rgba(10,37,64,.08);
+  box-shadow:var(--gm-focus), 0 12px 26px rgba(58,46,43,.08);
 }
 
 .modal-importar-previas__drop.has-file{
@@ -120,7 +120,7 @@
   border-radius:17px;
   display:grid;
   place-items:center;
-  background:rgba(0, 85, 187, .08);
+  background:rgba(196, 139, 59, .08);
   color:var(--gm-action);
   font-size:24px;
 }
@@ -197,7 +197,7 @@
   align-items:center;
   gap:4px;
   padding:5px 10px;
-  border:1px solid rgba(10,37,64,.08);
+  border:1px solid rgba(58,46,43,.08);
   border-radius:999px;
   background:#fff;
   color:var(--gm-ink);
@@ -257,7 +257,7 @@
   margin:14px;
   max-height:min(34vh, 320px);
   overflow:auto;
-  border:1px solid rgba(10,37,64,.10);
+  border:1px solid rgba(58,46,43,.10);
   border-radius:14px;
   background:#fff;
 }
@@ -274,12 +274,12 @@
   top:0;
   z-index:2;
   background:color-mix(in srgb, var(--gm-bg) 78%, #fff);
-  border-bottom:1px solid rgba(10,37,64,.10);
+  border-bottom:1px solid rgba(58,46,43,.10);
 }
 
 .modal-importar-previas__previewGridRow{
   min-height:44px;
-  border-bottom:1px solid rgba(10,37,64,.065);
+  border-bottom:1px solid rgba(58,46,43,.065);
   transition:background var(--gm-trans);
 }
 
@@ -300,7 +300,7 @@
   font-size:12.5px;
   line-height:1.25;
   font-weight:500;
-  border-right:1px solid rgba(10,37,64,.055);
+  border-right:1px solid rgba(58,46,43,.055);
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
@@ -355,9 +355,9 @@
 .modal-importar-previas__previewNote{
   margin:0 14px 14px;
   padding:10px 12px;
-  border:1px solid rgba(0,85,187,.12);
+  border:1px solid rgba(196,139,59,.12);
   border-radius:12px;
-  background:rgba(0,85,187,.05);
+  background:rgba(196,139,59,.05);
   color:color-mix(in srgb, var(--gm-action) 76%, #000);
   font-size:12.5px;
   line-height:1.35;

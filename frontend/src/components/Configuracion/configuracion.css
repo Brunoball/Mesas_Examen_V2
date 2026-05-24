@@ -8,7 +8,7 @@
   flex-direction: column;
   gap: 14px;
   padding: 18px;
-  color: var(--balto-text, #425466);
+  color: var(--balto-text, #786661);
   overflow: auto;
 }
 
@@ -24,12 +24,12 @@
   align-items: center;
   gap: 14px;
   padding: 16px;
-  border: 1px solid rgba(10, 37, 64, 0.12);
+  border: 1px solid rgba(58, 46, 43, 0.12);
   border-radius: 18px;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, .92), rgba(255, 255, 255, .72)),
-    radial-gradient(circle at top left, rgba(0, 85, 187, .14), transparent 34%);
-  box-shadow: 0 14px 30px -24px rgba(10, 37, 64, .36);
+    radial-gradient(circle at top left, rgba(196, 139, 59, .14), transparent 34%);
+  box-shadow: 0 14px 30px -24px rgba(58, 46, 43, .36);
 }
 
 .cfg-hero__icon {
@@ -41,8 +41,8 @@
   align-items: center;
   justify-content: center;
   color: #fff;
-  background: linear-gradient(135deg, var(--balto-midnight, #0A2540), var(--balto-action, #0055BB));
-  box-shadow: 0 14px 26px -18px rgba(0, 85, 187, .55);
+  background: linear-gradient(135deg, var(--balto-midnight, #3A2E2B), var(--balto-action, #C48B3B));
+  box-shadow: 0 14px 26px -18px rgba(196, 139, 59, .55);
   font-size: 18px;
 }
 
@@ -52,7 +52,7 @@
 
 .cfg-kicker {
   margin: 0 0 4px;
-  color: var(--balto-action, #0055BB);
+  color: var(--balto-action, #C48B3B);
   font-size: 11px;
   line-height: 1;
   font-weight: 740;
@@ -62,7 +62,7 @@
 
 .cfg-hero h1 {
   margin: 0;
-  color: var(--balto-midnight, #0A2540);
+  color: var(--balto-midnight, #3A2E2B);
   font-size: clamp(20px, 2vw, 27px);
   line-height: 1.1;
   font-weight: 680;
@@ -72,7 +72,7 @@
 .cfg-hero p:not(.cfg-kicker) {
   max-width: 760px;
   margin: 6px 0 0;
-  color: rgba(66, 84, 102, .82);
+  color: rgba(120, 102, 97, .82);
   font-size: 13px;
   line-height: 1.45;
   font-weight: 430;
@@ -130,13 +130,13 @@
 }
 
 .cfg-status--pending {
-  background: #f2f5f8;
-  color: #5f6d7c;
-  border-color: #dce3ea;
+  background: #F6F0E8;
+  color: #786661;
+  border-color: #E8DED3;
 }
 
 .cfg-status--neutral {
-  background: #eef3ff;
+  background: #F6EBDD;
   color: #3d5fb8;
   border-color: #dae4ff;
 }
@@ -164,13 +164,13 @@
   border-color: #bfcad7;
   background: #fcfdff;
   transform: translateY(-1px);
-  box-shadow: 0 16px 28px -24px rgba(10, 37, 64, .42);
+  box-shadow: 0 16px 28px -24px rgba(58, 46, 43, .42);
 }
 
 .cfg-card:focus-visible {
   outline: none;
-  border-color: rgba(0, 85, 187, .48);
-  box-shadow: 0 0 0 4px rgba(0, 85, 187, .13);
+  border-color: rgba(196, 139, 59, .48);
+  box-shadow: 0 0 0 4px rgba(196, 139, 59, .13);
 }
 
 .cfg-cardMain {
@@ -188,8 +188,8 @@
   align-items: center;
   justify-content: center;
   border: 1px solid #e4eaf1;
-  background: #f7f9fc;
-  color: var(--balto-action, #0055BB);
+  background: #FBF7EF;
+  color: var(--balto-action, #C48B3B);
   font-size: 16px;
 }
 
@@ -212,7 +212,7 @@
   margin: 0;
   font-size: 14px;
   line-height: 1.2;
-  color: var(--balto-midnight, #0a2540);
+  color: var(--balto-midnight, #3A2E2B);
   font-weight: 640;
   letter-spacing: -0.01em;
 }
@@ -255,7 +255,7 @@
   align-items: center;
   justify-content: center;
   color: #718196;
-  background: #f7f9fc;
+  background: #FBF7EF;
   border: 1px solid #e4eaf1;
   font-size: 10px;
   transition: transform .18s ease, color .18s ease, border-color .18s ease;
@@ -263,8 +263,8 @@
 
 .cfg-card:hover .cfg-cardArrow {
   transform: translateX(2px);
-  color: var(--balto-action, #0055BB);
-  border-color: rgba(0, 85, 187, .22);
+  color: var(--balto-action, #C48B3B);
+  border-color: rgba(196, 139, 59, .22);
 }
 
 .cfg-cardMetaLine {
