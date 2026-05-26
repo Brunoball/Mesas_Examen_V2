@@ -74,7 +74,7 @@
   border-radius:16px;
   display:grid;
   place-items:center;
-  overflow-x:hidden;
+  overflow:hidden;
   background:linear-gradient(135deg, var(--gm-ink), var(--gm-action));
   color:#fff;
   font-size:46px;
@@ -92,6 +92,19 @@
   height:100%;
   display:block;
   object-fit:contain;
+  overflow:hidden;
+}
+
+.perfil-avatar::-webkit-scrollbar,
+.perfil-avatar img::-webkit-scrollbar{
+  width:0;
+  height:0;
+  display:none;
+}
+
+.perfil-avatar,
+.perfil-avatar img{
+  scrollbar-width:none;
 }
 
 .perfil-heroCard__text{

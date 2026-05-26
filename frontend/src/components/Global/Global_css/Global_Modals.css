@@ -375,7 +375,7 @@
   background: #fff;
   color: var(--gm-ink);
   outline: none;
-  padding: 14px 13px ;
+  padding: 12px 13px ;
   font: inherit;
   font-size: 13.5px;
   font-weight: 520;
@@ -451,7 +451,7 @@
 }
 
 .gm-field--date .gm-input {
-  padding-top: 14px;
+  padding-top: 12px;
   cursor: pointer;
 }
 
@@ -636,7 +636,9 @@
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
 }
-
+.gd-scheduls{
+  max-height: min(35vh, 340px);
+}
 
 
 .gm-scheduleCard {

@@ -464,7 +464,7 @@ export default function ModalDocente({
                   )}
 
                   {disponibilidades.length > 0 && (
-                    <div className="gm-scheduleList">
+                    <div className="gm-scheduleList gd-scheduls">
                       {disponibilidades.map((bloque, index) => (
                         <article
                           className="gm-scheduleCard"
