@@ -877,3 +877,194 @@
     text-align:left;
   }
 }
+
+/* =========================================================
+   FIX RESPONSIVE — CONFIGURACION FORMULARIO
+   Evita que el contenido quede cortado en celular y fuerza
+   una lectura vertical completa sin scroll horizontal.
+   Solo aplica en tablet/celular para no tocar monitor.
+========================================================= */
+
+@media (max-width: 820px){
+  .cfgFormPage.mov-page{
+    width:100%;
+    max-width:100%;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    padding:12px;
+    overflow:visible !important;
+    display:block !important;
+  }
+
+  .cfgFormCardRoot.mov-card{
+    width:100%;
+    max-width:100%;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    overflow:visible !important;
+    display:block !important;
+  }
+
+  .cfgFormHead{
+    width:100%;
+    max-width:100%;
+  }
+
+  .cfgFormTitleBox,
+  .cfgFormSectionTitle,
+  .cfgFormTitleBox .mov-card__hint{
+    min-width:0;
+    max-width:100%;
+    overflow-wrap:anywhere;
+  }
+
+  .cfgFormContent{
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    min-height:0;
+    height:auto !important;
+    max-height:none !important;
+    grid-template-columns:minmax(0, 1fr) !important;
+    display:flex !important;
+    flex-direction:column !important;
+    gap:12px;
+    padding:12px;
+    overflow:visible !important;
+    overflow-x:hidden !important;
+  }
+
+  .cfgFormContent > *,
+  .cfgFormPanel,
+  .cfgFormPanel--main,
+  .cfgFormSide,
+  .cfgFormPreview,
+  .cfgFormTip{
+    width:100%;
+    max-width:100%;
+    min-width:0;
+  }
+
+  .cfgFormPanel--main{
+    order:1;
+    display:block;
+  }
+
+  .cfgFormSide{
+    order:2;
+    display:flex !important;
+    flex-direction:column !important;
+    gap:12px;
+  }
+
+  .cfgFormDateRow{
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    grid-template-columns:minmax(0, 1fr) minmax(0, .48fr) minmax(0, .48fr);
+  }
+
+  .cfgFormDateRow .cfgFormFloating:first-child{
+    grid-column:1 / -1;
+  }
+
+  .cfgFormInput.cc-input,
+  .cfgFormSelect,
+  .cfgFormTextarea{
+    min-width:0;
+    max-width:100%;
+  }
+
+  .cfgFormPreviewRow span{
+    min-width:0;
+    white-space:normal;
+    overflow-wrap:anywhere;
+  }
+}
+
+@media (max-width: 520px){
+  .cfgFormPage.mov-page{
+    padding:8px;
+  }
+
+  .cfgFormHead,
+  .cfgFormContent{
+    padding:10px;
+  }
+
+  .cfgFormPanelHead,
+  .cfgFormGrid,
+  .cfgFormPreviewList,
+  .cfgFormTip{
+    padding-left:12px;
+    padding-right:12px;
+  }
+
+  .cfgFormDateRow{
+    grid-template-columns:1fr !important;
+  }
+
+  .cfgFormPreviewRow{
+    grid-template-columns:1fr !important;
+    gap:5px;
+  }
+
+  .cfgFormPreviewRow span,
+  .cfgFormPreviewRow em{
+    justify-self:start;
+    text-align:left;
+  }
+
+  .cfgFormActionsMobile{
+    padding:0 12px 12px;
+  }
+}
+
+/* =========================================================
+   AJUSTE RESPONSIVE — Botón Volver debajo del estado
+   Solo afecta tablet/celular. La vista monitor queda igual.
+========================================================= */
+
+@media (max-width: 820px){
+  .cfgFormHeadActions{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    width:100%;
+    gap:10px;
+  }
+
+  .cfgFormHeadActions .cfgFormHeadBtn{
+    width:100%;
+    min-width:0;
+    justify-content:center;
+  }
+
+  .cfgFormHeadActions .cfgFormHeadBtn[type="submit"]{
+    display:none !important;
+  }
+
+  .cfgFormActionsMobile{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    gap:10px;
+    padding:0 14px 14px;
+  }
+
+  .cfgFormActionsMobile .mov-btn[type="button"]{
+    display:none !important;
+  }
+
+  .cfgFormActionsMobile .mov-btn[type="submit"]{
+    width:100%;
+    min-width:0;
+    min-height:42px;
+  }
+}
+
+@media (max-width: 520px){
+  .cfgFormActionsMobile{
+    padding:0 12px 12px;
+  }
+}

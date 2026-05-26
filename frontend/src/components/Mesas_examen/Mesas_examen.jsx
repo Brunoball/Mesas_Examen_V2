@@ -21,6 +21,7 @@ import "../Global/Global_css/roots.css";
 import "../Global/Global_css/Global_Section.css";
 import "../Global/Global_css/Global_DivTable.css";
 import "./Mesas_examen.css";
+import "../Global/Global_css/Global_MesasResponsive.css";
 import Principal, { MesasShellContext } from "../Principal/Principal";
 import { useMesasExamen } from "./hooks/useMesasExamen";
 import ModalCrearMesa from "./modales/ModalCrearMesa";
