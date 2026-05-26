@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { previasApi } from '../api/previasApi.js';
-import { usePaginacion } from '../../_shared/hooks/usePaginacion.js';
+import { previasApi } from '../api/previasApi';
+import { usePaginacion } from '../../_shared/hooks/usePaginacion';
 
 const CONDICIONES_BASE = [
   { id_condicion: 1, condicion: 'COLOQUIO' },
@@ -121,6 +121,11 @@ export function usePrevias() {
   const [busqueda, setBusquedaState] = useState('');
   const [busquedaDebounced, setBusquedaDebounced] = useState('');
   const [vista, setVista] = useState('activas');
+  const [filtrosPrevias, setFiltrosPrevias] = useState({
+    idCondicion: '',
+    idCurso: '',
+    idDivision: '',
+  });
 
   const paginacion = usePaginacion(100);
 
@@ -192,10 +197,17 @@ export function usePrevias() {
       const activo = vista === 'bajas' ? 0 : 1;
       const filtros = { activo };
       const busquedaLimpia = busquedaDebounced.trim();
+      const idCondicion = Number(filtrosPrevias.idCondicion || 0);
+      const idCurso = Number(filtrosPrevias.idCurso || 0);
+      const idDivision = Number(filtrosPrevias.idDivision || 0);
 
       if (busquedaLimpia !== '') {
         filtros.busqueda = busquedaLimpia;
       }
+
+      if (idCondicion > 0) filtros.id_condicion = idCondicion;
+      if (idCurso > 0) filtros.materia_id_curso = idCurso;
+      if (idDivision > 0) filtros.materia_id_division = idDivision;
 
       const res = await previasApi.listar(
         paginacion.pagina,
@@ -214,7 +226,7 @@ export function usePrevias() {
     } finally {
       setLoading(false);
     }
-  }, [vista, busquedaDebounced, paginacion.pagina, paginacion.porPagina, mostrarMensaje]);
+  }, [vista, busquedaDebounced, filtrosPrevias, paginacion.pagina, paginacion.porPagina, mostrarMensaje]);
 
   useEffect(() => {
     cargarCatalogos();
@@ -237,18 +249,42 @@ export function usePrevias() {
     setBusquedaState(value);
   }
 
+  function setFiltroPrevia(campo, valor) {
+    paginacion.setPagina(1);
+    setFiltrosPrevias((prev) => ({
+      ...prev,
+      [campo]: valor,
+    }));
+  }
+
+  function limpiarFiltrosPrevias() {
+    paginacion.setPagina(1);
+    setFiltrosPrevias({
+      idCondicion: '',
+      idCurso: '',
+      idDivision: '',
+    });
+  }
+
   function cambiarVista(nuevaVista) {
     paginacion.setPagina(1);
     setVista(nuevaVista);
     setBusquedaState('');
     setBusquedaDebounced('');
+    limpiarFiltrosPrevias();
   }
+
+  const hayFiltrosPrevias = useMemo(() => (
+    Number(filtrosPrevias.idCondicion || 0) > 0 ||
+    Number(filtrosPrevias.idCurso || 0) > 0 ||
+    Number(filtrosPrevias.idDivision || 0) > 0
+  ), [filtrosPrevias]);
 
   const conteo = useMemo(() => ({
     totalRegistros: Number(paginacion.totalRegistros || 0),
     totalPagina: previasBase.length,
-    totalFiltrados: busquedaDebounced.trim() !== '' ? Number(paginacion.totalRegistros || 0) : previasBase.length,
-  }), [paginacion.totalRegistros, previasBase.length, busquedaDebounced]);
+    totalFiltrados: (busquedaDebounced.trim() !== '' || hayFiltrosPrevias) ? Number(paginacion.totalRegistros || 0) : previasBase.length,
+  }), [paginacion.totalRegistros, previasBase.length, busquedaDebounced, hayFiltrosPrevias]);
 
   async function obtener(idPrevia) {
     try {
@@ -423,6 +459,23 @@ export function usePrevias() {
     }
   }
 
+  async function obtenerTodasParaExportar() {
+    const activo = vista === 'bajas' ? 0 : 1;
+    const filtros = {};
+    const busquedaLimpia = busquedaDebounced.trim();
+    const idCondicion = Number(filtrosPrevias.idCondicion || 0);
+    const idCurso = Number(filtrosPrevias.idCurso || 0);
+    const idDivision = Number(filtrosPrevias.idDivision || 0);
+
+    if (busquedaLimpia !== '') filtros.busqueda = busquedaLimpia;
+    if (idCondicion > 0) filtros.id_condicion = idCondicion;
+    if (idCurso > 0) filtros.materia_id_curso = idCurso;
+    if (idDivision > 0) filtros.materia_id_division = idDivision;
+
+    const res = await previasApi.listarTodos(activo, filtros);
+    return Array.isArray(res.data) ? res.data : [];
+  }
+
   return {
     previas: previasBase,
     previasBase,
@@ -436,6 +489,10 @@ export function usePrevias() {
     mostrarMensaje,
     busqueda,
     setBusqueda,
+    filtrosPrevias,
+    setFiltroPrevia,
+    limpiarFiltrosPrevias,
+    hayFiltrosPrevias,
     vista,
     cambiarVista,
     conteo,
@@ -451,5 +508,6 @@ export function usePrevias() {
     descargarPlantillaImportacion,
     previsualizarPreviasExcel,
     importarPreviasExcel,
+    obtenerTodasParaExportar,
   };
 }

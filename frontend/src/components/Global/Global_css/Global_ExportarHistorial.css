@@ -299,3 +299,21 @@
     width:100%;
   }
 }
+
+.global-exportHistorial-groupTitle{
+  margin:18px 2px 8px;
+  color:var(--balto-ink, #3A2E2B);
+  font-size:13px;
+  font-weight:900;
+  letter-spacing:.02em;
+  text-transform:uppercase;
+}
+
+.global-exportHistorial-options--scope .global-exportHistorial-option{
+  min-height:96px;
+}
+
+.global-exportHistorial-icon.is-scope{
+  background:rgba(36,74,145,.10);
+  color:#244a91;
+}

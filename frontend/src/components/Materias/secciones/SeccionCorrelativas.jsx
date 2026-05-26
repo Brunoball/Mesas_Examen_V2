@@ -67,6 +67,15 @@ const SeccionCorrelativas = ({
   onEditar,
   onEliminar,
   headerFilters,
+  exportButton,
+  totalRegistros = correlativas.length,
+  totalReferencia = correlativasFiltradas.length,
+  totalVisible = correlativasFiltradas.length,
+  hayFiltrosActivos = false,
+  pagina = 1,
+  totalPaginas = 1,
+  onAnterior,
+  onSiguiente,
 }) => {
   return (
     <section className="materias-card subsection-card mov-card mov-card--table">
@@ -77,7 +86,7 @@ const SeccionCorrelativas = ({
               <FontAwesomeIcon icon={faDiagramProject} /> Materias · Correlativas
             </div>
             <div className="mov-card__hint">
-              Total correlativas: <b>{correlativas.length}</b> · Visibles: <b>{correlativasFiltradas.length}</b>
+              Mostrando <b>{totalVisible}</b> de <b>{totalReferencia}</b> correlatividades
             </div>
           </div>
 
@@ -85,6 +94,7 @@ const SeccionCorrelativas = ({
         </div>
 
         <div className="mov-card__actions materias-actionsHead">
+          {exportButton}
 
           <button className="mov-btn mov-btn--primary" type="button" onClick={onNueva}>
             <FontAwesomeIcon icon={faPlus} /> Nueva correlatividad
@@ -172,6 +182,37 @@ const SeccionCorrelativas = ({
               </>
             )}
           </div>
+        </div>
+      </div>
+
+      <div className="materias-footer">
+        <span>
+          Registros únicos cargados: <strong>{totalRegistros}</strong>
+        </span>
+        {hayFiltrosActivos && (
+          <span>
+            Coincidencias encontradas: <strong>{totalReferencia}</strong>
+          </span>
+        )}
+
+        <div className="materias-pagination">
+          <button
+            type="button"
+            className="mov-btn mov-btn--ghost materias-pageBtn"
+            disabled={pagina <= 1 || cargando}
+            onClick={onAnterior}
+          >
+            Anterior
+          </button>
+          <span>Página {pagina} / {totalPaginas}</span>
+          <button
+            type="button"
+            className="mov-btn mov-btn--ghost materias-pageBtn"
+            disabled={pagina >= totalPaginas || cargando}
+            onClick={onSiguiente}
+          >
+            Siguiente
+          </button>
         </div>
       </div>
     </section>

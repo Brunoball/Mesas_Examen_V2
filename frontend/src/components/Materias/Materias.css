@@ -282,6 +282,22 @@
   font-weight:620;
 }
 
+.materias-pagination{
+  margin-left:auto;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+  color:var(--mov-muted);
+}
+
+.materias-pageBtn{
+  height:28px;
+  padding:0 12px;
+  font-size:12px;
+  border-radius:10px;
+}
+
 .materias-alerta{
   margin:0;
   flex:0 0 auto;

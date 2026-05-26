@@ -1,5 +1,5 @@
 // src/components/Materias/Materias.jsx
-import React, { useContext, useEffect } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -26,6 +26,8 @@ import ModalCorrelativa from "./modales/ModalCorrelativa";
 import ModalTaller from "./modales/ModalTaller";
 import ModalArea from "./modales/ModalArea";
 import ModalEliminarGlobal from "../Global/Modales/ModalEliminarGlobal";
+import ModalExportarGlobal from "../Global/Modales/ModalExportarGlobal.jsx";
+import BotonExportarHistorialGlobal from "../Global/Botones/BotonExportarHistorialGlobal.jsx";
 import SeccionCorrelativas from "./secciones/SeccionCorrelativas";
 import SeccionTalleres from "./secciones/SeccionTalleres";
 import SeccionAreas from "./secciones/SeccionAreas";
@@ -47,6 +49,43 @@ const MATERIAS_COLUMNS = [
 ];
 
 const SKELETON_WIDTHS = ["74%", "58%", "54%", "52%", "38%", "46%", "42%"];
+
+const MATERIAS_POR_PAGINA = 100;
+
+const MATERIAS_EXPORT_COLUMNS = [
+  { label: "Materia", value: (item) => safeText(item.materia) },
+  { label: "Área", value: (item) => safeText(item.areas) },
+  { label: "Cursos", value: (item) => safeText(item.cursos) },
+  { label: "Talleres", value: (item) => safeText(item.talleres) },
+  { label: "Correlativas", value: (item) => item.cantidad_correlativas || 0 },
+  { label: "Estado", value: (item) => (Number(item.activo) === 1 ? "ACTIVA" : "INACTIVA") },
+];
+
+const AREAS_EXPORT_COLUMNS = [
+  { label: "Área", value: (item) => safeText(item.area) },
+  { label: "Cantidad materias", value: (item) => item.cantidad_materias || 0 },
+  { label: "Materias incluidas", value: (item) => safeText(item.materias) },
+  { label: "Estado", value: (item) => (Number(item.activo) === 1 ? "ACTIVA" : "INACTIVA") },
+];
+
+const CORRELATIVAS_EXPORT_COLUMNS = [
+  { label: "Materia posterior", value: (item) => safeText(item.materia) },
+  { label: "Curso posterior", value: (item) => safeText(item.curso) },
+  { label: "Correlativa anterior", value: (item) => safeText(item.materia_relacionada) },
+  { label: "Curso anterior", value: (item) => safeText(item.curso_relacionada) },
+  { label: "Tipo", value: (item) => safeText(item.tipo) },
+  { label: "Bloqueos", value: (item) => safeText(item.bloqueos) },
+  { label: "Estado", value: (item) => (Number(item.activo) === 1 ? "ACTIVA" : "INACTIVA") },
+];
+
+const TALLERES_EXPORT_COLUMNS = [
+  { label: "Taller", value: (item) => safeText(item.taller) },
+  { label: "Curso", value: (item) => safeText(item.curso) },
+  { label: "División", value: (item) => safeText(item.division) },
+  { label: "Cantidad cátedras", value: (item) => item.cantidad_materias || 0 },
+  { label: "Cátedras incluidas", value: (item) => safeText(item.materias) },
+  { label: "Estado", value: (item) => (Number(item.activo) === 1 ? "ACTIVO" : "INACTIVO") },
+];
 
 function safeText(value) {
   const text = String(value ?? "").trim();
@@ -71,6 +110,23 @@ function normalizarTipoToast(tipo) {
 function obtenerDuracionToast(tipo) {
   const tipoToast = normalizarTipoToast(tipo);
   return ["error", "advertencia", "alerta"].includes(tipoToast) ? undefined : 3800;
+}
+
+
+function calcularInfoPagina(registros = [], paginaActual = 1) {
+  const total = Array.isArray(registros) ? registros.length : 0;
+  const totalPaginas = Math.max(1, Math.ceil(total / MATERIAS_POR_PAGINA));
+  const pagina = Math.min(Math.max(1, Number(paginaActual || 1)), totalPaginas);
+  const inicio = (pagina - 1) * MATERIAS_POR_PAGINA;
+  const visibles = (Array.isArray(registros) ? registros : []).slice(inicio, inicio + MATERIAS_POR_PAGINA);
+
+  return {
+    pagina,
+    totalPaginas,
+    totalReferencia: total,
+    totalVisible: visibles.length,
+    registrosVisibles: visibles,
+  };
 }
 
 function renderSkeletonRow(index) {
@@ -116,6 +172,13 @@ function renderSkeletonRow(index) {
 const Materias = () => {
   const location = useLocation();
   const dentroDeShell = useContext(MesasShellContext);
+  const [paginasPorSeccion, setPaginasPorSeccion] = useState({
+    materias: 1,
+    areas: 1,
+    correlativas: 1,
+    talleres: 1,
+  });
+  const [modalExportar, setModalExportar] = useState(false);
 
   const state = useMaterias();
 
@@ -178,6 +241,148 @@ const Materias = () => {
   const listaMaterias = Array.isArray(materias) ? materias : [];
   const listaMateriasFiltradas = Array.isArray(materiasFiltradas) ? materiasFiltradas : [];
   const totalActivas = listaMaterias.filter((m) => Number(m.activo) === 1).length;
+
+  const hayFiltrosMaterias = Boolean(valorBusqueda.trim() || soloActivas);
+
+  useEffect(() => {
+    setPaginasPorSeccion((prev) => ({
+      ...prev,
+      [seccionActiva]: 1,
+    }));
+  }, [seccionActiva, valorBusqueda, soloActivas]);
+
+  const infoMaterias = useMemo(
+    () => calcularInfoPagina(listaMateriasFiltradas, paginasPorSeccion.materias),
+    [listaMateriasFiltradas, paginasPorSeccion.materias]
+  );
+  const infoAreas = useMemo(
+    () => calcularInfoPagina(areasFiltradas, paginasPorSeccion.areas),
+    [areasFiltradas, paginasPorSeccion.areas]
+  );
+  const infoCorrelativas = useMemo(
+    () => calcularInfoPagina(correlativasFiltradas, paginasPorSeccion.correlativas),
+    [correlativasFiltradas, paginasPorSeccion.correlativas]
+  );
+  const infoTalleres = useMemo(
+    () => calcularInfoPagina(talleresFiltrados, paginasPorSeccion.talleres),
+    [talleresFiltrados, paginasPorSeccion.talleres]
+  );
+
+  const cambiarPagina = (seccion, delta) => {
+    const infoPorSeccion = {
+      materias: infoMaterias,
+      areas: infoAreas,
+      correlativas: infoCorrelativas,
+      talleres: infoTalleres,
+    };
+    const info = infoPorSeccion[seccion] || infoMaterias;
+
+    setPaginasPorSeccion((prev) => ({
+      ...prev,
+      [seccion]: Math.min(Math.max(1, Number(prev[seccion] || 1) + delta), info.totalPaginas),
+    }));
+  };
+
+  const exportMetaPorSeccion = {
+    materias: {
+      titulo: 'Mesas · Materias',
+      nombreArchivo: 'materias',
+      registros: infoMaterias.registrosVisibles,
+      registrosTodos: listaMateriasFiltradas,
+      columnas: MATERIAS_EXPORT_COLUMNS,
+      totalVisible: infoMaterias.totalVisible,
+      totalTodos: infoMaterias.totalReferencia,
+      pagina: infoMaterias.pagina,
+      totalPaginas: infoMaterias.totalPaginas,
+      descripcion: 'materias',
+    },
+    areas: {
+      titulo: 'Materias · Áreas',
+      nombreArchivo: 'materias_areas',
+      registros: infoAreas.registrosVisibles,
+      registrosTodos: areasFiltradas,
+      columnas: AREAS_EXPORT_COLUMNS,
+      totalVisible: infoAreas.totalVisible,
+      totalTodos: infoAreas.totalReferencia,
+      pagina: infoAreas.pagina,
+      totalPaginas: infoAreas.totalPaginas,
+      descripcion: 'áreas',
+    },
+    correlativas: {
+      titulo: 'Materias · Correlativas',
+      nombreArchivo: 'materias_correlativas',
+      registros: infoCorrelativas.registrosVisibles,
+      registrosTodos: correlativasFiltradas,
+      columnas: CORRELATIVAS_EXPORT_COLUMNS,
+      totalVisible: infoCorrelativas.totalVisible,
+      totalTodos: infoCorrelativas.totalReferencia,
+      pagina: infoCorrelativas.pagina,
+      totalPaginas: infoCorrelativas.totalPaginas,
+      descripcion: 'correlatividades',
+    },
+    talleres: {
+      titulo: 'Materias · Talleres',
+      nombreArchivo: 'materias_talleres',
+      registros: infoTalleres.registrosVisibles,
+      registrosTodos: talleresFiltrados,
+      columnas: TALLERES_EXPORT_COLUMNS,
+      totalVisible: infoTalleres.totalVisible,
+      totalTodos: infoTalleres.totalReferencia,
+      pagina: infoTalleres.pagina,
+      totalPaginas: infoTalleres.totalPaginas,
+      descripcion: 'talleres',
+    },
+  };
+
+  const exportMetaActual = exportMetaPorSeccion[seccionActiva] || exportMetaPorSeccion.materias;
+
+  const seccionesExportActuales = [{
+    titulo: exportMetaActual.titulo,
+    subtitulo: `Página actual: ${exportMetaActual.pagina} de ${exportMetaActual.totalPaginas} · Registros visibles: ${exportMetaActual.totalVisible}`,
+    columnas: exportMetaActual.columnas,
+    registros: exportMetaActual.registros,
+  }];
+
+  const seccionesExportTodos = [
+    {
+      titulo: 'Mesas · Materias',
+      subtitulo: `Todos los registros filtrados · Total: ${listaMateriasFiltradas.length}`,
+      columnas: MATERIAS_EXPORT_COLUMNS,
+      registros: listaMateriasFiltradas,
+    },
+    {
+      titulo: 'Materias · Áreas',
+      subtitulo: `Todos los registros filtrados · Total: ${areasFiltradas.length}`,
+      columnas: AREAS_EXPORT_COLUMNS,
+      registros: areasFiltradas,
+    },
+    {
+      titulo: 'Materias · Correlativas',
+      subtitulo: `Todos los registros filtrados · Total: ${correlativasFiltradas.length}`,
+      columnas: CORRELATIVAS_EXPORT_COLUMNS,
+      registros: correlativasFiltradas,
+    },
+    {
+      titulo: 'Materias · Talleres',
+      subtitulo: `Todos los registros filtrados · Total: ${talleresFiltrados.length}`,
+      columnas: TALLERES_EXPORT_COLUMNS,
+      registros: talleresFiltrados,
+    },
+  ];
+
+  const totalTodosExportar = seccionesExportTodos.reduce((acc, seccion) => acc + seccion.registros.length, 0);
+
+  function renderBotonExportar() {
+    return (
+      <BotonExportarHistorialGlobal
+        className="mov-btn mov-btn--secondary"
+        label="Exportar"
+        icon="excel"
+        disabled={cargando || totalTodosExportar === 0}
+        onClick={() => setModalExportar(true)}
+      />
+    );
+  }
 
   const getConfirmacionConfig = () => {
     const item = confirmacion?.item || {};
@@ -316,11 +521,20 @@ const Materias = () => {
         <SeccionCorrelativas
           cargando={cargando}
           correlativas={correlativas}
-          correlativasFiltradas={correlativasFiltradas}
+          correlativasFiltradas={infoCorrelativas.registrosVisibles}
           onNueva={() => setModalCorrelativa({ abierto: true, item: null })}
           onEditar={(item) => setModalCorrelativa({ abierto: true, item })}
           onEliminar={eliminarCorrelativa}
           headerFilters={renderFiltrosGlobales()}
+          exportButton={renderBotonExportar()}
+          totalRegistros={correlativas.length}
+          totalReferencia={infoCorrelativas.totalReferencia}
+          totalVisible={infoCorrelativas.totalVisible}
+          hayFiltrosActivos={hayFiltrosMaterias}
+          pagina={infoCorrelativas.pagina}
+          totalPaginas={infoCorrelativas.totalPaginas}
+          onAnterior={() => cambiarPagina("correlativas", -1)}
+          onSiguiente={() => cambiarPagina("correlativas", 1)}
         />
       );
     }
@@ -330,11 +544,20 @@ const Materias = () => {
         <SeccionTalleres
           cargando={cargando}
           talleres={talleres}
-          talleresFiltrados={talleresFiltrados}
+          talleresFiltrados={infoTalleres.registrosVisibles}
           onNuevo={() => setModalTaller({ abierto: true, item: null })}
           onEditar={(item) => setModalTaller({ abierto: true, item })}
           onEliminar={eliminarTaller}
           headerFilters={renderFiltrosGlobales()}
+          exportButton={renderBotonExportar()}
+          totalRegistros={talleres.length}
+          totalReferencia={infoTalleres.totalReferencia}
+          totalVisible={infoTalleres.totalVisible}
+          hayFiltrosActivos={hayFiltrosMaterias}
+          pagina={infoTalleres.pagina}
+          totalPaginas={infoTalleres.totalPaginas}
+          onAnterior={() => cambiarPagina("talleres", -1)}
+          onSiguiente={() => cambiarPagina("talleres", 1)}
         />
       );
     }
@@ -344,11 +567,20 @@ const Materias = () => {
         <SeccionAreas
           cargando={cargando}
           areas={areas}
-          areasFiltradas={areasFiltradas}
+          areasFiltradas={infoAreas.registrosVisibles}
           onNueva={() => setModalArea({ abierto: true, item: null })}
           onEditar={(item) => setModalArea({ abierto: true, item })}
           onEliminar={eliminarArea}
           headerFilters={renderFiltrosGlobales()}
+          exportButton={renderBotonExportar()}
+          totalRegistros={areas.length}
+          totalReferencia={infoAreas.totalReferencia}
+          totalVisible={infoAreas.totalVisible}
+          hayFiltrosActivos={hayFiltrosMaterias}
+          pagina={infoAreas.pagina}
+          totalPaginas={infoAreas.totalPaginas}
+          onAnterior={() => cambiarPagina("areas", -1)}
+          onSiguiente={() => cambiarPagina("areas", 1)}
         />
       );
     }
@@ -362,7 +594,7 @@ const Materias = () => {
                 <FontAwesomeIcon icon={faBook} /> Materias · Materias
               </div>
               <div className="mov-card__hint">
-                Mostrando <b>{listaMateriasFiltradas.length}</b> de <b>{listaMaterias.length}</b> materias
+                Mostrando <b>{infoMaterias.totalVisible}</b> de <b>{infoMaterias.totalReferencia}</b> materias
               </div>
             </div>
 
@@ -370,6 +602,8 @@ const Materias = () => {
           </div>
 
           <div className="mov-card__actions materias-actionsHead">
+            {renderBotonExportar()}
+
             <button
               className="mov-btn mov-btn--primary"
               onClick={() => setModalMateria({ abierto: true, item: null })}
@@ -409,7 +643,7 @@ const Materias = () => {
                 </div>
               ) : (
                 <>
-                  {listaMateriasFiltradas.map((m) => (
+                  {infoMaterias.registrosVisibles.map((m) => (
                     <div
                       key={m.id_materia}
                       className="mov-gridTable mov-gridTable--row global-divTable__row materias-gridRow"
@@ -477,7 +711,7 @@ const Materias = () => {
                     </div>
                   ))}
 
-                  {listaMateriasFiltradas.length === 0 && (
+                  {infoMaterias.registrosVisibles.length === 0 && (
                     <div className="cc-emptyState materias-emptyState">
                       <FontAwesomeIcon icon={faBoxOpen} className="cc-emptyIcon" />
                       <div className="cc-emptyText">No hay materias para mostrar.</div>
@@ -491,14 +725,38 @@ const Materias = () => {
 
         <div className="materias-footer">
           <span>
-            Total: <strong>{listaMaterias.length}</strong>
+            Registros únicos cargados: <strong>{listaMaterias.length}</strong>
           </span>
           <span>
             Activas: <strong>{totalActivas}</strong>
           </span>
-          <span>
-            Visibles: <strong>{listaMateriasFiltradas.length}</strong>
-          </span>
+          {hayFiltrosMaterias && (
+            <span>
+              Coincidencias encontradas: <strong>{infoMaterias.totalReferencia}</strong>
+            </span>
+          )}
+
+          <div className="materias-pagination">
+            <button
+              type="button"
+              className="mov-btn mov-btn--ghost materias-pageBtn"
+              disabled={infoMaterias.pagina <= 1 || cargando}
+              onClick={() => cambiarPagina("materias", -1)}
+            >
+              Anterior
+            </button>
+
+            <span>Página {infoMaterias.pagina} / {infoMaterias.totalPaginas}</span>
+
+            <button
+              type="button"
+              className="mov-btn mov-btn--ghost materias-pageBtn"
+              disabled={infoMaterias.pagina >= infoMaterias.totalPaginas || cargando}
+              onClick={() => cambiarPagina("materias", 1)}
+            >
+              Siguiente
+            </button>
+          </div>
         </div>
       </section>
     );
@@ -567,6 +825,29 @@ const Materias = () => {
           onToast={mostrarMensaje}
         />
       )}
+
+      <ModalExportarGlobal
+        abierto={modalExportar}
+        title={`Exportar ${exportMetaActual.descripcion}`}
+        subtitle="Elegí si querés exportar solo la pestaña actual o todos los registros de todas las pestañas."
+        tituloArchivo="Mesas · Materias"
+        nombreArchivo="materias"
+        seccionesActuales={seccionesExportActuales}
+        seccionesTodos={seccionesExportTodos}
+        cantidadActual={exportMetaActual.totalVisible}
+        totalTodos={totalTodosExportar}
+        totalLabelSingular="registro disponible"
+        totalLabelPlural="registros disponibles"
+        subtituloArchivoActual={`Pestaña actual: ${exportMetaActual.descripcion} · Página ${exportMetaActual.pagina} de ${exportMetaActual.totalPaginas}`}
+        subtituloArchivoTodos={`Todas las pestañas del módulo materias · Total: ${totalTodosExportar} registros`}
+        alcanceActualLabel="Exportar solo actual"
+        alcanceActualDescription="Descarga solo la página visible de la pestaña actual."
+        alcanceTodosLabel="Exportar todos los registros"
+        alcanceTodosDescription="Descarga juntas las pestañas Materias, Áreas, Correlativas y Talleres, respetando búsqueda y filtros."
+        onClose={() => setModalExportar(false)}
+        onSuccess={(texto) => mostrarMensaje('exito', texto)}
+        onError={(texto) => mostrarMensaje('error', texto)}
+      />
 
       <ModalEliminarGlobal
         open={Boolean(confirmacion?.abierto)}

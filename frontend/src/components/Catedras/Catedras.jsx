@@ -12,6 +12,8 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { useCatedras } from './hooks/useCatedras';
 import ModalAsignarDocente from './modales/ModalAsignarDocente';
+import ModalExportarGlobal from '../Global/Modales/ModalExportarGlobal.jsx';
+import BotonExportarHistorialGlobal from '../Global/Botones/BotonExportarHistorialGlobal.jsx';
 import '../Global/Global_css/roots.css';
 import '../Global/Global_css/Global_Section.css';
 import '../Global/Global_css/Global_DivTable.css';
@@ -32,6 +34,14 @@ const CATEDRAS_COLUMNS = [
 ];
 
 const SKELETON_WIDTHS = ['54%', '48%', '76%', '68%', '58%', '40%'];
+
+const CATEDRAS_EXPORT_COLUMNS = [
+  { label: 'Curso', value: (item) => safeText(item.nombre_curso) },
+  { label: 'División', value: (item) => safeText(item.nombre_division) },
+  { label: 'Materia', value: (item) => safeText(item.materia) },
+  { label: 'Docente', value: (item) => safeText(item.docente) },
+  { label: 'Cargo', value: (item) => safeText(item.cargo) },
+];
 
 function safeText(value) {
   const text = String(value ?? '').trim();
@@ -89,16 +99,19 @@ export default function Catedras() {
     loading,
     error,
     mensaje,
+    mostrarMensaje,
     busqueda,
     setBusqueda,
     filtros,
     actualizarFiltro,
     paginacion,
     reload,
+    obtenerTodasParaExportar,
     asignarDocente,
   } = useCatedras();
 
   const [modalAsignar, setModalAsignar] = useState({ abierto: false, item: null });
+  const [modalExportar, setModalExportar] = useState(false);
 
   function abrirModalAsignar(item) {
     setModalAsignar({ abierto: true, item });
@@ -116,6 +129,7 @@ export default function Catedras() {
 
   const listaCatedras = Array.isArray(catedras) ? catedras : [];
   const totalVisible = listaCatedras.length;
+  const totalReferencia = Number(paginacion.totalRegistros || totalVisible);
   const hayFiltrosActivos = Boolean(
     busqueda.trim() ||
     filtros.id_curso ||
@@ -141,7 +155,7 @@ export default function Catedras() {
                 Mesas · Cátedras
               </div>
               <div className="mov-card__hint">
-                Mostrando <b>{totalVisible}</b> cátedras
+                Mostrando <b>{totalVisible}</b> de <b>{totalReferencia}</b> cátedras
               </div>
             </div>
 
@@ -209,10 +223,13 @@ export default function Catedras() {
           </div>
 
           <div className="mov-card__actions catedras-actionsHead">
-
-
-
-
+            <BotonExportarHistorialGlobal
+              className="mov-btn mov-btn--secondary"
+              label="Exportar"
+              icon="excel"
+              disabled={loading || totalVisible === 0}
+              onClick={() => setModalExportar(true)}
+            />
           </div>
         </div>
 
@@ -309,12 +326,12 @@ export default function Catedras() {
 
         <div className="catedras-footer">
           <span>
-            Registros: <strong>{paginacion.totalRegistros}</strong>
+            Registros únicos cargados: <strong>{paginacion.totalRegistros}</strong>
           </span>
 
           {hayFiltrosActivos && (
             <span>
-              Coincidencias visibles: <strong>{totalVisible}</strong>
+              Coincidencias encontradas: <strong>{paginacion.totalRegistros}</strong>
             </span>
           )}
 
@@ -341,6 +358,30 @@ export default function Catedras() {
           </div>
         </div>
       </section>
+
+      <ModalExportarGlobal
+        abierto={modalExportar}
+        title="Exportar cátedras"
+        subtitle="Elegí si querés exportar solo la página actual o todos los registros filtrados."
+        tituloArchivo="Mesas · Cátedras"
+        nombreArchivo="catedras"
+        columnas={CATEDRAS_EXPORT_COLUMNS}
+        registrosActuales={listaCatedras}
+        obtenerRegistrosTodos={obtenerTodasParaExportar}
+        cantidadActual={totalVisible}
+        totalTodos={paginacion.totalRegistros}
+        totalLabelSingular="cátedra disponible"
+        totalLabelPlural="cátedras disponibles"
+        subtituloArchivoActual={`Página actual: ${paginacion.pagina} de ${paginacion.totalPaginas} · Registros visibles: ${totalVisible}`}
+        subtituloArchivoTodos={`Todos los registros filtrados · Total: ${paginacion.totalRegistros}`}
+        alcanceActualLabel="Exportar solo actual"
+        alcanceActualDescription="Descarga únicamente las cátedras visibles en esta página."
+        alcanceTodosLabel="Exportar todos los registros"
+        alcanceTodosDescription="Descarga todas las cátedras que coinciden con los filtros actuales."
+        onClose={() => setModalExportar(false)}
+        onSuccess={(texto) => mostrarMensaje('success', texto)}
+        onError={(texto) => mostrarMensaje('error', texto)}
+      />
 
       {modalAsignar.abierto && (
         <ModalAsignarDocente

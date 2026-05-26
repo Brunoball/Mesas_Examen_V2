@@ -47,22 +47,26 @@ export function useCatedras() {
     }
   }, []);
 
+  const construirFiltrosBackend = useCallback(() => {
+    const filtrosBackend = limpiarFiltros({ ...filtros });
+    const busquedaLimpia = busquedaDebounced.trim();
+
+    if (busquedaLimpia !== '') {
+      filtrosBackend.busqueda = busquedaLimpia;
+    }
+
+    return filtrosBackend;
+  }, [busquedaDebounced, filtros]);
+
   const cargar = useCallback(async () => {
     setLoading(true);
     setError('');
 
     try {
-      const filtrosBackend = limpiarFiltros({ ...filtros });
-      const busquedaLimpia = busquedaDebounced.trim();
-
-      if (busquedaLimpia !== '') {
-        filtrosBackend.busqueda = busquedaLimpia;
-      }
-
       const res = await catedrasApi.listar(
         paginacion.pagina,
         paginacion.porPagina,
-        filtrosBackend
+        construirFiltrosBackend()
       );
 
       setCatedras(Array.isArray(res.data) ? res.data : []);
@@ -75,7 +79,7 @@ export function useCatedras() {
     } finally {
       setLoading(false);
     }
-  }, [busquedaDebounced, filtros, paginacion.pagina, paginacion.porPagina]);
+  }, [construirFiltrosBackend, paginacion.pagina, paginacion.porPagina]);
 
   useEffect(() => {
     cargarCatalogos();
@@ -124,12 +128,18 @@ export function useCatedras() {
     }
   }
 
+  async function obtenerTodasParaExportar() {
+    const res = await catedrasApi.listarTodos(construirFiltrosBackend());
+    return Array.isArray(res.data) ? res.data : [];
+  }
+
   return {
     catedras,
     catalogos,
     loading,
     error,
     mensaje,
+    mostrarMensaje,
     busqueda,
     setBusqueda,
     filtros,
@@ -137,6 +147,7 @@ export function useCatedras() {
     limpiarTodosFiltros,
     paginacion,
     reload: cargar,
+    obtenerTodasParaExportar,
     asignarDocente,
   };
 }

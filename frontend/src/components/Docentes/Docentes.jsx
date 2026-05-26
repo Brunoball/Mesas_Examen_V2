@@ -17,6 +17,8 @@ import { useDocentes } from './hooks/useDocentes.js';
 import ModalDocente from './modales/ModalDocente.jsx';
 import ModalInfoDocente from './modales/ModalInfoDocente.jsx';
 import ModalEliminarGlobal from '../Global/Modales/ModalEliminarGlobal.jsx';
+import ModalExportarGlobal from '../Global/Modales/ModalExportarGlobal.jsx';
+import BotonExportarHistorialGlobal from '../Global/Botones/BotonExportarHistorialGlobal.jsx';
 import Toast from '../Global/Toast';
 import '../Global/Global_css/roots.css';
 import '../Global/Global_css/Global_Section.css';
@@ -39,6 +41,16 @@ const DOCENTES_COLUMNS = [
 ];
 
 const SKELETON_WIDTHS = ['72%', '54%', '38%', '46%', '64%', '44%'];
+
+const DOCENTES_EXPORT_COLUMNS = [
+  { label: 'Docente', value: (item) => safeText(item.docente) },
+  { label: 'Cargo', value: (item) => safeText(item.cargo) },
+  { label: 'Cátedras', value: (item) => item.total_catedras || 0 },
+  { label: 'Disponibilidad', value: (item) => item.total_disponibilidades || 0 },
+  { label: 'Observación', value: (item) => safeText(item.observacion) },
+  { label: 'Registros unificados', value: (item) => item.cantidad_registros || 1 },
+  { label: 'IDs docente', value: (item) => safeText(item.ids_docentes_texto || item.id_docente) },
+];
 
 function safeText(value) {
   const text = String(value ?? '').trim();
@@ -107,6 +119,7 @@ export default function Docentes() {
   const dentroDeShell = useContext(MesasShellContext);
   const {
     docentes,
+    docentesFiltrados,
     catalogos,
     loading,
     mensaje,
@@ -128,6 +141,7 @@ export default function Docentes() {
   const [modalDocente, setModalDocente] = useState({ abierto: false, modo: 'crear', item: null });
   const [modalInfo, setModalInfo] = useState({ abierto: false, item: null, cargando: false });
   const [modalConfirmar, setModalConfirmar] = useState({ abierto: false, tipo: '', item: null });
+  const [modalExportar, setModalExportar] = useState(false);
 
   function abrirCrear() {
     setModalDocente({ abierto: true, modo: 'crear', item: null });
@@ -160,6 +174,7 @@ export default function Docentes() {
     if (modalConfirmar.tipo === 'eliminar') return eliminar(modalConfirmar.item, { silent: true });
     return { ok: false, mensaje: 'Operación inválida.' };
   }
+
 
   function obtenerConfigModalConfirmar() {
     const item = modalConfirmar.item || {};
@@ -300,6 +315,14 @@ export default function Docentes() {
           </div>
 
           <div className="mov-card__actions docentes-actionsHead">
+            <BotonExportarHistorialGlobal
+              className="mov-btn mov-btn--secondary"
+              label="Exportar"
+              icon="excel"
+              disabled={loading || totalVisible === 0}
+              onClick={() => setModalExportar(true)}
+            />
+
             <button type="button" className="mov-btn mov-btn--primary" onClick={abrirCrear}>
               <FontAwesomeIcon icon={faPlus} /> Agregar docente
             </button>
@@ -447,6 +470,30 @@ export default function Docentes() {
           </div>
         </div>
       </section>
+
+      <ModalExportarGlobal
+        abierto={modalExportar}
+        title="Exportar docentes"
+        subtitle="Elegí si querés exportar solo la página actual o todos los registros filtrados."
+        tituloArchivo="Mesas · Docentes"
+        nombreArchivo={`docentes_${vista}`}
+        columnas={DOCENTES_EXPORT_COLUMNS}
+        registrosActuales={docentes}
+        registrosTodos={Array.isArray(docentesFiltrados) ? docentesFiltrados : docentes}
+        cantidadActual={totalVisible}
+        totalTodos={conteo.totalFiltrados}
+        totalLabelSingular="docente disponible"
+        totalLabelPlural="docentes disponibles"
+        subtituloArchivoActual={`Vista: ${vista === 'bajas' ? 'docentes dados de baja' : 'docentes activos'} · Página actual: ${paginacion.pagina} de ${paginacion.totalPaginas} · Registros visibles: ${totalVisible}`}
+        subtituloArchivoTodos={`Vista: ${vista === 'bajas' ? 'docentes dados de baja' : 'docentes activos'} · Todos los registros filtrados · Total: ${conteo.totalFiltrados}`}
+        alcanceActualLabel="Exportar solo actual"
+        alcanceActualDescription="Descarga únicamente los docentes visibles en esta página."
+        alcanceTodosLabel="Exportar todos los registros"
+        alcanceTodosDescription="Descarga todos los docentes que coinciden con la búsqueda y el estado actual."
+        onClose={() => setModalExportar(false)}
+        onSuccess={(texto) => mostrarMensaje('exito', texto)}
+        onError={(texto) => mostrarMensaje('error', texto)}
+      />
 
       {modalDocente.abierto && (
         <ModalDocente

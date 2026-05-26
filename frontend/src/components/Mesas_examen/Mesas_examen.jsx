@@ -29,7 +29,7 @@ import ModalEliminarGlobal from "../Global/Modales/ModalEliminarGlobal";
 import Toast from "../Global/Toast";
 import ModalTituloPdfMesas from "./modales/exportar_pdf/ModalTituloPdfMesas";
 import { descargarPdfMesas } from "./modales/exportar_pdf/mesasPdfExporter";
-import ModalExportarHistorialGlobal from "../Global/Modales/ModalExportarHistorialGlobal";
+import ModalExportarHistorialGlobal from "../Global/Modales/ModalExportarGlobal";
 import BotonExportarHistorialGlobal from "../Global/Botones/BotonExportarHistorialGlobal";
 import TextoExpandibleGlobal from "../Global/Modales/TextoExpandibleGlobal";
 import {

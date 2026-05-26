@@ -68,6 +68,15 @@ const SeccionAreas = ({
   onEditar,
   onEliminar,
   headerFilters,
+  exportButton,
+  totalRegistros = areas.length,
+  totalReferencia = areasFiltradas.length,
+  totalVisible = areasFiltradas.length,
+  hayFiltrosActivos = false,
+  pagina = 1,
+  totalPaginas = 1,
+  onAnterior,
+  onSiguiente,
 }) => {
   return (
     <section className="materias-card subsection-card mov-card mov-card--table">
@@ -78,7 +87,7 @@ const SeccionAreas = ({
               <FontAwesomeIcon icon={faLayerGroup} /> Materias · Áreas
             </div>
             <div className="mov-card__hint">
-              Total áreas: <b>{areas.length}</b> · Visibles: <b>{areasFiltradas.length}</b>
+              Mostrando <b>{totalVisible}</b> de <b>{totalReferencia}</b> áreas
             </div>
           </div>
 
@@ -86,6 +95,7 @@ const SeccionAreas = ({
         </div>
 
         <div className="mov-card__actions materias-actionsHead">
+          {exportButton}
 
           <button className="mov-btn mov-btn--primary" type="button" onClick={onNueva}>
             <FontAwesomeIcon icon={faPlus} /> Nueva área
@@ -161,6 +171,37 @@ const SeccionAreas = ({
               </>
             )}
           </div>
+        </div>
+      </div>
+
+      <div className="materias-footer">
+        <span>
+          Registros únicos cargados: <strong>{totalRegistros}</strong>
+        </span>
+        {hayFiltrosActivos && (
+          <span>
+            Coincidencias encontradas: <strong>{totalReferencia}</strong>
+          </span>
+        )}
+
+        <div className="materias-pagination">
+          <button
+            type="button"
+            className="mov-btn mov-btn--ghost materias-pageBtn"
+            disabled={pagina <= 1 || cargando}
+            onClick={onAnterior}
+          >
+            Anterior
+          </button>
+          <span>Página {pagina} / {totalPaginas}</span>
+          <button
+            type="button"
+            className="mov-btn mov-btn--ghost materias-pageBtn"
+            disabled={pagina >= totalPaginas || cargando}
+            onClick={onSiguiente}
+          >
+            Siguiente
+          </button>
         </div>
       </div>
     </section>

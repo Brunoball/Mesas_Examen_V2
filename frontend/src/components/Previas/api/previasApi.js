@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from '../../_shared/api/apiClient.js';
+import { apiGet, apiPost } from '../../_shared/api/apiClient';
 
 const POR_PAGINA_MAXIMO = 100;
 const LIMITE_PAGINAS_SEGURIDAD = 150;
@@ -104,8 +104,7 @@ function limpiarFiltros(filtros = {}) {
 
 export const previasApi = {
   async catalogos() {
-    try {
-      const respuesta = await apiGet('previas_catalogos');
+    const normalizarRespuestaCatalogos = (respuesta) => {
       const data = obtenerDataCatalogo(respuesta);
 
       const cursos = normalizarLista(
@@ -136,19 +135,31 @@ export const previasApi = {
           cursos,
           divisiones,
           condiciones,
+          catedras: obtenerArrayDesdeVariantes(data, ['catedras', 'catedra']),
         },
       };
-    } catch (error) {
-      const condiciones = await previasApi.condiciones().catch(() => CONDICIONES_BASE);
+    };
 
-      return {
-        exito: true,
-        data: {
-          cursos: [],
-          divisiones: [],
-          condiciones,
-        },
-      };
+    try {
+      // Fuente principal: catálogo global compartido por todo el sistema.
+      return normalizarRespuestaCatalogos(await apiGet('global_obtener_listas'));
+    } catch (errorGlobal) {
+      try {
+        // Fallback defensivo para instalaciones viejas donde todavía exista el endpoint específico de previas.
+        return normalizarRespuestaCatalogos(await apiGet('previas_catalogos'));
+      } catch (errorPrevias) {
+        const condiciones = await previasApi.condiciones().catch(() => CONDICIONES_BASE);
+
+        return {
+          exito: true,
+          data: {
+            cursos: [],
+            divisiones: [],
+            condiciones,
+            catedras: [],
+          },
+        };
+      }
     }
   },
 

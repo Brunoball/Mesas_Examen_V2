@@ -39,14 +39,11 @@ const esFinDeSemana = (fecha) => {
   return diaSemana === 0 || diaSemana === 6;
 };
 
-const ajustarADiaHabil = (fecha) => {
+const sumarDiasLocal = (fecha, dias) => {
   const date = crearFechaLocal(fecha);
   if (!date) return "";
 
-  while (date.getDay() === 0 || date.getDay() === 6) {
-    date.setDate(date.getDate() + 1);
-  }
-
+  date.setDate(date.getDate() + dias);
   return formatearFechaLocal(date);
 };
 
@@ -70,11 +67,11 @@ const ModalCrearMesa = ({
 
   useEffect(() => {
     if (abierto && parametros) {
-      const inicioSugerido = ajustarADiaHabil(parametros.fecha_inicio_sugerida || "");
-      const finSugerido = ajustarADiaHabil(parametros.fecha_fin_sugerida || "");
+      const inicioActual = formatearFechaLocal(new Date());
+      const finTresDiasDespues = sumarDiasLocal(inicioActual, 3);
 
-      setFechaInicio(inicioSugerido);
-      setFechaFin(finSugerido && finSugerido >= inicioSugerido ? finSugerido : inicioSugerido);
+      setFechaInicio(inicioActual);
+      setFechaFin(finTresDiasDespues || inicioActual);
       setTipoArmado("area");
       setError("");
     }
