@@ -11,7 +11,7 @@
 .gdel-overlay{
   position:fixed;
   inset:0;
-  z-index:9999999999;
+  z-index:999999;
   display:flex;
   align-items:center;
   justify-content:center;
@@ -292,7 +292,7 @@
 
 @media (max-width: 560px){
   .gdel-overlay{
-    align-items:flex-end;
+    align-items:center;
     padding:10px;
   }
 

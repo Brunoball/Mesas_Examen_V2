@@ -12,6 +12,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 import "./Dashbord.css";
+import "../Global/Global_css/Global_DashbordResponsive.css";
 import { useDashbord } from "./hooks/useDashbord";
 import Toast from "../Global/Toast";
 

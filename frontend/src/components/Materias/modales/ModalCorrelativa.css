@@ -553,15 +553,115 @@
     justify-content:center;
   }
 
-  .modal-corr.gm-modal .modal-corr-actions{
-    flex-direction:column-reverse;
-    align-items:stretch !important;
-  }
+
 
 }
 
 @media (max-width:520px){
   .modal-corr.gm-modal .modal-corr-checks{
     grid-template-columns:1fr;
+  }
+}
+
+/* =========================================================
+   RESPONSIVE — corrección de la sección 2 en correlativas
+   Solo celular/tablet. La vista monitor conserva su layout.
+========================================================= */
+@media (max-width:900px){
+  .modal-corr.gm-modal .modal-corr-relaciones{
+    min-width:0;
+    display:grid;
+    gap:10px;
+    padding:12px;
+    background:linear-gradient(180deg, #fff 0%, rgba(253,251,247,.72) 100%);
+  }
+
+  .modal-corr.gm-modal .modal-corr-relacion{
+    width:100%;
+    min-width:0;
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    gap:12px;
+    padding:12px;
+    overflow:visible;
+  }
+
+  .modal-corr.gm-modal .modal-corr-relacion-numero{
+    width:100%;
+    min-width:0;
+    height:36px;
+  }
+
+  .modal-corr.gm-modal .relacion-grid{
+    width:100%;
+    min-width:0;
+    grid-template-columns:1fr !important;
+    padding:0;
+    gap:12px;
+  }
+
+  .modal-corr.gm-modal .modal-corr-options{
+    width:100%;
+    max-width:none;
+    justify-self:stretch;
+    align-self:stretch;
+  }
+
+  .modal-corr.gm-modal .modal-corr-remove{
+    align-self:flex-end;
+  }
+}
+
+@media (max-width:720px){
+  .modal-corr.gm-modal .modal-corr-section-title-row{
+    align-items:stretch;
+    flex-direction:column;
+    gap:10px;
+    padding:12px;
+  }
+
+  .modal-corr.gm-modal .modal-corr-section-title-row .modal-corr-section-title{
+    line-height:1.22;
+    white-space:normal;
+  }
+
+  .modal-corr.gm-modal .modal-corr-section-title-row .modal-corr-add{
+    margin-top:0;
+  }
+
+  .modal-corr.gm-modal .modal-corr-checks{
+    width:100%;
+    min-width:0;
+  }
+
+  .modal-corr.gm-modal .modal-corr-checks label{
+    width:100%;
+    min-width:0;
+    overflow:hidden;
+  }
+}
+
+@media (max-width:520px){
+  .modal-corr.gm-modal .modal-corr-relaciones{
+    padding:10px;
+  }
+
+  .modal-corr.gm-modal .modal-corr-relacion{
+    border-radius:14px;
+    padding:10px;
+  }
+
+  .modal-corr.gm-modal .modal-corr-field label,
+  .modal-corr.gm-modal .modal-corr-options-title{
+    font-size:11px !important;
+  }
+
+  .modal-corr.gm-modal .modal-corr-checks label{
+    min-height:42px;
+    height:auto;
+    padding:10px 11px;
+    line-height:1.2;
+    white-space:normal;
   }
 }

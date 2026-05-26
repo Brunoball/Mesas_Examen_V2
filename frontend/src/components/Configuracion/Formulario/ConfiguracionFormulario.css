@@ -121,6 +121,7 @@
   padding:18px 20px 20px;
   background:linear-gradient(180deg, #fff 0%, color-mix(in srgb, var(--balto-bg) 64%, #fff) 100%);
   overflow:auto;
+  max-height: 70vh;
 }
 
 .cfgFormPanel{
@@ -549,5 +550,144 @@
   .cfgFormPreviewRow{
     grid-template-columns:1fr;
     gap:4px;
+  }
+}
+
+/* =========================================================
+   Configuración formulario — responsive tipo Docentes
+   Mantiene monitor intacto y ordena acciones/contenido en celular.
+   ========================================================= */
+@media (max-width: 1024px){
+  .cfgFormPage.mov-page{
+    height:auto;
+    min-height:calc(100dvh - 90px);
+    padding:14px;
+    overflow:auto;
+  }
+
+  .cfgFormCardRoot.mov-card{
+    height:auto;
+    min-height:calc(100dvh - 118px);
+  }
+
+  .cfgFormHead{
+    padding:14px;
+    gap:12px;
+  }
+}
+
+@media (max-width: 820px){
+  .cfgFormPage.mov-page{
+    height:calc(100dvh - 70px);
+    min-height:0;
+    max-height:calc(100dvh - 70px);
+    padding:12px;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
+
+  .cfgFormCardRoot.mov-card{
+    height:100%;
+    min-height:0;
+    border-radius:14px;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
+
+  .cfgFormHead{
+    flex:0 0 auto;
+    flex-direction:column;
+    align-items:stretch;
+  }
+
+  .cfgFormHeadLeft{
+    flex-direction:column;
+    align-items:stretch;
+    gap:12px;
+  }
+
+  .cfgFormHeadFilters,
+  .cfgFormStatusPill{
+    width:100%;
+  }
+
+  .cfgFormContent{
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    overflow-x:hidden;
+    padding:14px;
+  }
+
+  .cfgFormSectionTitle{
+    font-size:14px;
+  }
+}
+
+@media (max-width: 620px){
+  .cfgFormPage.mov-page{
+    padding:10px;
+  }
+
+  .cfgFormCardRoot.mov-card{
+    border-radius:12px;
+  }
+
+  .cfgFormHead{
+    padding:12px;
+  }
+
+  .cfgFormTitleBox{
+    min-width:0;
+  }
+
+  .cfgFormCardRoot .mov-card__hint{
+    font-size:11px;
+    line-height:1.35;
+  }
+
+  .cfgFormContent{
+    padding:10px;
+  }
+
+  .cfgFormPanelHead{
+    min-height:0;
+    padding:14px;
+  }
+
+  .cfgFormDateBlockHead{
+    gap:9px;
+  }
+
+  .cfgFormActionsMobile{
+    padding:0 14px 14px;
+  }
+
+  .cfgFormActionsMobile .mov-btn{
+    width:100%;
+  }
+}
+
+@media (max-width: 460px){
+  .cfgFormPage.mov-page{
+    height:calc(100dvh - 75px);
+    max-height:calc(100dvh - 75px);
+    padding:8px;
+  }
+
+  .cfgFormHead{
+    gap:10px;
+  }
+
+  .cfgFormSectionTitle{
+    font-size:13px;
+  }
+
+  .cfgFormDateIcon{
+    width:30px;
+    height:30px;
+    border-radius:10px;
   }
 }

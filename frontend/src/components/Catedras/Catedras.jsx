@@ -16,6 +16,7 @@ import '../Global/Global_css/roots.css';
 import '../Global/Global_css/Global_Section.css';
 import '../Global/Global_css/Global_DivTable.css';
 import './Catedras.css';
+import '../Global/Global_css/Global_CatedrasResponsive.css';
 import Principal, { MesasShellContext } from '../Principal/Principal';
 
 const CATEDRAS_GRID_COLS = '0.75fr 0.75fr 1.6fr 1.35fr 1fr 0.72fr';

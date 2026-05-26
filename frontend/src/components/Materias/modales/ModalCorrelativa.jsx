@@ -1098,8 +1098,8 @@ const ModalCorrelativa = ({
           >
             <FontAwesomeIcon icon={faSave} />
             {modo === "auto"
-              ? "Generar correlativas"
-              : "Guardar correlatividades"}
+              ? "Generar "
+              : "Guardar "}
           </button>
         </div>
       </div>

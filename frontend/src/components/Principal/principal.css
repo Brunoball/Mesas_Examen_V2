@@ -42,7 +42,7 @@
    BASE
 ========================= */
 *, *::before, *::after{ box-sizing:border-box; }
-html, body, #root{ min-height:100%; }
+html, body, #root{ min-height:100%;  overflow: hidden;}
 body{
   margin:0;
   font-family:"Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
@@ -959,12 +959,20 @@ body.pp-lockScroll{ overflow:hidden !important; }
   }
 
   .mov-topbar__lernaBrand{
-    height:34px;
+    width:148px;
+    height:42px;
+    flex:0 1 148px;
+    overflow:hidden;
+    justify-content:flex-start;
   }
 
   .mov-topbar__lernaLogo{
-    height:28px;
-    max-width:112px;
+    height:136px;
+    width:auto;
+    max-width:none;
+    flex:0 0 auto;
+    object-fit:contain;
+    object-position:left center;
   }
 
   .mov-topbar__titles{
@@ -1120,12 +1128,14 @@ body.pp-lockScroll{ overflow:hidden !important; }
   }
 
   .mov-topbar__lernaBrand{
-    height:30px;
+    width:122px;
+    height:40px;
+    flex-basis:122px;
   }
 
   .mov-topbar__lernaLogo{
-    height:24px;
-    max-width:92px;
+    height:124px;
+    max-width:none;
   }
 
   .pp-topbarLogout,
@@ -1168,9 +1178,13 @@ body.pp-lockScroll{ overflow:hidden !important; }
     padding:0 6px;
   }
 
+  .mov-topbar__lernaBrand{
+    width:100px;
+  }
+
   .mov-topbar__lernaLogo{
-    height:23px;
-    max-width:80px;
+    height:112px;
+    max-width:none;
   }
 
   .mov-topbar__right{ gap:5px; }

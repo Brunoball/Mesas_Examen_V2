@@ -1040,8 +1040,10 @@
   .gm-ruleCounter strong { text-align: left; }
 
   .gm-modal__actions {
-    flex-direction: column-reverse;
     align-items: stretch;
+  }
+  .gm-input{
+    padding: 12px 13px;
   }
 
   .gm-modal__actions .gm-btn { width: 100%; }
@@ -1081,7 +1083,7 @@
 .gm-modal--docente .gm-modal__header {
   min-height: 72px;
   padding: 16px 20px;
-  background: linear-gradient(135deg, var(--gm-ink) 0%, #10365F 58%, color-mix(in srgb, var(--gm-action) 70%, var(--gm-ink)) 100%);
+  background: linear-gradient(135deg, var(--gm-ink) 0%, color-mix(in srgb, var(--gm-ink) 78%, #C48B3B) 100%);
 }
 
 .gm-modal--docente .gm-modal__headIcon {
@@ -1559,5 +1561,266 @@
     width:26px;
     height:26px;
     padding:0;
+  }
+}
+
+/* =========================================================
+   DOCENTES — responsive propio para reglas creadas
+   Solo tablets/celulares. No modifica la vista monitor.
+   ========================================================= */
+@media (max-width: 820px) {
+  .gm-modal--docente .gm-panel--schedule .gm-panel__body {
+    padding: 11px;
+    gap: 10px;
+  }
+
+  .gm-modal--docente .gm-ruleCounter {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 4px;
+    padding: 10px 11px;
+    border-radius: 13px;
+  }
+
+  .gm-modal--docente .gm-ruleCounter span,
+  .gm-modal--docente .gm-ruleCounter strong {
+    width: 100%;
+    white-space: normal;
+    text-align: left;
+  }
+
+  .gm-modal--docente .gm-scheduleList {
+    max-height: min(44dvh, 390px);
+    gap: 10px;
+    margin: 0;
+    padding: 2px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-gutter: auto;
+  }
+
+  .gm-modal--docente .gm-scheduleCard {
+    border-radius: 15px;
+    box-shadow: 0 10px 24px -22px rgba(58, 46, 43, .42);
+  }
+
+  .gm-modal--docente .gm-scheduleCard:hover {
+    transform: none;
+  }
+
+  .gm-modal--docente .gm-scheduleCard__head {
+    min-height: 0;
+    grid-template-columns: 34px minmax(0, 1fr) 34px;
+    gap: 9px;
+    padding: 10px;
+  }
+
+  .gm-modal--docente .gm-scheduleCard__number,
+  .gm-modal--docente .gm-scheduleCard__head .gm-iconBtn {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+  }
+
+  .gm-modal--docente .gm-scheduleCard__head strong,
+  .gm-modal--docente .gm-scheduleCard__head span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .gm-modal--docente .gm-scheduleGrid,
+  .gm-modal--docente .gm-scheduleGrid--rules {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .gm-modal--docente .gm-scheduleGrid .gm-field {
+    min-height: 45px;
+  }
+}
+
+@media (max-width: 460px) {
+  .gm-modal--docente .gm-panel__head--split {
+    gap: 10px;
+  }
+
+  .gm-modal--docente .gm-panel__actions {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .gm-modal--docente .gm-panel__actions .gm-iconBtn--help {
+    width: 36px;
+    min-width: 36px;
+  }
+
+  .gm-modal--docente .gm-panel__actions .gm-btn--soft {
+    min-width: 0;
+  }
+
+  .gm-modal--docente .gm-scheduleList {
+    max-height: min(40dvh, 330px);
+    gap: 9px;
+  }
+
+  .gm-modal--docente .gm-scheduleCard__head {
+    grid-template-columns: 30px minmax(0, 1fr) 30px;
+    padding: 9px;
+  }
+
+  .gm-modal--docente .gm-scheduleCard__number,
+  .gm-modal--docente .gm-scheduleCard__head .gm-iconBtn {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    min-height: 30px;
+    border-radius: 10px;
+  }
+
+  .gm-modal--docente .gm-scheduleCard__head strong {
+    font-size: 12.5px;
+  }
+
+  .gm-modal--docente .gm-scheduleCard__head span {
+    font-size: 11px;
+  }
+}
+
+/* =========================================================
+   DOCENTES — medidas propias responsive para reglas creadas
+   Evita el scroll interno heredado de escritorio en el modal.
+   La vista monitor queda intacta.
+   ========================================================= */
+@media (max-width: 720px) {
+  .gm-modal--docente {
+    height: auto;
+    max-height: calc(100dvh - 20px);
+  }
+
+  .gm-modal--docente .gm-modal__content {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .gm-modal--docente .gm-panel--schedule {
+    overflow: visible;
+  }
+
+  .gm-modal--docente .gm-panel--schedule .gm-panel__body {
+    padding: 10px;
+    gap: 11px;
+    overflow: visible;
+  }
+
+  .gm-modal--docente .gm-ruleCounter {
+    width: 100%;
+    min-height: 58px;
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 3px;
+  }
+
+  .gm-modal--docente .gm-ruleCounter span,
+  .gm-modal--docente .gm-ruleCounter strong {
+    width: 100%;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .gm-modal--docente .gm-scheduleList {
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    max-height: none !important;
+    margin: 0;
+    padding: 0;
+    overflow: visible !important;
+    display: grid;
+    gap: 11px;
+    scrollbar-gutter: auto;
+  }
+
+  .gm-modal--docente .gm-scheduleCard {
+    width: 100%;
+    min-width: 0;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 10px 24px -22px rgba(58, 46, 43, .42);
+  }
+
+  .gm-modal--docente .gm-scheduleCard__head {
+    min-height: 52px;
+    grid-template-columns: 34px minmax(0, 1fr) 34px;
+    gap: 9px;
+    padding: 10px;
+  }
+
+  .gm-modal--docente .gm-scheduleGrid,
+  .gm-modal--docente .gm-scheduleGrid--rules {
+    width: 100%;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: 1fr !important;
+    gap: 9px;
+  }
+
+  .gm-modal--docente .gm-scheduleGrid .gm-field,
+  .gm-modal--docente .gm-scheduleGrid--rules .gm-field {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .gm-modal--docente .gm-scheduleGrid .gm-input,
+  .gm-modal--docente .gm-scheduleGrid--rules .gm-input {
+    height: 43px;
+    min-height: 43px;
+    border-radius: 13px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 460px) {
+  .gm-modal--docente .gm-panel--schedule .gm-panel__body {
+    padding: 9px;
+    gap: 10px;
+  }
+
+  .gm-modal--docente .gm-ruleCounter {
+    min-height: 56px;
+    padding: 9px 11px;
+  }
+
+  .gm-modal--docente .gm-scheduleList {
+    gap: 10px;
+  }
+
+  .gm-modal--docente .gm-scheduleCard__head {
+    grid-template-columns: 32px minmax(0, 1fr) 32px;
+    gap: 8px;
+    padding: 9px;
+  }
+
+  .gm-modal--docente .gm-scheduleCard__number,
+  .gm-modal--docente .gm-scheduleCard__head .gm-iconBtn {
+    width: 31px;
+    height: 31px;
+    min-width: 31px;
+    min-height: 31px;
+  }
+
+  .gm-modal--docente .gm-scheduleGrid,
+  .gm-modal--docente .gm-scheduleGrid--rules {
+    padding: 9px;
+    gap: 8px;
   }
 }

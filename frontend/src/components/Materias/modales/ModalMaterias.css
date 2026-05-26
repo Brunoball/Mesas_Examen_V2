@@ -338,3 +338,69 @@
     min-height:52px !important;
   }
 }
+
+/* =========================================================
+   RESPONSIVE — áreas / pestañas de modales
+   Solo celular/tablet. La vista monitor conserva sus medidas.
+========================================================= */
+@media (max-width:720px){
+  .materias-editor-modal.gm-modal{
+    width:100% !important;
+    height:100% !important;
+    max-height:100% !important;
+    border-radius:16px !important;
+  }
+
+  .materias-modal-tabs.gm-tabs--google .gm-tab > svg{
+    display:none !important;
+  }
+
+  .materias-modal-tabs.gm-tabs--google .gm-tab{
+    gap:0 !important;
+  }
+
+  #area-panel-materias.materias-editor-panel.gm-panel{
+    min-height:0;
+  }
+
+  #area-panel-materias.materias-editor-panel.gm-panel .gm-panel__body{
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+
+  #area-panel-materias .materias-editor-chipList{
+    width:100%;
+    min-height:130px;
+    max-height:min(34dvh, 240px) !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    padding:8px !important;
+    border:1px solid rgba(58,46,43,.075);
+    border-radius:14px;
+    background:rgba(255,255,255,.74);
+    scrollbar-gutter:stable;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  #area-panel-materias .materias-editor-chipList::-webkit-scrollbar{
+    width:7px;
+  }
+
+  #area-panel-materias .materias-editor-chipList::-webkit-scrollbar-track{
+    background:transparent;
+  }
+
+  #area-panel-materias .materias-editor-chipList::-webkit-scrollbar-thumb{
+    background:rgba(58,46,43,.18);
+    border-radius:999px;
+  }
+}
+
+@media (max-width:460px){
+  #area-panel-materias .materias-editor-chipList{
+    min-height:118px;
+    max-height:min(32dvh, 215px) !important;
+  }
+}

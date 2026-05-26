@@ -30,9 +30,29 @@ import { esUsuarioSesionActual, useConfiguracionUsuarios } from './hooks/useConf
 import ModalEliminarGlobal from '../../Global/Modales/ModalEliminarGlobal';
 import '../../Global/Global_css/roots.css';
 import '../../Global/Global_css/Global_Section.css';
+import '../../Global/Global_css/Global_DivTable.css';
 import '../../Global/Global_css/Global_Modals.css';
 import './ConfiguracionUsuarios.css';
 import Toast from '../../Global/Toast';
+
+const USUARIOS_GRID_COLS = '1.35fr 1.45fr .9fr .85fr .95fr .85fr';
+
+const USUARIOS_COLUMNS = [
+  { key: 'usuario', label: 'Usuario', strong: true },
+  { key: 'email', label: 'Email' },
+  { key: 'rol', label: 'Rol', align: 'center' },
+  { key: 'estado', label: 'Estado', align: 'center' },
+  { key: 'creacion', label: 'Creación' },
+  { key: 'acciones', label: 'Acciones', align: 'center', actions: true },
+];
+
+const SKELETON_WIDTHS = ['74%', '62%', '46%', '38%', '58%', '42%'];
+
+function alignClass(align) {
+  if (align === 'right') return 'is-right';
+  if (align === 'center') return 'is-center';
+  return '';
+}
 
 function EstadoPill({ activo }) {
   return (
@@ -137,28 +157,52 @@ function StatsSkeleton() {
 
 function TablaSkeleton() {
   return Array.from({ length: 6 }).map((_, index) => (
-    <tr className="cfgUsersSkeletonRow" key={`cfg-users-skeleton-${index}`}>
-      <td>
-        <div className="cfgUsersUserCell">
-          <span className="cfgUsersSkeleton cfgUsersSkeleton--avatar" />
-          <div className="cfgUsersSkeletonStack">
-            <span className="cfgUsersSkeleton cfgUsersSkeleton--line is-strong" />
-            <span className="cfgUsersSkeleton cfgUsersSkeleton--line is-short" />
-          </div>
+    <div
+      className="mov-gridTable mov-gridTable--row mov-row--skeleton global-divTable__row cfgUsersGridRow cfgUsersSkeletonRow"
+      style={{ gridTemplateColumns: USUARIOS_GRID_COLS }}
+      role="row"
+      aria-hidden="true"
+      key={`cfg-users-skeleton-${index}`}
+    >
+      {USUARIOS_COLUMNS.map((column, columnIndex) => (
+        <div
+          key={column.key}
+          className={[
+            'mov-gridCell',
+            alignClass(column.align),
+            column.strong ? 'is-strong' : '',
+            column.actions ? 'mov-gridCell--actions' : '',
+          ].filter(Boolean).join(' ')}
+          role="cell"
+          data-label={column.label}
+        >
+          {column.actions ? (
+            <div className="cfgUsersActions">
+              <span className="cfgUsersSkeleton cfgUsersSkeleton--action" />
+              <span className="cfgUsersSkeleton cfgUsersSkeleton--action" />
+              <span className="cfgUsersSkeleton cfgUsersSkeleton--action" />
+            </div>
+          ) : column.key === 'usuario' ? (
+            <div className="cfgUsersUserCell">
+              <span className="cfgUsersSkeleton cfgUsersSkeleton--avatar" />
+              <div className="cfgUsersSkeletonStack">
+                <span className="cfgUsersSkeleton cfgUsersSkeleton--line is-strong" />
+                <span className="cfgUsersSkeleton cfgUsersSkeleton--line is-short" />
+              </div>
+            </div>
+          ) : (
+            <span
+              className={[
+                'cfgUsersSkeleton',
+                ['rol', 'estado'].includes(column.key) ? 'cfgUsersSkeleton--pill' : 'cfgUsersSkeleton--line',
+                column.key === 'creacion' ? 'is-date' : '',
+              ].filter(Boolean).join(' ')}
+              style={{ width: ['rol', 'estado'].includes(column.key) ? undefined : SKELETON_WIDTHS[(index + columnIndex) % SKELETON_WIDTHS.length] }}
+            />
+          )}
         </div>
-      </td>
-      <td><span className="cfgUsersSkeleton cfgUsersSkeleton--line" /></td>
-      <td><span className="cfgUsersSkeleton cfgUsersSkeleton--pill" /></td>
-      <td><span className="cfgUsersSkeleton cfgUsersSkeleton--pill" /></td>
-      <td><span className="cfgUsersSkeleton cfgUsersSkeleton--line is-date" /></td>
-      <td>
-        <div className="cfgUsersActions">
-          <span className="cfgUsersSkeleton cfgUsersSkeleton--action" />
-          <span className="cfgUsersSkeleton cfgUsersSkeleton--action" />
-          <span className="cfgUsersSkeleton cfgUsersSkeleton--action" />
-        </div>
-      </td>
-    </tr>
+      ))}
+    </div>
   ));
 }
 
@@ -537,33 +581,53 @@ export default function ConfiguracionUsuarios({ onVolver = null }) {
         </div>
 
 
-        <div className="cfgUsersTableWrap">
-          <table className="cfgUsersTable">
-            <thead>
-              <tr>
-                <th>Usuario</th>
-                <th>Email</th>
-                <th>Rol</th>
-                <th>Estado</th>
-                <th>Creación</th>
-                <th className="cfgUsersActionsTh">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
+        <div className="cfgUsersDivTable global-divTable" role="table" aria-label="Listado de usuarios">
+          <div
+            className="mov-gridTable mov-gridTable--head global-divTable__head cfgUsersGridHead"
+            style={{ gridTemplateColumns: USUARIOS_GRID_COLS }}
+            role="row"
+          >
+            {USUARIOS_COLUMNS.map((column) => (
+              <div
+                key={column.key}
+                className={[
+                  'mov-gridCell',
+                  'mov-gridCell--head',
+                  alignClass(column.align),
+                ].filter(Boolean).join(' ')}
+                role="columnheader"
+              >
+                {column.label}
+              </div>
+            ))}
+          </div>
+
+          <div className="cfgUsersTableWrap mov-tableWrap global-divTable__wrap" role="rowgroup">
+            <div
+              className={`mov-gridBody mov-gridBody--relative global-divTable__body cfgUsersGridBody ${loading ? 'mov-softLoading' : ''}`}
+            >
               {loading ? (
-                <TablaSkeleton />
+                <div className="mov-skeletonWrap" aria-busy="true" aria-label="Cargando usuarios">
+                  <TablaSkeleton />
+                </div>
               ) : usuarios.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="cfgUsersEmpty">No hay usuarios para mostrar.</td>
-                </tr>
+                <div className="cc-emptyState cfgUsersEmptyState">
+                  <FontAwesomeIcon icon={faUsers} className="cc-emptyIcon" />
+                  <div className="cc-emptyText">No hay usuarios para mostrar.</div>
+                </div>
               ) : (
                 usuarios.map((usuario) => {
                   const usuarioActual = esUsuarioSesionActual(usuario);
                   const accionSesionActualBloqueada = usuarioActual || guardando;
 
                   return (
-                    <tr key={usuario.id_usuario} className={usuarioActual ? 'cfgUsersCurrentRow' : ''}>
-                      <td>
+                    <div
+                      key={usuario.id_usuario}
+                      className={`mov-gridTable mov-gridTable--row global-divTable__row cfgUsersGridRow ${usuarioActual ? 'cfgUsersCurrentRow' : ''}`}
+                      style={{ gridTemplateColumns: USUARIOS_GRID_COLS }}
+                      role="row"
+                    >
+                      <div className="mov-gridCell is-strong" role="cell" data-label="Usuario">
                         <div className="cfgUsersUserCell">
                           <span className="cfgUsersAvatar">{iniciales(usuario.usuario)}</span>
                           <div>
@@ -571,12 +635,29 @@ export default function ConfiguracionUsuarios({ onVolver = null }) {
                             {usuarioActual ? <em>Sesión actual</em> : null}
                           </div>
                         </div>
-                      </td>
-                      <td>{usuario.email_recuperacion || <span className="cfgUsersMuted">Sin email</span>}</td>
-                      <td><RolPill rol={usuario.rol} /></td>
-                      <td><EstadoPill activo={usuario.activo} /></td>
-                      <td>{usuario.fecha_creacion || '-'}</td>
-                      <td>
+                      </div>
+
+                      <div className="mov-gridCell" role="cell" data-label="Email" title={usuario.email_recuperacion || 'Sin email'}>
+                        {usuario.email_recuperacion ? (
+                          <span className="mov-ellipsissss">{usuario.email_recuperacion}</span>
+                        ) : (
+                          <span className="cfgUsersMuted">Sin email</span>
+                        )}
+                      </div>
+
+                      <div className="mov-gridCell is-center" role="cell" data-label="Rol">
+                        <RolPill rol={usuario.rol} />
+                      </div>
+
+                      <div className="mov-gridCell is-center" role="cell" data-label="Estado">
+                        <EstadoPill activo={usuario.activo} />
+                      </div>
+
+                      <div className="mov-gridCell" role="cell" data-label="Creación">
+                        <span className="mov-ellipsissss">{usuario.fecha_creacion || '-'}</span>
+                      </div>
+
+                      <div className="mov-gridCell mov-gridCell--actions is-center" role="cell" data-label="Acciones">
                         <div className="cfgUsersActions">
                           <button type="button" className="cfgUsersActionBtn" onClick={() => abrirEditar(usuario)} title="Editar usuario" disabled={guardando}>
                             <FontAwesomeIcon icon={faEdit} />
@@ -620,14 +701,15 @@ export default function ConfiguracionUsuarios({ onVolver = null }) {
                             <FontAwesomeIcon icon={faTrash} />
                           </button>
                         </div>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   );
                 })
               )}
-            </tbody>
-          </table>
+            </div>
+          </div>
         </div>
+
       </section>
 
       <UsuarioModal

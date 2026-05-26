@@ -22,6 +22,7 @@ import '../Global/Global_css/roots.css';
 import '../Global/Global_css/Global_Section.css';
 import '../Global/Global_css/Global_DivTable.css';
 import './Docentes.css';
+import '../Global/Global_css/Global_DocentesResponsive.css';
 import Principal, { MesasShellContext } from '../Principal/Principal';
 
 const DOCENTES_GRID_COLS = '1.5fr 1fr 0.7fr 0.7fr 1fr 1fr ';

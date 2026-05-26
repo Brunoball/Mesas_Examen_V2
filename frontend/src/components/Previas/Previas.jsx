@@ -21,6 +21,7 @@ import '../Global/Global_css/roots.css';
 import '../Global/Global_css/Global_Section.css';
 import '../Global/Global_css/Global_DivTable.css';
 import './Previas.css';
+import '../Global/Global_css/Global_PreviasResponsive.css';
 import Principal, { MesasShellContext } from '../Principal/Principal';
 
 const PREVIAS_GRID_COLS = '1.35fr .75fr 1.25fr .85fr .8fr .85fr .9fr';

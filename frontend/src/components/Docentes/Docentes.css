@@ -367,7 +367,6 @@ background:rgba(196,139,59,.07);
   display:flex;
   align-items:center;
   justify-content:center;
-  padding:24px;
   background:rgba(58,46,43,.42);
   backdrop-filter:blur(3px);
 }

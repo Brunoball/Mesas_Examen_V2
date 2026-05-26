@@ -20,6 +20,7 @@ import "../Global/Global_css/roots.css";
 import "../Global/Global_css/Global_Section.css";
 import "../Global/Global_css/Global_DivTable.css";
 import "./Materias.css";
+import "../Global/Global_css/Global_MateriasResponsive.css";
 import ModalMateria from "./modales/ModalMateria";
 import ModalCorrelativa from "./modales/ModalCorrelativa";
 import ModalTaller from "./modales/ModalTaller";

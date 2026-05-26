@@ -339,6 +339,7 @@ const Principal = ({ children = null }) => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [openSubmenuKey, setOpenSubmenuKey] = useState("");
   const [logoTenantError, setLogoTenantError] = useState(false);
+  const lastResponsiveTapRef = useRef({ key: "", time: 0 });
 
   const apiPrincipalUrl = useMemo(() => resolverApiPrincipalUrl(), []);
   const apiPrincipalEsLocal = useMemo(() => esUrlLocal(apiPrincipalUrl), [apiPrincipalUrl]);
@@ -537,6 +538,40 @@ const Principal = ({ children = null }) => {
     setOpenSubmenuKey((prev) => (prev === itemKey ? "" : itemKey));
   }, []);
 
+  const isResponsiveNavigation = useCallback(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return false;
+    return window.matchMedia("(max-width: 720px)").matches;
+  }, []);
+
+  const handleNavItemClick = useCallback(
+    (item, hasSub) => {
+      if (!hasSub) {
+        handleNavigate(item.ruta);
+        return;
+      }
+
+      if (isResponsiveNavigation()) {
+        const now = Date.now();
+        const lastTap = lastResponsiveTapRef.current || { key: "", time: 0 };
+        const isDoubleTap = lastTap.key === item.key && now - lastTap.time <= 360;
+
+        lastResponsiveTapRef.current = { key: item.key, time: now };
+
+        if (isDoubleTap) {
+          lastResponsiveTapRef.current = { key: "", time: 0 };
+          handleNavigate(item.ruta);
+          return;
+        }
+
+        toggleSubmenu(item.key);
+        return;
+      }
+
+      toggleSubmenu(item.key);
+    },
+    [handleNavigate, isResponsiveNavigation, toggleSubmenu]
+  );
+
   const confirmarCierreSesion = useCallback(() => {
     setClosingUI(true);
     setIsExiting(true);
@@ -711,14 +746,7 @@ const Principal = ({ children = null }) => {
                   <button
                     type="button"
                     className={`pp-nav__item ${isActive ? "is-active" : ""}`}
-                    onClick={() => {
-                      if (hasSub) {
-                        toggleSubmenu(item.key);
-                        return;
-                      }
-
-                      handleNavigate(item.ruta);
-                    }}
+                    onClick={() => handleNavItemClick(item, hasSub)}
                     onDoubleClick={() => {
                       if (hasSub) handleNavigate(item.ruta);
                     }}
