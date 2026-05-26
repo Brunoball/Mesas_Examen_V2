@@ -1,5 +1,5 @@
 // src/components/Mesas_examen/Mesas_examen.jsx
-import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -14,6 +14,8 @@ import {
   faChartLine,
   faEdit,
   faTimes,
+  faChevronUp,
+  faChevronDown,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "../Global/Global_css/roots.css";
@@ -48,6 +50,143 @@ const textoCorto = (valor, fallback = "-") => {
 const textoCursoDivision = (curso, division) => {
   const partes = [curso, division].map((item) => String(item || "").trim()).filter(Boolean);
   return partes.length > 0 ? partes.join(" ") : "-";
+};
+
+const normalizarTextoBusqueda = (valor) =>
+  String(valor || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const obtenerTerminosBusqueda = (valor) => {
+  const texto = normalizarTextoBusqueda(valor);
+  if (!texto) return [];
+
+  return Array.from(new Set(texto.split(" ").filter((termino) => termino.length >= 1)));
+};
+
+const crearIndiceNormalizado = (texto) => {
+  const caracteres = Array.from(String(texto || ""));
+  let normalizado = "";
+  const indicesOriginales = [];
+
+  caracteres.forEach((caracter, indice) => {
+    const limpio = caracter
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+
+    Array.from(limpio).forEach((charNormalizado) => {
+      normalizado += charNormalizado;
+      indicesOriginales.push(indice);
+    });
+  });
+
+  return { caracteres, normalizado, indicesOriginales };
+};
+
+const obtenerRangosResaltado = (texto, terminos = []) => {
+  if (!texto || !Array.isArray(terminos) || terminos.length === 0) return [];
+
+  const { caracteres, normalizado, indicesOriginales } = crearIndiceNormalizado(texto);
+  const rangos = [];
+
+  terminos
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length)
+    .forEach((termino) => {
+      let desde = 0;
+      while (desde < normalizado.length) {
+        const posicion = normalizado.indexOf(termino, desde);
+        if (posicion === -1) break;
+
+        const inicioOriginal = indicesOriginales[posicion];
+        const finOriginal = indicesOriginales[posicion + termino.length - 1] + 1;
+
+        if (
+          Number.isInteger(inicioOriginal)
+          && Number.isInteger(finOriginal)
+          && !rangos.some((rango) => inicioOriginal < rango.fin && finOriginal > rango.inicio)
+        ) {
+          rangos.push({ inicio: inicioOriginal, fin: finOriginal });
+        }
+
+        desde = posicion + Math.max(termino.length, 1);
+      }
+    });
+
+  if (rangos.length === 0) return [];
+
+  return rangos.sort((a, b) => a.inicio - b.inicio).reduce((fusionados, rango) => {
+    const ultimo = fusionados[fusionados.length - 1];
+    if (ultimo && rango.inicio <= ultimo.fin) {
+      ultimo.fin = Math.max(ultimo.fin, rango.fin);
+    } else {
+      fusionados.push({ ...rango });
+    }
+    return fusionados;
+  }, []).map((rango) => ({
+    inicio: rango.inicio,
+    fin: rango.fin,
+    texto: caracteres.slice(rango.inicio, rango.fin).join(""),
+  }));
+};
+
+const ResaltarBusqueda = ({ value, terminos = [], fallback = "-" }) => {
+  const texto = textoCorto(value, fallback);
+  const rangos = obtenerRangosResaltado(texto, terminos);
+
+  if (rangos.length === 0) return <>{texto}</>;
+
+  const partes = [];
+  let cursor = 0;
+
+  rangos.forEach((rango, index) => {
+    if (rango.inicio > cursor) {
+      partes.push(texto.slice(cursor, rango.inicio));
+    }
+
+    partes.push(
+      <mark key={`mark-${index}-${rango.inicio}`} className="mesas-searchMark">
+        {rango.texto}
+      </mark>
+    );
+
+    cursor = rango.fin;
+  });
+
+  if (cursor < texto.length) {
+    partes.push(texto.slice(cursor));
+  }
+
+  return <>{partes}</>;
+};
+
+const scrollHastaCoincidenciaBusqueda = (nodo) => {
+  if (!nodo) return;
+
+  const objetivo = nodo.querySelector?.(".mesas-searchMark") || nodo;
+  const contenedor = nodo.closest?.(".mesas-pdf-view");
+
+  if (!contenedor || typeof contenedor.scrollTo !== "function") {
+    objetivo.scrollIntoView?.({ behavior: "smooth", block: "center", inline: "nearest" });
+    return;
+  }
+
+  const contenedorRect = contenedor.getBoundingClientRect();
+  const objetivoRect = objetivo.getBoundingClientRect();
+  const desplazamientoActual = contenedor.scrollTop;
+  const destino = desplazamientoActual
+    + (objetivoRect.top - contenedorRect.top)
+    - (contenedor.clientHeight / 2)
+    + (objetivoRect.height / 2);
+
+  contenedor.scrollTo({
+    top: Math.max(0, destino),
+    behavior: "smooth",
+  });
 };
 
 const obtenerIdGrupo = (item) => item.id || item.id_grupo || item.id_no_agrupada || item.numero_mesa;
@@ -297,7 +436,7 @@ const obtenerBloquesVistaPdf = (grupo) => {
   );
 };
 
-const FechaVerticalMesa = ({ grupo }) => {
+const FechaVerticalMesa = ({ grupo, terminosBusqueda = [] }) => {
   const partes = obtenerPartesFechaMesa(grupo);
   const turno = obtenerTurnoMesa(grupo);
   const hora = obtenerHoraMesa(grupo);
@@ -305,20 +444,20 @@ const FechaVerticalMesa = ({ grupo }) => {
   if (!partes) {
     return (
       <div className="pdf-hora-stack">
-        <strong>{textoCorto(grupo?.fecha || grupo?.fecha_mesa)}</strong>
-        <strong>{turno}</strong>
-        <strong>{hora}</strong>
+        <strong><ResaltarBusqueda value={grupo?.fecha || grupo?.fecha_mesa} terminos={terminosBusqueda} /></strong>
+        <strong><ResaltarBusqueda value={turno} terminos={terminosBusqueda} /></strong>
+        <strong><ResaltarBusqueda value={hora} terminos={terminosBusqueda} /></strong>
       </div>
     );
   }
 
   return (
     <div className="pdf-hora-stack">
-      <strong>{partes.diaSemana}</strong>
-      <strong>{partes.dia}</strong>
-      <strong>{partes.mesTexto}</strong>
-      <strong>{turno}</strong>
-      <strong>{hora}</strong>
+      <strong><ResaltarBusqueda value={partes.diaSemana} terminos={terminosBusqueda} /></strong>
+      <strong><ResaltarBusqueda value={partes.dia} terminos={terminosBusqueda} /></strong>
+      <strong><ResaltarBusqueda value={partes.mesTexto} terminos={terminosBusqueda} /></strong>
+      <strong><ResaltarBusqueda value={turno} terminos={terminosBusqueda} /></strong>
+      <strong><ResaltarBusqueda value={hora} terminos={terminosBusqueda} /></strong>
     </div>
   );
 };
@@ -345,7 +484,7 @@ const PdfGridHead = () => (
   </div>
 );
 
-const MesaPdfCard = ({ grupo, esNoAgrupada = false, onEdit, onDelete, onGuardarNota, guardandoNotas = {} }) => {
+const MesaPdfCard = ({ grupo, esNoAgrupada = false, onEdit, onDelete, onGuardarNota, guardandoNotas = {}, terminosBusqueda = [], cardRef = null }) => {
   const bloques = obtenerBloquesVistaPdf(grupo);
   const totalFilas = Math.max(
     1,
@@ -355,7 +494,11 @@ const MesaPdfCard = ({ grupo, esNoAgrupada = false, onEdit, onDelete, onGuardarN
   let horaMostrada = false;
 
   return (
-    <article className={`mesas-pdf-sheet ${(esNoAgrupada || grupo?.motivo || grupo?.observacion) ? "mesas-pdf-sheet-observada" : ""}`}>
+    <article
+      ref={cardRef}
+      className={`mesas-pdf-sheet ${(esNoAgrupada || grupo?.motivo || grupo?.observacion) ? "mesas-pdf-sheet-observada" : ""} ${terminosBusqueda.length > 0 ? "mesas-pdf-sheet--searching" : ""}`}
+      data-mesas-search-result={terminosBusqueda.length > 0 ? "true" : undefined}
+    >
       <header className="mesas-pdf-header">
         <div className="mesas-pdf-brand">
           <img src={logo} alt="IPET 50" />
@@ -365,15 +508,15 @@ const MesaPdfCard = ({ grupo, esNoAgrupada = false, onEdit, onDelete, onGuardarN
           </div>
         </div>
         <div className="mesas-pdf-meta">
-          <span>{obtenerFechaResumenPdf(grupo)}</span>
-          <strong>N° de mesa: {numerosTexto}</strong>
+          <span><ResaltarBusqueda value={obtenerFechaResumenPdf(grupo)} terminos={terminosBusqueda} /></span>
+          <strong>N° de mesa: <ResaltarBusqueda value={numerosTexto} terminos={terminosBusqueda} /></strong>
         </div>
       </header>
 
       {(esNoAgrupada || grupo?.motivo || grupo?.observacion) && (grupo?.motivo || grupo?.observacion) && (
         <div className={`mesas-pdf-observacion ${!esNoAgrupada ? "mesas-pdf-observacion-info" : ""}`}>
           <strong>{esNoAgrupada ? "Motivo sin agrupar:" : "Observación:"}</strong>{" "}
-          {textoCorto(grupo.motivo || grupo.observacion)}
+          <ResaltarBusqueda value={grupo.motivo || grupo.observacion} terminos={terminosBusqueda} />
         </div>
       )}
 
@@ -391,7 +534,7 @@ const MesaPdfCard = ({ grupo, esNoAgrupada = false, onEdit, onDelete, onGuardarN
                   <React.Fragment key={`${bloque.id}-${alumno?.id_mesa || alumno?.id_previa || alumnoIndex}`}>
                     {debeMostrarHora && (
                       <div className="mesas-pdf-cell pdf-hora-cell" style={{ gridRow: `span ${totalFilas}` }} role="cell" data-label="Hora">
-                        <FechaVerticalMesa grupo={grupo} />
+                        <FechaVerticalMesa grupo={grupo} terminosBusqueda={terminosBusqueda} />
                       </div>
                     )}
 
@@ -402,19 +545,19 @@ const MesaPdfCard = ({ grupo, esNoAgrupada = false, onEdit, onDelete, onGuardarN
                         role="cell"
                         data-label="Espacio Curricular"
                       >
-                        <strong>{bloque.materia}</strong>
-                        {bloque.observacion && <small>{bloque.observacion}</small>}
+                        <strong><ResaltarBusqueda value={bloque.materia} terminos={terminosBusqueda} /></strong>
+                        {bloque.observacion && <small><ResaltarBusqueda value={bloque.observacion} terminos={terminosBusqueda} /></small>}
                       </div>
                     )}
 
                     <div className={`mesas-pdf-cell pdf-estudiante-cell ${bloque.observacion ? "pdf-row-observada" : ""}`} role="cell" data-label="Estudiante">
-                      {alumno ? textoCorto(alumno.estudiante || alumno.alumno, "Sin estudiante") : "Sin alumnos vinculados"}
+                      {alumno ? <ResaltarBusqueda value={alumno.estudiante || alumno.alumno} fallback="Sin estudiante" terminos={terminosBusqueda} /> : "Sin alumnos vinculados"}
                     </div>
                     <div className={`mesas-pdf-cell pdf-dni-cell ${bloque.observacion ? "pdf-row-observada" : ""}`} role="cell" data-label="DNI">
-                      {alumno ? textoCorto(alumno.dni) : "-"}
+                      {alumno ? <ResaltarBusqueda value={alumno.dni} terminos={terminosBusqueda} /> : "-"}
                     </div>
                     <div className={`mesas-pdf-cell pdf-curso-cell ${bloque.observacion ? "pdf-row-observada" : ""}`} role="cell" data-label="Curso">
-                      {alumno ? obtenerCursoAlumno(alumno) : "-"}
+                      {alumno ? <ResaltarBusqueda value={obtenerCursoAlumno(alumno)} terminos={terminosBusqueda} /> : "-"}
                     </div>
                     <div className={`mesas-pdf-cell pdf-nota-cell ${bloque.observacion ? "pdf-row-observada" : ""}`} role="cell" data-label="Nota">
                       <SelectorNotaAlumno
@@ -431,7 +574,7 @@ const MesaPdfCard = ({ grupo, esNoAgrupada = false, onEdit, onDelete, onGuardarN
                         role="cell"
                         data-label="Docentes"
                       >
-                        <strong>{bloque.docente}</strong>
+                        <strong><ResaltarBusqueda value={bloque.docente} terminos={terminosBusqueda} /></strong>
                       </div>
                     )}
                   </React.Fragment>
@@ -488,12 +631,47 @@ const HistorialDescripcionExpandible = ({ value, title = "Descripción completa"
   />
 );
 
-const HistorialMesasPanel = ({ historial }) => {
+const HistorialMesasPanel = ({ historial, busqueda = "", terminosBusqueda = [] }) => {
   const resultados = Array.isArray(historial?.resultados) ? historial.resultados : [];
   const armados = Array.isArray(historial?.armados) ? historial.armados : [];
   const resumen = historial?.resumen || {};
   const detalle = historial?.detalleArmado || null;
   const detalleFilas = Array.isArray(detalle?.detalle) ? detalle.detalle : [];
+  const filasHistorialRefs = useRef({});
+  const hayBusquedaHistorial = String(busqueda || "").trim() !== "";
+
+  const registrarFilaHistorial = useCallback((clave, node) => {
+    if (!clave) return;
+
+    if (node) {
+      filasHistorialRefs.current[clave] = node;
+    } else {
+      delete filasHistorialRefs.current[clave];
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!hayBusquedaHistorial || historial?.cargando) return undefined;
+
+    const clavePrimerResultado = resultados[0]?.id_resultado
+      ? `resultado-${resultados[0].id_resultado}`
+      : armados[0]?.id_armado_historial
+        ? `armado-${armados[0].id_armado_historial}`
+        : detalleFilas[0]?.id_historial_detalle
+          ? `detalle-${detalleFilas[0].id_historial_detalle}`
+          : "";
+
+    if (!clavePrimerResultado) return undefined;
+
+    const timer = window.setTimeout(() => {
+      const nodo = filasHistorialRefs.current[clavePrimerResultado];
+      if (!nodo) return;
+
+      scrollHastaCoincidenciaBusqueda(nodo);
+    }, 140);
+
+    return () => window.clearTimeout(timer);
+  }, [armados, detalleFilas, hayBusquedaHistorial, historial?.cargando, resultados]);
 
   const totalAprobadas = resumen.total_aprobadas ?? resultados.filter((item) => Number(item.aprobado) === 1).length;
   const totalDesaprobadas = resumen.total_desaprobadas ?? resultados.filter((item) => Number(item.aprobado) !== 1).length;
@@ -585,9 +763,11 @@ const HistorialMesasPanel = ({ historial }) => {
                     <div className="mov-gridBody global-divTable__body mesas-historial-gridBody">
                       {resultados.map((item) => {
                         const aprobado = Number(item.aprobado) === 1;
+                        const claveFila = `resultado-${item.id_resultado}`;
                         return (
                           <div
-                            key={`resultado-${item.id_resultado}`}
+                            key={claveFila}
+                            ref={(node) => registrarFilaHistorial(claveFila, node)}
                             className={[
                               "mov-gridTable",
                               "mov-gridTable--row",
@@ -598,26 +778,27 @@ const HistorialMesasPanel = ({ historial }) => {
                             ].join(" ")}
                             style={{ gridTemplateColumns: HISTORIAL_RESULTADOS_GRID_COLS }}
                             role="row"
+                            data-mesas-search-result={terminosBusqueda.length > 0 ? "true" : undefined}
                           >
                             <div className="mov-gridCell" role="cell" data-label="Fecha nota">
-                              {textoCorto(item.fecha_nota_texto || item.fecha_nota)}
+                              <ResaltarBusqueda value={item.fecha_nota_texto || item.fecha_nota} terminos={terminosBusqueda} />
                             </div>
                             <div className="mov-gridCell is-strong" role="cell" data-label="Alumno" title={textoCorto(item.alumno)}>
-                              {textoCorto(item.alumno)}
+                              <ResaltarBusqueda value={item.alumno} terminos={terminosBusqueda} />
                             </div>
-                            <div className="mov-gridCell is-center" role="cell" data-label="DNI">{textoCorto(item.dni)}</div>
+                            <div className="mov-gridCell is-center" role="cell" data-label="DNI"><ResaltarBusqueda value={item.dni} terminos={terminosBusqueda} /></div>
                             <div className="mov-gridCell" role="cell" data-label="Materia" title={textoCorto(item.materia)}>
-                              {textoCorto(item.materia)}
+                              <ResaltarBusqueda value={item.materia} terminos={terminosBusqueda} />
                             </div>
                             <div className="mov-gridCell" role="cell" data-label="Mesa">
                               <div className="mesas-historial-stack">
-                                <span className="mesas-historial-chip">N° {textoCorto(item.numero_mesa)}</span>
-                                {item.numero_grupo && <small>Grupo {item.numero_grupo}</small>}
-                                {item.fecha_mesa_texto && <small>{item.fecha_mesa_texto}</small>}
+                                <span className="mesas-historial-chip">N° <ResaltarBusqueda value={item.numero_mesa} terminos={terminosBusqueda} /></span>
+                                {item.numero_grupo && <small>Grupo <ResaltarBusqueda value={item.numero_grupo} terminos={terminosBusqueda} /></small>}
+                                {item.fecha_mesa_texto && <small><ResaltarBusqueda value={item.fecha_mesa_texto} terminos={terminosBusqueda} /></small>}
                               </div>
                             </div>
                             <div className="mov-gridCell" role="cell" data-label="Docente" title={textoCorto(item.docente)}>
-                              {textoCorto(item.docente)}
+                              <ResaltarBusqueda value={item.docente} terminos={terminosBusqueda} />
                             </div>
                             <div className="mov-gridCell is-center" role="cell" data-label="Nota">
                               <strong className="mesas-historial-nota">{item.nota}</strong>
@@ -659,18 +840,23 @@ const HistorialMesasPanel = ({ historial }) => {
 
                   <div className="mesas-historial-tableWrap mov-tableWrap global-divTable__wrap" role="rowgroup">
                     <div className="mov-gridBody global-divTable__body mesas-historial-gridBody">
-                      {armados.map((item) => (
+                      {armados.map((item) => {
+                        const claveFila = `armado-${item.id_armado_historial}`;
+
+                        return (
                         <div
-                          key={`armado-${item.id_armado_historial}`}
+                          key={claveFila}
+                          ref={(node) => registrarFilaHistorial(claveFila, node)}
                           className="mov-gridTable mov-gridTable--row global-divTable__row mesas-historial-gridRow"
                           style={{ gridTemplateColumns: HISTORIAL_ARMADOS_GRID_COLS }}
                           role="row"
+                          data-mesas-search-result={terminosBusqueda.length > 0 ? "true" : undefined}
                         >
                           <div className="mov-gridCell" role="cell" data-label="Guardado">
-                            {textoCorto(item.creado_en_texto || item.creado_en)}
+                            <ResaltarBusqueda value={item.creado_en_texto || item.creado_en} terminos={terminosBusqueda} />
                           </div>
                           <div className="mov-gridCell is-strong" role="cell" data-label="Código" title={textoCorto(item.codigo_armado)}>
-                            {textoCorto(item.codigo_armado)}
+                            <ResaltarBusqueda value={item.codigo_armado} terminos={terminosBusqueda} />
                           </div>
                           <div className="mov-gridCell mesas-historial-descriptionCell" role="cell" data-label="Motivo">
                             <HistorialDescripcionExpandible
@@ -695,7 +881,8 @@ const HistorialMesasPanel = ({ historial }) => {
                             </button>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -730,25 +917,30 @@ const HistorialMesasPanel = ({ historial }) => {
 
                     <div className="mesas-historial-tableWrap mov-tableWrap global-divTable__wrap" role="rowgroup">
                       <div className="mov-gridBody global-divTable__body mesas-historial-gridBody">
-                        {detalleFilas.map((item) => (
+                        {detalleFilas.map((item) => {
+                          const claveFila = `detalle-${item.id_historial_detalle}`;
+
+                          return (
                           <div
-                            key={`detalle-${item.id_historial_detalle}`}
+                            key={claveFila}
+                            ref={(node) => registrarFilaHistorial(claveFila, node)}
                             className="mov-gridTable mov-gridTable--row global-divTable__row mesas-historial-gridRow"
                             style={{ gridTemplateColumns: HISTORIAL_DETALLE_GRID_COLS }}
                             role="row"
                           >
-                            <div className="mov-gridCell" role="cell" data-label="Fecha">{textoCorto(item.fecha_mesa_texto || item.fecha_mesa)}</div>
-                            <div className="mov-gridCell is-center" role="cell" data-label="Grupo">{textoCorto(item.numero_grupo)}</div>
-                            <div className="mov-gridCell is-center" role="cell" data-label="Mesa">{textoCorto(item.numero_mesa)}</div>
-                            <div className="mov-gridCell is-strong" role="cell" data-label="Alumno" title={textoCorto(item.alumno)}>{textoCorto(item.alumno)}</div>
-                            <div className="mov-gridCell is-center" role="cell" data-label="DNI">{textoCorto(item.dni)}</div>
-                            <div className="mov-gridCell" role="cell" data-label="Materia" title={textoCorto(item.materia)}>{textoCorto(item.materia)}</div>
-                            <div className="mov-gridCell" role="cell" data-label="Docente" title={textoCorto(item.docente)}>{textoCorto(item.docente)}</div>
-                            <div className="mov-gridCell is-center" role="cell" data-label="Tipo">{textoCorto(item.tipo_mesa)}</div>
-                            <div className="mov-gridCell is-center" role="cell" data-label="Nota">{textoCorto(item.nota)}</div>
+                            <div className="mov-gridCell" role="cell" data-label="Fecha"><ResaltarBusqueda value={item.fecha_mesa_texto || item.fecha_mesa} terminos={terminosBusqueda} /></div>
+                            <div className="mov-gridCell is-center" role="cell" data-label="Grupo"><ResaltarBusqueda value={item.numero_grupo} terminos={terminosBusqueda} /></div>
+                            <div className="mov-gridCell is-center" role="cell" data-label="Mesa"><ResaltarBusqueda value={item.numero_mesa} terminos={terminosBusqueda} /></div>
+                            <div className="mov-gridCell is-strong" role="cell" data-label="Alumno" title={textoCorto(item.alumno)}><ResaltarBusqueda value={item.alumno} terminos={terminosBusqueda} /></div>
+                            <div className="mov-gridCell is-center" role="cell" data-label="DNI"><ResaltarBusqueda value={item.dni} terminos={terminosBusqueda} /></div>
+                            <div className="mov-gridCell" role="cell" data-label="Materia" title={textoCorto(item.materia)}><ResaltarBusqueda value={item.materia} terminos={terminosBusqueda} /></div>
+                            <div className="mov-gridCell" role="cell" data-label="Docente" title={textoCorto(item.docente)}><ResaltarBusqueda value={item.docente} terminos={terminosBusqueda} /></div>
+                            <div className="mov-gridCell is-center" role="cell" data-label="Tipo"><ResaltarBusqueda value={item.tipo_mesa} terminos={terminosBusqueda} /></div>
+                            <div className="mov-gridCell is-center" role="cell" data-label="Nota"><ResaltarBusqueda value={item.nota} terminos={terminosBusqueda} /></div>
                             <div className="mov-gridCell is-center" role="cell" data-label="Activa">{Number(item.previa_activa) === 1 ? "Sí" : "No"}</div>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
@@ -828,12 +1020,31 @@ const MesasExamen = () => {
     error,
   } = useMesasExamen({ onToast: mostrarToastGlobal });
 
+  const [indiceBusquedaActivo, setIndiceBusquedaActivo] = useState(0);
+
   const totalHistorialVisible = (Array.isArray(historial?.resultados) ? historial.resultados.length : 0)
     + (Array.isArray(historial?.armados) ? historial.armados.length : 0);
   const totalVisible = tab === "historial" ? totalHistorialVisible : (Array.isArray(mesasFiltradas) ? mesasFiltradas.length : 0);
   const totalReferencia = tab === "historial" ? totalHistorialVisible : tab === "no-agrupadas" ? totalNoAgrupadas : totalGrupos;
   const hayMesasCreadas = totalGrupos > 0 || totalNoAgrupadas > 0;
   const hayBusquedaActiva = String(busqueda || "").trim() !== "";
+  const totalResultadosBusqueda = hayBusquedaActiva ? totalVisible : 0;
+  const hayResultadosBusqueda = hayBusquedaActiva && totalResultadosBusqueda > 0;
+  const puedeNavegarBusqueda = hayResultadosBusqueda && totalResultadosBusqueda > 1;
+  const indiceBusquedaVisible = hayResultadosBusqueda ? Math.min(indiceBusquedaActivo + 1, totalResultadosBusqueda) : 0;
+  const terminosBusqueda = useMemo(() => obtenerTerminosBusqueda(busqueda), [busqueda]);
+  const tarjetasMesasRefs = useRef({});
+
+  const registrarTarjetaMesa = useCallback((id, node) => {
+    const clave = String(id || "");
+    if (!clave) return;
+
+    if (node) {
+      tarjetasMesasRefs.current[clave] = node;
+    } else {
+      delete tarjetasMesasRefs.current[clave];
+    }
+  }, []);
 
   const [modalTituloPdfAbierto, setModalTituloPdfAbierto] = useState(false);
   const [exportandoPdf, setExportandoPdf] = useState(false);
@@ -852,6 +1063,49 @@ const MesasExamen = () => {
     setGuardarHistorialArmado(true);
     setConfirmarSinHistorialArmado(false);
   }, [eliminarArmado?.modalAbierto]);
+
+  const obtenerNodosResultadosBusqueda = useCallback(() => {
+    if (typeof document === "undefined") return [];
+
+    const contenedor = document.querySelector(".mesas-pdf-view");
+    if (!contenedor) return [];
+
+    return Array.from(contenedor.querySelectorAll('[data-mesas-search-result="true"]'));
+  }, []);
+
+  const desplazarAResultadoBusqueda = useCallback((indice = 0) => {
+    const nodos = obtenerNodosResultadosBusqueda();
+    if (nodos.length === 0) return;
+
+    const indiceSeguro = ((indice % nodos.length) + nodos.length) % nodos.length;
+    scrollHastaCoincidenciaBusqueda(nodos[indiceSeguro]);
+  }, [obtenerNodosResultadosBusqueda]);
+
+  const cambiarResultadoBusqueda = useCallback((direccion) => {
+    if (!hayResultadosBusqueda) return;
+
+    setIndiceBusquedaActivo((actual) => {
+      const siguiente = ((actual + direccion) % totalResultadosBusqueda + totalResultadosBusqueda) % totalResultadosBusqueda;
+
+      window.setTimeout(() => {
+        desplazarAResultadoBusqueda(siguiente);
+      }, 0);
+
+      return siguiente;
+    });
+  }, [desplazarAResultadoBusqueda, hayResultadosBusqueda, totalResultadosBusqueda]);
+
+  useEffect(() => {
+    setIndiceBusquedaActivo(0);
+
+    if (!hayResultadosBusqueda) return undefined;
+
+    const timer = window.setTimeout(() => {
+      desplazarAResultadoBusqueda(0);
+    }, 140);
+
+    return () => window.clearTimeout(timer);
+  }, [busqueda, desplazarAResultadoBusqueda, hayResultadosBusqueda, tab, totalResultadosBusqueda]);
 
   const cambiarGuardarHistorialArmado = useCallback((event) => {
     const checked = !!event.target.checked;
@@ -1094,6 +1348,38 @@ const MesasExamen = () => {
                         </button>
                       )}
                     </div>
+
+                    {hayBusquedaActiva && (
+                      <div className="mesas-searchNavigator" aria-label="Resultados de la búsqueda">
+                        <span className="mesas-searchNavigator__count">
+                          {hayResultadosBusqueda
+                            ? `${indiceBusquedaVisible} de ${totalResultadosBusqueda} resultados`
+                            : "0 resultados"}
+                        </span>
+                        <div className="mesas-searchNavigator__buttons">
+                          <button
+                            type="button"
+                            className="mesas-searchNavigator__btn"
+                            title="Resultado anterior"
+                            aria-label="Resultado anterior"
+                            onClick={() => cambiarResultadoBusqueda(-1)}
+                            disabled={!puedeNavegarBusqueda}
+                          >
+                            <FontAwesomeIcon icon={faChevronUp} />
+                          </button>
+                          <button
+                            type="button"
+                            className="mesas-searchNavigator__btn"
+                            title="Resultado siguiente"
+                            aria-label="Resultado siguiente"
+                            onClick={() => cambiarResultadoBusqueda(1)}
+                            disabled={!puedeNavegarBusqueda}
+                          >
+                            <FontAwesomeIcon icon={faChevronDown} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1169,7 +1455,7 @@ const MesasExamen = () => {
 
         <div className={`mesas-pdf-view ${tab === "historial" ? "mesas-pdf-view--historial" : ""}`}>
           {tab === "historial" ? (
-            <HistorialMesasPanel historial={historial} />
+            <HistorialMesasPanel historial={historial} busqueda={busqueda} terminosBusqueda={terminosBusqueda} />
           ) : cargando ? (
             <div className="cc-emptyState mesas-empty mesas-pdf-empty">
               <FontAwesomeIcon icon={faSpinner} spin />
@@ -1186,17 +1472,23 @@ const MesasExamen = () => {
               </div>
             </div>
           ) : (
-            mesasFiltradas.map((item) => (
+            mesasFiltradas.map((item) => {
+              const idTarjeta = obtenerIdGrupo(item);
+
+              return (
               <MesaPdfCard
-                key={`pdf-${obtenerIdGrupo(item)}`}
+                key={`pdf-${idTarjeta}`}
+                cardRef={(node) => registrarTarjetaMesa(idTarjeta, node)}
                 grupo={item}
                 esNoAgrupada={tab === "no-agrupadas"}
                 onEdit={() => abrirModalEditar(item, tab === "no-agrupadas" ? "no_agrupada" : "grupo")}
                 onDelete={() => eliminarMesaDesdeEdicion(construirPayloadEliminar(item, tab))}
                 onGuardarNota={guardarNotaAlumno}
                 guardandoNotas={guardandoNotas}
+                terminosBusqueda={terminosBusqueda}
               />
-            ))
+              );
+            })
           )}
         </div>
 

@@ -3550,3 +3550,146 @@
     border-radius:16px;
   }
 }
+
+/* =========================================================
+   BUSCADOR: SCROLL AL RESULTADO + RESALTADO DE COINCIDENCIAS
+   - Solo resalta el texto encontrado en amarillo.
+   - No agrega bordes, sombras, zoom ni efecto flotante a la tabla.
+========================================================= */
+
+.mesas-searchMark{
+  display:inline;
+  padding:1px 4px;
+  border-radius:5px;
+  background:#fde047;
+  color:#1f2937;
+  font-weight:900;
+  box-shadow:none;
+  -webkit-box-decoration-break:clone;
+  box-decoration-break:clone;
+}
+
+.mesas-pdf-sheet--searching{
+  transition:none;
+}
+
+.mesas-pdf-sheet--searching:has(.mesas-searchMark){
+  border-color:inherit !important;
+}
+
+.mesas-searchFocusPulse{
+  outline:none !important;
+  outline-offset:0;
+  animation:none !important;
+  transform:none !important;
+  z-index:auto;
+}
+
+.mesas-historial-gridRow.mesas-searchFocusPulse,
+.mesas-pdf-sheet.mesas-searchFocusPulse{
+  box-shadow:inherit !important;
+  transform:none !important;
+}
+
+/* =========================================================
+   BUSCADOR: contador + flechas de navegación de resultados
+   ========================================================= */
+.mesas-searchFilter .cc-searchInput{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  width:100%;
+}
+
+.mesas-searchFilter .cc-searchInput__fieldWrap{
+  flex:1 1 auto;
+  min-width:190px;
+}
+
+.mesas-searchNavigator{
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  min-height:40px;
+  padding:5px 6px 5px 10px;
+  border:1px solid color-mix(in srgb, var(--mov-border, #D6E2F3) 78%, #fff);
+  border-radius:12px;
+  background:#fff;
+  color:var(--balto-ink, #3A2E2B);
+  box-shadow:none;
+  white-space:nowrap;
+}
+
+.mesas-searchNavigator__count{
+  font-size:12px;
+  font-weight:720;
+  color:color-mix(in srgb, var(--balto-ink, #3A2E2B) 82%, #000);
+}
+
+.mesas-searchNavigator__buttons{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+}
+
+.mesas-searchNavigator__btn{
+  width:28px;
+  height:28px;
+  border:1px solid color-mix(in srgb, var(--mov-border, #D6E2F3) 86%, #fff);
+  border-radius:8px;
+  background:color-mix(in srgb, var(--balto-bg, #FDFBF7) 68%, #fff);
+  color:var(--balto-action, #1f4b93);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  transition:background .16s ease, border-color .16s ease, color .16s ease;
+}
+
+.mesas-searchNavigator__btn:hover:not(:disabled){
+  background:#fff7db;
+  border-color:rgba(196,139,59,.36);
+  color:#8a5a13;
+}
+
+.mesas-searchNavigator__btn:disabled{
+  opacity:.42;
+  cursor:not-allowed;
+}
+
+/* Quita los bordes negros/sombras fuertes de las tablas de mesas.
+   El resultado buscado queda marcado solo con amarillo. */
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-sheet,
+.mesas-card-pdf-fijo .mesas-pdf-sheet,
+.mesas-pdf-sheet{
+  border:1px solid color-mix(in srgb, var(--mov-border, #D6E2F3) 72%, #fff) !important;
+  border-bottom:1px solid color-mix(in srgb, var(--mov-border, #D6E2F3) 72%, #fff) !important;
+  box-shadow:none !important;
+}
+
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-sheet:hover,
+.mesas-card-pdf-fijo .mesas-pdf-sheet:hover,
+.mesas-pdf-sheet:hover{
+  box-shadow:none !important;
+}
+
+.mesas-searchFocusPulse{
+  outline:none !important;
+  box-shadow:none !important;
+  border-color:color-mix(in srgb, var(--mov-border, #D6E2F3) 72%, #fff) !important;
+  transform:none !important;
+  animation:none !important;
+}
+
+@media (max-width:720px){
+  .mesas-searchFilter .cc-searchInput{
+    flex-direction:column;
+    align-items:stretch;
+  }
+
+  .mesas-searchNavigator{
+    width:100%;
+    justify-content:space-between;
+  }
+}
