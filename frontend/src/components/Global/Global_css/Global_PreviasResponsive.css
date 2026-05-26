@@ -51,6 +51,18 @@
     min-width: 0;
   }
 
+  .previas-titleTabs {
+    max-width: 100%;
+    gap: 16px;
+    margin-top: 8px;
+  }
+
+  .previas-titleTab.mov-tab {
+    height: 32px;
+    min-height: 32px;
+    font-size: 12px;
+  }
+
   .previas-headFilters {
     width: 100%;
     display: grid;
@@ -136,6 +148,11 @@
 
   .previas-section-title {
     font-size: 14px;
+  }
+
+  .previas-titleTabs {
+    width: 100%;
+    gap: 14px;
   }
 
   .previas-headFilters {
@@ -348,8 +365,13 @@
     padding: 12px;
   }
 
-  .previas-card__hint {
-    font-size: 11px;
+  .previas-titleTabs {
+    gap: 12px;
+  }
+
+  .previas-titleTab.mov-tab {
+    font-size: 12px;
+    padding-bottom: 8px;
   }
 
   .previas-tabsInline {
@@ -440,6 +462,10 @@
 
   .previas-section-title {
     font-size: 13px;
+  }
+
+  .previas-titleTabs {
+    gap: 10px;
   }
 
   .previas-tabsInline {

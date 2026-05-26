@@ -707,7 +707,6 @@ export default function Previas() {
   }
 
   const totalVisible = Array.isArray(previas) ? previas.length : 0;
-  const totalReferencia = Number(conteo.totalRegistros || totalVisible);
   const hayBusqueda = busqueda.trim() !== '';
   const hayFiltrosAplicados = Boolean(hayBusqueda || hayFiltrosPrevias);
   const condicionesFiltro = Array.isArray(catalogos?.condiciones) ? catalogos.condiciones : [];
@@ -837,32 +836,26 @@ export default function Previas() {
               <div className="mov-card__title previas-section-title">
                 Mesas · Previas
               </div>
-              <div className="mov-card__hint">
-                Mostrando <b>{totalVisible}</b> de <b>{totalReferencia}</b> previas
+
+              <div className="previas-titleTabs" aria-label="Cambiar vista de previas">
+                <button
+                  type="button"
+                  className={`mov-tab previas-titleTab ${vista === 'activas' ? 'is-active' : ''}`}
+                  onClick={() => cambiarVista('activas')}
+                >
+                  Activas
+                </button>
+                <button
+                  type="button"
+                  className={`mov-tab previas-titleTab ${vista === 'bajas' ? 'is-active' : ''}`}
+                  onClick={() => cambiarVista('bajas')}
+                >
+                  Dados de baja
+                </button>
               </div>
             </div>
 
             <div className="mov-headFilters previas-headFilters">
-              <div className="previas-filterTabs" aria-label="Filtrar previas por estado">
-                <span className="previas-filterTabs__label">Estado</span>
-                <div className="mov-tabs previas-tabsInline">
-                  <button
-                    type="button"
-                    className={`mov-tab previas-tab ${vista === 'activas' ? 'is-active' : ''}`}
-                    onClick={() => cambiarVista('activas')}
-                  >
-                    <FontAwesomeIcon icon={faUserCheck} /> Activas
-                  </button>
-                  <button
-                    type="button"
-                    className={`mov-tab previas-tab ${vista === 'bajas' ? 'is-active' : ''}`}
-                    onClick={() => cambiarVista('bajas')}
-                  >
-                    <FontAwesomeIcon icon={faUserSlash} /> Dados de baja
-                  </button>
-                </div>
-              </div>
-
               <div className="cc-filter previas-searchFilter">
                 <div className={`cc-floatingField cc-floatingField--search ${hayBusqueda ? 'is-active' : ''}`}>
                   <div className="cc-searchInput">
@@ -965,7 +958,7 @@ export default function Previas() {
             />
 
             <button type="button" className="mov-btn mov-btn--soft" onClick={() => setModalImportar(true)}>
-              <FontAwesomeIcon icon={faFileImport} /> Importar previas
+              <FontAwesomeIcon icon={faFileImport} /> Importar
             </button>
             <button type="button" className="mov-btn mov-btn--primary" onClick={abrirCrear}>
               <FontAwesomeIcon icon={faPlus} /> Agregar previa

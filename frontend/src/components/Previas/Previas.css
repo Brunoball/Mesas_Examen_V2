@@ -34,6 +34,8 @@
 .previas-titleBox{
   gap:0;
   flex:0 0 auto;
+  min-width:190px;
+  align-items:flex-start;
 }
 
 .previas-section-title{
@@ -41,6 +43,59 @@
   align-items:center;
   gap:8px;
   color:var(--balto-ink);
+}
+
+.previas-titleTabs{
+  width:max-content;
+  max-width:100%;
+  display:flex;
+  align-items:flex-end;
+  gap:18px;
+  margin-top:9px;
+  padding:0;
+  border-bottom:1px solid color-mix(in srgb, var(--mov-border) 78%, #fff);
+  overflow-x:auto;
+  overflow-y:hidden;
+  scrollbar-width:none;
+}
+.previas-table-wrap{
+  min-height: calc(100vh - 280px);
+  max-height: calc(100vh - 280px);
+}
+.previas-titleTabs::-webkit-scrollbar{
+  display:none;
+}
+
+.previas-titleTab.mov-tab{
+  height:34px;
+  min-height:34px;
+  padding:0 2px 9px;
+  border:0;
+  border-radius:0;
+  border-bottom:2px solid transparent;
+  background:transparent;
+  box-shadow:none;
+  color:color-mix(in srgb, var(--balto-text) 82%, #000);
+  font-size:13px;
+  font-weight:560;
+  letter-spacing:.01em;
+  line-height:1;
+  transform:none;
+}
+
+.previas-titleTab.mov-tab:hover{
+  background:transparent;
+  color:var(--balto-action);
+  border-bottom-color:color-mix(in srgb, var(--balto-action) 30%, #fff);
+  box-shadow:none;
+  transform:none;
+}
+
+.previas-titleTab.mov-tab.is-active{
+  background:transparent;
+  color:var(--balto-action);
+  border-bottom-color:var(--balto-action);
+  box-shadow:none;
 }
 
 .previas-headFilters{
@@ -61,21 +116,16 @@
 .previas-filterSelects{
   display:flex;
   align-items:center;
-  flex-wrap:wrap;
   gap:8px;
   min-width:0;
 }
 
 .previas-selectWrap{
   position:relative;
-  flex:0 1 140px;
-  min-width:128px;
   height:44px;
 }
 
-.previas-selectWrap:first-child{
-  flex-basis:158px;
-}
+
 
 .previas-select{
   width:100%;
@@ -87,7 +137,7 @@
   font-family:inherit;
   font-size:13px;
   font-weight:560;
-  padding:10px 32px 8px 12px;
+  padding:10px 12px 8px 12px;
   outline:none;
   cursor:pointer;
   transition:border-color var(--mov-trans), box-shadow var(--mov-trans), background var(--mov-trans);
