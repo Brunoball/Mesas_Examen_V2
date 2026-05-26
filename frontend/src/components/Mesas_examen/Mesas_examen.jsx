@@ -13,8 +13,6 @@ import {
   faChartLine,
   faEdit,
   faTimes,
-  faFilePdf,
-  faFileExcel,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "../Global/Global_css/roots.css";
@@ -30,7 +28,8 @@ import ModalEliminarGlobal from "../Global/Modales/ModalEliminarGlobal";
 import Toast from "../Global/Toast";
 import ModalTituloPdfMesas from "./modales/exportar_pdf/ModalTituloPdfMesas";
 import { descargarPdfMesas } from "./modales/exportar_pdf/mesasPdfExporter";
-import ModalExportarHistorial from "./modales/exportar_historial/ModalExportarHistorial";
+import ModalExportarHistorialGlobal from "../Global/Modales/ModalExportarHistorialGlobal";
+import BotonExportarHistorialGlobal from "../Global/Botones/BotonExportarHistorialGlobal";
 import TextoExpandibleGlobal from "../Global/Modales/TextoExpandibleGlobal";
 import {
   contarMesasHistorial,
@@ -1096,15 +1095,13 @@ const MesasExamen = () => {
           </div>
 
           <div className="mov-card__actions mesas-actionsHead">
-            <button
+            <BotonExportarHistorialGlobal
               className="mov-btn mov-btn--secondary mesas-actionBtn mesas-exportBtn"
-              type="button"
+              icon={tab === "historial" ? "excel" : "pdf"}
+              label={tab === "historial" ? "Exportar historial" : "Exportar PDF"}
               onClick={tab === "historial" ? abrirModalExportarHistorial : abrirModalExportarPdf}
               disabled={cargando || armando || agrupando || (tab === "historial" ? historial?.cargando || exportandoHistorial || totalVisible === 0 : totalVisible === 0)}
-            >
-              <FontAwesomeIcon icon={tab === "historial" ? faFileExcel : faFilePdf} />
-              {tab === "historial" ? "Exportar historial" : "Exportar PDF"}
-            </button>
+            />
 
             <button
               className="mov-btn mov-btn--primary mesas-actionBtn mesas-createBtn"
@@ -1242,7 +1239,7 @@ const MesasExamen = () => {
         onConfirm={confirmarExportarPdf}
       />
 
-      <ModalExportarHistorial
+      <ModalExportarHistorialGlobal
         abierto={modalExportarHistorialAbierto}
         loading={exportandoHistorial}
         cantidadArmados={Array.isArray(historial?.armados) ? historial.armados.length : 0}
