@@ -293,9 +293,7 @@
     grid-template-columns:1fr;
   }
 
-  .global-exportHistorial-footer{
-    flex-direction:column-reverse;
-  }
+
 
   .global-exportHistorial-action{
     width:100%;

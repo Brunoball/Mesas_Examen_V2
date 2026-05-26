@@ -1,9 +1,65 @@
 // src/components/Login/RestablecerContrasena.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faCircleExclamation,
+  faEye,
+  faEyeSlash,
+  faKey,
+  faLock,
+  faRotate,
+  faSpinner,
+  faTimes,
+} from '@fortawesome/free-solid-svg-icons';
 import { loginApi } from './api/loginApi';
 import Toast from '../Global/Toast';
 import './restablecer.css';
+
+const evaluarFortalezaContrasena = (valor = '') => {
+  const password = String(valor);
+  let puntos = 0;
+
+  if (password.length >= 6) puntos += 1;
+  if (password.length >= 10) puntos += 1;
+  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) puntos += 1;
+  if (/\d/.test(password)) puntos += 1;
+  if (/[^A-Za-z0-9]/.test(password)) puntos += 1;
+
+  if (!password) {
+    return {
+      nivel: 'empty',
+      texto: 'Ingresá una contraseña',
+      detalle: 'Usá letras, números y símbolos para mejorarla.',
+      porcentaje: 0,
+    };
+  }
+
+  if (puntos <= 2) {
+    return {
+      nivel: 'weak',
+      texto: 'Débil',
+      detalle: 'Sumá mayúsculas, números o símbolos.',
+      porcentaje: 32,
+    };
+  }
+
+  if (puntos <= 4) {
+    return {
+      nivel: 'medium',
+      texto: 'Buena',
+      detalle: 'Está bien, pero puede ser más segura.',
+      porcentaje: 66,
+    };
+  }
+
+  return {
+    nivel: 'strong',
+    texto: 'Muy buena',
+    detalle: 'Contraseña más sólida y difícil de adivinar.',
+    porcentaje: 100,
+  };
+};
 
 const RestablecerContrasena = () => {
   const [searchParams] = useSearchParams();
@@ -20,6 +76,8 @@ const RestablecerContrasena = () => {
   const [guardando, setGuardando] = useState(false);
   const [mensajeError, setMensajeError] = useState('');
   const [toast, setToast] = useState(null);
+
+  const fortaleza = useMemo(() => evaluarFortalezaContrasena(contrasena), [contrasena]);
 
   const mostrarToast = (tipo, mensaje, duracion = 3200) =>
     setToast({ tipo, mensaje, duracion });
@@ -110,13 +168,11 @@ const RestablecerContrasena = () => {
       <form className="rst_modal" onSubmit={manejarSubmit}>
         <div className="rst_header">
           <div className="rst_icon" aria-hidden="true">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="11" width="18" height="10" rx="2" />
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
+            <FontAwesomeIcon icon={faKey} />
           </div>
 
           <div className="rst_title_wrap">
+            <span className="rst_badge">Restablecer acceso</span>
             <h1>Nueva contraseña</h1>
             <p>{usuario ? `Cuenta: ${usuario}` : 'Ingresá tu nueva contraseña'}</p>
           </div>
@@ -126,20 +182,27 @@ const RestablecerContrasena = () => {
             className="rst_close"
             onClick={() => navigate('/', { replace: true })}
             aria-label="Volver al login"
+            title="Volver al login"
           >
-            ×
+            <FontAwesomeIcon icon={faTimes} />
           </button>
         </div>
 
         <div className="rst_body">
           {validando && (
-            <div className="rst_state">Validando enlace de recuperación...</div>
+            <div className="rst_state">
+              <FontAwesomeIcon icon={faSpinner} spin aria-hidden="true" />
+              <span>Validando enlace de recuperación...</span>
+            </div>
           )}
 
           {!validando && !tokenValido && (
             <div className="rst_error_box">
-              <strong>No se puede restablecer la contraseña</strong>
-              <span>{mensajeError}</span>
+              <FontAwesomeIcon icon={faCircleExclamation} aria-hidden="true" />
+              <div>
+                <strong>No se puede restablecer la contraseña</strong>
+                <span>{mensajeError}</span>
+              </div>
             </div>
           )}
 
@@ -147,6 +210,7 @@ const RestablecerContrasena = () => {
             <>
               <label className="rst_label" htmlFor="nuevaContrasena">Nueva contraseña</label>
               <div className="rst_input_wrap">
+                <FontAwesomeIcon icon={faLock} className="rst_input_icon" aria-hidden="true" />
                 <input
                   id="nuevaContrasena"
                   type={showPassword ? 'text' : 'password'}
@@ -161,13 +225,26 @@ const RestablecerContrasena = () => {
                   className="rst_eye"
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                 >
-                  {showPassword ? '🙈' : '👁️'}
+                  <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
                 </button>
+              </div>
+
+              <div className={`rst_strength rst_strength_${fortaleza.nivel}`}>
+                <div className="rst_strength_head">
+                  <span>Seguridad de la contraseña</span>
+                  <strong>{fortaleza.texto}</strong>
+                </div>
+                <div className="rst_strength_track" aria-hidden="true">
+                  <span style={{ width: `${fortaleza.porcentaje}%` }} />
+                </div>
+                <p>{fortaleza.detalle}</p>
               </div>
 
               <label className="rst_label" htmlFor="confirmarNuevaContrasena">Confirmar contraseña</label>
               <div className="rst_input_wrap">
+                <FontAwesomeIcon icon={faRotate} className="rst_input_icon" aria-hidden="true" />
                 <input
                   id="confirmarNuevaContrasena"
                   type={showConfirmPassword ? 'text' : 'password'}
@@ -181,8 +258,9 @@ const RestablecerContrasena = () => {
                   className="rst_eye"
                   onClick={() => setShowConfirmPassword((v) => !v)}
                   aria-label={showConfirmPassword ? 'Ocultar confirmación' : 'Mostrar confirmación'}
+                  title={showConfirmPassword ? 'Ocultar confirmación' : 'Mostrar confirmación'}
                 >
-                  {showConfirmPassword ? '🙈' : '👁️'}
+                  <FontAwesomeIcon icon={showConfirmPassword ? faEyeSlash : faEye} />
                 </button>
               </div>
             </>

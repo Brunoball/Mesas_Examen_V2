@@ -9,6 +9,7 @@ import {
   faUserPlus,
   faSpinner,
   faTriangleExclamation,
+  faCheck,
   faCheckCircle,
   faChartLine,
   faEdit,
@@ -888,14 +889,19 @@ const MesasExamen = () => {
     </div>
   ) : (
     <div className="mesas-eliminar-historial">
-      <label className="mesas-eliminar-historial__check">
+      <label
+        className={`mesas-eliminar-historial__check ${guardarHistorialArmado ? "activo" : ""} ${eliminarArmado?.eliminando ? "is-disabled" : ""}`}
+      >
         <input
           type="checkbox"
           checked={guardarHistorialArmado}
           onChange={cambiarGuardarHistorialArmado}
           disabled={!!eliminarArmado?.eliminando}
         />
-        <span>
+        <span className="mesas-check-visual" aria-hidden="true">
+          <FontAwesomeIcon icon={faCheck} />
+        </span>
+        <span className="mesas-option-check__text">
           <strong>Guardar historial del armado antes de eliminar</strong>
           <small>Guarda un respaldo de las mesas, grupos, mesas no agrupadas y alumnos vinculados antes de eliminarlos.</small>
         </span>

@@ -153,9 +153,8 @@ body.pp-lockScroll{ overflow:hidden !important; }
 
 .mov-topbar__lernaLogo{
   display:block;
-  height:180px;
   width:auto;
-  max-width:min(30vw, 260px);
+  max-width:min(30vw, 130px);
   object-fit:contain;
   filter:none;
   transition:none;
@@ -1130,7 +1129,7 @@ body.pp-lockScroll{ overflow:hidden !important; }
   .mov-topbar__lernaBrand{
     width:122px;
     height:40px;
-    flex-basis:122px;
+    flex-basis:200px;
   }
 
   .mov-topbar__lernaLogo{

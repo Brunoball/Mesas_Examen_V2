@@ -3426,57 +3426,127 @@
 
 /* Modal eliminar mesas: guardado opcional de historial del armado */
 .mesas-eliminar-historial{
-  padding:12px 13px;
-  border:1px solid rgba(196, 139, 59, .24);
-  border-radius:14px;
-  background:linear-gradient(180deg, rgba(196, 139, 59, .10), rgba(255,255,255,.92));
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:2px;
 }
 
 .mesas-eliminar-historial__check{
+  position:relative;
   display:flex;
   align-items:flex-start;
-  gap:10px;
+  gap:12px;
+  width:100%;
+  padding:13px 14px;
+  border:1px solid var(--mesas-border, rgba(58,46,43,.12));
+  border-radius:18px;
+  background:#fff;
+  color:var(--mesas-text, #786661);
   cursor:pointer;
-  color:var(--balto-ink, #3A2E2B);
+  box-shadow:var(--mesas-shadow-sm, 0 1px 3px rgba(58,46,43,.08));
+  transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease, opacity .18s ease;
 }
 
-.mesas-eliminar-historial__check input{
-  width:18px;
-  height:18px;
-  margin-top:2px;
-  accent-color:var(--balto-action, #C48B3B);
-  cursor:pointer;
-  flex:0 0 auto;
+.mesas-eliminar-historial__check:hover:not(.is-disabled){
+  transform:translateY(-1px);
+  border-color:rgba(196,139,59,.28);
+  box-shadow:0 12px 28px rgba(58,46,43,.09);
 }
 
-.mesas-eliminar-historial__check input:disabled{
+.mesas-eliminar-historial__check.activo{
+  border-color:rgba(196,139,59,.42);
+  background:linear-gradient(135deg, rgba(196,139,59,.065), #fff 58%);
+}
+
+.mesas-eliminar-historial__check.is-disabled{
+  opacity:.68;
   cursor:not-allowed;
 }
 
-.mesas-eliminar-historial__check span{
+.mesas-eliminar-historial__check input{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+}
+
+.mesas-eliminar-historial__check .mesas-check-visual{
+  width:22px;
+  height:22px;
+  flex:0 0 auto;
+  margin-top:1px;
   display:grid;
-  gap:3px;
+  place-items:center;
+  border-radius:8px;
+  border:1px solid rgba(58,46,43,.18);
+  background:#fff;
+  color:#fff;
+  font-size:11px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7);
+  transition:background .16s ease, border-color .16s ease, box-shadow .16s ease, transform .16s ease;
 }
 
-.mesas-eliminar-historial__check strong,
-.mesas-eliminar-historial--danger strong{
-  font-size:13px;
+.mesas-eliminar-historial__check:hover:not(.is-disabled) .mesas-check-visual{
+  transform:translateY(-1px);
+}
+
+.mesas-eliminar-historial__check.activo .mesas-check-visual{
+  background:var(--mesas-blue, #C48B3B);
+  border-color:var(--mesas-blue, #C48B3B);
+  box-shadow:0 8px 16px rgba(196,139,59,.18);
+}
+
+.mesas-eliminar-historial__check .mesas-option-check__text{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  min-width:0;
+  text-align:left;
+}
+
+.mesas-eliminar-historial__check .mesas-option-check__text strong{
+  color:var(--mesas-midnight, #3A2E2B);
+  font-size:14px;
+  line-height:1.15;
+  font-weight:850;
+}
+
+.mesas-eliminar-historial__check .mesas-option-check__text small{
+  color:var(--mesas-muted, rgba(66,84,102,.72));
+  font-size:12.5px;
   line-height:1.25;
-  font-weight:800;
-}
-
-.mesas-eliminar-historial__check small,
-.mesas-eliminar-historial--danger span{
-  color:#786661;
-  font-size:12px;
-  line-height:1.35;
-  font-weight:600;
+  font-weight:650;
 }
 
 .mesas-eliminar-historial--danger{
   display:grid;
   gap:5px;
-  border-color:rgba(225, 61, 69, .30);
-  background:linear-gradient(180deg, rgba(225, 61, 69, .10), rgba(255,255,255,.92));
+  padding:13px 14px;
+  border:1px solid rgba(225, 61, 69, .30);
+  border-radius:18px;
+  background:linear-gradient(135deg, rgba(225, 61, 69, .09), #fff 62%);
   color:color-mix(in srgb, var(--balto-danger, #e13d45) 76%, var(--balto-ink, #3A2E2B));
+  text-align:left;
+  box-shadow:var(--mesas-shadow-sm, 0 1px 3px rgba(58,46,43,.08));
+}
+
+.mesas-eliminar-historial--danger strong{
+  font-size:14px;
+  line-height:1.15;
+  font-weight:850;
+}
+
+.mesas-eliminar-historial--danger span{
+  color:#786661;
+  font-size:12.5px;
+  line-height:1.3;
+  font-weight:650;
+}
+
+@media (max-width:560px){
+  .mesas-eliminar-historial__check,
+  .mesas-eliminar-historial--danger{
+    padding:12px;
+    border-radius:16px;
+  }
 }
