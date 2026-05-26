@@ -266,6 +266,8 @@ function mesas_armado_crear(): void
                     'min_numeros' => 2,
                     'max_numeros' => 4,
                     'confirmar_grupos' => false,
+                    'fecha_inicio' => $fechaInicio,
+                    'fecha_fin' => $fechaFin,
                 ]);
             } catch (Throwable $eGrupos) {
                 log_error($eGrupos, 'mesas_armado_crear_grupos_finales');

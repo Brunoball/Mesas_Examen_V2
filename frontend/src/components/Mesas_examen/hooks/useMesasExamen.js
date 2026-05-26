@@ -479,8 +479,12 @@ export const useMesasExamen = ({ onToast } = {}) => {
     setModalEliminarArmadoAbierto(false);
   }, [eliminandoArmado]);
 
-  const confirmarEliminarArmado = useCallback(async () => {
+  const confirmarEliminarArmado = useCallback(async ({ guardarHistorial = true, guardar_historial } = {}) => {
     if (eliminandoArmado) return null;
+
+    const debeGuardarHistorial = guardar_historial !== undefined
+      ? !!guardar_historial
+      : !!guardarHistorial;
 
     setArmando(true);
     setEliminandoArmado(true);
@@ -489,11 +493,18 @@ export const useMesasExamen = ({ onToast } = {}) => {
     setResumenArmado(null);
 
     try {
-      const response = await eliminarBorradorMesas();
+      const response = await eliminarBorradorMesas({
+        guardar_historial: debeGuardarHistorial,
+      });
 
       await cargarMesas();
       setModalEliminarArmadoAbierto(false);
-      mostrarToast("exito", "Mesas eliminadas con éxito.");
+      mostrarToast(
+        "exito",
+        debeGuardarHistorial
+          ? "Mesas eliminadas con éxito. El historial del armado fue guardado."
+          : "Mesas eliminadas con éxito. No se guardó historial del armado."
+      );
       return response;
     } catch (err) {
       const mensaje = err.message || "Error al eliminar las mesas.";

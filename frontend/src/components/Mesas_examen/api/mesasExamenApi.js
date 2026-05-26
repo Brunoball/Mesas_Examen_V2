@@ -78,8 +78,10 @@ export const crearGruposFinalesMesas = ({
   });
 };
 
-export const eliminarBorradorMesas = () => {
-  return apiPost("mesas_armado_eliminar_mesas", {});
+export const eliminarBorradorMesas = ({ guardar_historial = true } = {}) => {
+  return apiPost("mesas_armado_eliminar_mesas", {
+    guardar_historial: guardar_historial ? 1 : 0,
+  });
 };
 
 export const obtenerMesaEdicion = ({ tipo = "grupo", id_grupo, numero_grupo, id_no_agrupada, numero_mesa } = {}) => {

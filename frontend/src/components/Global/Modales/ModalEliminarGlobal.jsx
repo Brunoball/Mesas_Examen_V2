@@ -85,6 +85,7 @@ export default function ModalEliminarGlobal({
   loading = false,
   onClose,
   onConfirm,
+  onBeforeConfirm,
   onToast,
 
   title,
@@ -170,6 +171,13 @@ export default function ModalEliminarGlobal({
       return;
     }
 
+    if (typeof onBeforeConfirm === 'function') {
+      const continuar = onBeforeConfirm({ motivo: cleanReason, reason: cleanReason, row, operacion });
+      if (continuar === false) {
+        return;
+      }
+    }
+
     setLocalError('');
     setProcesandoInterno(true);
     showToast('cargando', resolvedLoadingMessage, 12000);
@@ -200,6 +208,7 @@ export default function ModalEliminarGlobal({
     isLoading,
     confirmDisabled,
     onConfirm,
+    onBeforeConfirm,
     reason,
     showReason,
     reasonRequired,

@@ -632,13 +632,20 @@ function mesas_armado_obtener_relaciones_correlativas_para_calendarizar(PDO $pdo
         $tipo = (string)$row['tipo'];
 
         if ($tipo === 'anterior') {
-            $idAnterior = $idBase;
-            $idPosterior = $idRelacionada;
+            /*
+             * En la tabla, id_materia/id_curso es la materia posterior y
+             * id_materia_relacionada/id_curso_relacionada es la correlativa anterior.
+             * Ejemplo real: ANÁLISIS MATEMÁTICO 6° depende de MATEMÁTICA 5°.
+             * Por eso la relacionada debe ir antes que la base.
+             */
+            $idAnterior = $idRelacionada;
+            $idPosterior = $idBase;
             $roles[$idAnterior] = min($roles[$idAnterior] ?? 9, 0);
             $roles[$idPosterior] = min($roles[$idPosterior] ?? 9, 2);
         } elseif ($tipo === 'posterior') {
-            $idAnterior = $idRelacionada;
-            $idPosterior = $idBase;
+            // Caso inverso: la relacionada es posterior a la materia base.
+            $idAnterior = $idBase;
+            $idPosterior = $idRelacionada;
             $roles[$idAnterior] = min($roles[$idAnterior] ?? 9, 0);
             $roles[$idPosterior] = min($roles[$idPosterior] ?? 9, 2);
         } else {
@@ -931,10 +938,13 @@ function mesas_armado_calendarizar_grupos(
         );
 
         if ($slotAsignado === null) {
+            $observacionNoCalendarizada = mesas_armado_describir_sin_slot_por_disponibilidad_fuera_rango($grupo, $slots, $disponibilidadDocentes)
+                ?? 'No se encontró fecha/turno dentro del rango solicitado respetando disponibilidad docente, alumnos, correlativas y compactación por área.';
+
             mesas_armado_marcar_grupo_observado(
                 $pdo,
                 $grupo['ids_mesa'],
-                'No se encontró fecha/turno disponible respetando disponibilidad docente, alumnos, correlativas y compactación por área.'
+                $observacionNoCalendarizada
             );
 
             $noCalendarizadas[] = [
@@ -947,7 +957,7 @@ function mesas_armado_calendarizar_grupos(
                 'cantidad_previas' => $grupo['cantidad_previas'],
                 'docentes' => $grupo['docentes_nombres'],
                 'materias' => $grupo['materias'],
-                'motivo' => 'sin_slot_disponible',
+                'motivo' => $observacionNoCalendarizada,
             ];
 
             continue;
@@ -1059,6 +1069,97 @@ function mesas_armado_calendarizar_grupos(
             '5_disponibilidad' => 'slot hábil donde el docente esté disponible por día de semana y turno; se evita choque de alumno y de docente, salvo mismo docente + misma área compatible para compactar números sin duplicar días.',
         ],
     ];
+}
+
+
+function mesas_armado_describir_sin_slot_por_disponibilidad_fuera_rango(array $grupo, array $slots, array $disponibilidadDocentes): ?string
+{
+    if (count($slots) === 0) {
+        return null;
+    }
+
+    $slotsPermitidos = [];
+    foreach ($slots as $slot) {
+        $fecha = (string)($slot['fecha'] ?? $slot['fecha_mesa'] ?? '');
+        $idTurno = (int)($slot['id_turno'] ?? 0);
+        $diaSemana = function_exists('mesas_armado_dia_semana_desde_fecha')
+            ? mesas_armado_dia_semana_desde_fecha($fecha)
+            : null;
+
+        if ($diaSemana !== null && $idTurno > 0) {
+            $slotsPermitidos[$diaSemana . '|' . $idTurno] = true;
+        }
+    }
+
+    if (count($slotsPermitidos) === 0) {
+        return null;
+    }
+
+    $dias = [
+        1 => 'lunes',
+        2 => 'martes',
+        3 => 'miércoles',
+        4 => 'jueves',
+        5 => 'viernes',
+    ];
+
+    $nombreTurno = static function (int $idTurno): string {
+        return match ($idTurno) {
+            1 => 'mañana',
+            2 => 'tarde',
+            3 => 'noche',
+            default => 'turno ' . $idTurno,
+        };
+    };
+
+    $docentes = array_values($grupo['docentes'] ?? []);
+    $nombres = array_values($grupo['docentes_nombres'] ?? []);
+    $docentesFuera = [];
+
+    foreach ($docentes as $idx => $idDocenteRaw) {
+        $idDocente = (int)$idDocenteRaw;
+        if ($idDocente <= 0 || !isset($disponibilidadDocentes[$idDocente]) || count($disponibilidadDocentes[$idDocente]) === 0) {
+            continue;
+        }
+
+        $tieneDisponibilidadEnRango = false;
+        $disponibilidadesTexto = [];
+
+        foreach ($disponibilidadDocentes[$idDocente] as $registro) {
+            $diaRegistro = (int)($registro['dia_semana'] ?? 0);
+            $turnoRegistro = (int)($registro['id_turno'] ?? 0);
+            if ($diaRegistro <= 0 || $turnoRegistro <= 0) {
+                continue;
+            }
+
+            if (isset($slotsPermitidos[$diaRegistro . '|' . $turnoRegistro])) {
+                $tieneDisponibilidadEnRango = true;
+            }
+
+            $diaTexto = $dias[$diaRegistro] ?? ('día ' . $diaRegistro);
+            $disponibilidadesTexto[$diaTexto . ' ' . $nombreTurno($turnoRegistro)] = true;
+        }
+
+        if (!$tieneDisponibilidadEnRango && count($disponibilidadesTexto) > 0) {
+            $nombre = trim((string)($nombres[$idx] ?? ''));
+            if ($nombre === '') {
+                $nombre = 'Docente ' . $idDocente;
+            }
+
+            $docentesFuera[] = $nombre . ' disponible solo: ' . implode(', ', array_keys($disponibilidadesTexto));
+        }
+    }
+
+    if (count($docentesFuera) === 0) {
+        return null;
+    }
+
+    return mb_substr(
+        'Docente fuera del rango solicitado. ' . implode(' | ', $docentesFuera) . '. La mesa queda no agrupada.',
+        0,
+        255,
+        'UTF-8'
+    );
 }
 
 function mesas_armado_buscar_slot_disponible_para_grupo(

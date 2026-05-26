@@ -63,6 +63,8 @@ function mesas_armado_fase_7_reoptimizar_no_agrupadas_core(PDO $pdo, array $opci
     $horasTurnos = is_array($opciones['horas_turnos'] ?? null)
         ? $opciones['horas_turnos']
         : mesas_armado_grupos_obtener_horas_turnos($pdo);
+    $fechaInicioRango = isset($opciones['fecha_inicio']) ? trim((string)$opciones['fecha_inicio']) : null;
+    $fechaFinRango = isset($opciones['fecha_fin']) ? trim((string)$opciones['fecha_fin']) : null;
 
     $numerosIndex = mesas_armado_reopt_indexar_numeros(mesas_armado_grupos_obtener_numeros_mesa($pdo));
     $pendientes = mesas_armado_reopt_obtener_pendientes($pdo, $numerosIndex);
@@ -78,8 +80,20 @@ function mesas_armado_fase_7_reoptimizar_no_agrupadas_core(PDO $pdo, array $opci
         $statsSinPendientes = [
             'grupos_sql_invalidos_por_un_solo_docente_blindados' => [],
             'total_grupos_sql_invalidos_por_un_solo_docente_blindados' => 0,
+            'blindaje_choques_docente_alumno' => [],
         ];
         mesas_armado_reopt_blindar_sql_grupos_con_un_solo_docente($pdo, $horasTurnos, $statsSinPendientes);
+        $gruposSinPendientes = mesas_armado_reopt_obtener_grupos_actuales($pdo, $numerosIndex);
+        $slotsSinPendientes = mesas_armado_reopt_obtener_slots_disponibles($pdo, [], $gruposSinPendientes, $fechaInicioRango, $fechaFinRango);
+        mesas_armado_reopt_blindar_choques_docente_alumno_salida(
+            $pdo,
+            $horasTurnos,
+            $disponibilidadDocentesSinPendientes,
+            $minNumeros,
+            $maxNumeros,
+            $slotsSinPendientes,
+            $statsSinPendientes
+        );
 
         return [
             'fase' => 7,
@@ -100,7 +114,7 @@ function mesas_armado_fase_7_reoptimizar_no_agrupadas_core(PDO $pdo, array $opci
 
     $disponibilidadDocentes = mesas_armado_obtener_disponibilidad_docentes($pdo);
     $grupos = mesas_armado_reopt_obtener_grupos_actuales($pdo, $numerosIndex);
-    $slotsDisponibles = mesas_armado_reopt_obtener_slots_disponibles($pdo, $pendientes, $grupos);
+    $slotsDisponibles = mesas_armado_reopt_obtener_slots_disponibles($pdo, $pendientes, $grupos, $fechaInicioRango, $fechaFinRango);
     $ocupacion = mesas_armado_reopt_crear_ocupacion_desde_grupos($grupos);
     $estadoGrupo = $confirmarGrupos ? 'validado' : 'borrador';
 
@@ -132,6 +146,7 @@ function mesas_armado_fase_7_reoptimizar_no_agrupadas_core(PDO $pdo, array $opci
         'grupos_nuevos' => [],
         'grupos_invalidos_por_un_solo_docente_blindados' => [],
         'total_grupos_invalidos_por_un_solo_docente_blindados' => 0,
+        'blindaje_choques_docente_alumno' => [],
     ];
 
     // 1) Completar grupos existentes usando pendientes compatibles.
@@ -226,6 +241,19 @@ function mesas_armado_fase_7_reoptimizar_no_agrupadas_core(PDO $pdo, array $opci
     // Blindaje final a nivel SQL: aunque una fase haya insertado algo mal,
     // ninguna mesa simple puede quedar con un unico docente/persona distinta.
     mesas_armado_reopt_blindar_sql_grupos_con_un_solo_docente($pdo, $horasTurnos, $stats);
+
+    // Blindaje final operativo: ningún docente/alumno puede quedar en dos salidas
+    // distintas del mismo día y turno. Si un mismo docente comparte slot, se intenta
+    // primero unir en el mismo grupo; si no entra, se mueve una salida completa.
+    mesas_armado_reopt_blindar_choques_docente_alumno_salida(
+        $pdo,
+        $horasTurnos,
+        $disponibilidadDocentes,
+        $minNumeros,
+        $maxNumeros,
+        $slotsDisponibles,
+        $stats
+    );
 
     // Limpieza final: si un numero fue rescatado y quedo en un grupo valido,
     // no debe seguir mostrando la observacion vieja de no agrupada.
@@ -325,15 +353,44 @@ function mesas_armado_reopt_obtener_grupos_actuales(PDO $pdo, array $numerosInde
     return $grupos;
 }
 
-function mesas_armado_reopt_obtener_slots_disponibles(PDO $pdo, array $pendientes, array $grupos): array
+function mesas_armado_reopt_obtener_slots_disponibles(PDO $pdo, array $pendientes, array $grupos, ?string $fechaInicioRango = null, ?string $fechaFinRango = null): array
 {
-    $stmt = $pdo->query("\n        SELECT DISTINCT fecha_mesa, id_turno\n        FROM mesas\n        WHERE fecha_mesa IS NOT NULL\n          AND id_turno IS NOT NULL\n          AND estado IN ('borrador', 'armada')\n        ORDER BY fecha_mesa ASC, id_turno ASC\n    ");
+    $stmt = $pdo->query("
+        SELECT DISTINCT fecha_mesa, id_turno
+        FROM mesas
+        WHERE fecha_mesa IS NOT NULL
+          AND id_turno IS NOT NULL
+          AND estado IN ('borrador', 'armada')
+        ORDER BY fecha_mesa ASC, id_turno ASC
+    ");
+
+    $rangoExplicito = $fechaInicioRango !== null && $fechaFinRango !== null
+        && function_exists('mesas_armado_fecha_valida')
+        && mesas_armado_fecha_valida($fechaInicioRango)
+        && mesas_armado_fecha_valida($fechaFinRango)
+        && $fechaFinRango >= $fechaInicioRango;
+
+    $enRango = static function (?string $fecha) use ($rangoExplicito, $fechaInicioRango, $fechaFinRango): bool {
+        if (!$rangoExplicito) {
+            return true;
+        }
+
+        if ($fecha === null || $fecha === '') {
+            return false;
+        }
+
+        return $fecha >= (string)$fechaInicioRango && $fecha <= (string)$fechaFinRango;
+    };
 
     $slots = [];
     $vistos = [];
 
-    $agregar = static function (?string $fecha, mixed $idTurno) use (&$slots, &$vistos): void {
+    $agregar = static function (?string $fecha, mixed $idTurno) use (&$slots, &$vistos, $enRango): void {
         if ($fecha === null || $fecha === '' || $idTurno === null || (int)$idTurno <= 0) {
+            return;
+        }
+
+        if (!$enRango($fecha)) {
             return;
         }
 
@@ -351,8 +408,22 @@ function mesas_armado_reopt_obtener_slots_disponibles(PDO $pdo, array $pendiente
         ];
     };
 
-    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-        $agregar((string)$row['fecha_mesa'], $row['id_turno']);
+    /*
+     * Regla dura: la reoptimización NUNCA puede inventar días fuera del rango
+     * elegido en el modal. Si el armado se pidió de martes a miércoles, solo se
+     * prueban slots de martes a miércoles. Si un docente solo puede viernes, la
+     * mesa debe quedar en no agrupadas/observada con motivo claro, no moverse a viernes.
+     */
+    if ($rangoExplicito && function_exists('mesas_armado_obtener_slots')) {
+        foreach (mesas_armado_obtener_slots($pdo, (string)$fechaInicioRango, (string)$fechaFinRango, true) as $slotRango) {
+            $agregar((string)($slotRango['fecha_mesa'] ?? $slotRango['fecha'] ?? ''), $slotRango['id_turno'] ?? null);
+        }
+    } else {
+        // Cuando la fase se ejecuta suelta y no se recibe rango, se usan SOLO los slots ya existentes.
+        // No se abre una ventana extra de +7 días porque eso genera días no solicitados por el usuario.
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $agregar((string)$row['fecha_mesa'], $row['id_turno']);
+        }
     }
 
     foreach ($grupos as $grupo) {
@@ -362,6 +433,11 @@ function mesas_armado_reopt_obtener_slots_disponibles(PDO $pdo, array $pendiente
     foreach ($pendientes as $numero) {
         $agregar($numero['fecha_mesa'] ?? null, $numero['id_turno'] ?? null);
     }
+
+    usort($slots, static function (array $a, array $b): int {
+        return [(string)$a['fecha_mesa'], (int)$a['id_turno']]
+            <=> [(string)$b['fecha_mesa'], (int)$b['id_turno']];
+    });
 
     return $slots;
 }
@@ -2127,3 +2203,793 @@ function mesas_armado_reopt_quitar_donante_de_grupo_origen(
         $orden++;
     }
 }
+
+/*
+ * Blindaje operativo final de choques.
+ * Reglas:
+ * - Un docente nunca puede quedar en dos grupos distintos el mismo dia/turno.
+ *   Si comparte docente + area + slot, primero se intenta unir en el mismo grupo.
+ *   Si el grupo no entra por maximo de numeros, se mueve una salida completa a otro slot.
+ * - Un alumno nunca puede quedar en dos salidas distintas el mismo dia/turno, incluyendo no agrupadas.
+ * - Las reubicaciones respetan disponibilidad docente y correlatividades anterior/posterior.
+ */
+function mesas_armado_reopt_blindar_choques_docente_alumno_salida(
+    PDO $pdo,
+    array $horasTurnos,
+    array $disponibilidadDocentes,
+    int $minNumeros,
+    int $maxNumeros,
+    array $slotsDisponibles,
+    array &$stats
+): void {
+    if (!isset($stats['blindaje_choques_docente_alumno']) || !is_array($stats['blindaje_choques_docente_alumno'])) {
+        $stats['blindaje_choques_docente_alumno'] = [];
+    }
+
+    $stats['blindaje_choques_docente_alumno'] = array_merge([
+        'ejecutado' => true,
+        'grupos_unidos_por_mismo_docente_slot' => 0,
+        'grupos_movidos_por_choque_docente_slot' => 0,
+        'no_agrupadas_movidas_por_choque' => 0,
+        'iteraciones_consolidacion' => 0,
+        'detalles' => [],
+    ], $stats['blindaje_choques_docente_alumno']);
+
+    $iteraciones = 0;
+    while ($iteraciones < 80) {
+        $numerosIndex = mesas_armado_reopt_indexar_numeros(mesas_armado_grupos_obtener_numeros_mesa($pdo));
+        $grupos = mesas_armado_reopt_obtener_grupos_actuales($pdo, $numerosIndex);
+
+        if (!mesas_armado_reopt_consolidar_un_choque_docente_en_grupos(
+            $pdo,
+            $grupos,
+            $horasTurnos,
+            $disponibilidadDocentes,
+            $slotsDisponibles,
+            $maxNumeros,
+            $stats
+        )) {
+            break;
+        }
+
+        $iteraciones++;
+    }
+
+    $stats['blindaje_choques_docente_alumno']['iteraciones_consolidacion'] += $iteraciones;
+
+    $numerosIndex = mesas_armado_reopt_indexar_numeros(mesas_armado_grupos_obtener_numeros_mesa($pdo));
+    $grupos = mesas_armado_reopt_obtener_grupos_actuales($pdo, $numerosIndex);
+    mesas_armado_reopt_reubicar_no_agrupadas_con_choque(
+        $pdo,
+        $numerosIndex,
+        $grupos,
+        $horasTurnos,
+        $disponibilidadDocentes,
+        $slotsDisponibles,
+        $stats
+    );
+}
+
+function mesas_armado_reopt_consolidar_un_choque_docente_en_grupos(
+    PDO $pdo,
+    array &$grupos,
+    array $horasTurnos,
+    array $disponibilidadDocentes,
+    array $slotsDisponibles,
+    int $maxNumeros,
+    array &$stats
+): bool {
+    $porDocenteSlot = [];
+
+    foreach ($grupos as $numeroGrupo => $grupo) {
+        $fecha = (string)($grupo['fecha_mesa'] ?? '');
+        $idTurno = (int)($grupo['id_turno'] ?? 0);
+        if ($fecha === '' || $idTurno <= 0 || !empty($grupo['tiene_taller'])) {
+            continue;
+        }
+
+        foreach (($grupo['numeros'] ?? []) as $numero) {
+            foreach (($numero['docentes'] ?? []) as $idDocente) {
+                $idDocente = (int)$idDocente;
+                if ($idDocente <= 0) {
+                    continue;
+                }
+                $key = $idDocente . '|' . $fecha . '|' . $idTurno;
+                $porDocenteSlot[$key][(int)$numeroGrupo] = true;
+            }
+        }
+    }
+
+    foreach ($porDocenteSlot as $key => $gruposMapa) {
+        $idsGrupos = array_values(array_map('intval', array_keys($gruposMapa)));
+        if (count($idsGrupos) <= 1) {
+            continue;
+        }
+
+        sort($idsGrupos);
+
+        for ($i = 0; $i < count($idsGrupos); $i++) {
+            for ($j = $i + 1; $j < count($idsGrupos); $j++) {
+                if (mesas_armado_reopt_intentar_unir_grupos_mismo_docente_slot(
+                    $pdo,
+                    $grupos,
+                    $idsGrupos[$i],
+                    $idsGrupos[$j],
+                    $horasTurnos,
+                    $maxNumeros,
+                    $stats
+                )) {
+                    return true;
+                }
+            }
+        }
+
+        // Si no se pudo unir por maximo de numeros o compatibilidad, se mueve una salida completa.
+        for ($i = 1; $i < count($idsGrupos); $i++) {
+            $gid = $idsGrupos[$i];
+            if (isset($grupos[$gid]) && mesas_armado_reopt_intentar_mover_grupo_a_otro_slot(
+                $pdo,
+                $grupos,
+                $gid,
+                $horasTurnos,
+                $disponibilidadDocentes,
+                $slotsDisponibles,
+                $stats
+            )) {
+                return true;
+            }
+        }
+
+        // Último blindaje: si no se pudo unir ni mover, NO se deja el docente
+        // duplicado en dos grupos del mismo slot. Se saca una salida de grupos
+        // y pasa a no agrupadas para que luego se reubique a otro slot posible.
+        for ($i = 1; $i < count($idsGrupos); $i++) {
+            $gid = $idsGrupos[$i];
+            if (isset($grupos[$gid]) && mesas_armado_reopt_enviar_grupo_a_no_agrupadas_por_choque_docente(
+                $pdo,
+                $grupos,
+                $gid,
+                $horasTurnos,
+                $stats
+            )) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+function mesas_armado_reopt_intentar_unir_grupos_mismo_docente_slot(
+    PDO $pdo,
+    array &$grupos,
+    int $grupoA,
+    int $grupoB,
+    array $horasTurnos,
+    int $maxNumeros,
+    array &$stats
+): bool {
+    if (!isset($grupos[$grupoA], $grupos[$grupoB])) {
+        return false;
+    }
+
+    $a = $grupos[$grupoA];
+    $b = $grupos[$grupoB];
+
+    if (!empty($a['tiene_taller']) || !empty($b['tiene_taller'])) {
+        return false;
+    }
+
+    if ((string)$a['fecha_mesa'] !== (string)$b['fecha_mesa'] || (int)$a['id_turno'] !== (int)$b['id_turno']) {
+        return false;
+    }
+
+    $numerosUnidos = array_values(array_merge($a['numeros'] ?? [], $b['numeros'] ?? []));
+
+    /*
+     * Regla operativa dura:
+     * si un mismo docente queda en la misma fecha y turno, NO puede aparecer
+     * en dos grupos distintos. En ese caso el docente debe quedar en una sola
+     * salida física. Por eso este blindaje permite unir esos grupos aunque:
+     * - la suma supere el máximo ideal de 4 números;
+     * - el área SQL no coincida exactamente.
+     *
+     * Lo único que no se permite al unir es generar choque real de alumnos
+     * dentro de la misma salida, dejar un grupo simple con un solo docente
+     * distinto o mezclar talleres.
+     */
+    if (!mesas_armado_reopt_numeros_forman_grupo_valido_mismo_docente_slot($numerosUnidos)) {
+        return false;
+    }
+
+    $fecha = (string)$a['fecha_mesa'];
+    $idTurno = (int)$a['id_turno'];
+    $hora = $horasTurnos[$idTurno] ?? null;
+    $idArea = $a['id_area'] !== null ? (int)$a['id_area'] : null;
+    $orden = 1;
+
+    $stmtUpdate = $pdo->prepare('
+        UPDATE mesas_grupos
+        SET numero_grupo = ?,
+            fecha_mesa = ?,
+            id_turno = ?,
+            hora = ?,
+            id_area = ?,
+            orden = ?,
+            observacion = NULL
+        WHERE numero_grupo = ?
+          AND numero_mesa = ?
+    ');
+
+    foreach ($numerosUnidos as $numero) {
+        $grupoOrigen = in_array((int)$numero['numero_mesa'], array_map(static fn (array $n): int => (int)$n['numero_mesa'], $a['numeros'] ?? []), true)
+            ? $grupoA
+            : $grupoB;
+        $stmtUpdate->execute([$grupoA, $fecha, $idTurno, $hora, $idArea, $orden, $grupoOrigen, (int)$numero['numero_mesa']]);
+        $orden++;
+    }
+
+    $grupos[$grupoA]['numeros'] = $numerosUnidos;
+    $grupos[$grupoA]['cantidad_numeros'] = count($numerosUnidos);
+    $grupos[$grupoA]['max_orden'] = count($numerosUnidos);
+    unset($grupos[$grupoB]);
+
+    $stats['blindaje_choques_docente_alumno']['grupos_unidos_por_mismo_docente_slot']++;
+    $stats['blindaje_choques_docente_alumno']['detalles'][] = [
+        'tipo' => 'grupos_unidos_mismo_docente_slot',
+        'grupo_destino' => $grupoA,
+        'grupo_absorbido' => $grupoB,
+        'fecha_mesa' => $fecha,
+        'id_turno' => $idTurno,
+        'numeros_mesa' => array_map(static fn (array $n): int => (int)$n['numero_mesa'], $numerosUnidos),
+    ];
+
+    return true;
+}
+
+function mesas_armado_reopt_numeros_forman_grupo_valido_mismo_docente_slot(array $numeros): bool
+{
+    if (count($numeros) < 2) {
+        return false;
+    }
+
+    if (!mesas_armado_reopt_cumple_minimo_docentes_distintos($numeros)) {
+        return false;
+    }
+
+    $alumnos = [];
+    $docentesPorNumero = [];
+    foreach ($numeros as $numero) {
+        if (!empty($numero['es_taller'])) {
+            return false;
+        }
+
+        foreach (($numero['alumnos'] ?? []) as $dni) {
+            $dni = trim((string)$dni);
+            if ($dni === '') {
+                continue;
+            }
+
+            if (isset($alumnos[$dni])) {
+                return false;
+            }
+            $alumnos[$dni] = true;
+        }
+
+        foreach (($numero['docentes'] ?? []) as $idDocente) {
+            $idDocente = (int)$idDocente;
+            if ($idDocente > 0) {
+                $docentesPorNumero[] = $idDocente;
+            }
+        }
+    }
+
+    return count(array_unique($docentesPorNumero)) >= 2;
+}
+
+function mesas_armado_reopt_numeros_forman_grupo_valido(array $numeros): bool
+{
+    if (count($numeros) < 2) {
+        return false;
+    }
+
+    if (!mesas_armado_reopt_cumple_minimo_docentes_distintos($numeros)) {
+        return false;
+    }
+
+    for ($i = 0; $i < count($numeros); $i++) {
+        $resto = $numeros;
+        $numero = $resto[$i];
+        array_splice($resto, $i, 1);
+        if (!mesas_armado_reopt_compatible_con_numeros($numero, $resto)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function mesas_armado_reopt_intentar_mover_grupo_a_otro_slot(
+    PDO $pdo,
+    array &$grupos,
+    int $numeroGrupo,
+    array $horasTurnos,
+    array $disponibilidadDocentes,
+    array $slotsDisponibles,
+    array &$stats
+): bool {
+    if (!isset($grupos[$numeroGrupo]) || !empty($grupos[$numeroGrupo]['tiene_taller'])) {
+        return false;
+    }
+
+    $grupo = $grupos[$numeroGrupo];
+    foreach ($slotsDisponibles as $slot) {
+        $fecha = (string)($slot['fecha_mesa'] ?? $slot['fecha'] ?? '');
+        $idTurno = (int)($slot['id_turno'] ?? 0);
+
+        if ($fecha === '' || $idTurno <= 0) {
+            continue;
+        }
+
+        if ($fecha === (string)$grupo['fecha_mesa'] && $idTurno === (int)$grupo['id_turno']) {
+            continue;
+        }
+
+        if (!mesas_armado_reopt_grupo_disponible_en_slot($pdo, $grupo, $fecha, $idTurno, $grupos, $numeroGrupo, $disponibilidadDocentes)) {
+            continue;
+        }
+
+        mesas_armado_reopt_actualizar_slot_grupo_completo($pdo, $numeroGrupo, $grupo, $fecha, $idTurno, $horasTurnos);
+
+        $grupos[$numeroGrupo]['fecha_mesa'] = $fecha;
+        $grupos[$numeroGrupo]['id_turno'] = $idTurno;
+        foreach ($grupos[$numeroGrupo]['numeros'] as &$numero) {
+            $numero = mesas_armado_reopt_marcar_slot_en_numero($numero, $fecha, $idTurno);
+        }
+        unset($numero);
+
+        $stats['blindaje_choques_docente_alumno']['grupos_movidos_por_choque_docente_slot']++;
+        $stats['blindaje_choques_docente_alumno']['detalles'][] = [
+            'tipo' => 'grupo_movido_por_choque_docente_slot',
+            'numero_grupo' => $numeroGrupo,
+            'fecha_anterior' => $grupo['fecha_mesa'] ?? null,
+            'id_turno_anterior' => $grupo['id_turno'] ?? null,
+            'fecha_nueva' => $fecha,
+            'id_turno_nuevo' => $idTurno,
+            'numeros_mesa' => array_map(static fn (array $n): int => (int)$n['numero_mesa'], $grupo['numeros'] ?? []),
+        ];
+
+        return true;
+    }
+
+    return false;
+}
+
+function mesas_armado_reopt_grupo_disponible_en_slot(
+    PDO $pdo,
+    array $grupo,
+    string $fecha,
+    int $idTurno,
+    array $grupos,
+    int $grupoExcluido,
+    array $disponibilidadDocentes
+): bool {
+    $noAgrupadas = mesas_armado_reopt_obtener_no_agrupadas_actuales($pdo, mesas_armado_reopt_indexar_numeros(mesas_armado_grupos_obtener_numeros_mesa($pdo)));
+    $ocupacion = mesas_armado_reopt_crear_ocupacion_salidas($grupos, $noAgrupadas, 'g_' . $grupoExcluido);
+
+    foreach (($grupo['numeros'] ?? []) as $numero) {
+        if (!mesas_armado_reopt_numero_disponible_en_salida($pdo, $numero, $fecha, $idTurno, $ocupacion, $disponibilidadDocentes, 'g_' . $grupoExcluido)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
+function mesas_armado_reopt_enviar_grupo_a_no_agrupadas_por_choque_docente(
+    PDO $pdo,
+    array &$grupos,
+    int $numeroGrupo,
+    array $horasTurnos,
+    array &$stats
+): bool {
+    if (!isset($grupos[$numeroGrupo]) || !empty($grupos[$numeroGrupo]['tiene_taller'])) {
+        return false;
+    }
+
+    $grupo = $grupos[$numeroGrupo];
+    $numeros = array_values($grupo['numeros'] ?? []);
+    if (count($numeros) === 0) {
+        return false;
+    }
+
+    $stmtDeleteNo = $pdo->prepare('DELETE FROM mesas_no_agrupadas WHERE numero_mesa = ?');
+    $stmtInsertNo = $pdo->prepare("
+        INSERT INTO mesas_no_agrupadas (
+            numero_mesa,
+            fecha_mesa,
+            id_turno,
+            hora,
+            id_area,
+            tipo_mesa,
+            prioridad,
+            cantidad_alumnos,
+            motivo,
+            estado
+        ) VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente'
+        )
+    ");
+    $stmtDeleteGrupo = $pdo->prepare('DELETE FROM mesas_grupos WHERE numero_grupo = ? AND numero_mesa = ?');
+
+    $fecha = (string)($grupo['fecha_mesa'] ?? '');
+    $idTurno = (int)($grupo['id_turno'] ?? 0);
+    $idArea = $grupo['id_area'] !== null ? (int)$grupo['id_area'] : null;
+    $hora = $idTurno > 0 ? ($horasTurnos[$idTurno] ?? null) : null;
+    $motivo = 'reubicacion_forzada_por_docente_en_dos_grupos_mismo_dia_turno';
+    $numerosMesa = [];
+
+    foreach ($numeros as $numero) {
+        $numeroMesa = (int)($numero['numero_mesa'] ?? 0);
+        if ($numeroMesa <= 0) {
+            continue;
+        }
+
+        $stmtDeleteNo->execute([$numeroMesa]);
+        $stmtInsertNo->execute([
+            $numeroMesa,
+            $fecha !== '' ? $fecha : null,
+            $idTurno > 0 ? $idTurno : null,
+            $hora,
+            $idArea,
+            (string)($numero['tipo_mesa'] ?? 'simple'),
+            (int)($numero['prioridad'] ?? 0),
+            (int)($numero['cantidad_alumnos'] ?? 0),
+            $motivo,
+        ]);
+        $stmtDeleteGrupo->execute([$numeroGrupo, $numeroMesa]);
+        $numerosMesa[] = $numeroMesa;
+    }
+
+    unset($grupos[$numeroGrupo]);
+
+    $stats['blindaje_choques_docente_alumno']['grupos_movidos_por_choque_docente_slot']++;
+    $stats['blindaje_choques_docente_alumno']['detalles'][] = [
+        'tipo' => 'grupo_enviado_a_no_agrupadas_por_docente_duplicado_irresoluble',
+        'numero_grupo' => $numeroGrupo,
+        'fecha_mesa' => $fecha,
+        'id_turno' => $idTurno,
+        'numeros_mesa' => $numerosMesa,
+        'motivo' => $motivo,
+    ];
+
+    return count($numerosMesa) > 0;
+}
+
+function mesas_armado_reopt_actualizar_slot_grupo_completo(PDO $pdo, int $numeroGrupo, array $grupo, string $fecha, int $idTurno, array $horasTurnos): void
+{
+    $hora = $horasTurnos[$idTurno] ?? null;
+    $stmtGrupo = $pdo->prepare('UPDATE mesas_grupos SET fecha_mesa = ?, id_turno = ?, hora = ? WHERE numero_grupo = ?');
+    $stmtGrupo->execute([$fecha, $idTurno, $hora, $numeroGrupo]);
+
+    foreach (($grupo['numeros'] ?? []) as $numero) {
+        mesas_armado_reopt_actualizar_slot_numero($pdo, (int)$numero['numero_mesa'], $fecha, $idTurno);
+    }
+}
+
+function mesas_armado_reopt_obtener_no_agrupadas_actuales(PDO $pdo, array $numerosIndex): array
+{
+    $stmt = $pdo->query('
+        SELECT id, numero_mesa, fecha_mesa, id_turno, motivo
+        FROM mesas_no_agrupadas
+        ORDER BY id ASC
+    ');
+
+    $items = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $numeroMesa = (int)$row['numero_mesa'];
+        if (!isset($numerosIndex[$numeroMesa])) {
+            continue;
+        }
+        $numero = $numerosIndex[$numeroMesa];
+        $numero['id_no_agrupada'] = (int)$row['id'];
+        $numero['fecha_mesa'] = $row['fecha_mesa'] !== null ? (string)$row['fecha_mesa'] : ($numero['fecha_mesa'] ?? null);
+        $numero['id_turno'] = $row['id_turno'] !== null ? (int)$row['id_turno'] : ($numero['id_turno'] ?? null);
+        $numero['motivo_no_agrupada'] = (string)($row['motivo'] ?? '');
+        $items[(int)$row['id']] = $numero;
+    }
+
+    return $items;
+}
+
+function mesas_armado_reopt_crear_ocupacion_salidas(array $grupos, array $noAgrupadas = [], ?string $salidaExcluida = null): array
+{
+    $ocupacion = ['docentes' => [], 'alumnos' => []];
+
+    $agregarNumero = static function (array $numero, string $fecha, int $idTurno, string $salidaKey) use (&$ocupacion, $salidaExcluida): void {
+        if ($salidaExcluida !== null && $salidaKey === $salidaExcluida) {
+            return;
+        }
+        foreach (($numero['docentes'] ?? []) as $idDocente) {
+            $idDocente = (int)$idDocente;
+            if ($idDocente > 0) {
+                $clave = mesas_armado_clave_ocupacion_docente($idDocente, $fecha, $idTurno);
+                $ocupacion['docentes'][$clave][$salidaKey] = true;
+            }
+        }
+        foreach (($numero['alumnos'] ?? []) as $dni) {
+            $dni = trim((string)$dni);
+            if ($dni !== '') {
+                $clave = mesas_armado_clave_ocupacion_alumno($dni, $fecha, $idTurno);
+                $ocupacion['alumnos'][$clave][$salidaKey] = true;
+            }
+        }
+    };
+
+    foreach ($grupos as $numeroGrupo => $grupo) {
+        $fecha = (string)($grupo['fecha_mesa'] ?? '');
+        $idTurno = (int)($grupo['id_turno'] ?? 0);
+        if ($fecha === '' || $idTurno <= 0) {
+            continue;
+        }
+        foreach (($grupo['numeros'] ?? []) as $numero) {
+            $agregarNumero($numero, $fecha, $idTurno, 'g_' . (int)$numeroGrupo);
+        }
+    }
+
+    foreach ($noAgrupadas as $id => $numero) {
+        $fecha = (string)($numero['fecha_mesa'] ?? '');
+        $idTurno = (int)($numero['id_turno'] ?? 0);
+        if ($fecha === '' || $idTurno <= 0) {
+            continue;
+        }
+        $agregarNumero($numero, $fecha, $idTurno, 'n_' . (int)$id);
+    }
+
+    return $ocupacion;
+}
+
+function mesas_armado_reopt_ocupacion_libre_para_salida(array $ocupacion, string $tipo, string $clave, string $salidaKey): bool
+{
+    if (!isset($ocupacion[$tipo][$clave]) || !is_array($ocupacion[$tipo][$clave])) {
+        return true;
+    }
+
+    $salidas = array_keys($ocupacion[$tipo][$clave]);
+    foreach ($salidas as $salida) {
+        if ((string)$salida !== $salidaKey) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function mesas_armado_reopt_numero_disponible_en_salida(
+    PDO $pdo,
+    array $numero,
+    string $fecha,
+    int $idTurno,
+    array $ocupacion,
+    array $disponibilidadDocentes,
+    string $salidaKey
+): bool {
+    if (!empty($numero['es_taller'])) {
+        return false;
+    }
+
+    foreach (($numero['docentes'] ?? []) as $idDocente) {
+        $idDocente = (int)$idDocente;
+        if ($idDocente <= 0 || mesas_armado_docente_no_disponible($disponibilidadDocentes, $idDocente, $fecha, $idTurno)) {
+            return false;
+        }
+        $clave = mesas_armado_clave_ocupacion_docente($idDocente, $fecha, $idTurno);
+        if (!mesas_armado_reopt_ocupacion_libre_para_salida($ocupacion, 'docentes', $clave, $salidaKey)) {
+            return false;
+        }
+    }
+
+    foreach (($numero['alumnos'] ?? []) as $dni) {
+        $dni = trim((string)$dni);
+        if ($dni === '') {
+            continue;
+        }
+        $clave = mesas_armado_clave_ocupacion_alumno($dni, $fecha, $idTurno);
+        if (!mesas_armado_reopt_ocupacion_libre_para_salida($ocupacion, 'alumnos', $clave, $salidaKey)) {
+            return false;
+        }
+    }
+
+    return mesas_armado_reopt_slot_respeta_correlativas_numero($pdo, (int)$numero['numero_mesa'], $fecha, $idTurno);
+}
+
+function mesas_armado_reopt_reubicar_no_agrupadas_con_choque(
+    PDO $pdo,
+    array $numerosIndex,
+    array $grupos,
+    array $horasTurnos,
+    array $disponibilidadDocentes,
+    array $slotsDisponibles,
+    array &$stats
+): void {
+    $noAgrupadas = mesas_armado_reopt_obtener_no_agrupadas_actuales($pdo, $numerosIndex);
+    if (count($noAgrupadas) === 0) {
+        return;
+    }
+
+    $stmtUpdate = $pdo->prepare('
+        UPDATE mesas_no_agrupadas
+        SET fecha_mesa = ?,
+            id_turno = ?,
+            hora = ?,
+            motivo = ?
+        WHERE id = ?
+    ');
+
+    foreach ($noAgrupadas as $idNoAgrupada => $numero) {
+        $fechaActual = (string)($numero['fecha_mesa'] ?? '');
+        $turnoActual = (int)($numero['id_turno'] ?? 0);
+        if ($fechaActual === '' || $turnoActual <= 0) {
+            continue;
+        }
+
+        $ocupacionActual = mesas_armado_reopt_crear_ocupacion_salidas($grupos, $noAgrupadas, 'n_' . (int)$idNoAgrupada);
+        if (mesas_armado_reopt_numero_disponible_en_salida($pdo, $numero, $fechaActual, $turnoActual, $ocupacionActual, $disponibilidadDocentes, 'n_' . (int)$idNoAgrupada)) {
+            continue;
+        }
+
+        $nuevoSlot = mesas_armado_reopt_buscar_slot_para_numero_sin_choque(
+            $pdo,
+            $numero,
+            $slotsDisponibles,
+            $grupos,
+            $noAgrupadas,
+            'n_' . (int)$idNoAgrupada,
+            $disponibilidadDocentes
+        );
+
+        if ($nuevoSlot === null) {
+            continue;
+        }
+
+        $fechaNueva = (string)$nuevoSlot['fecha_mesa'];
+        $turnoNuevo = (int)$nuevoSlot['id_turno'];
+        $motivoBase = trim((string)($numero['motivo_no_agrupada'] ?? 'sin_compatibles_para_formar_grupo_de_2_a_4_en_misma_fecha_turno_area'));
+        $motivoNuevo = mb_substr('reubicada_por_choque_alumno_o_docente__' . $motivoBase, 0, 255, 'UTF-8');
+
+        $stmtUpdate->execute([$fechaNueva, $turnoNuevo, $horasTurnos[$turnoNuevo] ?? null, $motivoNuevo, (int)$idNoAgrupada]);
+        mesas_armado_reopt_actualizar_slot_numero($pdo, (int)$numero['numero_mesa'], $fechaNueva, $turnoNuevo);
+
+        $noAgrupadas[$idNoAgrupada]['fecha_mesa'] = $fechaNueva;
+        $noAgrupadas[$idNoAgrupada]['id_turno'] = $turnoNuevo;
+
+        $stats['blindaje_choques_docente_alumno']['no_agrupadas_movidas_por_choque']++;
+        $stats['blindaje_choques_docente_alumno']['detalles'][] = [
+            'tipo' => 'no_agrupada_movida_por_choque_alumno_o_docente',
+            'numero_mesa' => (int)$numero['numero_mesa'],
+            'fecha_anterior' => $fechaActual,
+            'id_turno_anterior' => $turnoActual,
+            'fecha_nueva' => $fechaNueva,
+            'id_turno_nuevo' => $turnoNuevo,
+        ];
+    }
+}
+
+function mesas_armado_reopt_buscar_slot_para_numero_sin_choque(
+    PDO $pdo,
+    array $numero,
+    array $slotsDisponibles,
+    array $grupos,
+    array $noAgrupadas,
+    string $salidaKey,
+    array $disponibilidadDocentes
+): ?array {
+    foreach ($slotsDisponibles as $slot) {
+        $fecha = (string)($slot['fecha_mesa'] ?? $slot['fecha'] ?? '');
+        $idTurno = (int)($slot['id_turno'] ?? 0);
+        if ($fecha === '' || $idTurno <= 0) {
+            continue;
+        }
+
+        if ($fecha === (string)($numero['fecha_mesa'] ?? '') && $idTurno === (int)($numero['id_turno'] ?? 0)) {
+            continue;
+        }
+
+        $ocupacion = mesas_armado_reopt_crear_ocupacion_salidas($grupos, $noAgrupadas, $salidaKey);
+        $numeroDestino = mesas_armado_reopt_marcar_slot_en_numero($numero, $fecha, $idTurno);
+        if (mesas_armado_reopt_numero_disponible_en_salida($pdo, $numeroDestino, $fecha, $idTurno, $ocupacion, $disponibilidadDocentes, $salidaKey)) {
+            return [
+                'fecha_mesa' => $fecha,
+                'fecha' => $fecha,
+                'id_turno' => $idTurno,
+            ];
+        }
+    }
+
+    return null;
+}
+
+function mesas_armado_reopt_slot_respeta_correlativas_numero(PDO $pdo, int $numeroMesa, string $fechaCandidata, int $turnoCandidato): bool
+{
+    $stmt = $pdo->prepare("
+        SELECT
+            me_actual.numero_mesa AS numero_actual,
+            me_otro.numero_mesa AS numero_otro,
+            me_otro.fecha_mesa AS fecha_otro,
+            me_otro.id_turno AS turno_otro,
+            CASE
+                WHEN pa.id_materia = mc.id_materia
+                 AND pa.materia_id_curso = mc.id_curso
+                 AND mc.tipo = 'anterior' THEN 'actual_posterior'
+                WHEN pa.id_materia = mc.id_materia_relacionada
+                 AND pa.materia_id_curso = mc.id_curso_relacionada
+                 AND mc.tipo = 'anterior' THEN 'actual_anterior'
+                WHEN pa.id_materia = mc.id_materia
+                 AND pa.materia_id_curso = mc.id_curso
+                 AND mc.tipo = 'posterior' THEN 'actual_anterior'
+                WHEN pa.id_materia = mc.id_materia_relacionada
+                 AND pa.materia_id_curso = mc.id_curso_relacionada
+                 AND mc.tipo = 'posterior' THEN 'actual_posterior'
+                ELSE 'equivalente'
+            END AS rol_actual
+        FROM mesas me_actual
+        INNER JOIN previas pa
+            ON pa.id_previa = me_actual.id_previa
+        INNER JOIN materias_correlativas mc
+            ON mc.activo = 1
+           AND mc.bloquea_armado = 1
+           AND (
+                (pa.id_materia = mc.id_materia AND pa.materia_id_curso = mc.id_curso)
+                OR
+                (pa.id_materia = mc.id_materia_relacionada AND pa.materia_id_curso = mc.id_curso_relacionada)
+           )
+        INNER JOIN previas po
+            ON po.dni = pa.dni
+           AND po.activo = 1
+           AND po.inscripcion = 1
+           AND po.id_condicion = 3
+           AND (
+                (pa.id_materia = mc.id_materia AND pa.materia_id_curso = mc.id_curso
+                 AND po.id_materia = mc.id_materia_relacionada AND po.materia_id_curso = mc.id_curso_relacionada)
+                OR
+                (pa.id_materia = mc.id_materia_relacionada AND pa.materia_id_curso = mc.id_curso_relacionada
+                 AND po.id_materia = mc.id_materia AND po.materia_id_curso = mc.id_curso)
+           )
+        INNER JOIN mesas me_otro
+            ON me_otro.id_previa = po.id_previa
+           AND me_otro.numero_mesa IS NOT NULL
+           AND me_otro.numero_mesa <> me_actual.numero_mesa
+           AND me_otro.estado IN ('borrador', 'armada', 'observada')
+        WHERE me_actual.numero_mesa = ?
+          AND me_actual.estado IN ('borrador', 'armada', 'observada')
+    " );
+    $stmt->execute([$numeroMesa]);
+
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $fechaOtra = $row['fecha_otro'] !== null ? (string)$row['fecha_otro'] : null;
+        $turnoOtro = $row['turno_otro'] !== null ? (int)$row['turno_otro'] : null;
+        if ($fechaOtra === null || $turnoOtro === null || $turnoOtro <= 0) {
+            continue;
+        }
+
+        $comparacion = mesas_armado_reopt_comparar_slots($fechaCandidata, $turnoCandidato, $fechaOtra, $turnoOtro);
+        $rolActual = (string)($row['rol_actual'] ?? 'equivalente');
+
+        if ($rolActual === 'actual_posterior' && $comparacion <= 0) {
+            return false;
+        }
+
+        if ($rolActual === 'actual_anterior' && $comparacion >= 0) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function mesas_armado_reopt_comparar_slots(string $fechaA, int $turnoA, string $fechaB, int $turnoB): int
+{
+    return [$fechaA, $turnoA] <=> [$fechaB, $turnoB];
+}
+

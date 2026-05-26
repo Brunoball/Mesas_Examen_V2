@@ -524,10 +524,59 @@ function mesas_armado_parametros(): void
  * Elimina el armado operativo actual.
  * En esta etapa también elimina filas numeradas porque numero_mesa se recalcula desde cero.
  */
+function mesas_armado_valor_booleano($valor, bool $default = false): bool
+{
+    if ($valor === null || $valor === '') {
+        return $default;
+    }
+
+    if (is_bool($valor)) {
+        return $valor;
+    }
+
+    if (is_numeric($valor)) {
+        return ((int)$valor) === 1;
+    }
+
+    $texto = strtolower(trim((string)$valor));
+    if (in_array($texto, ['1', 'true', 'si', 'sí', 'yes', 'on'], true)) {
+        return true;
+    }
+
+    if (in_array($texto, ['0', 'false', 'no', 'off'], true)) {
+        return false;
+    }
+
+    return $default;
+}
+
+function mesas_armado_body(): array
+{
+    if (function_exists('get_json_body')) {
+        $body = get_json_body();
+        if (is_array($body)) {
+            return $body;
+        }
+    }
+
+    if (function_exists('request_body')) {
+        $body = request_body();
+        if (is_array($body)) {
+            return $body;
+        }
+    }
+
+    $raw = file_get_contents('php://input');
+    $json = json_decode((string)$raw, true);
+    return is_array($json) ? $json : [];
+}
+
 function mesas_armado_eliminar_borrador(): void
 {
     try {
         $pdo = db();
+        $body = mesas_armado_body();
+        $guardarHistorialArmado = mesas_armado_valor_booleano($body['guardar_historial'] ?? true, true);
 
         $gruposEliminados = 0;
         $noAgrupadasEliminadas = 0;
@@ -538,12 +587,13 @@ function mesas_armado_eliminar_borrador(): void
 
         $idHistorialArmado = null;
         $notasDesaprobadasLimpiadas = 0;
-        if (function_exists('mesas_historial_crear_armado_actual')) {
+        if ($guardarHistorialArmado && function_exists('mesas_historial_crear_armado_actual')) {
             $idHistorialArmado = mesas_historial_crear_armado_actual($pdo, 'eliminacion_armado');
         }
 
-        // Después de guardar la foto histórica, las desaprobadas siguen activas,
-        // pero se limpian nota/fecha_nota para que entren limpias en próximos armados.
+        // Las notas se guardan al cargarlas en historial_previas_resultados.
+        // Esta limpieza se mantiene aunque el usuario decida no guardar la foto del armado,
+        // para que las desaprobadas vuelvan limpias en próximos armados.
         if (function_exists('mesas_historial_limpiar_notas_desaprobadas_armado_actual')) {
             $notasDesaprobadasLimpiadas = mesas_historial_limpiar_notas_desaprobadas_armado_actual($pdo);
         }
@@ -566,6 +616,7 @@ function mesas_armado_eliminar_borrador(): void
                 'eliminadas' => $stmt->rowCount(),
                 'grupos_eliminados' => $gruposEliminados,
                 'no_agrupadas_eliminadas' => $noAgrupadasEliminadas,
+                'guardar_historial_armado' => $guardarHistorialArmado,
                 'id_historial_armado' => $idHistorialArmado,
                 'notas_desaprobadas_limpiadas' => $notasDesaprobadasLimpiadas,
             ],

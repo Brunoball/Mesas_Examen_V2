@@ -27,6 +27,46 @@ function mesas_historial_limite($valor, int $default, int $max): int
     return min($n, $max);
 }
 
+function mesas_historial_resultado_key_mesa(array $resultado): string
+{
+    $idPrevia = (int)($resultado['id_previa_original'] ?? 0);
+    $idMesa = (int)($resultado['id_mesa'] ?? 0);
+
+    if ($idMesa > 0) {
+        return 'mesa:' . $idPrevia . ':' . $idMesa;
+    }
+
+    // Fallback para históricos viejos sin id_mesa: se identifica por el contexto real de la mesa.
+    // No se usa alumno+materia solos porque eso mezclaría otra mesa del mismo alumno.
+    return implode(':', [
+        'ctx',
+        $idPrevia,
+        (int)($resultado['numero_mesa'] ?? 0),
+        (string)($resultado['fecha_mesa'] ?? ''),
+        (int)($resultado['id_turno'] ?? 0),
+        (int)($resultado['id_catedra'] ?? 0),
+        (int)($resultado['id_materia'] ?? 0),
+    ]);
+}
+
+function mesas_historial_resultados_sin_duplicados_de_edicion(array $resultados): array
+{
+    $vistos = [];
+    $limpios = [];
+
+    foreach ($resultados as $resultado) {
+        $key = mesas_historial_resultado_key_mesa($resultado);
+        if (isset($vistos[$key])) {
+            continue;
+        }
+
+        $vistos[$key] = true;
+        $limpios[] = $resultado;
+    }
+
+    return $limpios;
+}
+
 function mesas_historial_listar(): void
 {
     try {
@@ -59,6 +99,7 @@ function mesas_historial_listar(): void
         $stmtResultados = $pdo->prepare("\n            SELECT\n                id_resultado,\n                id_previa_original,\n                id_mesa,\n                numero_mesa,\n                numero_grupo,\n                fecha_mesa,\n                DATE_FORMAT(fecha_mesa, '%d/%m/%Y') AS fecha_mesa_texto,\n                id_turno,\n                hora,\n                dni,\n                alumno,\n                cursando_id_curso,\n                cursando_id_division,\n                id_materia,\n                materia,\n                materia_id_curso,\n                materia_id_division,\n                id_condicion,\n                condicion,\n                id_catedra,\n                id_docente,\n                docente,\n                tipo_mesa,\n                anio,\n                nota,\n                aprobado,\n                estado_resultado,\n                fecha_nota,\n                DATE_FORMAT(fecha_nota, '%d/%m/%Y') AS fecha_nota_texto,\n                motivo,\n                creado_en\n            FROM historial_previas_resultados\n            WHERE {$whereResultados}\n            ORDER BY fecha_nota DESC, creado_en DESC, id_resultado DESC\n            LIMIT {$limiteResultados}\n        ");
         $stmtResultados->execute($paramsResultados);
         $resultados = $stmtResultados->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $resultados = mesas_historial_resultados_sin_duplicados_de_edicion($resultados);
 
         // En el historial general, una fila de tipo taller no debe parecer una materia común.
         // El detalle del armado conserva cada materia individual, pero esta lista resume el

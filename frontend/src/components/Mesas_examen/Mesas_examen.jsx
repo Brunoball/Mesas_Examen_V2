@@ -838,6 +838,70 @@ const MesasExamen = () => {
   const [exportandoPdf, setExportandoPdf] = useState(false);
   const [modalExportarHistorialAbierto, setModalExportarHistorialAbierto] = useState(false);
   const [exportandoHistorial, setExportandoHistorial] = useState(false);
+  const [guardarHistorialArmado, setGuardarHistorialArmado] = useState(true);
+  const [confirmarSinHistorialArmado, setConfirmarSinHistorialArmado] = useState(false);
+
+  useEffect(() => {
+    if (!eliminarArmado?.modalAbierto) {
+      setGuardarHistorialArmado(true);
+      setConfirmarSinHistorialArmado(false);
+      return;
+    }
+
+    setGuardarHistorialArmado(true);
+    setConfirmarSinHistorialArmado(false);
+  }, [eliminarArmado?.modalAbierto]);
+
+  const cambiarGuardarHistorialArmado = useCallback((event) => {
+    const checked = !!event.target.checked;
+    setGuardarHistorialArmado(checked);
+    if (checked) {
+      setConfirmarSinHistorialArmado(false);
+    }
+  }, []);
+
+  const prepararConfirmacionEliminarArmado = useCallback(() => {
+    if (!guardarHistorialArmado && !confirmarSinHistorialArmado) {
+      setConfirmarSinHistorialArmado(true);
+      return false;
+    }
+
+    return true;
+  }, [guardarHistorialArmado, confirmarSinHistorialArmado]);
+
+  const confirmarEliminarArmadoDesdeModal = useCallback(() => {
+    return eliminarArmado?.confirmar?.({
+      guardarHistorial: guardarHistorialArmado,
+    });
+  }, [eliminarArmado, guardarHistorialArmado]);
+
+  const cerrarModalEliminarArmado = useCallback(() => {
+    setGuardarHistorialArmado(true);
+    setConfirmarSinHistorialArmado(false);
+    eliminarArmado?.cerrar?.();
+  }, [eliminarArmado]);
+
+  const contenidoEliminarArmado = confirmarSinHistorialArmado ? (
+    <div className="mesas-eliminar-historial mesas-eliminar-historial--danger">
+      <strong>Vas a eliminar el armado sin guardar historial.</strong>
+      <span>Después no vas a poder recuperar el historial de estas mesas eliminadas desde el historial de armados.</span>
+    </div>
+  ) : (
+    <div className="mesas-eliminar-historial">
+      <label className="mesas-eliminar-historial__check">
+        <input
+          type="checkbox"
+          checked={guardarHistorialArmado}
+          onChange={cambiarGuardarHistorialArmado}
+          disabled={!!eliminarArmado?.eliminando}
+        />
+        <span>
+          <strong>Guardar historial del armado antes de eliminar</strong>
+          <small>Guarda un respaldo de las mesas, grupos, mesas no agrupadas y alumnos vinculados antes de eliminarlos.</small>
+        </span>
+      </label>
+    </div>
+  );
 
   useEffect(() => {
     const errores = {
@@ -1190,21 +1254,37 @@ const MesasExamen = () => {
         open={!!eliminarArmado?.modalAbierto}
         operacion="eliminar"
         loading={!!eliminarArmado?.eliminando}
-        title="Eliminar mesas"
-        message="¿Seguro que querés eliminar todas las mesas del armado actual?"
-        warning="Esta acción borra los grupos finales, las no agrupadas y los números de mesa generados. No se puede deshacer."
+        tone={confirmarSinHistorialArmado ? "danger" : "warning"}
+        title={confirmarSinHistorialArmado ? "Eliminar sin guardar historial" : "Eliminar mesas"}
+        message={
+          confirmarSinHistorialArmado
+            ? "¿Estás seguro de eliminar las mesas sin guardar historial del armado?"
+            : "¿Seguro que querés eliminar todas las mesas del armado actual?"
+        }
+        warning={
+          confirmarSinHistorialArmado
+            ? "Esta acción es irreversible: se borrará el armado actual y no se guardará registro histórico de estas mesas."
+            : "Las notas cargadas se mantienen en el historial de resultados. Elegí abajo si también querés guardar el historial del armado."
+        }
         details={[
           { label: "Grupos finales", value: totalGrupos },
           { label: "No agrupadas", value: totalNoAgrupadas },
           { label: "Total visible", value: totalVisible },
+          { label: "Historial del armado", value: guardarHistorialArmado ? "Se guardará" : "No se guardará" },
         ]}
-        confirmLabel="Eliminar mesas"
+        extraContent={contenidoEliminarArmado}
+        confirmLabel={confirmarSinHistorialArmado ? "Sí, eliminar sin historial" : "Eliminar mesas"}
         loadingLabel="Eliminando..."
-        loadingMessage="Eliminando mesas..."
-        successMessage="Mesas eliminadas correctamente."
+        loadingMessage={guardarHistorialArmado ? "Eliminando mesas y guardando historial..." : "Eliminando mesas sin guardar historial..."}
+        successMessage={
+          guardarHistorialArmado
+            ? "Mesas eliminadas correctamente. Historial del armado guardado."
+            : "Mesas eliminadas correctamente sin guardar historial del armado."
+        }
         errorMessage="No se pudieron eliminar las mesas."
-        onClose={eliminarArmado?.cerrar}
-        onConfirm={eliminarArmado?.confirmar}
+        onClose={cerrarModalEliminarArmado}
+        onBeforeConfirm={prepararConfirmacionEliminarArmado}
+        onConfirm={confirmarEliminarArmadoDesdeModal}
         hideLocalError
       />
 

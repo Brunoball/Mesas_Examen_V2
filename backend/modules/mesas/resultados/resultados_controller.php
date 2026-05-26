@@ -125,56 +125,83 @@ function mesas_resultados_recalcular_numero(PDO $pdo, int $numeroMesa): void
     $stmtNoAgrupada->execute([':cantidad' => $cantidad, ':numero_mesa' => $numeroMesa]);
 }
 
-function mesas_resultados_buscar_historial_existente(PDO $pdo, int $idPrevia, ?int $idMesa, ?int $numeroMesa, $fechaMesa, ?int $idTurno, ?int $idCatedra): int
+function mesas_resultados_historial_ids_mismo_contexto(PDO $pdo, int $idPrevia, ?int $idMesa, ?int $numeroMesa, $fechaMesa, ?int $idTurno, ?int $idCatedra, ?int $idMateria): array
 {
     if ($idPrevia <= 0) {
-        return 0;
+        return [];
     }
 
-    // Misma mesa operativa = se edita la nota del mismo registro histórico.
-    // Otro armado genera otro id_mesa, por lo tanto se inserta otro historial.
+    // 1) Caso ideal: el historial ya quedó vinculado al id_mesa real.
+    // Editar una nota de esa misma fila de mesas debe actualizar ese registro, no insertar otro.
     if ($idMesa !== null && $idMesa > 0) {
-        $stmt = $pdo->prepare("\n            SELECT id_resultado\n            FROM historial_previas_resultados\n            WHERE id_previa_original = :id_previa\n              AND id_mesa = :id_mesa\n            ORDER BY id_resultado DESC\n            LIMIT 1\n        ");
+        $stmt = $pdo->prepare("\n            SELECT id_resultado\n            FROM historial_previas_resultados\n            WHERE id_previa_original = :id_previa\n              AND id_mesa = :id_mesa\n            ORDER BY id_resultado DESC\n        ");
         $stmt->execute([
             ':id_previa' => $idPrevia,
             ':id_mesa' => $idMesa,
         ]);
 
-        $id = (int)$stmt->fetchColumn();
-        if ($id > 0) {
-            return $id;
+        $ids = array_values(array_filter(array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [])));
+        if (count($ids) > 0) {
+            return $ids;
         }
-
-        return 0;
     }
 
-    // Fallback solo para registros muy viejos sin id_mesa. No se usa para mesas actuales.
-    if ($numeroMesa !== null && $numeroMesa > 0 && !empty($fechaMesa)) {
-        $sql = "\n            SELECT id_resultado\n            FROM historial_previas_resultados\n            WHERE id_previa_original = :id_previa\n              AND numero_mesa = :numero_mesa\n              AND fecha_mesa = :fecha_mesa\n        ";
-        $params = [
-            ':id_previa' => $idPrevia,
-            ':numero_mesa' => $numeroMesa,
-            ':fecha_mesa' => $fechaMesa,
-        ];
-
-        if ($idTurno !== null && $idTurno > 0) {
-            $sql .= " AND id_turno = :id_turno";
-            $params[':id_turno'] = $idTurno;
-        }
-
-        if ($idCatedra !== null && $idCatedra > 0) {
-            $sql .= " AND id_catedra = :id_catedra";
-            $params[':id_catedra'] = $idCatedra;
-        }
-
-        $sql .= "\n            ORDER BY id_resultado DESC\n            LIMIT 1\n        ";
-
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
-        return (int)$stmt->fetchColumn();
+    // 2) Respaldo para registros viejos o pedidos del frontend sin id_mesa.
+    // La coincidencia NO es por alumno+materia solos: incluye número, fecha, turno y cátedra/materia.
+    // Así, si el mismo alumno aparece en otro historial con la misma materia pero en otra mesa/fecha,
+    // ese registro no se toca.
+    if ($numeroMesa === null || $numeroMesa <= 0 || empty($fechaMesa)) {
+        return [];
     }
 
-    return 0;
+    $sql = "\n        SELECT id_resultado\n        FROM historial_previas_resultados\n        WHERE id_previa_original = :id_previa\n          AND numero_mesa <=> :numero_mesa\n          AND fecha_mesa <=> :fecha_mesa\n          AND id_turno <=> :id_turno\n    ";
+
+    $params = [
+        ':id_previa' => $idPrevia,
+        ':numero_mesa' => $numeroMesa,
+        ':fecha_mesa' => $fechaMesa,
+        ':id_turno' => $idTurno,
+    ];
+
+    if ($idCatedra !== null && $idCatedra > 0) {
+        $sql .= " AND id_catedra = :id_catedra";
+        $params[':id_catedra'] = $idCatedra;
+    } elseif ($idMateria !== null && $idMateria > 0) {
+        $sql .= " AND id_materia = :id_materia";
+        $params[':id_materia'] = $idMateria;
+    }
+
+    if ($idMesa !== null && $idMesa > 0) {
+        // Nunca pisar un resultado de otro id_mesa real. Solo permite enganchar historiales viejos
+        // sin id_mesa o el mismo id_mesa actual.
+        $sql .= " AND (id_mesa IS NULL OR id_mesa = 0 OR id_mesa = :id_mesa_actual)";
+        $params[':id_mesa_actual'] = $idMesa;
+    }
+
+    $sql .= "\n        ORDER BY id_resultado DESC\n    ";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+
+    return array_values(array_filter(array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [])));
+}
+
+function mesas_resultados_eliminar_historiales_duplicados(PDO $pdo, array $idsDuplicados): void
+{
+    $idsDuplicados = array_values(array_unique(array_filter(array_map('intval', $idsDuplicados), static fn (int $id): bool => $id > 0)));
+    if (count($idsDuplicados) === 0) {
+        return;
+    }
+
+    $placeholders = implode(',', array_fill(0, count($idsDuplicados), '?'));
+    $stmt = $pdo->prepare("DELETE FROM historial_previas_resultados WHERE id_resultado IN ({$placeholders})");
+    $stmt->execute($idsDuplicados);
+}
+
+function mesas_resultados_buscar_historial_existente(PDO $pdo, int $idPrevia, ?int $idMesa, ?int $numeroMesa, $fechaMesa, ?int $idTurno, ?int $idCatedra, ?int $idMateria = null): int
+{
+    $ids = mesas_resultados_historial_ids_mismo_contexto($pdo, $idPrevia, $idMesa, $numeroMesa, $fechaMesa, $idTurno, $idCatedra, $idMateria);
+    return (int)($ids[0] ?? 0);
 }
 
 function mesas_resultados_guardar_historial(PDO $pdo, array $ctx, int $nota, bool $aprobado, string $fechaNota, array $snapshot): int
@@ -191,16 +218,20 @@ function mesas_resultados_guardar_historial(PDO $pdo, array $ctx, int $nota, boo
     $idMesaHistorial = isset($ctx['id_mesa']) && $ctx['id_mesa'] !== null ? (int)$ctx['id_mesa'] : null;
     $idTurnoHistorial = isset($ctx['id_turno']) && $ctx['id_turno'] !== null ? (int)$ctx['id_turno'] : null;
     $idCatedraHistorial = isset($ctx['id_catedra']) && $ctx['id_catedra'] !== null ? (int)$ctx['id_catedra'] : null;
+    $idMateriaHistorial = isset($ctx['id_materia']) && $ctx['id_materia'] !== null ? (int)$ctx['id_materia'] : null;
 
-    $idResultado = mesas_resultados_buscar_historial_existente(
+    $idsHistorialMismoContexto = mesas_resultados_historial_ids_mismo_contexto(
         $pdo,
         $idPrevia,
         $idMesaHistorial,
         $numeroMesa,
         $fechaMesa,
         $idTurnoHistorial,
-        $idCatedraHistorial
+        $idCatedraHistorial,
+        $idMateriaHistorial
     );
+    $idResultado = (int)($idsHistorialMismoContexto[0] ?? 0);
+    $idsDuplicados = array_slice($idsHistorialMismoContexto, 1);
 
     $params = [
         ':id_previa_original' => $idPrevia > 0 ? $idPrevia : null,
@@ -243,6 +274,7 @@ function mesas_resultados_guardar_historial(PDO $pdo, array $ctx, int $nota, boo
 
         $stmt = $pdo->prepare("\n            UPDATE historial_previas_resultados SET\n                id_mesa = :id_mesa,\n                numero_mesa = :numero_mesa,\n                numero_grupo = :numero_grupo,\n                fecha_mesa = :fecha_mesa,\n                id_turno = :id_turno,\n                hora = :hora,\n                dni = :dni,\n                alumno = :alumno,\n                cursando_id_curso = :cursando_id_curso,\n                cursando_id_division = :cursando_id_division,\n                id_materia = :id_materia,\n                materia = :materia,\n                materia_id_curso = :materia_id_curso,\n                materia_id_division = :materia_id_division,\n                id_condicion = :id_condicion,\n                condicion = :condicion,\n                id_catedra = :id_catedra,\n                id_docente = :id_docente,\n                docente = :docente,\n                tipo_mesa = :tipo_mesa,\n                anio = :anio,\n                nota = :nota,\n                aprobado = :aprobado,\n                estado_resultado = :estado_resultado,\n                fecha_nota = :fecha_nota,\n                motivo = :motivo,\n                snapshot_json = :snapshot_json\n            WHERE id_resultado = :id_resultado\n        ");
         $stmt->execute($paramsUpdate);
+        mesas_resultados_eliminar_historiales_duplicados($pdo, $idsDuplicados);
         return $idResultado;
     }
 
