@@ -1,0 +1,756 @@
+/* =========================================================
+   MESAS DE EXAMEN — RESPONSIVE GLOBAL
+   Replica el comportamiento responsive de Materias.
+   Solo actúa en tablets y celulares; la vista monitor queda
+   gobernada por Mesas_examen.css.
+   ========================================================= */
+
+@media (max-width: 1200px) {
+  .mesas-page.mov-page {
+    min-height: calc(100dvh - 90px);
+    max-height: none;
+    overflow: auto;
+  }
+
+  .mesas-card__head.mesas-panel-head {
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .mesas-card__headLeft {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .mesas-titleBox {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .mesas-titleTabs {
+    width: 100%;
+  }
+
+  .mesas-headFilters {
+    flex: 1 1 360px;
+    justify-content: flex-end;
+  }
+
+  .mesas-actionsHead {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 1024px) {
+  .mesas-page.mov-page {
+    height: auto;
+    min-height: calc(100dvh - 90px);
+    padding: 14px;
+    overflow: auto;
+    background: var(--balto-bg);
+  }
+
+  .mesas-shell-card.mov-card {
+    min-height: calc(100dvh - 118px);
+    height: auto;
+    border-radius: 16px;
+  }
+
+  .mesas-card__head.mesas-panel-head {
+    padding: 14px;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+
+  .mesas-card__headLeft {
+    width: 100%;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 12px;
+  }
+
+  .mesas-section-title {
+    font-size: 16px;
+    line-height: 1.2;
+  }
+
+  .mesas-titleTabs {
+    max-width: 100%;
+    gap: 16px;
+    padding-bottom: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mesas-headFilters,
+  .mesas-searchFilter,
+  .mesas-floatingSearch,
+  .mesas-floatingSearch .cc-searchInput,
+  .mesas-floatingSearch .cc-searchInput__fieldWrap,
+  .mesas-searchInput {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .mesas-headFilters {
+    flex: 0 0 auto;
+  }
+
+  .mesas-searchInput.cc-input,
+  .cc-input.mesas-searchInput {
+    height: 42px;
+    min-height: 42px;
+    font-size: 13px;
+  }
+
+  .mesas-actionsHead {
+    width: 100%;
+    display: flex;
+    align-items: stretch;
+    justify-content: stretch;
+    gap: 10px;
+  }
+
+  .mesas-actionsHead .mesas-actionBtn {
+    flex: 1 1 185px;
+    min-width: 0;
+    min-height: 42px;
+    height: 42px;
+    padding-inline: 12px;
+    font-size: 13px;
+  }
+
+  .mesas-statusAlerts {
+    padding-inline: 14px;
+  }
+
+  .mesas-statusAlerts .mesas-alert.mov-alert {
+    margin: 0 0 10px;
+    border-radius: 14px;
+  }
+
+  .mesas-pdf-view {
+    padding: 12px;
+  }
+
+  .mesas-pdf-sheet {
+    border-radius: 14px;
+  }
+
+  .mesas-pdf-header {
+    padding: 12px 14px;
+  }
+
+  .mesas-pdf-table-wrap,
+  .mesas-card-pdf-fijo .mesas-pdf-table-wrap,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-table-wrap {
+    padding: 10px 14px 14px;
+  }
+
+  .mesas-recordsFoot {
+    padding: 10px 14px 12px;
+  }
+
+  .mesas-historial-resumen {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 820px) {
+  .mesas-page.mov-page {
+    height: calc(100dvh - 70px);
+    min-height: 0;
+    max-height: calc(100dvh - 70px);
+    padding: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mesas-shell-card.mov-card {
+    flex: 1 1 auto;
+    height: 100%;
+    min-height: 0;
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mesas-card__head.mesas-panel-head,
+  .mesas-statusAlerts,
+  .mesas-recordsFoot {
+    flex: 0 0 auto;
+  }
+
+  .mesas-card__head.mesas-panel-head {
+    padding: 12px;
+    gap: 12px;
+    justify-content: flex-start;
+  }
+
+  .mesas-section-title {
+    font-size: 14px;
+  }
+
+  .mesas-titleTabs {
+    gap: 14px;
+    border-bottom-color: color-mix(in srgb, var(--mov-border, #D6E2F3) 72%, #fff);
+  }
+
+  .mesas-titleTab.mov-tab {
+    height: 32px;
+    min-height: 32px;
+    flex: 0 0 auto;
+    font-size: 12px;
+    padding-bottom: 8px;
+  }
+
+  .mesas-searchLabel {
+    font-size: 10px;
+  }
+
+  .mesas-actionsHead {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .mesas-actionsHead .mesas-actionBtn {
+    width: 100%;
+    min-height: 40px;
+    height: 40px;
+    justify-content: center;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .mesas-actionsHead .mesas-deleteBtn {
+    grid-column: 1 / -1;
+  }
+
+  .mesas-statusAlerts {
+    padding: 0 12px;
+  }
+
+  .mesas-statusAlerts .mesas-alert.mov-alert {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .mesas-statusAlerts .mesas-alert span {
+    line-height: 1.35;
+  }
+
+  .mesas-pdf-view {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 10px;
+    background: color-mix(in srgb, var(--balto-bg, #FDFBF7) 68%, #fff);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mesas-pdf-view > .mesas-pdf-sheet + .mesas-pdf-sheet {
+    margin-top: 10px;
+  }
+
+  .mesas-pdf-sheet,
+  .mesas-card-pdf-fijo .mesas-pdf-sheet,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-sheet {
+    border-radius: 14px;
+    overflow: hidden !important;
+    box-shadow: var(--mov-shadow-sm, 0 1px 2px rgba(58,46,43,.06));
+  }
+
+  .mesas-pdf-header {
+    min-height: 0;
+    padding: 12px;
+    gap: 10px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .mesas-pdf-brand {
+    width: 100%;
+    gap: 10px;
+  }
+
+  .mesas-pdf-brand img {
+    width: 32px;
+    height: 32px;
+  }
+
+  .mesas-pdf-brand h3 {
+    font-size: 13px;
+    line-height: 1.2;
+    white-space: normal;
+  }
+
+  .mesas-pdf-brand p {
+    font-size: 11px;
+  }
+
+  .mesas-pdf-meta {
+    width: 100%;
+    align-items: flex-start;
+    text-align: left;
+    white-space: normal;
+    gap: 3px;
+  }
+
+  .mesas-pdf-meta span,
+  .mesas-pdf-meta strong {
+    font-size: 11px;
+  }
+
+  .mesas-pdf-observacion,
+  .mesas-card-pdf-fijo .mesas-pdf-observacion,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-observacion {
+    margin: 10px 10px 0;
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+  }
+
+  .mesas-pdf-table-wrap,
+  .mesas-card-pdf-fijo .mesas-pdf-table-wrap,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-table-wrap {
+    width: 100%;
+    padding: 10px;
+    overflow: visible !important;
+  }
+
+  .mesas-pdf-divTable,
+  .mesas-card-pdf-fijo .mesas-pdf-divTable,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-divTable,
+  .mesas-card-pdf-fijo .mesas-pdf-table.mesas-pdf-divTable,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-table.mesas-pdf-divTable {
+    width: 100%;
+    min-width: 0 !important;
+    display: block !important;
+    table-layout: initial !important;
+  }
+
+  .mesas-pdf-gridHead,
+  .mesas-card-pdf-fijo .mesas-pdf-gridHead,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-gridHead {
+    display: none !important;
+  }
+
+  .mesas-pdf-gridBody,
+  .mesas-card-pdf-fijo .mesas-pdf-gridBody,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-gridBody {
+    display: flex !important;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0 !important;
+    gap: 0;
+    grid-auto-flow: initial !important;
+    grid-auto-rows: initial !important;
+    background: #fff;
+  }
+
+  .mesas-pdf-cell,
+  .mesas-card-pdf-fijo .mesas-pdf-cell,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-cell,
+  .mesas-card-pdf-fijo .mesas-pdf-cell.pdf-hora-cell,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-cell.pdf-hora-cell,
+  .mesas-card-pdf-fijo .pdf-materia-line-cell,
+  .mesas-card-pdf-fijo .pdf-docente-line-cell,
+  .mesas-shell-card.mesas-card-pdf-fijo .pdf-materia-line-cell,
+  .mesas-shell-card.mesas-card-pdf-fijo .pdf-docente-line-cell {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    min-height: 0;
+    grid-row: auto !important;
+    padding: 10px 11px;
+    display: grid !important;
+    grid-template-columns: minmax(98px, 42%) minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    border-right: 0 !important;
+    border-bottom: 1px solid color-mix(in srgb, var(--mov-border, #D6E2F3) 58%, #fff);
+    background: #fff;
+    color: var(--balto-ink, #3A2E2B);
+    text-align: right;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    line-height: 1.28;
+    font-size: 12px;
+  }
+
+  .mesas-pdf-cell::before,
+  .mesas-card-pdf-fijo .mesas-pdf-cell::before,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-cell::before {
+    content: attr(data-label);
+    color: var(--mov-muted, #786661);
+    font-size: 10px;
+    font-weight: 720;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+    justify-self: start;
+    text-align: left;
+  }
+
+  .mesas-pdf-cell > *,
+  .mesas-card-pdf-fijo .mesas-pdf-cell > *,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-cell > * {
+    justify-self: end;
+    text-align: right;
+    max-width: 100%;
+  }
+
+  .mesas-pdf-cell.pdf-hora-cell,
+  .mesas-card-pdf-fijo .mesas-pdf-cell.pdf-hora-cell,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-cell.pdf-hora-cell {
+    margin-top: 8px;
+    border-radius: 12px 12px 0 0;
+    background: color-mix(in srgb, var(--balto-bg, #FDFBF7) 74%, #fff);
+    border: 1px solid color-mix(in srgb, var(--mov-border, #D6E2F3) 70%, #fff) !important;
+    border-bottom: 1px solid color-mix(in srgb, var(--mov-border, #D6E2F3) 58%, #fff) !important;
+  }
+
+  .mesas-pdf-cell.pdf-hora-cell:first-child,
+  .mesas-card-pdf-fijo .mesas-pdf-cell.pdf-hora-cell:first-child,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-cell.pdf-hora-cell:first-child {
+    margin-top: 0;
+  }
+
+  .mesas-pdf-cell.pdf-hora-cell + .mesas-pdf-cell,
+  .mesas-card-pdf-fijo .mesas-pdf-cell.pdf-hora-cell + .mesas-pdf-cell,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-cell.pdf-hora-cell + .mesas-pdf-cell {
+    border-top: 0;
+  }
+
+  .mesas-pdf-cell.pdf-materia-line-cell,
+  .mesas-pdf-cell.pdf-docente-line-cell,
+  .mesas-card-pdf-fijo .pdf-materia-line-cell,
+  .mesas-card-pdf-fijo .pdf-docente-line-cell,
+  .mesas-shell-card.mesas-card-pdf-fijo .pdf-materia-line-cell,
+  .mesas-shell-card.mesas-card-pdf-fijo .pdf-docente-line-cell {
+    align-items: center;
+  }
+
+  .mesas-pdf-cell.pdf-row-observada,
+  .mesas-card-pdf-fijo .mesas-pdf-cell.pdf-row-observada,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-cell.pdf-row-observada,
+  .mesas-card-pdf-fijo .mesas-pdf-sheet-observada .mesas-pdf-cell,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-sheet-observada .mesas-pdf-cell {
+    background: #fff8ef !important;
+  }
+
+  .pdf-hora-stack,
+  .mesas-card-pdf-fijo .pdf-hora-stack,
+  .mesas-shell-card.mesas-card-pdf-fijo .pdf-hora-stack {
+    width: auto;
+    min-height: 0;
+    align-items: flex-end;
+    text-align: right;
+    gap: 1px;
+  }
+
+  .pdf-hora-stack strong,
+  .mesas-card-pdf-fijo .pdf-hora-stack strong,
+  .mesas-shell-card.mesas-card-pdf-fijo .pdf-hora-stack strong,
+  .pdf-materia-line-cell strong,
+  .pdf-docente-line-cell strong,
+  .mesas-card-pdf-fijo .pdf-materia-line-cell strong,
+  .mesas-card-pdf-fijo .pdf-docente-line-cell strong,
+  .mesas-shell-card.mesas-card-pdf-fijo .pdf-materia-line-cell strong,
+  .mesas-shell-card.mesas-card-pdf-fijo .pdf-docente-line-cell strong {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    font-size: 12px;
+    line-height: 1.25;
+    text-align: right;
+  }
+
+  .pdf-materia-line-cell small,
+  .mesas-card-pdf-fijo .pdf-materia-line-cell small,
+  .mesas-shell-card.mesas-card-pdf-fijo .pdf-materia-line-cell small {
+    white-space: normal;
+    text-align: right;
+  }
+
+  .pdf-estudiante-cell,
+  .mesas-card-pdf-fijo .pdf-estudiante-cell,
+  .mesas-shell-card.mesas-card-pdf-fijo .pdf-estudiante-cell {
+    text-transform: none;
+  }
+
+  .mesas-nota-selectWrap {
+    justify-self: end;
+  }
+
+  .mesas-pdf-actions,
+  .mesas-card-pdf-fijo .mesas-pdf-actions,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-actions {
+    padding: 8px 10px 10px;
+    justify-content: flex-end;
+    background: #fff;
+  }
+
+  .mesas-recordsFoot {
+    font-size: 11px;
+    text-align: left;
+  }
+
+  /* Historial en formato tarjeta, igual al comportamiento de Materias. */
+  .mesas-pdf-view--historial {
+    padding: 0;
+  }
+
+  .mesas-historial-panel {
+    height: 100%;
+    min-height: 0;
+    padding: 10px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mesas-historial-resumen {
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+
+  .mesas-historial-kpi {
+    min-height: 72px;
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .mesas-historial-kpiIcon {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    font-size: 15px;
+  }
+
+  .mesas-historial-section.mov-card {
+    width: 100%;
+    margin-inline: 0;
+    border-radius: 14px;
+  }
+
+  .mesas-historial-sectionTitle,
+  .mesas-historial-sectionTitle--withIndicators {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .mesas-historial-sectionTitle h4 {
+    font-size: 13px;
+  }
+
+  .mesas-historial-indicadores {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+
+  .mesas-historial-divTable {
+    overflow: hidden;
+  }
+
+  .mesas-historial-gridHead {
+    display: none !important;
+  }
+
+  .mesas-historial-gridHead,
+  .mesas-historial-gridRow,
+  .mesas-historial-gridBody {
+    min-width: 0 !important;
+  }
+
+  .mesas-historial-tableWrap.mov-tableWrap {
+    width: 100%;
+    overflow: visible;
+  }
+
+  .mesas-historial-gridBody {
+    display: flex !important;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+    background: color-mix(in srgb, var(--balto-bg, #FDFBF7) 64%, #fff);
+  }
+
+  .mesas-historial-gridRow.global-divTable__row,
+  .mesas-historial-gridRow.mov-gridTable--row {
+    width: 100%;
+    min-width: 0 !important;
+    grid-template-columns: 1fr !important;
+    border: 1px solid color-mix(in srgb, var(--mov-border, #D6E2F3) 74%, #fff);
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: var(--mov-shadow-sm, 0 1px 2px rgba(58,46,43,.06));
+  }
+
+  .mesas-historial-gridRow .mov-gridCell {
+    width: 100%;
+    min-height: 0;
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: minmax(104px, 42%) minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    white-space: normal;
+    text-align: right;
+    justify-content: stretch;
+    border-bottom: 1px solid color-mix(in srgb, var(--mov-border, #D6E2F3) 58%, #fff);
+    overflow: visible;
+  }
+
+  .mesas-historial-gridRow .mov-gridCell:last-child {
+    border-bottom: 0;
+  }
+
+  .mesas-historial-gridRow .mov-gridCell::before {
+    content: attr(data-label);
+    min-width: 0;
+    color: var(--mov-muted, #786661);
+    font-size: 10px;
+    font-weight: 720;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+    justify-self: start;
+    text-align: left;
+  }
+
+  .mesas-historial-gridRow .mov-gridCell > * {
+    justify-self: end;
+    text-align: right;
+    max-width: 100%;
+  }
+
+  .mesas-historial-stack {
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  .mesas-historial-chip,
+  .mesas-historial-estado,
+  .mesas-historial-nota,
+  .mesas-historial-detailBtn,
+  .mesas-historial-closeBtn {
+    justify-self: end;
+  }
+
+  .mesas-historial-descriptionCell .ginfo-inline,
+  .mesas-historial-descriptionCell .ginfo-inline__text {
+    justify-self: end;
+    text-align: right;
+  }
+
+  .mesas-historial-countFoot {
+    padding: 10px 12px;
+    text-align: left;
+  }
+}
+
+@media (max-width: 620px) {
+  .mesas-page.mov-page {
+    padding: 10px;
+  }
+
+  .mesas-shell-card.mov-card {
+    border-radius: 12px;
+  }
+
+  .mesas-card__head.mesas-panel-head {
+    padding: 10px;
+  }
+
+  .mesas-titleTabs {
+    gap: 10px;
+  }
+
+  .mesas-titleTab.mov-tab {
+    font-size: 11px;
+    padding-inline: 0;
+  }
+
+  .mesas-searchInput.cc-input,
+  .cc-input.mesas-searchInput {
+    height: 40px;
+    min-height: 40px;
+    font-size: 12px;
+  }
+
+  .mesas-actionsHead .mesas-actionBtn svg {
+    display: none;
+  }
+
+  .mesas-pdf-view {
+    padding: 9px;
+  }
+
+  .mesas-pdf-header {
+    padding: 10px;
+  }
+
+  .mesas-pdf-table-wrap,
+  .mesas-card-pdf-fijo .mesas-pdf-table-wrap,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-table-wrap {
+    padding: 9px;
+  }
+
+  .mesas-pdf-cell,
+  .mesas-card-pdf-fijo .mesas-pdf-cell,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-cell,
+  .mesas-card-pdf-fijo .mesas-pdf-cell.pdf-hora-cell,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-cell.pdf-hora-cell {
+    grid-template-columns: minmax(92px, 42%) minmax(0, 1fr);
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .mesas-historial-gridBody {
+    padding: 9px;
+    gap: 9px;
+  }
+
+  .mesas-historial-gridRow .mov-gridCell {
+    grid-template-columns: minmax(92px, 42%) minmax(0, 1fr);
+    gap: 8px;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 460px) {
+  .mesas-page.mov-page {
+    height: calc(100dvh - 75px);
+    max-height: calc(100dvh - 75px);
+    padding: 8px;
+  }
+
+  .mesas-actionsHead {
+    grid-template-columns: 1fr;
+  }
+
+  .mesas-actionsHead .mesas-deleteBtn {
+    grid-column: auto;
+  }
+
+  .mesas-pdf-cell,
+  .mesas-card-pdf-fijo .mesas-pdf-cell,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-cell,
+  .mesas-historial-gridRow .mov-gridCell {
+    grid-template-columns: minmax(88px, 44%) minmax(0, 1fr);
+  }
+
+  .mesas-recordsFoot {
+    padding: 9px 10px;
+  }
+}

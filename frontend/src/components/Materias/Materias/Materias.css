@@ -114,8 +114,24 @@
   min-width:280px;
 }
 
-.materias-searchInput{
-  min-width:100%;
+/* Buscador propio de Materias: ancho fijo en escritorio. */
+.materias-searchFilter--busqueda{
+  flex:0 0 350px;
+  width:350px;
+  min-width:350px;
+  max-width:350px;
+}
+
+.materias-searchBox--busqueda{
+  width:350px;
+  max-width:100%;
+}
+
+.materias-searchInput,
+.materias-busquedaInput{
+  width:100%;
+  min-width:0;
+  max-width:350px;
   padding-right:42px !important;
 }
 
@@ -613,8 +629,20 @@
 
 .materias-searchFilter{
 
-  min-width:400px;
+  min-width:280px;
 
+}
+
+.materias-searchFilter--busqueda{
+  flex:0 0 350px;
+  width:350px;
+  min-width:350px;
+  max-width:350px;
+}
+
+.materias-searchBox--busqueda{
+  width:350px;
+  max-width:100%;
 }
 
 .materias-stateFilter{

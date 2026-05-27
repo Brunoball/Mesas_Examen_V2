@@ -1,0 +1,527 @@
+/* =========================================================
+   DOCENTES — RESPONSIVE GLOBAL
+   Solo afecta tablets y celulares. La vista monitor queda en
+   Docentes.css sin modificaciones de layout.
+   ========================================================= */
+
+@media (max-width: 1200px) {
+  .docentes-card__head {
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .docentes-card__headLeft {
+    align-items: stretch;
+  }
+
+  .docentes-headFilters {
+    justify-content: flex-end;
+  }
+
+  .docentes-searchFilter {
+    min-width: 220px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .docentes-page.mov-page {
+    height: auto;
+    min-height: calc(100dvh - 90px);
+    padding: 14px;
+    overflow: auto;
+  }
+
+  .docentes-card.mov-card {
+    height: auto;
+    min-height: calc(100dvh - 118px);
+  }
+
+  .docentes-card__head {
+    padding: 14px;
+    flex-direction: column;
+  }
+
+  .docentes-card__headLeft {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .docentes-titleBox {
+    min-width: 0;
+  }
+
+  .docentes-headFilters {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(240px, .72fr);
+    align-items: end;
+    gap: 12px;
+  }
+
+  .docentes-filterTabs,
+  .docentes-searchFilter,
+  .docentes-actionsHead,
+  .docentes-actionsHead .mov-btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .docentes-tabsInline {
+    width: 100%;
+    height: auto;
+    min-height: 44px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .docentes-tabsInline .docentes-tab {
+    flex: 1 0 auto;
+    justify-content: center;
+  }
+
+  .docentes-divTable.global-divTable {
+    max-height: calc(100vh - 382px);
+    min-height: 0;
+  }
+
+  .docentes-table-wrap.mov-tableWrap {
+    max-height: calc(100vh - 382px);
+    min-height: 420px;
+    overflow: auto;
+  }
+
+  .docentes-table-wrap .mov-gridBody--relative {
+    height: auto;
+    min-height: 420px;
+  }
+
+  .docentes-footer {
+    padding: 10px 14px;
+    gap: 10px 14px;
+  }
+}
+
+@media (max-width: 820px) {
+  .docentes-page.mov-page {
+    height: calc(100dvh - 70px);
+    min-height: 0;
+    max-height: calc(100dvh - 70px);
+    padding: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .docentes-card.mov-card {
+    height: 100%;
+    min-height: 0;
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .docentes-section-title {
+    font-size: 14px;
+  }
+
+  .docentes-headFilters {
+    grid-template-columns: 1fr;
+  }
+
+  .docentes-tabsInline {
+    padding: 6px;
+    gap: 6px;
+  }
+
+  .docentes-tabsInline .docentes-tab {
+    min-width: max-content;
+    height: 34px;
+    padding: 0 10px;
+  }
+
+  .docentes-actionsHead {
+    justify-content: stretch;
+  }
+
+  .docentes-actionsHead .mov-btn {
+    min-height: 42px;
+  }
+
+  .docentes-divTable.global-divTable {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .docentes-card__head,
+  .docentes-footer {
+    flex: 0 0 auto;
+  }
+
+
+  .docentes-table-wrap.mov-tableWrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .docentes-table-wrap .mov-gridBody--relative {
+    min-width: 0;
+    min-height: 260px;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 12px 12px;
+    background: color-mix(in srgb, var(--balto-bg) 64%, #fff);
+  }
+
+  .docentes-gridHead {
+    display: none !important;
+  }
+
+  .docentes-gridRow.global-divTable__row {
+    grid-template-columns: 1fr !important;
+    min-width: 0 !important;
+    width: 100%;
+    border: 1px solid color-mix(in srgb, var(--mov-border) 74%, #fff);
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: var(--mov-shadow-sm);
+  }
+
+  .docentes-gridRow .mov-gridCell {
+    min-height: 0;
+    width: 100%;
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: minmax(104px, 42%) minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    white-space: normal;
+    text-align: left;
+    justify-content: stretch;
+    border-bottom: 1px solid color-mix(in srgb, var(--mov-border) 58%, #fff);
+  }
+
+  .docentes-gridRow .mov-gridCell:last-child {
+    border-bottom: 0;
+  }
+
+  .docentes-gridRow .mov-gridCell::before {
+    content: attr(data-label);
+    min-width: 0;
+    color: var(--mov-muted);
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    justify-self: start;
+    text-align: left;
+  }
+
+  .docentes-gridRow .mov-gridCell > :not(.mov-actionsInline) {
+    justify-self: end;
+    text-align: right;
+  }
+
+  .docentes-gridRow .docentes-name-cell {
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  .docentes-gridRow .mov-gridCell.is-center,
+  .docentes-gridRow .mov-gridCell--actions {
+    justify-content: stretch;
+    text-align: left;
+  }
+
+  .docentes-gridRow .mov-gridCell--actions {
+    overflow: visible;
+  }
+
+  .docentes-gridRow .mov-actionsInline {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+
+  .docentes-name-cell strong,
+  .docentes-name-cell small,
+  .docentes-observacion,
+  .docentes-gridRow .mov-ellipsissss {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+
+  .docentes-gridRow .mov-chip {
+    width: fit-content;
+    justify-self: end;
+    text-align: center;
+  }
+
+  .docentes-gridRow .mov-row--skeleton .mov-gridCell::before,
+  .mov-row--skeleton.docentes-gridRow .mov-gridCell::before {
+    display: none;
+  }
+
+  .mov-row--skeleton.docentes-gridRow .mov-gridCell {
+    grid-template-columns: 1fr;
+    min-height: 44px;
+  }
+
+  .docentes-emptyState {
+    min-height: 180px;
+    border-radius: 14px;
+    background: #fff;
+    margin: 10px 12px 12px;
+  }
+
+  .docentes-footer {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px;
+  }
+
+  .docentes-pagination {
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .docentes-pageBtn {
+    flex: 1 1 120px;
+  }
+
+  .docentes-modal-overlay {
+    padding: 12px;
+    align-items: flex-start;
+    overflow: auto;
+  }
+
+  .docentes-modal,
+  .docentes-modal-sm,
+  .docentes-modal-lg,
+  .docentes-modal-xl {
+    width: min(100%, 680px);
+    max-height: calc(100dvh - 24px);
+  }
+
+  .docentes-modal-header {
+    padding: 16px;
+  }
+
+  .docentes-form,
+  .docentes-info-section,
+  .docentes-confirm-box {
+    padding: 16px;
+  }
+
+  .docentes-form-grid,
+  .docentes-bloque-row,
+  .docentes-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .docentes-bloques-header,
+  .docentes-info-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .docentes-modal-actions {
+    padding: 12px 16px 16px;
+    flex-wrap: wrap;
+  }
+
+  .docentes-modal-actions .docentes-btn,
+  .docentes-modal-actions .mov-btn {
+    flex: 1 1 160px;
+  }
+}
+
+@media (max-width: 620px) {
+  .docentes-page.mov-page {
+    padding: 10px;
+  }
+
+  .docentes-card.mov-card {
+    border-radius: 12px;
+  }
+
+  .docentes-card__head {
+    padding: 12px;
+  }
+
+  .docentes-card__hint {
+    font-size: 11px;
+  }
+
+  .docentes-tabsInline {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .docentes-tabsInline .docentes-tab {
+    width: 100%;
+    min-width: 0;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .docentes-searchInput,
+  .cc-input.docentes-searchInput {
+    min-width: 0;
+    height: 42px;
+  }
+
+  .docentes-filterTabs__label {
+    left: 12px;
+    font-size: 10px;
+  }
+
+  .docentes-table-wrap .mov-gridBody--relative {
+    gap: 9px;
+    padding: 9px;
+  }
+
+  .docentes-gridRow .mov-gridCell {
+    grid-template-columns: minmax(98px, 42%) minmax(0, 1fr);
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .docentes-gridRow .mov-gridCell::before {
+    font-size: 10px;
+  }
+
+  .docentes-gridRow .mov-chip {
+    justify-self: end;
+  }
+
+  .docentes-gridRow .mov-actionsInline {
+    justify-content: flex-end;
+  }
+
+  .docentes-icon-btn {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    min-height: 30px !important;
+  }
+
+  .docentes-footer {
+    font-size: 11px;
+  }
+
+  .docentes-pagination {
+    justify-content: stretch;
+  }
+
+  .docentes-pagination > span {
+    order: -1;
+    width: 100%;
+    text-align: center;
+  }
+
+  .docentes-pageBtn {
+    height: 34px;
+  }
+
+  .docentes-modal-header h2 {
+    font-size: 16px;
+  }
+
+  .docentes-info-head,
+  .docentes-info-grid {
+    margin-left: 14px;
+    margin-right: 14px;
+  }
+
+  .docentes-info-card strong {
+    font-size: 19px;
+  }
+}
+
+@media (max-width: 460px) {
+  .docentes-page.mov-page {
+    height: calc(100dvh - 75px);
+     max-height: calc(100dvh - 75px);
+    padding: 8px;
+  }
+
+  .docentes-card__head {
+    gap: 10px;
+  }
+
+  .docentes-section-title {
+    font-size: 13px;
+  }
+
+  .docentes-tabsInline {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .docentes-tabsInline .docentes-tab {
+    justify-content: flex-start;
+  }
+
+  .docentes-actionsHead .mov-btn {
+    justify-content: center;
+    font-size: 13px;
+  }
+
+  .docentes-table-wrap .mov-gridBody--relative {
+    padding: 8px;
+  }
+
+  .docentes-gridRow .mov-gridCell {
+    grid-template-columns: minmax(92px, 44%) minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .docentes-gridRow.global-divTable__row {
+    border-radius: 12px;
+  }
+
+  .docentes-modal-overlay {
+    padding: 8px;
+  }
+
+  .docentes-modal,
+  .docentes-modal-sm,
+  .docentes-modal-lg,
+  .docentes-modal-xl {
+    border-radius: 14px;
+    max-height: calc(100dvh - 16px);
+  }
+
+  .docentes-modal-header,
+  .docentes-form,
+  .docentes-info-section,
+  .docentes-modal-actions {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .docentes-bloques-header {
+    padding: 12px;
+  }
+}
+
+/* Ocultar solo en responsive el contador general del footer.
+   En monitor se conserva visible desde Docentes.css. */
+@media (max-width: 820px) {
+  .docentes-footer > span:first-child {
+    display: none !important;
+  }
+}
