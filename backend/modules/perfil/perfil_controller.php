@@ -21,6 +21,98 @@ function perfil_rol_label(string $rol): string
     return $rol !== '' ? ucfirst($rol) : 'Usuario';
 }
 
+function perfil_normalizar_logo_valor(?string $valor): string
+{
+    $valor = trim((string)$valor);
+
+    if ($valor === '' || strtolower($valor) === 'null' || strtolower($valor) === 'undefined' || $valor === '-') {
+        return '';
+    }
+
+    return str_replace('\\', '/', $valor);
+}
+
+function perfil_logo_mime_desde_extension(string $path): string
+{
+    $ext = strtolower(pathinfo(parse_url($path, PHP_URL_PATH) ?: $path, PATHINFO_EXTENSION));
+
+    return match ($ext) {
+        'jpg', 'jpeg' => 'image/jpeg',
+        'webp' => 'image/webp',
+        'svg' => 'image/svg+xml',
+        'gif' => 'image/gif',
+        default => 'image/png',
+    };
+}
+
+function perfil_logo_resolver_archivo_local(string $logo): string
+{
+    $logo = perfil_normalizar_logo_valor($logo);
+    if ($logo === '' || preg_match('#^https?://#i', $logo) || str_starts_with($logo, 'data:')) {
+        return '';
+    }
+
+    $relative = ltrim($logo, '/');
+    $candidatos = [];
+
+    $documentRoot = trim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''));
+    if ($documentRoot !== '') {
+        $candidatos[] = rtrim($documentRoot, '/\\') . DIRECTORY_SEPARATOR . $relative;
+    }
+
+    // En Hostinger normalmente: public_html/api/modules/perfil -> public_html
+    $candidatos[] = dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . $relative;
+    $candidatos[] = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . $relative;
+
+    foreach (array_unique($candidatos) as $path) {
+        if (is_file($path) && is_readable($path)) {
+            return $path;
+        }
+    }
+
+    return '';
+}
+
+function perfil_logo_a_data_url(string $logo): string
+{
+    $logo = perfil_normalizar_logo_valor($logo);
+    if ($logo === '') return '';
+
+    if (str_starts_with($logo, 'data:image/')) {
+        return $logo;
+    }
+
+    $source = '';
+    $mime = perfil_logo_mime_desde_extension($logo);
+
+    if (preg_match('#^https?://#i', $logo)) {
+        $source = $logo;
+    } else {
+        $local = perfil_logo_resolver_archivo_local($logo);
+        if ($local === '') return '';
+        $source = $local;
+
+        if (function_exists('mime_content_type')) {
+            $detected = @mime_content_type($local);
+            if (is_string($detected) && str_starts_with($detected, 'image/')) {
+                $mime = $detected;
+            }
+        }
+    }
+
+    $context = stream_context_create([
+        'http' => ['timeout' => 4],
+        'ssl' => ['verify_peer' => false, 'verify_peer_name' => false],
+    ]);
+
+    $contenido = @file_get_contents($source, false, $context);
+    if ($contenido === false || $contenido === '') {
+        return '';
+    }
+
+    return 'data:' . $mime . ';base64,' . base64_encode($contenido);
+}
+
 function perfil_obtener(): void
 {
     $idUsuario = usuario_id();
@@ -37,9 +129,8 @@ function perfil_obtener(): void
         $master = master_db();
 
         /*
-         * Importante: se devuelve logo_icono_url como alias de logo_url.
-         * En algunas bases productivas viejas no existe la columna logo_icono_url,
-         * entonces no la consultamos directamente para evitar errores 1054.
+         * Se devuelve el logo institucional del tenant desde master.
+         * Primero se intenta logo_icono_url y si está vacío se usa logo_url.
          */
         $stmt = $master->prepare("
             SELECT
@@ -54,7 +145,7 @@ function perfil_obtener(): void
                 t.nombre AS tenant_nombre,
                 t.slug AS tenant_slug,
                 t.logo_url,
-                t.logo_url AS logo_icono_url,
+                COALESCE(t.logo_icono_url, t.logo_url) AS logo_icono_url,
                 t.db_name,
                 t.idPlan,
                 t.activo AS tenant_activo,
@@ -143,3 +234,67 @@ function perfil_obtener(): void
         ], 500);
     }
 }
+
+function perfil_logo_institucional(): void
+{
+    $idUsuario = usuario_id();
+    $idTenant = tenant_id_actual();
+
+    if ($idUsuario <= 0 || $idTenant <= 0) {
+        json_response([
+            'exito' => false,
+            'mensaje' => 'No se pudo identificar la sesión activa.',
+        ], 401);
+    }
+
+    try {
+        $master = master_db();
+        $stmt = $master->prepare("
+            SELECT
+                t.idTenant,
+                t.nombre,
+                t.logo_url,
+                COALESCE(t.logo_icono_url, t.logo_url) AS logo_icono_url
+            FROM tenants t
+            INNER JOIN usuarios_master u ON u.idTenant = t.idTenant
+            WHERE t.idTenant = :idTenant
+              AND u.idUsuarioMaster = :idUsuario
+            LIMIT 1
+        ");
+
+        $stmt->execute([
+            ':idTenant' => $idTenant,
+            ':idUsuario' => $idUsuario,
+        ]);
+
+        $row = $stmt->fetch();
+        if (!$row) {
+            json_response([
+                'exito' => false,
+                'mensaje' => 'No se encontró la información institucional.',
+            ], 404);
+        }
+
+        $logoIcono = perfil_normalizar_logo_valor($row['logo_icono_url'] ?? '');
+        $logoUrl = perfil_normalizar_logo_valor($row['logo_url'] ?? '');
+        $logoElegido = $logoIcono !== '' ? $logoIcono : $logoUrl;
+
+        json_response([
+            'exito' => true,
+            'tenant' => [
+                'idTenant' => (int)$row['idTenant'],
+                'nombre' => (string)$row['nombre'],
+                'logo_url' => $logoUrl ?: null,
+                'logo_icono_url' => $logoIcono ?: ($logoUrl ?: null),
+                'logo_data_url' => $logoElegido !== '' ? perfil_logo_a_data_url($logoElegido) : '',
+            ],
+        ]);
+    } catch (Throwable $e) {
+        log_error($e, 'perfil_logo_institucional');
+        json_response([
+            'exito' => false,
+            'mensaje' => 'No se pudo cargar el logo institucional.',
+        ], 500);
+    }
+}
+

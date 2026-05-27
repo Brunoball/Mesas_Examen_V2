@@ -97,7 +97,7 @@ function tenant_context(?string $sessionKey = null): ?array
 
     $master = master_db();
 
-    $stmt = $master->prepare("\n        SELECT\n            s.idSesion,\n            s.session_key,\n            s.idUsuarioMaster,\n            s.idTenant,\n            s.expira_en,\n            s.ultimo_uso,\n            u.usuario,\n            u.email_recuperacion,\n            u.rol,\n            u.tema,\n            u.activo AS usuario_activo,\n            t.nombre AS tenant_nombre,\n            t.logo_url,\n            t.logo_url AS logo_icono_url,\n            t.db_host,\n            t.db_name,\n            t.db_user,\n            t.db_pass,\n            t.activo AS tenant_activo\n        FROM sesiones s\n        INNER JOIN usuarios_master u ON u.idUsuarioMaster = s.idUsuarioMaster\n        INNER JOIN tenants t ON t.idTenant = s.idTenant\n        WHERE s.session_key = :session_key\n          AND s.activo = 1\n        LIMIT 1\n    ");
+    $stmt = $master->prepare("\n        SELECT\n            s.idSesion,\n            s.session_key,\n            s.idUsuarioMaster,\n            s.idTenant,\n            s.expira_en,\n            s.ultimo_uso,\n            u.usuario,\n            u.email_recuperacion,\n            u.rol,\n            u.tema,\n            u.activo AS usuario_activo,\n            t.nombre AS tenant_nombre,\n            t.logo_url,\n            COALESCE(t.logo_icono_url, t.logo_url) AS logo_icono_url,\n            t.db_host,\n            t.db_name,\n            t.db_user,\n            t.db_pass,\n            t.activo AS tenant_activo\n        FROM sesiones s\n        INNER JOIN usuarios_master u ON u.idUsuarioMaster = s.idUsuarioMaster\n        INNER JOIN tenants t ON t.idTenant = s.idTenant\n        WHERE s.session_key = :session_key\n          AND s.activo = 1\n        LIMIT 1\n    ");
     $stmt->execute([':session_key' => $sessionKey]);
     $ctx = $stmt->fetch();
 
@@ -254,7 +254,7 @@ function public_tenant_context_by_id(int $idTenant): ?array
     }
 
     $master = master_db();
-    $stmt = $master->prepare("\n        SELECT\n            t.idTenant,\n            t.nombre AS tenant_nombre,\n            t.logo_url,\n            t.logo_url AS logo_icono_url,\n            t.db_host,\n            t.db_name,\n            t.db_user,\n            t.db_pass,\n            t.activo AS tenant_activo,\n            NULL AS dominio_resuelto,\n            'idTenant' AS tenant_resuelto_por\n        FROM tenants t\n        WHERE t.idTenant = :idTenant\n          AND t.activo = 1\n        LIMIT 1\n    ");
+    $stmt = $master->prepare("\n        SELECT\n            t.idTenant,\n            t.nombre AS tenant_nombre,\n            t.logo_url,\n            COALESCE(t.logo_icono_url, t.logo_url) AS logo_icono_url,\n            t.db_host,\n            t.db_name,\n            t.db_user,\n            t.db_pass,\n            t.activo AS tenant_activo,\n            NULL AS dominio_resuelto,\n            'idTenant' AS tenant_resuelto_por\n        FROM tenants t\n        WHERE t.idTenant = :idTenant\n          AND t.activo = 1\n        LIMIT 1\n    ");
     $stmt->execute([':idTenant' => $idTenant]);
 
     $ctx = $stmt->fetch();
@@ -283,7 +283,7 @@ function public_tenant_context_by_host(?string $host = null): ?array
 
     $placeholders = implode(',', array_fill(0, count($candidates), '?'));
     $master = master_db();
-    $stmt = $master->prepare("\n        SELECT\n            t.idTenant,\n            t.nombre AS tenant_nombre,\n            t.logo_url,\n            t.logo_url AS logo_icono_url,\n            t.db_host,\n            t.db_name,\n            t.db_user,\n            t.db_pass,\n            t.activo AS tenant_activo,\n            td.dominio AS dominio_resuelto,\n            td.tipo AS tenant_resuelto_por\n        FROM tenant_dominios td\n        INNER JOIN tenants t ON t.idTenant = td.idTenant\n        WHERE LOWER(td.dominio) IN ({$placeholders})\n          AND td.activo = 1\n          AND t.activo = 1\n        ORDER BY FIELD(LOWER(td.dominio), {$placeholders})\n        LIMIT 1\n    ");
+    $stmt = $master->prepare("\n        SELECT\n            t.idTenant,\n            t.nombre AS tenant_nombre,\n            t.logo_url,\n            COALESCE(t.logo_icono_url, t.logo_url) AS logo_icono_url,\n            t.db_host,\n            t.db_name,\n            t.db_user,\n            t.db_pass,\n            t.activo AS tenant_activo,\n            td.dominio AS dominio_resuelto,\n            td.tipo AS tenant_resuelto_por\n        FROM tenant_dominios td\n        INNER JOIN tenants t ON t.idTenant = td.idTenant\n        WHERE LOWER(td.dominio) IN ({$placeholders})\n          AND td.activo = 1\n          AND t.activo = 1\n        ORDER BY FIELD(LOWER(td.dominio), {$placeholders})\n        LIMIT 1\n    ");
     $stmt->execute(array_merge($candidates, $candidates));
 
     $ctx = $stmt->fetch();
@@ -561,14 +561,76 @@ function login_query_tenant_permitido(): bool
     return env_bool('ALLOW_LOGIN_QUERY_TENANT', false);
 }
 
+function env_hosts_from_urls(string $value): array
+{
+    $hosts = [];
+    foreach (explode(',', $value) as $item) {
+        $item = trim($item);
+        if ($item === '') {
+            continue;
+        }
+
+        // No usamos comodines para este fallback de login. El fallback por tenant
+        // por defecto solo debe aplicar al dominio exacto del sistema/panel.
+        if (strpos($item, '*') !== false) {
+            continue;
+        }
+
+        $host = request_host_from_url_or_host($item);
+        if ($host !== '') {
+            $hosts[] = $host;
+        }
+    }
+
+    return array_values(array_unique($hosts));
+}
+
+function request_login_origen_es_host_principal_app(): bool
+{
+    $hostsPermitidos = [];
+
+    $hostsPermitidos = array_merge($hostsPermitidos, env_hosts_from_urls((string)(env_value('APP_URL', '') ?? '')));
+    $hostsPermitidos = array_merge($hostsPermitidos, env_hosts_from_urls((string)(env_value('FRONTEND_URL', '') ?? '')));
+
+    // ALLOWED_ORIGIN puede tener varios dominios separados por coma. Tomamos solo
+    // los exactos, nunca comodines, para no resolver por defecto formularios de otras escuelas.
+    $hostsPermitidos = array_merge($hostsPermitidos, env_hosts_from_urls((string)(env_value('ALLOWED_ORIGIN', '') ?? '')));
+
+    $hostsPermitidos = array_values(array_unique(array_filter($hostsPermitidos)));
+    if (!$hostsPermitidos) {
+        return false;
+    }
+
+    foreach (request_public_tenant_host_candidates() as $hostCandidate) {
+        if (in_array($hostCandidate, $hostsPermitidos, true)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function login_default_tenant_id_permitido(): int
 {
+    $defaultTenantId = (int)(env_value('DEFAULT_TENANT_ID', '0') ?? '0');
+    if ($defaultTenantId <= 0) {
+        return 0;
+    }
+
     if (request_public_tenant_es_local()) {
-        return (int)(env_value('DEFAULT_TENANT_ID', '0') ?? '0');
+        return $defaultTenantId;
     }
 
     if (env_bool('ALLOW_LOGIN_DEFAULT_TENANT', false)) {
-        return (int)(env_value('DEFAULT_TENANT_ID', '0') ?? '0');
+        return $defaultTenantId;
+    }
+
+    // Hostinger / producción con dominio único del panel:
+    // si el login viene desde el host exacto configurado como APP_URL/FRONTEND_URL,
+    // se permite usar DEFAULT_TENANT_ID solo para iniciar sesión/recuperar contraseña.
+    // Las acciones privadas siguen resolviendo SIEMPRE el tenant por session_key.
+    if (request_login_origen_es_host_principal_app() && env_bool('ALLOW_LOGIN_DEFAULT_TENANT_ON_APP_HOST', true)) {
+        return $defaultTenantId;
     }
 
     return 0;
@@ -582,7 +644,7 @@ function tenant_context_by_slug(string $slug): ?array
     }
 
     $master = master_db();
-    $stmt = $master->prepare("\n        SELECT\n            t.idTenant,\n            t.nombre AS tenant_nombre,\n            t.logo_url,\n            t.logo_url AS logo_icono_url,\n            t.db_host,\n            t.db_name,\n            t.db_user,\n            t.db_pass,\n            t.activo AS tenant_activo,\n            NULL AS dominio_resuelto,\n            'slug' AS tenant_resuelto_por\n        FROM tenants t\n        WHERE LOWER(t.slug) = LOWER(:slug)\n          AND t.activo = 1\n        LIMIT 1\n    ");
+    $stmt = $master->prepare("\n        SELECT\n            t.idTenant,\n            t.nombre AS tenant_nombre,\n            t.logo_url,\n            COALESCE(t.logo_icono_url, t.logo_url) AS logo_icono_url,\n            t.db_host,\n            t.db_name,\n            t.db_user,\n            t.db_pass,\n            t.activo AS tenant_activo,\n            NULL AS dominio_resuelto,\n            'slug' AS tenant_resuelto_por\n        FROM tenants t\n        WHERE LOWER(t.slug) = LOWER(:slug)\n          AND t.activo = 1\n        LIMIT 1\n    ");
     $stmt->execute([':slug' => $slug]);
 
     $ctx = $stmt->fetch();
@@ -603,7 +665,7 @@ function login_single_active_tenant_context(): ?array
         return null;
     }
 
-    $stmt = $master->query("\n        SELECT\n            t.idTenant,\n            t.nombre AS tenant_nombre,\n            t.logo_url,\n            t.logo_url AS logo_icono_url,\n            t.db_host,\n            t.db_name,\n            t.db_user,\n            t.db_pass,\n            t.activo AS tenant_activo,\n            NULL AS dominio_resuelto,\n            'single_active_tenant' AS tenant_resuelto_por\n        FROM tenants t\n        WHERE t.activo = 1\n        LIMIT 1\n    ");
+    $stmt = $master->query("\n        SELECT\n            t.idTenant,\n            t.nombre AS tenant_nombre,\n            t.logo_url,\n            COALESCE(t.logo_icono_url, t.logo_url) AS logo_icono_url,\n            t.db_host,\n            t.db_name,\n            t.db_user,\n            t.db_pass,\n            t.activo AS tenant_activo,\n            NULL AS dominio_resuelto,\n            'single_active_tenant' AS tenant_resuelto_por\n        FROM tenants t\n        WHERE t.activo = 1\n        LIMIT 1\n    ");
 
     $ctx = $stmt->fetch();
     return $ctx ?: null;

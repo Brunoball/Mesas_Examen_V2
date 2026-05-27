@@ -24,6 +24,7 @@ import "../Global/Global_css/Global_DivTable.css";
 import "./Mesas_examen.css";
 import "../Global/Global_css/Global_MesasResponsive.css";
 import Principal, { MesasShellContext } from "../Principal/Principal";
+import BASE_URL from "../../config/config";
 import { useMesasExamen } from "./hooks/useMesasExamen";
 import ModalCrearMesa from "./modales/ModalCrearMesa";
 import ModalEditarMesa from "./modales/ModalEditarMesa";
@@ -40,7 +41,7 @@ import {
   descargarExcelHistorialMesas,
   descargarPdfHistorialMesas,
 } from "./modales/exportar_historial/historialMesasExporter";
-import logo from "../../imagenes/Escudo.png";
+import { obtenerLogoInstitucionalMesas, obtenerPerfilInstitucional } from "./api/mesasExamenApi";
 
 const textoCorto = (valor, fallback = "-") => {
   const texto = String(valor || "").trim();
@@ -197,6 +198,140 @@ const MESES_ES = [
 ];
 
 const DIAS_ES = ["DOMINGO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO"];
+
+const leerJsonStorage = (key) => {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const obtenerOrigenDesdeUrl = (url) => {
+  const value = String(url || "").trim();
+  if (!value) return "";
+
+  try {
+    return new URL(value, window.location.origin).origin.replace(/\/+$/, "");
+  } catch {
+    return "";
+  }
+};
+
+const resolverPublicBaseUrl = () => {
+  const publicEnvUrl = String(
+    process.env.REACT_APP_PUBLIC_BASE_URL || process.env.REACT_APP_APP_URL || ""
+  ).trim();
+
+  if (publicEnvUrl) return publicEnvUrl.replace(/\/+$/, "");
+
+  const configOrigin = obtenerOrigenDesdeUrl(BASE_URL);
+  if (configOrigin) return configOrigin;
+
+  if (typeof window !== "undefined") {
+    return String(window.location.origin || "").replace(/\/+$/, "");
+  }
+
+  return "";
+};
+
+const normalizarLogoInstitucionalUrl = (url) => {
+  const value = String(url || "").trim();
+
+  if (
+    !value
+    || value.toLowerCase() === "null"
+    || value.toLowerCase() === "undefined"
+    || value === "-"
+  ) {
+    return "";
+  }
+
+  if (/^(https?:)?\/\//i.test(value) || value.startsWith("data:") || value.startsWith("blob:")) {
+    return value;
+  }
+
+  const clean = value.replace(/\\/g, "/");
+  const publicBase = resolverPublicBaseUrl();
+
+  return clean.startsWith("/") ? `${publicBase}${clean}` : `${publicBase}/${clean}`;
+};
+
+const obtenerDatosInstitucionalesDesde = (perfil = null, tenantDirecto = null) => {
+  const tenant = perfil?.tenant || tenantDirecto || null;
+  const candidatosLogo = [
+    tenant?.logo_icono_url,
+    tenant?.logo_url,
+    perfil?.tenant_logo_icono_url,
+    perfil?.tenant_logo_url,
+    perfil?.logo_icono_url,
+    perfil?.logo_url,
+  ];
+
+  const logoUrl = normalizarLogoInstitucionalUrl(
+    candidatosLogo.find((item) => String(item || "").trim() !== "")
+  );
+  const logoDataUrl = normalizarLogoInstitucionalUrl(
+    tenant?.logo_data_url || perfil?.logo_data_url || ""
+  );
+
+  const nombre = textoCorto(
+    tenant?.nombre || perfil?.tenant_nombre || perfil?.institucion || perfil?.nombre_institucion,
+    "Institución"
+  );
+
+  return { logoUrl, logoDataUrl, nombre };
+};
+
+const obtenerDatosInstitucionalesLocales = () => {
+  const usuarioLocal = leerJsonStorage("usuario");
+  const tenantLocal = leerJsonStorage("tenant");
+  return obtenerDatosInstitucionalesDesde(usuarioLocal, tenantLocal);
+};
+
+const obtenerDatosInstitucionalesDesdeEndpointLogo = async (datosBase = null) => {
+  const actual = datosBase || obtenerDatosInstitucionalesLocales();
+
+  try {
+    const logoData = await obtenerLogoInstitucionalMesas();
+
+    if (!logoData?.exito) {
+      return actual;
+    }
+
+    const datosLogo = obtenerDatosInstitucionalesDesde(null, logoData.tenant || {
+      nombre: logoData.nombre || logoData.tenant_nombre,
+      logo_url: logoData.logo_url,
+      logo_icono_url: logoData.logo_icono_url || logoData.logo_url,
+      logo_data_url: logoData.logo_data_url,
+    });
+
+    return {
+      ...actual,
+      ...datosLogo,
+      logoUrl: datosLogo.logoUrl || actual.logoUrl,
+      logoDataUrl: datosLogo.logoDataUrl || logoData.logo_data_url || actual.logoDataUrl || "",
+      nombre: datosLogo.nombre !== "Institución" ? datosLogo.nombre : actual.nombre,
+    };
+  } catch (_) {
+    return actual;
+  }
+};
+
+const obtenerInicialesInstitucion = (nombre = "Institución") => {
+  const iniciales = String(nombre || "Institución")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((parte) => parte.charAt(0).toUpperCase())
+    .join("");
+
+  return iniciales || "I";
+};
 
 const HISTORIAL_RESULTADOS_GRID_COLS = "0.65fr 1.35fr 0.65fr 1.2fr 0.55fr 1.15fr 0.45fr 1.15fr";
 const HISTORIAL_ARMADOS_GRID_COLS = "0.95fr 1fr 1.35fr 0.65fr 0.75fr 0.7fr 0.95fr 0.9fr";
@@ -472,6 +607,23 @@ const construirPayloadEliminar = (item, tab) => ({
 
 const PDF_GRID_COLS = "9% 22% 24% 8% 8% 7% 22%";
 
+const LogoInstitucionalPdf = ({ logoUrl = "", nombre = "Institución" }) => {
+  const [logoError, setLogoError] = useState(false);
+  const mostrarLogo = Boolean(logoUrl) && !logoError;
+
+  useEffect(() => {
+    setLogoError(false);
+  }, [logoUrl]);
+
+  return mostrarLogo ? (
+    <img src={logoUrl} alt={`Logo de ${nombre}`} onError={() => setLogoError(true)} />
+  ) : (
+    <span className="mesas-pdf-logoFallback" aria-hidden="true">
+      {obtenerInicialesInstitucion(nombre)}
+    </span>
+  );
+};
+
 const PdfGridHead = () => (
   <div className="mesas-pdf-gridHead" style={{ gridTemplateColumns: PDF_GRID_COLS }} role="row">
     <div className="mesas-pdf-headCell pdf-col-hora" role="columnheader">Hora</div>
@@ -484,7 +636,18 @@ const PdfGridHead = () => (
   </div>
 );
 
-const MesaPdfCard = ({ grupo, esNoAgrupada = false, onEdit, onDelete, onGuardarNota, guardandoNotas = {}, terminosBusqueda = [], cardRef = null }) => {
+const MesaPdfCard = ({
+  grupo,
+  esNoAgrupada = false,
+  onEdit,
+  onDelete,
+  onGuardarNota,
+  guardandoNotas = {},
+  terminosBusqueda = [],
+  cardRef = null,
+  logoInstitucionalUrl = "",
+  institucionNombre = "Institución",
+}) => {
   const bloques = obtenerBloquesVistaPdf(grupo);
   const totalFilas = Math.max(
     1,
@@ -501,10 +664,10 @@ const MesaPdfCard = ({ grupo, esNoAgrupada = false, onEdit, onDelete, onGuardarN
     >
       <header className="mesas-pdf-header">
         <div className="mesas-pdf-brand">
-          <img src={logo} alt="IPET 50" />
+          <LogoInstitucionalPdf logoUrl={logoInstitucionalUrl} nombre={institucionNombre} />
           <div>
             <h3>{obtenerTituloVistaPdf(grupo)}</h3>
-            <p>IPET N° 50 "Ing. Emilio F. Olmos"</p>
+            <p>{institucionNombre}</p>
           </div>
         </div>
         <div className="mesas-pdf-meta">
@@ -1013,6 +1176,44 @@ const MesasExamen = () => {
   } = useMesasExamen({ onToast: mostrarToastGlobal });
 
   const [indiceBusquedaActivo, setIndiceBusquedaActivo] = useState(0);
+  const [datosInstitucionales, setDatosInstitucionales] = useState(() => obtenerDatosInstitucionalesLocales());
+
+  useEffect(() => {
+    let cancelado = false;
+
+    setDatosInstitucionales(obtenerDatosInstitucionalesLocales());
+
+    const cargarDatosInstitucionales = async () => {
+      try {
+        const data = await obtenerPerfilInstitucional();
+        if (cancelado || !data?.exito) return;
+
+        const perfilApi = data.perfil || data.usuario || null;
+        const tenantApi = data.tenant || perfilApi?.tenant || null;
+        const datos = obtenerDatosInstitucionalesDesde(perfilApi, tenantApi);
+
+        if (datos.logoUrl || datos.logoDataUrl || datos.nombre !== "Institución") {
+          setDatosInstitucionales(datos);
+        }
+
+        const datosConLogo = await obtenerDatosInstitucionalesDesdeEndpointLogo(datos);
+        if (!cancelado) {
+          setDatosInstitucionales(datosConLogo);
+        }
+      } catch (_) {
+        if (!cancelado) {
+          setDatosInstitucionales(obtenerDatosInstitucionalesLocales());
+        }
+      }
+    };
+
+    cargarDatosInstitucionales();
+
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
 
   const totalHistorialVisible = (Array.isArray(historial?.resultados) ? historial.resultados.length : 0)
     + (Array.isArray(historial?.armados) ? historial.armados.length : 0);
@@ -1026,6 +1227,58 @@ const MesasExamen = () => {
   const indiceBusquedaVisible = hayResultadosBusqueda ? Math.min(indiceBusquedaActivo + 1, totalResultadosBusqueda) : 0;
   const terminosBusqueda = useMemo(() => obtenerTerminosBusqueda(busqueda), [busqueda]);
   const tarjetasMesasRefs = useRef({});
+
+  const capturarScrollVistaMesas = useCallback(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") return null;
+
+    const contenedor = document.querySelector(".mesas-pdf-view");
+
+    return {
+      contenedorTop: contenedor ? contenedor.scrollTop : 0,
+      contenedorLeft: contenedor ? contenedor.scrollLeft : 0,
+      windowX: window.scrollX || window.pageXOffset || 0,
+      windowY: window.scrollY || window.pageYOffset || 0,
+    };
+  }, []);
+
+  const restaurarScrollVistaMesas = useCallback((posicion) => {
+    if (!posicion || typeof window === "undefined" || typeof document === "undefined") return;
+
+    let intentos = 0;
+    const aplicar = () => {
+      const contenedor = document.querySelector(".mesas-pdf-view");
+
+      if (contenedor) {
+        contenedor.scrollTop = posicion.contenedorTop || 0;
+        contenedor.scrollLeft = posicion.contenedorLeft || 0;
+      }
+
+      if (typeof window.scrollTo === "function") {
+        window.scrollTo(posicion.windowX || 0, posicion.windowY || 0);
+      }
+
+      intentos += 1;
+      if (intentos < 4) {
+        window.setTimeout(aplicar, intentos === 1 ? 0 : 80);
+      }
+    };
+
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(aplicar);
+    } else {
+      window.setTimeout(aplicar, 0);
+    }
+  }, []);
+
+  const guardarNotaAlumnoManteniendoScroll = useCallback(async (payload = {}) => {
+    const posicion = capturarScrollVistaMesas();
+
+    try {
+      return await guardarNotaAlumno(payload);
+    } finally {
+      restaurarScrollVistaMesas(posicion);
+    }
+  }, [capturarScrollVistaMesas, guardarNotaAlumno, restaurarScrollVistaMesas]);
 
   const registrarTarjetaMesa = useCallback((id, node) => {
     const clave = String(id || "");
@@ -1221,7 +1474,7 @@ const MesasExamen = () => {
     setModalExportarHistorialAbierto(false);
   }, [exportandoHistorial]);
 
-  const confirmarExportarPdf = useCallback(({ tituloFijo, continuacion } = {}) => {
+  const confirmarExportarPdf = useCallback(async ({ tituloFijo, continuacion } = {}) => {
     if (!Array.isArray(mesasFiltradas) || mesasFiltradas.length === 0) {
       mostrarToastGlobal("error", "No hay mesas visibles para exportar.", 3200);
       return;
@@ -1230,11 +1483,18 @@ const MesasExamen = () => {
     setExportandoPdf(true);
 
     try {
-      descargarPdfMesas({
+      // Refrescamos el logo justo antes de exportar. Esto evita que el PDF salga
+      // con el bloque azul "LOGO" si la carga inicial todavía no convirtió la imagen.
+      const datosExportacion = await obtenerDatosInstitucionalesDesdeEndpointLogo(datosInstitucionales);
+      setDatosInstitucionales(datosExportacion);
+
+      await descargarPdfMesas({
         mesas: mesasFiltradas,
         tab,
         tituloFijo,
         continuacion,
+        logoUrl: datosExportacion.logoDataUrl || datosExportacion.logoUrl,
+        institucionNombre: datosExportacion.nombre,
       });
 
       setModalTituloPdfAbierto(false);
@@ -1244,7 +1504,7 @@ const MesasExamen = () => {
     } finally {
       setExportandoPdf(false);
     }
-  }, [mesasFiltradas, tab, mostrarToastGlobal]);
+  }, [datosInstitucionales, mesasFiltradas, tab, mostrarToastGlobal]);
 
   const confirmarExportarHistorial = useCallback(async ({ formato = "excel" } = {}) => {
     if (exportandoHistorial) return;
@@ -1475,9 +1735,11 @@ const MesasExamen = () => {
                 esNoAgrupada={tab === "no-agrupadas"}
                 onEdit={() => abrirModalEditar(item, tab === "no-agrupadas" ? "no_agrupada" : "grupo")}
                 onDelete={() => eliminarMesaDesdeEdicion(construirPayloadEliminar(item, tab))}
-                onGuardarNota={guardarNotaAlumno}
+                onGuardarNota={guardarNotaAlumnoManteniendoScroll}
                 guardandoNotas={guardandoNotas}
                 terminosBusqueda={terminosBusqueda}
+                logoInstitucionalUrl={datosInstitucionales.logoDataUrl || datosInstitucionales.logoUrl}
+                institucionNombre={datosInstitucionales.nombre}
               />
               );
             })

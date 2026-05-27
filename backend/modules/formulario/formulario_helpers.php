@@ -583,6 +583,7 @@ if (!function_exists('formulario_email_config')) {
             'email_remitente' => env_value('MAIL_FROM_EMAIL', '') ?? '',
             'asunto_email_inscripcion' => 'Confirmación de inscripción a mesa de examen',
             'plantilla_email_inscripcion' => null,
+            'color_principal' => '#1d4ed8',
         ];
 
         try {
@@ -595,7 +596,8 @@ if (!function_exists('formulario_email_config')) {
                        email_remitente_nombre,
                        email_remitente,
                        asunto_email_inscripcion,
-                       plantilla_email_inscripcion
+                       plantilla_email_inscripcion,
+                       color_principal
                   FROM mesas_config
                  ORDER BY activo DESC, actualizado_en DESC, id_config DESC
                  LIMIT 1
@@ -640,8 +642,18 @@ if (!function_exists('formulario_render_template')) {
     function formulario_render_template(string $template, array $vars): string
     {
         foreach ($vars as $key => $value) {
-            $template = str_replace('{{' . $key . '}}', (string)$value, $template);
+            $key = trim((string)$key);
+            if ($key === '') {
+                continue;
+            }
+
+            $value = (string)$value;
+
+            // Compatible con plantillas guardadas como {{materia}} y también {{ materia }}.
+            $template = str_replace('{{' . $key . '}}', $value, $template);
+            $template = preg_replace('/{{\s*' . preg_quote($key, '/') . '\s*}}/u', $value, $template) ?? $template;
         }
+
         return $template;
     }
 }
@@ -664,16 +676,43 @@ if (!function_exists('formulario_enviar_email_confirmacion')) {
             $escuela = 'Lerna';
         }
 
-        $listaMateriasTexto = implode(', ', array_map(static fn(array $m): string => (string)($m['materia'] ?? $m['materia_nombre'] ?? ''), $materias));
+        $materiasNombres = array_values(array_filter(array_map(static function (array $m): string {
+            return trim((string)($m['materia'] ?? $m['materia_nombre'] ?? ''));
+        }, $materias), static fn(string $nombre): bool => $nombre !== ''));
+
+        $listaMateriasTexto = implode(', ', $materiasNombres);
+        $materiaTexto = count($materiasNombres) === 1
+            ? $materiasNombres[0]
+            : $listaMateriasTexto;
+
         $listaMateriasHtml = '<ul style="margin:12px 0 0;padding-left:22px;">';
+        $materiasCardHtml = '';
         foreach ($materias as $m) {
             $materia = htmlspecialchars((string)($m['materia'] ?? $m['materia_nombre'] ?? ''), ENT_QUOTES, 'UTF-8');
             $curso = htmlspecialchars((string)($m['curso'] ?? $m['curso_id'] ?? ''), ENT_QUOTES, 'UTF-8');
             $division = htmlspecialchars((string)($m['division'] ?? $m['division_id'] ?? ''), ENT_QUOTES, 'UTF-8');
             $detalleCurso = trim($curso . ($division !== '' ? ' ' . $division : ''));
-            $listaMateriasHtml .= '<li style="margin-bottom:8px;"><strong>' . $materia . '</strong>' . ($detalleCurso !== '' ? ' <span style="color:#64748b;">(' . $detalleCurso . ')</span>' : '') . '</li>';
+            $detalleHtml = $detalleCurso !== '' ? ' <span style="color:#64748b;font-weight:500;">(' . $detalleCurso . ')</span>' : '';
+
+            // Se mantiene para compatibilidad con plantillas personalizadas que usen {{materias_html}}.
+            $listaMateriasHtml .= '<li style="margin-bottom:8px;"><strong>' . $materia . '</strong>' . $detalleHtml . '</li>';
+
+            $materiasCardHtml .= '
+                <tr>
+                  <td style="padding:7px 0 0;">
+                    <span style="display:inline-block;width:7px;height:7px;border-radius:999px;background:#16a34a;margin-right:8px;vertical-align:middle;"></span>
+                    <strong style="color:#111827;">' . $materia . '</strong>' . $detalleHtml . '
+                  </td>
+                </tr>';
         }
         $listaMateriasHtml .= '</ul>';
+
+        if ($materiasCardHtml === '') {
+            $materiasCardHtml = '
+                <tr>
+                  <td style="padding:7px 0 0;color:#64748b;">No se registraron materias en el detalle.</td>
+                </tr>';
+        }
 
         $fecha = date('d/m/Y H:i');
         $vars = [
@@ -681,6 +720,9 @@ if (!function_exists('formulario_enviar_email_confirmacion')) {
             'dni' => $dni,
             'gmail' => $destino,
             'email' => $destino,
+            'materia' => $materiaTexto,
+            'materia_nombre' => $materiaTexto,
+            'materia_principal' => $materiaTexto,
             'materias' => $listaMateriasTexto,
             'materias_html' => $listaMateriasHtml,
             'escuela' => $escuela,
@@ -702,10 +744,10 @@ if (!function_exists('formulario_enviar_email_confirmacion')) {
 
         $alumnoHtml = htmlspecialchars($alumno, ENT_QUOTES, 'UTF-8');
         $dniHtml = htmlspecialchars($dni, ENT_QUOTES, 'UTF-8');
-        $gmailHtml = htmlspecialchars($destino, ENT_QUOTES, 'UTF-8');
         $escuelaHtml = htmlspecialchars($escuela, ENT_QUOTES, 'UTF-8');
         $mensajeHtml = nl2br(htmlspecialchars($mensajePlano, ENT_QUOTES, 'UTF-8'));
         $subjectHtml = htmlspecialchars($subject, ENT_QUOTES, 'UTF-8');
+        $colorPrincipal = formulario_normalizar_color($cfg['color_principal'] ?? '#1d4ed8', '#1d4ed8');
 
         $html = <<<HTML
 <!doctype html>
@@ -715,27 +757,57 @@ if (!function_exists('formulario_enviar_email_confirmacion')) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{$subjectHtml}</title>
 </head>
-<body style="margin:0;padding:0;background:#f5f7fb;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
-  <div style="padding:32px 16px;">
-    <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #dfe5ef;border-radius:14px;overflow:hidden;box-shadow:0 18px 45px rgba(15,23,42,.08);">
-      <div style="padding:24px 28px;border-bottom:1px solid #e5e7eb;background:#fff7ed;">
-        <h1 style="margin:0;font-size:22px;color:#111827;">{$escuelaHtml}</h1>
-        <p style="margin:6px 0 0;font-size:14px;color:#64748b;">Confirmación de inscripción a mesas de examen</p>
-      </div>
-      <div style="padding:28px;">
-        <h2 style="margin:0 0 16px;font-size:21px;color:#111827;">Inscripción registrada correctamente</h2>
-        <p style="margin:0 0 12px;font-size:15px;line-height:1.6;">{$mensajeHtml}</p>
-        <div style="margin:20px 0;padding:16px;border:1px solid #e5e7eb;border-radius:12px;background:#f8fafc;">
-          <p style="margin:0 0 8px;font-size:14px;"><strong>Alumno/a:</strong> {$alumnoHtml}</p>
-          <p style="margin:0 0 8px;font-size:14px;"><strong>DNI:</strong> {$dniHtml}</p>
-          <p style="margin:0;font-size:14px;"><strong>Email registrado:</strong> {$gmailHtml}</p>
-        </div>
-        <h3 style="margin:18px 0 8px;font-size:16px;color:#111827;">Materias inscriptas</h3>
-        {$listaMateriasHtml}
-        <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:#64748b;">Más adelante, cuando la escuela asigne las mesas, este correo podrá usarse para enviarte fecha, turno y materia.</p>
-      </div>
-    </div>
-  </div>
+<body style="margin:0;padding:0;background:#eef3fb;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">Inscripción registrada correctamente en {$escuelaHtml}.</div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#eef3fb;margin:0;padding:0;">
+    <tr>
+      <td align="center" style="padding:32px 14px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:660px;background:#ffffff;border:1px solid #dbe4f0;border-radius:16px;overflow:hidden;box-shadow:0 18px 45px rgba(15,23,42,.08);">
+          <tr>
+            <td style="background:{$colorPrincipal};padding:24px 28px;">
+              <h1 style="margin:0;font-size:23px;line-height:1.25;color:#ffffff;letter-spacing:.2px;">{$escuelaHtml}</h1>
+              <p style="margin:7px 0 0;font-size:14px;line-height:1.45;color:rgba(255,255,255,.88);">Confirmación de inscripción a mesas de examen</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:30px 28px 28px;">
+              <h2 style="margin:0 0 14px;font-size:22px;line-height:1.25;color:#111827;">Inscripción registrada correctamente</h2>
+              <p style="margin:0 0 22px;font-size:15px;line-height:1.65;color:#374151;">{$mensajeHtml}</p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border:1px solid #dbe4f0;border-radius:14px;background:#f8fafc;overflow:hidden;">
+                <tr>
+                  <td style="padding:18px 18px 14px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td style="padding:0 0 10px;font-size:14px;line-height:1.45;color:#334155;">
+                          <strong style="display:inline-block;min-width:84px;color:#111827;">Alumno/a:</strong> {$alumnoHtml}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding:0 0 10px;font-size:14px;line-height:1.45;color:#334155;">
+                          <strong style="display:inline-block;min-width:84px;color:#111827;">DNI:</strong> {$dniHtml}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding:2px 0 0;font-size:14px;line-height:1.45;color:#334155;">
+                          <strong style="display:block;margin-bottom:4px;color:#111827;">Materias inscriptas:</strong>
+                          <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                            {$materiasCardHtml}
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:22px 0 0;font-size:13px;line-height:1.6;color:#64748b;">Este correo confirma que la inscripción fue registrada en el sistema de la escuela.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>
 HTML;

@@ -1363,6 +1363,21 @@
   flex-shrink: 0;
 }
 
+.mesas-pdf-logoFallback {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: #001f5b;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+}
+
 .mesas-pdf-brand h3 {
   margin: 0;
   color: #001f5b;
@@ -1582,6 +1597,13 @@
     height: 28px;
   }
 
+  .mesas-pdf-logoFallback {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    font-size: 10px;
+  }
+
   .mesas-pdf-brand h3 {
     font-size: 13px;
   }
@@ -1735,6 +1757,13 @@
   height: 31px;
   object-fit: contain;
   flex-shrink: 0;
+}
+
+.mesas-card-pdf-fijo .mesas-pdf-logoFallback {
+  width: 31px;
+  height: 31px;
+  border-radius: 9px;
+  font-size: 11px;
 }
 
 .mesas-card-pdf-fijo .mesas-pdf-brand h3 {

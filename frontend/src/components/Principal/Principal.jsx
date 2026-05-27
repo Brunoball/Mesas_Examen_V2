@@ -25,7 +25,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 import "./principal.css";
-import logoLernaBlanco from "../../imagenes/lerna_blanco.png";
+import logoLernaBlanco from "../../imagenes/lerna_grande.png";
 import Dashbord from "../Dashbord/Dashbord";
 import ModalPerfil from "../Perfil/Perfil";
 import BASE_URL from "../../config/config";

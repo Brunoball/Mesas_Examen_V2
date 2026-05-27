@@ -311,3 +311,11 @@ export const obtenerExportacionHistorialMesas = ({ busqueda = "", limite_armados
     limite_armados,
   }));
 };
+
+export const obtenerPerfilInstitucional = () => {
+  return apiGet("perfil_obtener");
+};
+
+export const obtenerLogoInstitucionalMesas = () => {
+  return apiGet("perfil_logo_institucional");
+};

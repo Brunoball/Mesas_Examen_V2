@@ -11,6 +11,10 @@ function route_perfil(string $action): bool
             perfil_obtener();
             return true;
 
+        case 'perfil_logo_institucional':
+            perfil_logo_institucional();
+            return true;
+
         default:
             return false;
     }

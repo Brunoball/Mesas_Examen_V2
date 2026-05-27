@@ -295,8 +295,10 @@ export const useMesasExamen = ({ onToast } = {}) => {
     setErrorAgregarNumero("");
   }, []);
 
-  const cargarMesas = useCallback(async () => {
-    setCargando(true);
+  const cargarMesas = useCallback(async ({ silencioso = false } = {}) => {
+    if (!silencioso) {
+      setCargando(true);
+    }
     setError("");
 
     try {
@@ -312,7 +314,9 @@ export const useMesasExamen = ({ onToast } = {}) => {
       setGruposFinales([]);
       setNoAgrupadas([]);
     } finally {
-      setCargando(false);
+      if (!silencioso) {
+        setCargando(false);
+      }
     }
   }, []);
 
@@ -1290,7 +1294,7 @@ export const useMesasExamen = ({ onToast } = {}) => {
         setNoAgrupadas((actual) => aplicarNotaLocal(actual));
       }
 
-      await cargarMesas();
+      await cargarMesas({ silencioso: true });
 
       if (modalEditarAbierto && grupoEdicion) {
         await recargarGrupoEdicion();

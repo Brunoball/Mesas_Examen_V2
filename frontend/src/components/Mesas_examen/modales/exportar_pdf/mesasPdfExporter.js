@@ -338,6 +338,148 @@ const wrapText = (texto, maxWidth, size = 10, bold = false, maxLines = 2) => {
   return lines.map((line) => recortarLinea(line, maxWidth, size, bold));
 };
 
+const normalizarUrlLogo = (url) => {
+  const value = String(url || "").trim();
+
+  if (
+    !value
+    || value.toLowerCase() === "null"
+    || value.toLowerCase() === "undefined"
+    || value === "-"
+  ) {
+    return "";
+  }
+
+  return value;
+};
+
+const dataUrlToBytes = (dataUrl) => {
+  const partes = String(dataUrl || "").split(",");
+  if (partes.length < 2 || typeof window === "undefined" || typeof window.atob !== "function") {
+    return null;
+  }
+
+  const binario = window.atob(partes[1]);
+  const bytes = new Uint8Array(binario.length);
+
+  for (let i = 0; i < binario.length; i += 1) {
+    bytes[i] = binario.charCodeAt(i) & 0xff;
+  }
+
+  return bytes;
+};
+
+const bytesToBinaryString = (bytes) => {
+  const chunkSize = 8192;
+  let out = "";
+
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    out += String.fromCharCode(...chunk);
+  }
+
+  return out;
+};
+
+const cargarImagenComoJpegAsset = (url) => new Promise((resolve) => {
+  const logoUrl = normalizarUrlLogo(url);
+
+  if (!logoUrl || typeof document === "undefined") {
+    resolve(null);
+    return;
+  }
+
+  const img = new Image();
+  const esDataUrl = logoUrl.startsWith("data:");
+  const esBlobUrl = logoUrl.startsWith("blob:");
+
+  // Importante: si el logo viene como data URL desde el backend, no necesita CORS.
+  // Si viene como URL pública externa, intentamos CORS; si el servidor no lo permite,
+  // el fallback correcto es que el endpoint perfil_logo_institucional entregue logo_data_url.
+  if (!esDataUrl && !esBlobUrl) {
+    img.crossOrigin = "anonymous";
+  }
+
+  let resuelto = false;
+  const finalizar = (asset) => {
+    if (resuelto) return;
+    resuelto = true;
+    resolve(asset || null);
+  };
+
+  const timeout = window.setTimeout(() => finalizar(null), 8000);
+
+  img.onload = () => {
+    try {
+      window.clearTimeout(timeout);
+
+      const maxSize = 512;
+      const widthOriginal = Math.max(1, img.naturalWidth || img.width || 1);
+      const heightOriginal = Math.max(1, img.naturalHeight || img.height || 1);
+      const ratio = Math.min(maxSize / widthOriginal, maxSize / heightOriginal, 1);
+      const drawWidth = Math.max(1, Math.round(widthOriginal * ratio));
+      const drawHeight = Math.max(1, Math.round(heightOriginal * ratio));
+
+      const canvas = document.createElement("canvas");
+      canvas.width = drawWidth;
+      canvas.height = drawHeight;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        finalizar(null);
+        return;
+      }
+
+      // El PDF embebe el logo como JPEG. Esta base blanca evita que los PNG
+      // con transparencia salgan con fondo negro en algunos visores.
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, drawWidth, drawHeight);
+      ctx.drawImage(img, 0, 0, drawWidth, drawHeight);
+
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+      const bytes = dataUrlToBytes(dataUrl);
+
+      if (!bytes || bytes.length === 0) {
+        finalizar(null);
+        return;
+      }
+
+      finalizar({
+        name: "ImLogo",
+        width: drawWidth,
+        height: drawHeight,
+        bytes,
+      });
+    } catch (_) {
+      finalizar(null);
+    }
+  };
+
+  img.onerror = () => {
+    window.clearTimeout(timeout);
+    finalizar(null);
+  };
+
+  img.src = logoUrl;
+});
+
+const calcularCajaImagen = (asset, maxWidth, maxHeight) => {
+  if (!asset?.width || !asset?.height) {
+    return { width: maxWidth, height: maxHeight, offsetX: 0, offsetY: 0 };
+  }
+
+  const ratio = Math.min(maxWidth / asset.width, maxHeight / asset.height);
+  const width = asset.width * ratio;
+  const height = asset.height * ratio;
+
+  return {
+    width,
+    height,
+    offsetX: (maxWidth - width) / 2,
+    offsetY: (maxHeight - height) / 2,
+  };
+};
+
 class PdfCanvas {
   constructor() {
     this.pages = [];
@@ -397,6 +539,14 @@ class PdfCanvas {
     this.raw("Q\n");
   }
 
+  image(name, x, yTop, width, height) {
+    const y = this.topY(yTop, height);
+    this.raw("q\n");
+    this.raw(`${width.toFixed(2)} 0 0 ${height.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm\n`);
+    this.raw(`/${name} Do\n`);
+    this.raw("Q\n");
+  }
+
   wrappedText(texto, x, yTop, width, {
     size = 9,
     font = "F1",
@@ -427,17 +577,28 @@ const columnas = [
 
 const xColumna = (index) => PAGE.margin + columnas.slice(0, index).reduce((total, col) => total + col.width, 0);
 
-const dibujarHeaderMesa = (pdf, grupo, titulo, paginaGrupo, totalPaginasGrupo) => {
+const dibujarLogoHeader = (pdf, logoAsset, x, yTop, width, height) => {
+  if (logoAsset) {
+    pdf.rect(x, yTop, width, height, { fill: "#ffffff", stroke: COLORS.borderStrong, lineWidth: 0.7 });
+    const caja = calcularCajaImagen(logoAsset, width - 8, height - 8);
+    pdf.image(logoAsset.name, x + 4 + caja.offsetX, yTop + 4 + caja.offsetY, caja.width, caja.height);
+    return;
+  }
+
+  pdf.rect(x, yTop, width, height, { fill: COLORS.blue, stroke: COLORS.blue, lineWidth: 0.7 });
+  pdf.text("LOGO", x + 8, yTop + 14, { size: 9, font: "F2", color: "#ffffff", maxWidth: width - 16, align: "center" });
+};
+
+const dibujarHeaderMesa = (pdf, grupo, titulo, paginaGrupo, totalPaginasGrupo, logoAsset, institucionNombre) => {
   const x = PAGE.margin;
   const width = PAGE.width - (PAGE.margin * 2);
+  const institucion = textoCorto(institucionNombre, "Institución");
 
   pdf.rect(x, 22, width, 58, { fill: COLORS.headerBg, stroke: COLORS.blue, lineWidth: 1.2 });
-  pdf.rect(x + 12, 33, 44, 36, { fill: COLORS.blue, stroke: COLORS.blue, lineWidth: 0.7 });
-  pdf.text("IPET", x + 20, 42, { size: 9, font: "F2", color: "#ffffff", maxWidth: 28, align: "center" });
-  pdf.text("50", x + 25, 55, { size: 10, font: "F2", color: "#ffffff", maxWidth: 18, align: "center" });
+  dibujarLogoHeader(pdf, logoAsset, x + 12, 33, 44, 36);
 
   pdf.text(titulo, x + 70, 34, { size: 17, font: "F2", color: COLORS.blue, maxWidth: 420 });
-  pdf.text('IPET N° 50 "Ing. Emilio F. Olmos"', x + 70, 57, { size: 9.5, font: "F2", color: COLORS.muted, maxWidth: 330 });
+  pdf.text(institucion, x + 70, 57, { size: 9.5, font: "F2", color: COLORS.muted, maxWidth: 330 });
 
   const metaX = x + width - 260;
   pdf.text(obtenerFechaResumenPdf(grupo), metaX, 35, { size: 9.5, font: "F2", color: COLORS.text, maxWidth: 250, align: "right" });
@@ -494,13 +655,13 @@ const dibujarHoraStack = (pdf, grupo, x, yTop, width, height) => {
   });
 };
 
-const dibujarPaginaMesa = (pdf, { grupo, titulo, filas, paginaGrupo, totalPaginasGrupo }) => {
+const dibujarPaginaMesa = (pdf, { grupo, titulo, filas, paginaGrupo, totalPaginasGrupo, logoAsset, institucionNombre }) => {
   const tableTop = 92;
   const headerHeight = 24;
   const rowHeight = 28;
   const bodyTop = tableTop + headerHeight;
 
-  dibujarHeaderMesa(pdf, grupo, titulo, paginaGrupo, totalPaginasGrupo);
+  dibujarHeaderMesa(pdf, grupo, titulo, paginaGrupo, totalPaginasGrupo, logoAsset, institucionNombre);
   dibujarTablaHeader(pdf, tableTop);
 
   const bodyHeight = filas.length * rowHeight;
@@ -539,17 +700,19 @@ const chunk = (items, size) => {
   return chunks;
 };
 
-const generarPdfMesas = ({ mesas = [], titulo = "MESAS DE EXAMEN" } = {}) => {
+const generarPdfMesas = ({ mesas = [], titulo = "MESAS DE EXAMEN", logoAsset = null, institucionNombre = "Institución" } = {}) => {
   const pdf = new PdfCanvas();
   const maxRowsPerPage = 16;
 
   if (!Array.isArray(mesas) || mesas.length === 0) {
     pdf.beginPage();
     pdf.rect(PAGE.margin, 22, PAGE.width - (PAGE.margin * 2), 58, { fill: COLORS.headerBg, stroke: COLORS.blue, lineWidth: 1.2 });
-    pdf.text(titulo, PAGE.margin + 18, 40, { size: 18, font: "F2", color: COLORS.blue, maxWidth: 500 });
+    dibujarLogoHeader(pdf, logoAsset, PAGE.margin + 12, 33, 44, 36);
+    pdf.text(titulo, PAGE.margin + 70, 40, { size: 18, font: "F2", color: COLORS.blue, maxWidth: 500 });
+    pdf.text(textoCorto(institucionNombre, "Institución"), PAGE.margin + 70, 62, { size: 9.5, font: "F2", color: COLORS.muted, maxWidth: 330 });
     pdf.text("No hay mesas visibles para exportar.", PAGE.margin + 18, 105, { size: 12, font: "F2", color: COLORS.text, maxWidth: 500 });
     pdf.endPage();
-    return construirDocumentoPdf(pdf.pages);
+    return construirDocumentoPdf(pdf.pages, { logoAsset });
   }
 
   mesas.forEach((grupo) => {
@@ -564,15 +727,17 @@ const generarPdfMesas = ({ mesas = [], titulo = "MESAS DE EXAMEN" } = {}) => {
         filas: filasPagina,
         paginaGrupo: index + 1,
         totalPaginasGrupo: paginas.length,
+        logoAsset,
+        institucionNombre,
       });
       pdf.endPage();
     });
   });
 
-  return construirDocumentoPdf(pdf.pages);
+  return construirDocumentoPdf(pdf.pages, { logoAsset });
 };
 
-const construirDocumentoPdf = (pageStreams) => {
+const construirDocumentoPdf = (pageStreams, { logoAsset = null } = {}) => {
   const objects = [null];
   const addObject = (content) => {
     objects.push(content);
@@ -583,11 +748,19 @@ const construirDocumentoPdf = (pageStreams) => {
   const pagesId = addObject(null);
   const fontRegularId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
   const fontBoldId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
+  let logoObjectId = null;
+
+  if (logoAsset?.bytes?.length) {
+    const imageStream = bytesToBinaryString(logoAsset.bytes);
+    logoObjectId = addObject(`<< /Type /XObject /Subtype /Image /Width ${Math.max(1, Math.round(logoAsset.width))} /Height ${Math.max(1, Math.round(logoAsset.height))} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logoAsset.bytes.length} >>\nstream\n${imageStream}\nendstream`);
+  }
+
   const pageIds = [];
+  const xObjectResource = logoObjectId ? `/XObject << /${logoAsset.name} ${logoObjectId} 0 R >> ` : "";
 
   pageStreams.forEach((stream) => {
     const contentId = addObject(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
-    const pageId = addObject(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${PAGE.width.toFixed(2)} ${PAGE.height.toFixed(2)}] /Resources << /Font << /F1 ${fontRegularId} 0 R /F2 ${fontBoldId} 0 R >> >> /Contents ${contentId} 0 R >>`);
+    const pageId = addObject(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${PAGE.width.toFixed(2)} ${PAGE.height.toFixed(2)}] /Resources << /Font << /F1 ${fontRegularId} 0 R /F2 ${fontBoldId} 0 R >> ${xObjectResource}>> /Contents ${contentId} 0 R >>`);
     pageIds.push(pageId);
   });
 
@@ -631,9 +804,10 @@ const limpiarNombreArchivo = (valor) => {
   return base || "mesas-de-examen";
 };
 
-export const descargarPdfMesas = ({ mesas = [], tituloFijo, continuacion } = {}) => {
+export const descargarPdfMesas = async ({ mesas = [], tituloFijo, continuacion, logoUrl = "", institucionNombre = "Institución" } = {}) => {
   const titulo = construirTituloPdfExportacion({ tituloFijo, continuacion });
-  const bytes = generarPdfMesas({ mesas, titulo });
+  const logoAsset = await cargarImagenComoJpegAsset(logoUrl);
+  const bytes = generarPdfMesas({ mesas, titulo, logoAsset, institucionNombre });
   const blob = new Blob([bytes], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
