@@ -538,3 +538,15 @@
     justify-content:center;
   }
 }
+
+.previas-icon-inscribir{
+  border-color:rgba(34,173,92,.32) !important;
+  color:#16a96a !important;
+  background:#fff !important;
+}
+
+.previas-icon-inscribir:hover{
+  border-color:rgba(34,173,92,.48) !important;
+  background:rgba(34,173,92,.10) !important;
+  color:#0f8f56 !important;
+}

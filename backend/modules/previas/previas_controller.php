@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/helpers.php';
+require_once __DIR__ . '/../formulario/formulario_helpers.php';
 
 function previas_int($value): int
 {
@@ -385,6 +386,7 @@ function previas_listar(): void
     $idDivisionMateria = previas_int($_GET['materia_id_division'] ?? 0);
     $idCondicion = previas_int($_GET['id_condicion'] ?? 0);
     $anio = previas_int($_GET['anio'] ?? 0);
+    $filtroInscripcion = array_key_exists('inscripcion', $_GET) ? previas_int($_GET['inscripcion']) : null;
 
     $where = ['p.activo = :activo'];
     $params = [':activo' => $activo];
@@ -407,6 +409,14 @@ function previas_listar(): void
     if ($anio > 0) {
         $where[] = 'p.anio = :anio';
         $params[':anio'] = $anio;
+    }
+
+    if ($filtroInscripcion !== null) {
+        if ($filtroInscripcion === 1) {
+            $where[] = 'COALESCE(p.inscripcion, 0) = 1';
+        } else {
+            $where[] = 'COALESCE(p.inscripcion, 0) <> 1';
+        }
     }
 
     if ($busqueda !== '') {
@@ -765,6 +775,472 @@ function previas_guardar(): void
             'exito' => false,
             'mensaje' => 'No se pudo guardar la previa.',
         ], 500);
+    }
+}
+
+
+function previas_ids_inscripcion_desde_body(array $body): array
+{
+    $ids = [];
+
+    if (isset($body['ids_previas']) && is_array($body['ids_previas'])) {
+        $ids = $body['ids_previas'];
+    } elseif (isset($body['ids_previas'])) {
+        $ids = explode(',', (string)$body['ids_previas']);
+    } elseif (isset($body['materias']) && is_array($body['materias'])) {
+        foreach ($body['materias'] as $materia) {
+            if (is_array($materia) && isset($materia['id_previa'])) {
+                $ids[] = $materia['id_previa'];
+            }
+        }
+    } elseif (isset($body['id_previa'])) {
+        $ids = [$body['id_previa']];
+    } elseif (isset($body['id'])) {
+        $ids = [$body['id']];
+    }
+
+    $ids = array_map(static function ($id) {
+        $id = previas_int($id);
+        return $id > 0 ? $id : null;
+    }, $ids);
+
+    return array_values(array_unique(array_filter($ids)));
+}
+
+function previas_fetch_materias_inscripcion(PDO $pdo, int $idPrevia, bool $soloNoInscriptas = true): array
+{
+    if ($idPrevia <= 0) {
+        return ['principal' => null, 'materias' => []];
+    }
+
+    $sqlPrincipal = "
+        SELECT
+            p.id_previa,
+            p.dni,
+            p.alumno,
+            p.id_materia,
+            p.materia_id_curso,
+            p.materia_id_division,
+            p.id_condicion,
+            COALESCE(p.inscripcion, 0) AS inscripcion,
+            p.anio,
+            COALESCE(mat.materia, '') AS materia,
+            COALESCE(cond.condicion, '') AS condicion,
+            COALESCE(cur.nombre_curso, '') AS curso,
+            COALESCE(divi.nombre_division, '') AS division
+        FROM previas p
+        LEFT JOIN materias mat ON mat.id_materia = p.id_materia
+        LEFT JOIN condicion cond ON cond.id_condicion = p.id_condicion
+        LEFT JOIN curso cur ON cur.id_curso = p.materia_id_curso
+        LEFT JOIN division divi ON divi.id_division = p.materia_id_division
+        WHERE p.id_previa = :id_previa
+          AND p.activo = 1
+        LIMIT 1
+    ";
+
+    $stPrincipal = $pdo->prepare($sqlPrincipal);
+    $stPrincipal->execute([':id_previa' => $idPrevia]);
+    $principal = $stPrincipal->fetch(PDO::FETCH_ASSOC) ?: null;
+
+    if (!$principal) {
+        return ['principal' => null, 'materias' => []];
+    }
+
+    $whereInscripcion = $soloNoInscriptas ? 'AND COALESCE(p.inscripcion, 0) <> 1' : '';
+
+    $sqlMaterias = "
+        SELECT
+            p.id_previa,
+            p.dni,
+            p.alumno,
+            p.id_materia,
+            p.materia_id_curso,
+            p.materia_id_division,
+            p.id_condicion,
+            COALESCE(p.inscripcion, 0) AS inscripcion,
+            p.anio,
+            COALESCE(mat.materia, '') AS materia,
+            COALESCE(cond.condicion, '') AS condicion,
+            COALESCE(cur.nombre_curso, '') AS curso,
+            COALESCE(divi.nombre_division, '') AS division,
+            TRIM(CONCAT(COALESCE(cur.nombre_curso, ''), ' ', COALESCE(divi.nombre_division, ''))) AS curso_materia
+        FROM previas p
+        LEFT JOIN materias mat ON mat.id_materia = p.id_materia
+        LEFT JOIN condicion cond ON cond.id_condicion = p.id_condicion
+        LEFT JOIN curso cur ON cur.id_curso = p.materia_id_curso
+        LEFT JOIN division divi ON divi.id_division = p.materia_id_division
+        WHERE p.dni = :dni
+          AND p.activo = 1
+          AND p.id_condicion = 3
+          {$whereInscripcion}
+        ORDER BY p.alumno ASC, cur.id_curso ASC, divi.id_division ASC, mat.materia ASC
+    ";
+
+    $stMaterias = $pdo->prepare($sqlMaterias);
+    $stMaterias->execute([':dni' => (string)$principal['dni']]);
+    $materias = $stMaterias->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($materias as &$materia) {
+        $materia['principal'] = ((int)$materia['id_previa'] === (int)$principal['id_previa']) ? 1 : 0;
+        $materia['curso_id'] = (int)$materia['materia_id_curso'];
+        $materia['division_id'] = (int)$materia['materia_id_division'];
+        $materia['materia_nombre'] = (string)$materia['materia'];
+    }
+    unset($materia);
+
+    return ['principal' => $principal, 'materias' => $materias];
+}
+
+function previas_obtener_materias_inscripcion(): void
+{
+    $pdo = db();
+    $idPrevia = previas_int($_GET['id_previa'] ?? $_GET['id'] ?? 0);
+
+    if ($idPrevia <= 0) {
+        json_response(['exito' => false, 'mensaje' => 'La previa seleccionada no es válida.'], 422);
+    }
+
+    try {
+        $data = previas_fetch_materias_inscripcion($pdo, $idPrevia, true);
+        $principal = $data['principal'];
+
+        if (!$principal) {
+            json_response(['exito' => false, 'mensaje' => 'No se encontró la previa activa seleccionada.'], 404);
+        }
+
+        if ((int)($principal['id_condicion'] ?? 0) !== 3) {
+            json_response(['exito' => false, 'mensaje' => 'Solo se pueden inscribir manualmente materias con condición PREVIA.'], 422);
+        }
+
+        if ((int)($principal['inscripcion'] ?? 0) === 1) {
+            json_response(['exito' => false, 'mensaje' => 'Esta previa ya figura como inscripta.'], 409);
+        }
+
+        if (count($data['materias']) === 0) {
+            json_response(['exito' => false, 'mensaje' => 'El alumno no tiene materias previas pendientes de inscripción.'], 404);
+        }
+
+        json_response([
+            'exito' => true,
+            'data' => [
+                'alumno' => (string)$principal['alumno'],
+                'dni' => (string)$principal['dni'],
+                'id_previa_principal' => (int)$principal['id_previa'],
+                'materia_principal' => (string)$principal['materia'],
+                'materias' => $data['materias'],
+            ],
+        ]);
+    } catch (Throwable $e) {
+        log_error($e, __FUNCTION__);
+        json_response(['exito' => false, 'mensaje' => 'No se pudieron obtener las materias para inscribir.'], 500);
+    }
+}
+
+function previas_inscribir_manual(): void
+{
+    if (function_exists('require_roles')) {
+        require_roles(['admin']);
+    }
+
+    $pdo = db();
+    $body = previas_body();
+    $ids = previas_ids_inscripcion_desde_body($body);
+    $gmail = trim((string)($body['gmail'] ?? $body['email'] ?? ''));
+
+    if (count($ids) === 0) {
+        json_response(['exito' => false, 'mensaje' => 'Seleccioná al menos una materia para inscribir.'], 422);
+    }
+
+    if ($gmail === '' || !filter_var($gmail, FILTER_VALIDATE_EMAIL)) {
+        json_response(['exito' => false, 'mensaje' => 'Ingresá un email válido para enviar el comprobante.'], 422);
+    }
+
+    try {
+        date_default_timezone_set(env_value('APP_TIMEZONE', 'America/Argentina/Cordoba') ?? 'America/Argentina/Cordoba');
+        if (function_exists('formulario_asegurar_tablas_inscripcion')) {
+            formulario_asegurar_tablas_inscripcion($pdo);
+        }
+
+        [$placeholders, $paramsIds] = previas_placeholders_ids($ids);
+        $sql = "
+            SELECT
+                p.id_previa,
+                p.dni,
+                p.alumno,
+                p.id_materia,
+                p.materia_id_curso,
+                p.materia_id_division,
+                p.id_condicion,
+                COALESCE(p.inscripcion, 0) AS inscripcion,
+                p.anio,
+                COALESCE(mat.materia, '') AS materia,
+                COALESCE(cur.nombre_curso, '') AS curso,
+                COALESCE(divi.nombre_division, '') AS division
+            FROM previas p
+            LEFT JOIN materias mat ON mat.id_materia = p.id_materia
+            LEFT JOIN curso cur ON cur.id_curso = p.materia_id_curso
+            LEFT JOIN division divi ON divi.id_division = p.materia_id_division
+            WHERE p.id_previa IN (" . implode(',', $placeholders) . ")
+              AND p.activo = 1
+              AND p.id_condicion = 3
+            ORDER BY p.alumno ASC, cur.id_curso ASC, divi.id_division ASC, mat.materia ASC
+        ";
+
+        $st = $pdo->prepare($sql);
+        foreach ($paramsIds as $key => $value) {
+            $st->bindValue($key, $value, PDO::PARAM_INT);
+        }
+        $st->execute();
+        $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+
+        if (count($rows) !== count($ids)) {
+            json_response(['exito' => false, 'mensaje' => 'Alguna materia no existe, no está activa o no es condición PREVIA.'], 422);
+        }
+
+        $dni = (string)$rows[0]['dni'];
+        $alumno = (string)$rows[0]['alumno'];
+        foreach ($rows as $row) {
+            if ((string)$row['dni'] !== $dni) {
+                json_response(['exito' => false, 'mensaje' => 'Todas las materias seleccionadas deben pertenecer al mismo alumno.'], 422);
+            }
+            if ((int)$row['inscripcion'] === 1) {
+                json_response(['exito' => false, 'mensaje' => 'Una de las materias seleccionadas ya está inscripta. Actualizá el listado.'], 409);
+            }
+        }
+
+        $anioInscripcion = (int)date('Y');
+        $host = function_exists('request_host_normalizado') ? request_host_normalizado() : (string)($_SERVER['HTTP_HOST'] ?? '');
+
+        $pdo->beginTransaction();
+
+        $sqlInscripcion = "
+            INSERT INTO formulario_inscripciones (
+                dni, gmail, alumno, anio, estado, origen_host, ip, user_agent, total_materias, creado_en, actualizado_en
+            ) VALUES (
+                :dni, :gmail, :alumno, :anio, 'registrada', :origen_host, :ip, :user_agent, :total_materias, NOW(), NOW()
+            )
+            ON DUPLICATE KEY UPDATE
+                id_inscripcion = LAST_INSERT_ID(id_inscripcion),
+                gmail = VALUES(gmail),
+                alumno = VALUES(alumno),
+                estado = 'registrada',
+                origen_host = VALUES(origen_host),
+                ip = VALUES(ip),
+                user_agent = VALUES(user_agent),
+                actualizado_en = NOW()
+        ";
+        $stInscripcion = $pdo->prepare($sqlInscripcion);
+        $stInscripcion->execute([
+            ':dni' => $dni,
+            ':gmail' => $gmail,
+            ':alumno' => $alumno,
+            ':anio' => $anioInscripcion,
+            ':origen_host' => substr($host, 0, 190),
+            ':ip' => function_exists('formulario_ip_cliente') ? formulario_ip_cliente() : (string)($_SERVER['REMOTE_ADDR'] ?? ''),
+            ':user_agent' => substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255),
+            ':total_materias' => count($rows),
+        ]);
+        $idInscripcion = (int)$pdo->lastInsertId();
+
+        $sqlDetalle = "
+            INSERT INTO formulario_inscripciones_detalle (
+                id_inscripcion, id_previa, id_materia, materia_nombre, curso_id, division_id, id_condicion, estado, creado_en, actualizado_en
+            ) VALUES (
+                :id_inscripcion, :id_previa, :id_materia, :materia_nombre, :curso_id, :division_id, :id_condicion, 'inscripta', NOW(), NOW()
+            )
+            ON DUPLICATE KEY UPDATE
+                id_inscripcion = VALUES(id_inscripcion),
+                id_materia = VALUES(id_materia),
+                materia_nombre = VALUES(materia_nombre),
+                curso_id = VALUES(curso_id),
+                division_id = VALUES(division_id),
+                id_condicion = VALUES(id_condicion),
+                estado = 'inscripta',
+                actualizado_en = NOW()
+        ";
+        $stDetalle = $pdo->prepare($sqlDetalle);
+
+        $stUpdatePrevia = $pdo->prepare("UPDATE previas SET inscripcion = 1 WHERE id_previa = :id_previa AND activo = 1 AND id_condicion = 3 LIMIT 1");
+
+        $materiasEmail = [];
+        foreach ($rows as $row) {
+            $stDetalle->execute([
+                ':id_inscripcion' => $idInscripcion,
+                ':id_previa' => (int)$row['id_previa'],
+                ':id_materia' => (int)$row['id_materia'],
+                ':materia_nombre' => (string)$row['materia'],
+                ':curso_id' => (int)$row['materia_id_curso'],
+                ':division_id' => (int)$row['materia_id_division'],
+                ':id_condicion' => (int)$row['id_condicion'],
+            ]);
+
+            $stUpdatePrevia->execute([':id_previa' => (int)$row['id_previa']]);
+
+            $materiasEmail[] = [
+                'id_previa' => (int)$row['id_previa'],
+                'id_materia' => (int)$row['id_materia'],
+                'curso_id' => (int)$row['materia_id_curso'],
+                'division_id' => (int)$row['materia_id_division'],
+                'id_condicion' => (int)$row['id_condicion'],
+                'materia' => (string)$row['materia'],
+                'materia_nombre' => (string)$row['materia'],
+                'curso' => (string)($row['curso'] ?? ''),
+                'division' => (string)($row['division'] ?? ''),
+                'alumno' => $alumno,
+                'anio' => (int)$row['anio'],
+                'inscripcion' => 1,
+            ];
+        }
+
+        $stTotal = $pdo->prepare("
+            UPDATE formulario_inscripciones fi
+               SET total_materias = (
+                   SELECT COUNT(*)
+                     FROM formulario_inscripciones_detalle fid
+                    WHERE fid.id_inscripcion = fi.id_inscripcion
+                      AND fid.estado <> 'anulada'
+               )
+             WHERE fi.id_inscripcion = :id_inscripcion
+        ");
+        $stTotal->execute([':id_inscripcion' => $idInscripcion]);
+
+        $pdo->commit();
+
+        $emailResultado = function_exists('formulario_enviar_email_confirmacion')
+            ? formulario_enviar_email_confirmacion($pdo, $gmail, $dni, $alumno, $materiasEmail, $anioInscripcion)
+            : ['enviado' => false, 'error' => 'La función de email no está disponible.'];
+
+        try {
+            $stEmail = $pdo->prepare("
+                UPDATE formulario_inscripciones
+                   SET email_confirmacion_enviado = :enviado,
+                       email_confirmacion_enviado_en = CASE WHEN :enviado2 = 1 THEN NOW() ELSE email_confirmacion_enviado_en END,
+                       email_confirmacion_error = :error
+                 WHERE id_inscripcion = :id_inscripcion
+                 LIMIT 1
+            ");
+            $stEmail->execute([
+                ':enviado' => !empty($emailResultado['enviado']) ? 1 : 0,
+                ':enviado2' => !empty($emailResultado['enviado']) ? 1 : 0,
+                ':error' => !empty($emailResultado['enviado']) ? null : substr((string)($emailResultado['error'] ?? 'Error enviando email.'), 0, 255),
+                ':id_inscripcion' => $idInscripcion,
+            ]);
+        } catch (Throwable $emailUpdateError) {
+            log_error($emailUpdateError, __FUNCTION__ . ':update_email_status');
+        }
+
+        json_response([
+            'exito' => true,
+            'mensaje' => !empty($emailResultado['enviado'])
+                ? 'Inscripción manual registrada y email enviado correctamente.'
+                : 'Inscripción manual registrada, pero no se pudo enviar el email de confirmación.',
+            'data' => [
+                'id_inscripcion' => $idInscripcion,
+                'dni' => $dni,
+                'gmail' => $gmail,
+                'marcadas' => count($rows),
+                'email_enviado' => !empty($emailResultado['enviado']),
+                'email_error' => $emailResultado['error'] ?? null,
+            ],
+        ]);
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        log_error($e, __FUNCTION__);
+        json_response(['exito' => false, 'mensaje' => 'No se pudo registrar la inscripción manual.'], 500);
+    }
+}
+
+function previas_quitar_inscripcion(): void
+{
+    if (function_exists('require_roles')) {
+        require_roles(['admin']);
+    }
+
+    $pdo = db();
+    $body = previas_body();
+    $idPrevia = previas_int($body['id_previa'] ?? $body['id'] ?? 0);
+
+    if ($idPrevia <= 0) {
+        json_response(['exito' => false, 'mensaje' => 'La inscripción seleccionada no es válida.'], 422);
+    }
+
+    try {
+        $pdo->beginTransaction();
+
+        $stExiste = $pdo->prepare("SELECT id_previa, dni, alumno, id_materia, COALESCE(inscripcion, 0) AS inscripcion FROM previas WHERE id_previa = :id_previa AND activo = 1 LIMIT 1");
+        $stExiste->execute([':id_previa' => $idPrevia]);
+        $previa = $stExiste->fetch(PDO::FETCH_ASSOC);
+
+        if (!$previa) {
+            $pdo->rollBack();
+            json_response(['exito' => false, 'mensaje' => 'No se encontró la previa activa seleccionada.'], 404);
+        }
+
+        if ((int)$previa['inscripcion'] !== 1) {
+            $pdo->rollBack();
+            json_response(['exito' => false, 'mensaje' => 'Esta previa no figura como inscripta.'], 409);
+        }
+
+        $stUpdatePrevia = $pdo->prepare('UPDATE previas SET inscripcion = 0 WHERE id_previa = :id_previa LIMIT 1');
+        $stUpdatePrevia->execute([':id_previa' => $idPrevia]);
+
+        $idInscripciones = [];
+        if (previas_tabla_existe($pdo, 'formulario_inscripciones_detalle')) {
+            $stIds = $pdo->prepare("SELECT id_inscripcion FROM formulario_inscripciones_detalle WHERE id_previa = :id_previa AND estado <> 'anulada'");
+            $stIds->execute([':id_previa' => $idPrevia]);
+            $idInscripciones = array_values(array_unique(array_map('intval', $stIds->fetchAll(PDO::FETCH_COLUMN))));
+
+            $stDetalle = $pdo->prepare("UPDATE formulario_inscripciones_detalle SET estado = 'anulada', actualizado_en = NOW() WHERE id_previa = :id_previa");
+            $stDetalle->execute([':id_previa' => $idPrevia]);
+        }
+
+        if (count($idInscripciones) > 0 && previas_tabla_existe($pdo, 'formulario_inscripciones')) {
+            [$phIns, $paramsIns] = previas_placeholders_ids($idInscripciones, ':insc');
+            $sqlTotal = "
+                UPDATE formulario_inscripciones fi
+                   SET total_materias = (
+                       SELECT COUNT(*)
+                         FROM formulario_inscripciones_detalle fid
+                        WHERE fid.id_inscripcion = fi.id_inscripcion
+                          AND fid.estado <> 'anulada'
+                   ),
+                   estado = CASE
+                       WHEN (
+                           SELECT COUNT(*)
+                             FROM formulario_inscripciones_detalle fid2
+                            WHERE fid2.id_inscripcion = fi.id_inscripcion
+                              AND fid2.estado <> 'anulada'
+                       ) = 0 THEN 'cancelada'
+                       ELSE 'registrada'
+                   END,
+                   actualizado_en = NOW()
+                 WHERE fi.id_inscripcion IN (" . implode(',', $phIns) . ")
+            ";
+            $stTotal = $pdo->prepare($sqlTotal);
+            foreach ($paramsIns as $key => $value) {
+                $stTotal->bindValue($key, $value, PDO::PARAM_INT);
+            }
+            $stTotal->execute();
+        }
+
+        $pdo->commit();
+
+        json_response([
+            'exito' => true,
+            'mensaje' => 'Inscripción dada de baja correctamente.',
+            'data' => [
+                'id_previa' => $idPrevia,
+                'inscripcion' => 0,
+            ],
+        ]);
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        log_error($e, __FUNCTION__);
+        json_response(['exito' => false, 'mensaje' => 'No se pudo dar de baja la inscripción.'], 500);
     }
 }
 

@@ -130,3 +130,83 @@ function usuario_actual(): ?array
         ],
     ];
 }
+
+function usuario_rol_actual(): string
+{
+    iniciar_sesion_si_falta();
+
+    $rol = strtolower(trim((string)($_SESSION['rol'] ?? '')));
+    if ($rol !== '') {
+        return $rol;
+    }
+
+    $ctx = auth_context();
+    return $ctx ? strtolower(trim((string)($ctx['rol'] ?? 'vista'))) : 'vista';
+}
+
+function require_roles(array $rolesPermitidos): void
+{
+    $rolesPermitidos = array_values(array_unique(array_map(
+        static fn($rol) => strtolower(trim((string)$rol)),
+        $rolesPermitidos
+    )));
+
+    if (!$rolesPermitidos) {
+        return;
+    }
+
+    $rolActual = usuario_rol_actual();
+    if (in_array($rolActual, $rolesPermitidos, true)) {
+        return;
+    }
+
+    json_response([
+        'exito' => false,
+        'mensaje' => 'No tenés permisos para realizar esta acción.',
+    ], 403);
+}
+
+function action_requiere_admin(string $action): bool
+{
+    $a = strtolower(trim($action));
+    if ($a === '') {
+        return false;
+    }
+
+    // Secciones sensibles: configuración de usuarios y auditoría solo admin.
+    foreach (['configuracion_usuarios_', 'auditoria_'] as $prefijoAdmin) {
+        if (strpos($a, $prefijoAdmin) === 0) {
+            return true;
+        }
+    }
+
+    // Configuración del formulario público: lectura pública/admin permitida; escritura solo admin.
+    if (in_array($a, ['form_guardar_config_inscripcion', 'guardar_config_inscripcion', 'formulario_guardar_config_inscripcion'], true)) {
+        return true;
+    }
+
+    // Acciones claramente mutables. Un usuario vista puede leer, pero no modificar datos.
+    $palabrasMutables = [
+        'guardar', 'crear', 'agregar', 'editar', 'actualizar', 'modificar',
+        'eliminar', 'baja', 'alta', 'cambiar_estado', 'estado', 'asignar',
+        'autogenerar', 'generar', 'registrar', 'numerar', 'reparar', 'armado',
+        'fase_', 'confirmar', 'importar', 'mover', 'quitar', 'habilitar',
+        'limpiar', 'nota',
+    ];
+
+    foreach ($palabrasMutables as $palabra) {
+        if (strpos($a, $palabra) !== false) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function require_action_permission(string $action): void
+{
+    if (action_requiere_admin($action)) {
+        require_roles(['admin']);
+    }
+}
+

@@ -24,6 +24,18 @@ function route_previas(string $action): bool
             previas_obtener();
             return true;
 
+        case 'previas_obtener_materias_inscripcion':
+            previas_obtener_materias_inscripcion();
+            return true;
+
+        case 'previas_inscribir_manual':
+            previas_inscribir_manual();
+            return true;
+
+        case 'previas_quitar_inscripcion':
+            previas_quitar_inscripcion();
+            return true;
+
         case 'previas_guardar':
             previas_guardar();
             return true;

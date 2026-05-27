@@ -80,6 +80,10 @@ try {
         if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
             validar_csrf();
         }
+
+        if (function_exists('require_action_permission')) {
+            require_action_permission($action);
+        }
     }
 
     /*

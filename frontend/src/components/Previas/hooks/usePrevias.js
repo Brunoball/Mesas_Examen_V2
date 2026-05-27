@@ -196,6 +196,9 @@ export function usePrevias() {
     try {
       const activo = vista === 'bajas' ? 0 : 1;
       const filtros = { activo };
+      // La pestaña Previas debe mostrar TODAS las previas activas, estén inscriptas o no.
+      // Solo la pestaña Inscriptos filtra por inscripción = 1.
+      if (vista === 'inscriptos') filtros.inscripcion = 1;
       const busquedaLimpia = busquedaDebounced.trim();
       const idCondicion = Number(filtrosPrevias.idCondicion || 0);
       const idCurso = Number(filtrosPrevias.idCurso || 0);
@@ -269,9 +272,8 @@ export function usePrevias() {
   function cambiarVista(nuevaVista) {
     paginacion.setPagina(1);
     setVista(nuevaVista);
-    setBusquedaState('');
-    setBusquedaDebounced('');
-    limpiarFiltrosPrevias();
+    // No se limpia la búsqueda al cambiar de pestaña: el usuario debe conservar
+    // lo que escribió en el buscador y ver el mismo filtro aplicado en la nueva vista.
   }
 
   const hayFiltrosPrevias = useMemo(() => (
@@ -292,6 +294,50 @@ export function usePrevias() {
       return { ok: true, data: res.data };
     } catch (e) {
       const msg = mensajeErrorUsuario(e, 'No se pudo obtener la previa.');
+      mostrarMensaje('error', msg);
+      return { ok: false, mensaje: msg };
+    }
+  }
+
+  async function obtenerMateriasInscripcion(item) {
+    try {
+      const idPrevia = Number(item?.id_previa || item || 0);
+      const res = await previasApi.obtenerMateriasInscripcion(idPrevia);
+      return { ok: true, data: res?.data || res || {} };
+    } catch (e) {
+      const msg = mensajeErrorUsuario(e, 'No se pudieron obtener las materias para inscribir.');
+      mostrarMensaje('error', msg);
+      return { ok: false, mensaje: msg, data: null };
+    }
+  }
+
+  async function inscribirManual(payload) {
+    try {
+      const res = await previasApi.inscribirManual(payload);
+      await cargar();
+      const emailEnviado = Boolean(res?.data?.email_enviado ?? res?.email_enviado);
+      mostrarMensaje(
+        emailEnviado ? 'exito' : 'advertencia',
+        res?.mensaje || (emailEnviado
+          ? 'Inscripción manual registrada y email enviado correctamente.'
+          : 'Inscripción manual registrada, pero no se pudo enviar el email.')
+      );
+      return { ok: true, data: res?.data || res || {} };
+    } catch (e) {
+      const msg = mensajeErrorUsuario(e, 'No se pudo registrar la inscripción manual.');
+      mostrarMensaje('error', msg);
+      return { ok: false, mensaje: msg };
+    }
+  }
+
+  async function quitarInscripcion(item) {
+    try {
+      await previasApi.quitarInscripcion(item.id_previa);
+      await cargar();
+      mostrarMensaje('exito', 'Inscripción dada de baja correctamente.');
+      return { ok: true };
+    } catch (e) {
+      const msg = mensajeErrorUsuario(e, 'No se pudo dar de baja la inscripción.');
       mostrarMensaje('error', msg);
       return { ok: false, mensaje: msg };
     }
@@ -462,6 +508,8 @@ export function usePrevias() {
   async function obtenerTodasParaExportar() {
     const activo = vista === 'bajas' ? 0 : 1;
     const filtros = {};
+    // La exportación de Previas también debe traer todas las activas, sin filtrar por inscripción.
+    if (vista === 'inscriptos') filtros.inscripcion = 1;
     const busquedaLimpia = busquedaDebounced.trim();
     const idCondicion = Number(filtrosPrevias.idCondicion || 0);
     const idCurso = Number(filtrosPrevias.idCurso || 0);
@@ -499,6 +547,9 @@ export function usePrevias() {
     paginacion,
     reload: cargar,
     obtener,
+    obtenerMateriasInscripcion,
+    inscribirManual,
+    quitarInscripcion,
     obtenerMateriasPorCurso,
     guardar,
     darBaja,

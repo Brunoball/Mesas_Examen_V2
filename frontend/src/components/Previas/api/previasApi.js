@@ -225,6 +225,18 @@ export const previasApi = {
 
   obtener: (idPrevia) => apiGet('previas_obtener', { id_previa: idPrevia }),
 
+  obtenerMateriasInscripcion: (idPrevia) =>
+    apiGet('previas_obtener_materias_inscripcion', { id_previa: idPrevia }),
+
+  inscribirManual: ({ idsPrevias, gmail }) => apiPost('previas_inscribir_manual', {
+    ids_previas: idsPrevias,
+    gmail,
+  }),
+
+  quitarInscripcion: (idPrevia) => apiPost('previas_quitar_inscripcion', {
+    id_previa: idPrevia,
+  }),
+
   guardar: (payload) => apiPost('previas_guardar', payload),
 
   cambiarEstado: (idPrevia, activo, motivo = '') =>

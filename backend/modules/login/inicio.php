@@ -53,6 +53,28 @@ function login_registrar_auditoria_master(PDO $master, ?int $idUsuarioMaster, ?i
     }
 }
 
+
+function login_tenant_no_resuelto_response(): void
+{
+    json_response([
+        'exito' => false,
+        'mensaje' => 'No se pudo identificar la escuela/tenant para iniciar sesión. Revisá el dominio/subdominio configurado en tenant_dominios o enviá un tenant permitido en entorno local.',
+    ], 200);
+}
+
+function login_buscar_usuario_en_tenant(PDO $master, int $idTenant, string $usuarioOEmail): ?array
+{
+    $stmt = $master->prepare("\n        SELECT\n            u.idUsuarioMaster,\n            u.idTenant,\n            u.usuario,\n            u.email_recuperacion,\n            u.hash_contrasena,\n            LOWER(u.rol) AS rol,\n            u.tema,\n            u.activo AS usuario_activo,\n            t.nombre AS tenant_nombre,\n            t.logo_url,\n            t.logo_url AS logo_icono_url,\n            t.db_host,\n            t.db_name,\n            t.activo AS tenant_activo\n        FROM usuarios_master u\n        INNER JOIN tenants t ON t.idTenant = u.idTenant\n        WHERE u.idTenant = :idTenant\n          AND (LOWER(u.usuario) = LOWER(:usuario)\n               OR LOWER(COALESCE(u.email_recuperacion, '')) = LOWER(:usuario2))\n        LIMIT 1\n    ");
+    $stmt->execute([
+        ':idTenant' => $idTenant,
+        ':usuario' => $usuarioOEmail,
+        ':usuario2' => $usuarioOEmail,
+    ]);
+
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return $row ?: null;
+}
+
 function login_usuario_actual(): void
 {
     $usuario = function_exists('usuario_actual') ? usuario_actual() : null;
@@ -88,33 +110,15 @@ function login_inicio(): void
     try {
         $master = master_db();
 
-        // FIX: PDO con ATTR_EMULATE_PREPARES=false no permite usar el mismo named parameter
-        // dos veces en la misma query. Se usan :usuario y :usuario2 con el mismo valor.
-        $stmt = $master->prepare("
-            SELECT
-                u.idUsuarioMaster,
-                u.idTenant,
-                u.usuario,
-                u.email_recuperacion,
-                u.hash_contrasena,
-                LOWER(u.rol) AS rol,
-                u.tema,
-                u.activo AS usuario_activo,
-                t.nombre AS tenant_nombre,
-                t.logo_url,
-                /* Compatibilidad: la columna logo_icono_url fue eliminada de tenants.
-                   Se devuelve el mismo logo_url como alias para no romper el frontend viejo. */
-                t.logo_url AS logo_icono_url,
-                t.db_host,
-                t.db_name,
-                t.activo AS tenant_activo
-            FROM usuarios_master u
-            INNER JOIN tenants t ON t.idTenant = u.idTenant
-            WHERE (LOWER(u.usuario) = LOWER(:usuario) OR LOWER(COALESCE(u.email_recuperacion, '')) = LOWER(:usuario2))
-            LIMIT 1
-        ");
-        $stmt->execute([':usuario' => $nombre, ':usuario2' => $nombre]);
-        $usuario = $stmt->fetch();
+        $tenantLogin = function_exists('login_tenant_context') ? login_tenant_context() : null;
+        if (!$tenantLogin || (int)($tenantLogin['idTenant'] ?? 0) <= 0) {
+            login_registrar_auditoria_master($master, null, null, $nombre, false);
+            login_tenant_no_resuelto_response();
+        }
+
+        $idTenantLogin = (int)$tenantLogin['idTenant'];
+        $usuario = login_buscar_usuario_en_tenant($master, $idTenantLogin, $nombre);
+
 
         if (!$usuario) {
             login_registrar_auditoria_master($master, null, null, $nombre, false);

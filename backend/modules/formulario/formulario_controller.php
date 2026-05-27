@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/formulario_helpers.php';
+require_once __DIR__ . '/../../core/auth.php';
+require_once __DIR__ . '/../../core/csrf.php';
 
 function form_obtener_config_inscripcion(): void
 {
@@ -27,6 +29,18 @@ function form_obtener_config_inscripcion(): void
 function form_guardar_config_inscripcion(): void
 {
     formulario_method('POST');
+
+    // Defensa extra por si alguien intenta llamar este archivo fuera del router.
+    // El router ya valida sesión, CSRF y rol, pero acá queda blindado también.
+    if (function_exists('require_auth')) {
+        require_auth();
+    }
+    if (function_exists('validar_csrf')) {
+        validar_csrf();
+    }
+    if (function_exists('require_roles')) {
+        require_roles(['admin']);
+    }
 
     $pdo = null;
 

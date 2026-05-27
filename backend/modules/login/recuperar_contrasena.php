@@ -150,10 +150,11 @@ HTML;
     return @mail($destino, $encodedSubject, $html, implode("\r\n", $headers));
 }
 
-function login_password_reset_buscar_usuario(PDO $master, string $usuarioOEmail): ?array
+function login_password_reset_buscar_usuario(PDO $master, int $idTenant, string $usuarioOEmail): ?array
 {
-    $stmt = $master->prepare("\n        SELECT\n            u.idUsuarioMaster,\n            u.idTenant,\n            u.usuario,\n            u.email_recuperacion,\n            u.activo AS usuario_activo,\n            t.activo AS tenant_activo\n        FROM usuarios_master u\n        INNER JOIN tenants t ON t.idTenant = u.idTenant\n        WHERE (LOWER(u.usuario) = LOWER(:valor) OR LOWER(COALESCE(u.email_recuperacion, '')) = LOWER(:valor2))\n        LIMIT 1\n    ");
+    $stmt = $master->prepare("\n        SELECT\n            u.idUsuarioMaster,\n            u.idTenant,\n            u.usuario,\n            u.email_recuperacion,\n            u.activo AS usuario_activo,\n            t.activo AS tenant_activo\n        FROM usuarios_master u\n        INNER JOIN tenants t ON t.idTenant = u.idTenant\n        WHERE u.idTenant = :idTenant\n          AND (LOWER(u.usuario) = LOWER(:valor) OR LOWER(COALESCE(u.email_recuperacion, '')) = LOWER(:valor2))\n        LIMIT 1\n    ");
     $stmt->execute([
+        ':idTenant' => $idTenant,
         ':valor' => $usuarioOEmail,
         ':valor2' => $usuarioOEmail,
     ]);
@@ -203,7 +204,15 @@ function login_recuperar_contrasena_solicitar(): void
         $master = master_db();
         login_password_reset_asegurar_tabla($master);
 
-        $usuario = login_password_reset_buscar_usuario($master, $usuarioOEmail);
+        $tenantLogin = function_exists('login_tenant_context') ? login_tenant_context() : null;
+        if (!$tenantLogin || (int)($tenantLogin['idTenant'] ?? 0) <= 0) {
+            json_response([
+                'exito' => false,
+                'mensaje' => 'No se pudo identificar la escuela/tenant para recuperar la contraseña. Revisá el dominio/subdominio configurado.',
+            ], 200);
+        }
+
+        $usuario = login_password_reset_buscar_usuario($master, (int)$tenantLogin['idTenant'], $usuarioOEmail);
 
         if (!$usuario || (int)$usuario['usuario_activo'] !== 1 || (int)$usuario['tenant_activo'] !== 1) {
             json_response(['exito' => false, 'mensaje' => 'No encontramos un usuario activo con esos datos.'], 200);

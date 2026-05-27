@@ -2,6 +2,7 @@ import React, { useCallback, useContext, useEffect, useMemo, useState } from 're
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faBoxOpen,
+  faCheckCircle,
   faEdit,
   faFileImport,
   faSpinner,
@@ -16,6 +17,7 @@ import { previasApi } from './api/previasApi';
 import { usePaginacion } from '../_shared/hooks/usePaginacion';
 import ModalPrevia from './modales/ModalPrevia.jsx';
 import ModalImportarPrevias from './modales/ModalImportarPrevias.jsx';
+import ModalInscribirPrevia from './modales/ModalInscribirPrevia.jsx';
 import ModalEliminarGlobal from '../Global/Modales/ModalEliminarGlobal.jsx';
 import ModalExportarGlobal from '../Global/Modales/ModalExportarGlobal.jsx';
 import BotonExportarHistorialGlobal from '../Global/Botones/BotonExportarHistorialGlobal.jsx';
@@ -223,6 +225,9 @@ function usePrevias() {
     try {
       const activo = vista === 'bajas' ? 0 : 1;
       const filtros = { activo };
+      // La pestaña Previas debe mostrar TODAS las previas activas, estén inscriptas o no.
+      // Solo la pestaña Inscriptos filtra por inscripción = 1.
+      if (vista === 'inscriptos') filtros.inscripcion = 1;
       const busquedaLimpia = busquedaDebounced.trim();
       const idCondicion = Number(filtrosPrevias.idCondicion || 0);
       const idCurso = Number(filtrosPrevias.idCurso || 0);
@@ -296,9 +301,8 @@ function usePrevias() {
   function cambiarVista(nuevaVista) {
     paginacion.setPagina(1);
     setVista(nuevaVista);
-    setBusquedaState('');
-    setBusquedaDebounced('');
-    limpiarFiltrosPrevias();
+    // No se limpia la búsqueda al cambiar de pestaña: el usuario debe conservar
+    // lo que escribió en el buscador y ver el mismo filtro aplicado en la nueva vista.
   }
 
   const hayFiltrosPrevias = useMemo(() => (
@@ -319,6 +323,50 @@ function usePrevias() {
       return { ok: true, data: res.data };
     } catch (e) {
       const msg = mensajeErrorUsuario(e, 'No se pudo obtener la previa.');
+      mostrarMensaje('error', msg);
+      return { ok: false, mensaje: msg };
+    }
+  }
+
+  async function obtenerMateriasInscripcion(item) {
+    try {
+      const idPrevia = Number(item?.id_previa || item || 0);
+      const res = await previasApi.obtenerMateriasInscripcion(idPrevia);
+      return { ok: true, data: res?.data || res || {} };
+    } catch (e) {
+      const msg = mensajeErrorUsuario(e, 'No se pudieron obtener las materias para inscribir.');
+      mostrarMensaje('error', msg);
+      return { ok: false, mensaje: msg, data: null };
+    }
+  }
+
+  async function inscribirManual(payload) {
+    try {
+      const res = await previasApi.inscribirManual(payload);
+      await cargar();
+      const emailEnviado = Boolean(res?.data?.email_enviado ?? res?.email_enviado);
+      mostrarMensaje(
+        emailEnviado ? 'exito' : 'advertencia',
+        res?.mensaje || (emailEnviado
+          ? 'Inscripción manual registrada y email enviado correctamente.'
+          : 'Inscripción manual registrada, pero no se pudo enviar el email.')
+      );
+      return { ok: true, data: res?.data || res || {} };
+    } catch (e) {
+      const msg = mensajeErrorUsuario(e, 'No se pudo registrar la inscripción manual.');
+      mostrarMensaje('error', msg);
+      return { ok: false, mensaje: msg };
+    }
+  }
+
+  async function quitarInscripcion(item) {
+    try {
+      await previasApi.quitarInscripcion(item.id_previa);
+      await cargar();
+      mostrarMensaje('exito', 'Inscripción dada de baja correctamente.');
+      return { ok: true };
+    } catch (e) {
+      const msg = mensajeErrorUsuario(e, 'No se pudo dar de baja la inscripción.');
       mostrarMensaje('error', msg);
       return { ok: false, mensaje: msg };
     }
@@ -489,6 +537,8 @@ function usePrevias() {
   async function obtenerTodasParaExportar() {
     const activo = vista === 'bajas' ? 0 : 1;
     const filtros = {};
+    // La exportación de Previas también debe traer todas las activas, sin filtrar por inscripción.
+    if (vista === 'inscriptos') filtros.inscripcion = 1;
     const busquedaLimpia = busquedaDebounced.trim();
     const idCondicion = Number(filtrosPrevias.idCondicion || 0);
     const idCurso = Number(filtrosPrevias.idCurso || 0);
@@ -526,6 +576,9 @@ function usePrevias() {
     paginacion,
     reload: cargar,
     obtener,
+    obtenerMateriasInscripcion,
+    inscribirManual,
+    quitarInscripcion,
     obtenerMateriasPorCurso,
     guardar,
     darBaja,
@@ -634,6 +687,9 @@ export default function Previas() {
     conteo,
     paginacion,
     obtener,
+    obtenerMateriasInscripcion,
+    inscribirManual,
+    quitarInscripcion,
     guardar,
     darBaja,
     darAlta,
@@ -651,6 +707,7 @@ export default function Previas() {
   const [modalConfirmar, setModalConfirmar] = useState({ abierto: false, tipo: '', item: null, riesgo: null, cargandoRiesgo: false });
   const [confirmacionRiesgo, setConfirmacionRiesgo] = useState(false);
   const [modalExportar, setModalExportar] = useState(false);
+  const [modalInscripcion, setModalInscripcion] = useState({ abierto: false, item: null, data: null, cargando: false, guardando: false, error: '' });
 
   function abrirCrear() {
     setModalPrevia({ abierto: true, modo: 'crear', item: null, cargando: false });
@@ -665,6 +722,29 @@ export default function Previas() {
     } else {
       setModalPrevia({ abierto: false, modo: 'crear', item: null, cargando: false });
     }
+  }
+
+  async function abrirInscripcionManual(item) {
+    setModalInscripcion({ abierto: true, item, data: null, cargando: true, guardando: false, error: '' });
+    const res = await obtenerMateriasInscripcion(item);
+    if (res.ok) {
+      setModalInscripcion({ abierto: true, item, data: res.data, cargando: false, guardando: false, error: '' });
+    } else {
+      setModalInscripcion((prev) => ({ ...prev, cargando: false, error: res.mensaje || 'No se pudieron cargar las materias.' }));
+    }
+  }
+
+  async function confirmarInscripcionManual(payload) {
+    setModalInscripcion((prev) => ({ ...prev, guardando: true, error: '' }));
+    const res = await inscribirManual(payload);
+
+    if (res.ok) {
+      setModalInscripcion({ abierto: false, item: null, data: null, cargando: false, guardando: false, error: '' });
+      return res;
+    }
+
+    setModalInscripcion((prev) => ({ ...prev, guardando: false, error: res.mensaje || 'No se pudo inscribir.' }));
+    return res;
   }
 
 
@@ -699,6 +779,7 @@ export default function Previas() {
 
     if (modalConfirmar.tipo === 'baja') return darBaja(modalConfirmar.item, motivo);
     if (modalConfirmar.tipo === 'alta') return darAlta(modalConfirmar.item);
+    if (modalConfirmar.tipo === 'quitar_inscripcion') return quitarInscripcion(modalConfirmar.item);
     if (modalConfirmar.tipo === 'eliminar') {
       const vinculada = Boolean(modalConfirmar.riesgo?.vinculada || modalConfirmar.riesgo?.requiere_doble_confirmacion);
       return eliminar(modalConfirmar.item, { forzar: vinculada && confirmacionRiesgo });
@@ -714,6 +795,13 @@ export default function Previas() {
   const divisionesFiltro = Array.isArray(catalogos?.divisiones) ? catalogos.divisiones : [];
   const riesgoEliminacion = modalConfirmar.tipo === 'eliminar' ? modalConfirmar.riesgo : null;
   const previaVinculada = Boolean(riesgoEliminacion?.vinculada || riesgoEliminacion?.requiere_doble_confirmacion);
+  const nombreVista = vista === 'bajas' ? 'previas dadas de baja' : (vista === 'inscriptos' ? 'previas inscriptas' : 'previas activas');
+
+  function puedeInscribirManual(item) {
+    const condicion = String(item?.condicion || '').trim().toUpperCase();
+    const esPrevia = Number(item?.id_condicion || 0) === 3 || condicion === 'PREVIA';
+    return vista === 'activas' && esPrevia && Number(item?.inscripcion || 0) !== 1 && Number(item?.activo ?? 1) === 1;
+  }
 
   const extraEliminar = useMemo(() => {
     if (modalConfirmar.tipo !== 'eliminar') return null;
@@ -773,6 +861,18 @@ export default function Previas() {
       successMessage: 'Previa dada de alta correctamente.',
       errorMessage: 'No se pudo dar de alta la previa.',
       tone: 'success',
+      showReason: false,
+    },
+    quitar_inscripcion: {
+      operacion: 'eliminar',
+      title: 'Borrar inscripción',
+      message: 'Confirmá la baja de la inscripción seleccionada. La previa seguirá cargada, pero volverá a figurar como no inscripta.',
+      warning: 'No se elimina la previa: solo se marca inscripción = 0 y se anula el detalle de inscripción.',
+      confirmLabel: 'Borrar inscripción',
+      loadingLabel: 'Procesando...',
+      successMessage: 'Inscripción dada de baja correctamente.',
+      errorMessage: 'No se pudo dar de baja la inscripción.',
+      tone: 'danger',
       showReason: false,
     },
     eliminar: {
@@ -843,7 +943,14 @@ export default function Previas() {
                   className={`mov-tab previas-titleTab ${vista === 'activas' ? 'is-active' : ''}`}
                   onClick={() => cambiarVista('activas')}
                 >
-                  Activas
+                  Previas
+                </button>
+                <button
+                  type="button"
+                  className={`mov-tab previas-titleTab ${vista === 'inscriptos' ? 'is-active' : ''}`}
+                  onClick={() => cambiarVista('inscriptos')}
+                >
+                  Inscriptos
                 </button>
                 <button
                   type="button"
@@ -1038,14 +1145,20 @@ export default function Previas() {
 
                       <div className="mov-gridCell mov-gridCell--actions is-center" role="cell" data-label="Acciones">
                         <div className="mov-actionsInline">
-                          {vista === 'activas' && (
+                          {vista !== 'bajas' && (
                             <button type="button" className="mov-iconBtn previas-icon-btn" onClick={() => abrirEditar(item)} title="Editar previa">
                               <FontAwesomeIcon icon={faEdit} />
                             </button>
                           )}
 
-                          {vista === 'activas' ? (
-                            <button type="button" className="mov-iconBtn previas-icon-btn previas-icon-warning" onClick={() => abrirConfirmar('baja', item)} title="Dar de baja">
+                          {puedeInscribirManual(item) && (
+                            <button type="button" className="mov-iconBtn previas-icon-btn previas-icon-inscribir" onClick={() => abrirInscripcionManual(item)} title="Inscribir manualmente">
+                              <FontAwesomeIcon icon={faCheckCircle} />
+                            </button>
+                          )}
+
+                          {vista !== 'bajas' ? (
+                            <button type="button" className="mov-iconBtn previas-icon-btn previas-icon-warning" onClick={() => abrirConfirmar('baja', item)} title="Dar de baja previa">
                               <FontAwesomeIcon icon={faUserSlash} />
                             </button>
                           ) : (
@@ -1054,9 +1167,15 @@ export default function Previas() {
                             </button>
                           )}
 
-                          <button type="button" className="mov-iconBtn mov-iconBtn--danger previas-icon-btn previas-icon-danger" onClick={() => abrirConfirmar('eliminar', item)} title="Eliminar previa">
-                            <FontAwesomeIcon icon={faTrash} />
-                          </button>
+                          {vista === 'inscriptos' ? (
+                            <button type="button" className="mov-iconBtn mov-iconBtn--danger previas-icon-btn previas-icon-danger" onClick={() => abrirConfirmar('quitar_inscripcion', item)} title="Borrar inscripción">
+                              <FontAwesomeIcon icon={faTrash} />
+                            </button>
+                          ) : (
+                            <button type="button" className="mov-iconBtn mov-iconBtn--danger previas-icon-btn previas-icon-danger" onClick={() => abrirConfirmar('eliminar', item)} title="Eliminar previa">
+                              <FontAwesomeIcon icon={faTrash} />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1066,7 +1185,7 @@ export default function Previas() {
                     <div className="cc-emptyState previas-emptyState">
                       <FontAwesomeIcon icon={faBoxOpen} className="cc-emptyIcon" />
                       <div className="cc-emptyText">
-                        {vista === 'activas' ? 'No se encontraron previas activas.' : 'No hay previas dadas de baja.'}
+                        {vista === 'bajas' ? 'No hay previas dadas de baja.' : (vista === 'inscriptos' ? 'No hay previas inscriptas.' : 'No se encontraron previas activas.')}
                       </div>
                     </div>
                   )}
@@ -1127,8 +1246,8 @@ export default function Previas() {
         totalTodos={conteo.totalRegistros}
         totalLabelSingular="previa disponible"
         totalLabelPlural="previas disponibles"
-        subtituloArchivoActual={`Vista: ${vista === 'bajas' ? 'previas dadas de baja' : 'previas activas'} · Página actual: ${paginacion.pagina} de ${paginacion.totalPaginas} · Registros visibles: ${totalVisible}`}
-        subtituloArchivoTodos={`Vista: ${vista === 'bajas' ? 'previas dadas de baja' : 'previas activas'} · Todos los registros filtrados · Total: ${conteo.totalRegistros}`}
+        subtituloArchivoActual={`Vista: ${nombreVista} · Página actual: ${paginacion.pagina} de ${paginacion.totalPaginas} · Registros visibles: ${totalVisible}`}
+        subtituloArchivoTodos={`Vista: ${nombreVista} · Todos los registros filtrados · Total: ${conteo.totalRegistros}`}
         alcanceActualLabel="Exportar solo actual"
         alcanceActualDescription="Descarga únicamente las previas visibles en esta página."
         alcanceTodosLabel="Exportar todos los registros"
@@ -1158,6 +1277,18 @@ export default function Previas() {
           onPrevisualizar={previsualizarPreviasExcel}
           onImportar={importarPreviasExcel}
           onToast={mostrarMensaje}
+        />
+      )}
+
+      {modalInscripcion.abierto && (
+        <ModalInscribirPrevia
+          open={modalInscripcion.abierto}
+          data={modalInscripcion.data}
+          loading={modalInscripcion.cargando}
+          saving={modalInscripcion.guardando}
+          error={modalInscripcion.error}
+          onClose={() => setModalInscripcion({ abierto: false, item: null, data: null, cargando: false, guardando: false, error: '' })}
+          onConfirm={confirmarInscripcionManual}
         />
       )}
 

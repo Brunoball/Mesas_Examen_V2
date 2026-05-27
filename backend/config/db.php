@@ -492,6 +492,186 @@ function assert_request_tenant_matches_context(array $ctx): void
     }
 }
 
+
+/**
+ * Lee tenant explícito para login/recuperación. En producción se recomienda
+ * resolver por dominio/subdominio; el id/slug por request queda deshabilitado
+ * salvo que se active ALLOW_LOGIN_QUERY_TENANT=true o sea entorno local.
+ */
+function login_tenant_id_from_request(): int
+{
+    $body = function_exists('request_body') ? request_body() : [];
+
+    $candidates = [
+        $_SERVER['HTTP_X_TENANT_ID'] ?? null,
+        $_GET['idTenant'] ?? null,
+        $_GET['id_tenant'] ?? null,
+        $_GET['tenant_id'] ?? null,
+        $_POST['idTenant'] ?? null,
+        $_POST['id_tenant'] ?? null,
+        $_POST['tenant_id'] ?? null,
+        $body['idTenant'] ?? null,
+        $body['id_tenant'] ?? null,
+        $body['tenant_id'] ?? null,
+    ];
+
+    foreach ($candidates as $value) {
+        $id = (int)$value;
+        if ($id > 0) {
+            return $id;
+        }
+    }
+
+    return 0;
+}
+
+function login_tenant_slug_from_request(): string
+{
+    $body = function_exists('request_body') ? request_body() : [];
+
+    $candidates = [
+        $_SERVER['HTTP_X_TENANT_SLUG'] ?? null,
+        $_GET['tenant_slug'] ?? null,
+        $_GET['slug'] ?? null,
+        $_GET['tenant'] ?? null,
+        $_POST['tenant_slug'] ?? null,
+        $_POST['slug'] ?? null,
+        $_POST['tenant'] ?? null,
+        $body['tenant_slug'] ?? null,
+        $body['slug'] ?? null,
+        $body['tenant'] ?? null,
+    ];
+
+    foreach ($candidates as $value) {
+        $slug = strtolower(trim((string)$value));
+        if ($slug !== '' && preg_match('/^[a-z0-9][a-z0-9_-]{1,78}[a-z0-9]$/', $slug) === 1) {
+            return $slug;
+        }
+    }
+
+    return '';
+}
+
+function login_query_tenant_permitido(): bool
+{
+    if (request_public_tenant_es_local()) {
+        return true;
+    }
+
+    return env_bool('ALLOW_LOGIN_QUERY_TENANT', false);
+}
+
+function login_default_tenant_id_permitido(): int
+{
+    if (request_public_tenant_es_local()) {
+        return (int)(env_value('DEFAULT_TENANT_ID', '0') ?? '0');
+    }
+
+    if (env_bool('ALLOW_LOGIN_DEFAULT_TENANT', false)) {
+        return (int)(env_value('DEFAULT_TENANT_ID', '0') ?? '0');
+    }
+
+    return 0;
+}
+
+function tenant_context_by_slug(string $slug): ?array
+{
+    $slug = strtolower(trim($slug));
+    if ($slug === '') {
+        return null;
+    }
+
+    $master = master_db();
+    $stmt = $master->prepare("\n        SELECT\n            t.idTenant,\n            t.nombre AS tenant_nombre,\n            t.logo_url,\n            t.logo_url AS logo_icono_url,\n            t.db_host,\n            t.db_name,\n            t.db_user,\n            t.db_pass,\n            t.activo AS tenant_activo,\n            NULL AS dominio_resuelto,\n            'slug' AS tenant_resuelto_por\n        FROM tenants t\n        WHERE LOWER(t.slug) = LOWER(:slug)\n          AND t.activo = 1\n        LIMIT 1\n    ");
+    $stmt->execute([':slug' => $slug]);
+
+    $ctx = $stmt->fetch();
+    return $ctx ?: null;
+}
+
+function login_single_active_tenant_context(): ?array
+{
+    if (!env_bool('ALLOW_SINGLE_TENANT_LOGIN_FALLBACK', true)) {
+        return null;
+    }
+
+    $master = master_db();
+    $stmt = $master->query("\n        SELECT COUNT(*)\n        FROM tenants\n        WHERE activo = 1\n    ");
+    $total = (int)$stmt->fetchColumn();
+
+    if ($total !== 1) {
+        return null;
+    }
+
+    $stmt = $master->query("\n        SELECT\n            t.idTenant,\n            t.nombre AS tenant_nombre,\n            t.logo_url,\n            t.logo_url AS logo_icono_url,\n            t.db_host,\n            t.db_name,\n            t.db_user,\n            t.db_pass,\n            t.activo AS tenant_activo,\n            NULL AS dominio_resuelto,\n            'single_active_tenant' AS tenant_resuelto_por\n        FROM tenants t\n        WHERE t.activo = 1\n        LIMIT 1\n    ");
+
+    $ctx = $stmt->fetch();
+    return $ctx ?: null;
+}
+
+/**
+ * Resuelve el tenant para login y recuperación antes de buscar usuarios.
+ * Esto evita que dos escuelas con el mismo usuario/email se crucen por un LIMIT 1.
+ */
+function login_tenant_context(): ?array
+{
+    static $cache = null;
+
+    if (is_array($cache)) {
+        return $cache;
+    }
+
+    foreach (request_public_tenant_host_candidates() as $hostCandidate) {
+        $ctx = public_tenant_context_by_host($hostCandidate);
+        if ($ctx) {
+            $ctx['tenant_resuelto_por'] = $ctx['tenant_resuelto_por'] ?? 'host';
+            $ctx['host_origen_resuelto'] = $hostCandidate;
+            $cache = $ctx;
+            return $cache;
+        }
+    }
+
+    if (login_query_tenant_permitido()) {
+        $idFromRequest = login_tenant_id_from_request();
+        if ($idFromRequest > 0) {
+            $ctx = public_tenant_context_by_id($idFromRequest);
+            if ($ctx) {
+                $ctx['tenant_resuelto_por'] = 'idTenant_login_request';
+                $cache = $ctx;
+                return $cache;
+            }
+        }
+
+        $slug = login_tenant_slug_from_request();
+        if ($slug !== '') {
+            $ctx = tenant_context_by_slug($slug);
+            if ($ctx) {
+                $ctx['tenant_resuelto_por'] = 'slug_login_request';
+                $cache = $ctx;
+                return $cache;
+            }
+        }
+    }
+
+    $defaultTenantId = login_default_tenant_id_permitido();
+    if ($defaultTenantId > 0) {
+        $ctx = public_tenant_context_by_id($defaultTenantId);
+        if ($ctx) {
+            $ctx['tenant_resuelto_por'] = 'DEFAULT_TENANT_ID_LOGIN';
+            $cache = $ctx;
+            return $cache;
+        }
+    }
+
+    $ctx = login_single_active_tenant_context();
+    if ($ctx) {
+        $cache = $ctx;
+        return $cache;
+    }
+
+    return null;
+}
+
 function tenant_db(): PDO
 {
     static $connections = [];
@@ -501,7 +681,7 @@ function tenant_db(): PDO
     if (!$ctx) {
         // Fallback opcional para acciones públicas viejas del formulario o pruebas locales.
         // Para SaaS real, dejalo en false.
-        $allowFallback = strtolower((string)env_value('ALLOW_DEFAULT_TENANT_DB', 'true')) === 'true';
+        $allowFallback = strtolower((string)env_value('ALLOW_DEFAULT_TENANT_DB', 'false')) === 'true';
         if (!$allowFallback) {
             throw new RuntimeException('No hay sesión SaaS válida para resolver la base del tenant.');
         }
