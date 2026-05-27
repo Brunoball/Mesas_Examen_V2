@@ -327,7 +327,7 @@ export default function ConfiguracionFormulario({ onVolver = null }) {
                     <span className="cc-floatingLabel">Mensaje cuando está cerrado</span>
                   </label>
 
-                  <div className="cfgFormVisualBlock cfgFormGridFull" style={{ "--cfgFormTheme": colorPrincipal }}>
+                  <div className="cfgFormVisualBlock cfgFormGridFull">
                     <div className="cfgFormVisualHead">
                       <span className="cfgFormDateIcon cfgFormDateIcon--visual">
                         <FontAwesomeIcon icon={faPalette} />

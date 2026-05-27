@@ -44,8 +44,8 @@ export default function Configuracion() {
         id: "usuarios",
         title: "Configuración de usuarios",
         description:
-          "Administrá usuarios del sistema desde la base master: altas, bajas, roles y contraseña.",
-        status: { text: "Master DB", type: "neutral" },
+          "Administrá usuarios del sistema: altas, bajas, roles y contraseña.",
+        status: { text: "Usuarios y permisos", type: "neutral" },
         metaTop: "Usuarios",
         metaBottom: "Crear, editar, eliminar y activar",
         icon: faUserGear,

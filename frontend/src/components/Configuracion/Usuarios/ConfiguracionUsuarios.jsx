@@ -217,9 +217,29 @@ function UsuarioModal({ open, form, guardando, onClose, onChange, onSave }) {
     }
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key !== 'Escape') return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+
+      if (!guardando) onClose?.();
+    };
+
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, [open, guardando, onClose]);
+
   if (!open) return null;
 
   const esEdicion = Number(form.id_usuario || 0) > 0;
+  const esSesionActual = esUsuarioSesionActual(form);
+  const esAdminEditado = esEdicion && String(form.rol) === 'admin';
+  const mostrarCampoEstado = !esEdicion || (!esSesionActual && !esAdminEditado);
   const strength = getPasswordStrength(form.contrasena);
 
   const submit = (event) => {
@@ -228,8 +248,14 @@ function UsuarioModal({ open, form, guardando, onClose, onChange, onSave }) {
   };
 
   return createPortal(
-    <div className="cfgUsersModalOverlay" role="dialog" aria-modal="true" onMouseDown={onClose}>
-      <div className="cfgUsersModal cfgUsersModal--balto" onMouseDown={(e) => e.stopPropagation()}>
+    <div
+      className="cfgUsersModalOverlay"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="cfgUsersModal cfgUsersModal--balto" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
         <div className="cfgUsersModalHead">
           <div className="cfgUsersModalIcon" aria-hidden="true">
             <FontAwesomeIcon icon={esEdicion ? faUserPen : faUserPlus} />
@@ -238,7 +264,9 @@ function UsuarioModal({ open, form, guardando, onClose, onChange, onSave }) {
             <h3>{esEdicion ? 'Editar usuario' : 'Crear usuario'}</h3>
             <p>
               {esEdicion
-                ? 'Actualizá los datos, el rol o la contraseña del usuario.'
+                ? (mostrarCampoEstado
+                    ? 'Actualizá los datos, el rol, el estado o la contraseña del usuario.'
+                    : 'Actualizá los datos, el rol o la contraseña del usuario.')
                 : 'Cargá un nuevo acceso para Mesas con rol y contraseña inicial.'}
             </p>
           </div>
@@ -292,7 +320,7 @@ function UsuarioModal({ open, form, guardando, onClose, onChange, onSave }) {
                   <span>Rol</span>
                 </label>
 
-                {!esEdicion && (
+                {mostrarCampoEstado && (
                   <label className="cfgUsersMuField">
                     <FontAwesomeIcon icon={faToggleOn} className="cfgUsersMuFieldIcon" />
                     <select value={Number(form.activo)} onChange={(e) => onChange('activo', Number(e.target.value))} disabled={guardando}>

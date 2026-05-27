@@ -122,12 +122,14 @@
   background:linear-gradient(180deg, #fff 0%, color-mix(in srgb, var(--balto-bg) 64%, #fff) 100%);
 
   /*
-    Importante: el scroll NO queda en toda la pantalla.
-    Queda dentro de las cajas internas para poder bajar hasta
-    Personalización visual sin romper el encabezado de Guardar/Volver.
+    Scroll único: Datos principales y Previsualización bajan juntos
+    dentro del cuerpo, manteniendo fijo el encabezado de Guardar/Volver.
   */
-  overflow:hidden;
-  max-height:none;
+  overflow-y:auto;
+  overflow-x:hidden;
+  max-height:70vh;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
 }
 
 .cfgFormPanel{
@@ -141,33 +143,26 @@
 .cfgFormPanel--main{
   padding:0;
   min-height:0;
-  max-height:100%;
-  overflow-y:auto;
-  overflow-x:hidden;
-  overscroll-behavior:contain;
-  scrollbar-gutter:stable;
+  max-height:none;
+  overflow:visible;
 }
 
-.cfgFormPanel--main::-webkit-scrollbar,
-.cfgFormSide::-webkit-scrollbar{
+.cfgFormContent::-webkit-scrollbar{
   width:10px;
 }
 
-.cfgFormPanel--main::-webkit-scrollbar-track,
-.cfgFormSide::-webkit-scrollbar-track{
+.cfgFormContent::-webkit-scrollbar-track{
   background:rgba(58,46,43,.05);
   border-radius:999px;
 }
 
-.cfgFormPanel--main::-webkit-scrollbar-thumb,
-.cfgFormSide::-webkit-scrollbar-thumb{
+.cfgFormContent::-webkit-scrollbar-thumb{
   background:rgba(58,46,43,.24);
   border-radius:999px;
   border:2px solid rgba(255,255,255,.82);
 }
 
-.cfgFormPanel--main::-webkit-scrollbar-thumb:hover,
-.cfgFormSide::-webkit-scrollbar-thumb:hover{
+.cfgFormContent::-webkit-scrollbar-thumb:hover{
   background:rgba(58,46,43,.34);
 }
 
@@ -311,11 +306,7 @@
   border:1px solid rgba(196,139,59,.16);
 }
 
-.cfgFormDateIcon--end{
-  color:color-mix(in srgb, var(--balto-ink) 82%, #000);
-  background:rgba(58,46,43,.07);
-  border-color:rgba(58,46,43,.14);
-}
+
 
 .cfgFormDateRow{
   display:grid;
@@ -327,21 +318,16 @@
 .cfgFormSide{
   min-width:0;
   min-height:0;
-  max-height:100%;
+  max-height:none;
   display:grid;
   grid-template-rows:auto auto;
   align-content:start;
   gap:16px;
-  overflow-y:auto;
-  overflow-x:hidden;
-  overscroll-behavior:contain;
-  scrollbar-gutter:stable;
-  padding-right:4px;
+  overflow:visible;
+  padding-right:0;
 }
 
-.cfgFormPreview{
-  overflow:hidden;
-}
+
 
 .cfgFormPreviewList{
   padding:14px 16px 16px;
@@ -747,10 +733,10 @@
   flex-direction: column;
   gap: 16px;
   padding: 18px;
-  border: 1px solid color-mix(in srgb, var(--cfgFormTheme, var(--balto-action)) 24%, var(--mov-border));
+  border: 1px solid color-mix(in srgb, var(--balto-action) 24%, var(--mov-border));
   border-radius: 18px;
   background:
-    radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--cfgFormTheme, var(--balto-action)) 12%, transparent), transparent 38%),
+    radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--balto-action) 12%, transparent), transparent 38%),
     linear-gradient(180deg, #fff, color-mix(in srgb, var(--balto-bg) 68%, #fff));
 }
 
@@ -783,8 +769,8 @@
 }
 
 .cfgFormDateIcon--visual {
-  color: var(--cfgFormTheme, var(--balto-action));
-  background: color-mix(in srgb, var(--cfgFormTheme, var(--balto-action)) 11%, #fff);
+  color: var(--balto-action);
+  background: color-mix(in srgb, var(--balto-action) 11%, #fff);
 }
 
 .cfgFormColorRow {
@@ -800,19 +786,50 @@
 
 .cfgFormColorInputWrap {
   display: grid;
-  grid-template-columns: 58px 1fr;
+  grid-template-columns: 52px 1fr;
   gap: 10px;
   align-items: center;
 }
 
 .cfgFormColorInputWrap input[type="color"] {
-  width: 58px;
-  height: 46px;
-  padding: 4px;
-  border: 1px solid var(--mov-border);
-  border-radius: 13px;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 2px solid color-mix(in srgb, var(--balto-action) 36%, var(--mov-border));
+  border-radius: 999px;
   background: #fff;
   cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0 10px 22px -18px color-mix(in srgb, var(--balto-action) 70%, #000);
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+.cfgFormColorInputWrap input[type="color"]:hover {
+  transform: translateY(-1px);
+  border-color: var(--balto-action);
+  box-shadow: 0 14px 26px -20px color-mix(in srgb, var(--balto-action) 82%, #000);
+}
+
+.cfgFormColorInputWrap input[type="color"]:focus-visible {
+  outline: none;
+  border-color: var(--balto-action);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--balto-action) 14%, transparent),
+              0 14px 26px -20px color-mix(in srgb, var(--balto-action) 82%, #000);
+}
+
+.cfgFormColorInputWrap input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 5px;
+  border-radius: 999px;
+}
+
+.cfgFormColorInputWrap input[type="color"]::-webkit-color-swatch {
+  border: 0;
+  border-radius: 999px;
+}
+
+.cfgFormColorInputWrap input[type="color"]::-moz-color-swatch {
+  border: 0;
+  border-radius: 999px;
 }
 
 .cfgFormColorInputWrap input[type="text"] {
@@ -828,39 +845,45 @@
 }
 
 .cfgFormColorInputWrap input[type="text"]:focus {
-  border-color: color-mix(in srgb, var(--cfgFormTheme, var(--balto-action)) 58%, var(--mov-border));
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--cfgFormTheme, var(--balto-action)) 13%, transparent);
+  border-color: color-mix(in srgb, var(--balto-action) 58%, var(--mov-border));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--balto-action) 13%, transparent);
 }
 
 .cfgFormMediaGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+  align-items: start;
 }
 
 .cfgFormUploadBox {
-  display: grid;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
 }
 
 .cfgFormUploadCard {
-  min-height: 118px;
+  height: 148px;
+  min-height: 148px;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: flex-start;
   gap: 6px;
-  padding: 16px;
-  border: 1px dashed color-mix(in srgb, var(--cfgFormTheme, var(--balto-action)) 48%, var(--mov-border));
+  padding: 18px;
+  border: 1px dashed color-mix(in srgb, var(--balto-action) 48%, var(--mov-border));
   border-radius: 16px;
-  background: rgba(255,255,255,.74);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,252,247,.82));
   cursor: pointer;
-  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
 }
 
 .cfgFormUploadCard:hover {
   transform: translateY(-1px);
-  border-color: var(--cfgFormTheme, var(--balto-action));
-  box-shadow: 0 18px 34px -28px color-mix(in srgb, var(--cfgFormTheme, var(--balto-action)) 56%, #000);
+  border-color: var(--balto-action);
+  box-shadow: 0 18px 34px -28px color-mix(in srgb, var(--balto-action) 56%, #000);
 }
 
 .cfgFormUploadCard input {
@@ -876,29 +899,36 @@
   height: 38px;
   display: grid;
   place-items: center;
+  flex: 0 0 auto;
   color: #fff;
-  background: var(--cfgFormTheme, var(--balto-action));
+  background: var(--balto-action);
   border-radius: 12px;
+  box-shadow: 0 12px 22px -16px color-mix(in srgb, var(--balto-action) 70%, #000);
 }
 
 .cfgFormUploadCard strong {
   color: var(--balto-ink);
   font-size: .92rem;
+  line-height: 1.2;
 }
 
 .cfgFormUploadCard small {
+  max-width: 100%;
   color: var(--mov-muted);
   line-height: 1.35;
 }
 
 .cfgFormMediaPreview {
-  min-height: 92px;
+  height: 150px;
+
+  max-height: 150px;
   display: grid;
   place-items: center;
-  overflow: hidden;
+  overflow: auto;
   border: 1px solid var(--mov-border);
   border-radius: 16px;
-  background: #fff;
+  background:
+    linear-gradient(180deg, #fff, color-mix(in srgb, var(--balto-bg) 56%, #fff));
 }
 
 .cfgFormMediaPreview img {
@@ -908,11 +938,19 @@
   object-fit: contain;
 }
 
+.cfgFormMediaPreview--logo img {
+  width: 90%;
+  height: 90%;
+  object-fit: contain;
+}
+
 .cfgFormMediaPreview--fondo {
-  height: 128px;
+  height: 156px;
 }
 
 .cfgFormMediaPreview--fondo img {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
 }
 
@@ -1035,6 +1073,38 @@
   .cfgFormPublicPreview {
     grid-template-columns: 1fr;
   }
+
+  .cfgFormUploadCard,
+  .cfgFormMediaPreview,
+  .cfgFormMediaPreview--fondo {
+    height: auto;
+    min-height: 132px;
+    max-height: none;
+  }
+
+  .cfgFormMediaPreview {
+    height: 150px;
+    min-height: 150px;
+    max-height: 150px;
+  }
+}
+
+
+
+/* Ajuste visual: las tarjetas de logo y fondo mantienen la misma altura.
+   El color elegido por el usuario sigue aplicándose solo a la previsualización pública. */
+.cfgFormVisualBlock .cfgFormUploadCard,
+.cfgFormVisualBlock .cfgFormMediaPreview,
+.cfgFormVisualBlock .cfgFormMiniBtn{
+  width: 100%;
+}
+
+.cfgFormVisualBlock .cfgFormUploadCard{
+  overflow: hidden;
+}
+
+.cfgFormVisualBlock .cfgFormMiniBtn{
+  flex: 0 0 auto;
 }
 
 /* =========================================================
@@ -1060,7 +1130,7 @@
 
 .cfgPreviewBrowser{
   min-height: 300px;
-  padding: 26px 22px;
+  padding: 10px;
   display: grid;
   place-items: center;
   background:
