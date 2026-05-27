@@ -9,13 +9,17 @@ function form_obtener_config_inscripcion(): void
     try {
         date_default_timezone_set('America/Argentina/Cordoba');
         $pdo = formulario_pdo();
-        formulario_json(formulario_config_payload(formulario_config_actual($pdo)));
+        formulario_asegurar_columnas_config($pdo);
+        $payload = formulario_config_payload(formulario_config_actual($pdo));
+        $payload['tenant'] = formulario_tenant_info();
+        formulario_json($payload);
     } catch (Throwable $e) {
         log_error($e, 'formulario:obtener_config_inscripcion');
 
         formulario_json([
             'exito' => false,
             'mensaje' => 'Error obteniendo configuración de inscripción.',
+            'tenant' => function_exists('formulario_tenant_info') ? formulario_tenant_info() : null,
         ], 500);
     }
 }
@@ -29,7 +33,10 @@ function form_guardar_config_inscripcion(): void
     try {
         date_default_timezone_set('America/Argentina/Cordoba');
         $pdo = formulario_pdo();
-        $in = formulario_body();
+        formulario_asegurar_columnas_config($pdo);
+
+        // Compatible con JSON y con multipart/form-data para subir logo/fondo.
+        $in = array_merge(formulario_body(), $_POST);
 
         $idConfig = isset($in['id_config']) ? (int)$in['id_config'] : 0;
         $nombre = trim((string)($in['nombre'] ?? $in['titulo'] ?? ''));
@@ -37,6 +44,9 @@ function form_guardar_config_inscripcion(): void
         $fin = formulario_normalizar_fecha_mysql((string)($in['insc_fin'] ?? $in['fin'] ?? ''));
         $mensajeCerrado = trim((string)($in['mensaje_cerrado'] ?? 'La inscripción está cerrada. Consultá Secretaría.'));
         $activo = isset($in['activo']) ? ((int)$in['activo'] === 1 ? 1 : 0) : 1;
+        $colorPrincipal = formulario_normalizar_color($in['color_principal'] ?? $in['colorPrincipal'] ?? '#c6171d');
+        $quitarLogo = (int)($in['quitar_logo'] ?? $in['quitarLogo'] ?? 0) === 1;
+        $quitarFondo = (int)($in['quitar_fondo'] ?? $in['quitarFondo'] ?? 0) === 1;
 
         if ($nombre === '') {
             formulario_json(['exito' => false, 'mensaje' => 'Ingresá un título para el formulario.'], 422);
@@ -65,6 +75,34 @@ function form_guardar_config_inscripcion(): void
             $mensajeCerrado = 'La inscripción está cerrada. Consultá Secretaría.';
         }
 
+        $configActual = null;
+        if ($idConfig > 0) {
+            $stActual = $pdo->prepare('SELECT logo_url, fondo_url FROM mesas_config WHERE id_config = :id_config LIMIT 1');
+            $stActual->execute([':id_config' => $idConfig]);
+            $configActual = $stActual->fetch() ?: null;
+        }
+
+        $logoUrl = formulario_normalizar_url_publica($in['logo_url'] ?? $in['logoUrl'] ?? ($configActual['logo_url'] ?? null));
+        $fondoUrl = formulario_normalizar_url_publica($in['fondo_url'] ?? $in['fondoUrl'] ?? ($configActual['fondo_url'] ?? null));
+
+        $logoSubido = formulario_guardar_archivo_visual('logo', 'logo');
+        if ($logoSubido !== null) {
+            formulario_eliminar_archivo_publico($logoUrl);
+            $logoUrl = $logoSubido;
+        } elseif ($quitarLogo) {
+            formulario_eliminar_archivo_publico($logoUrl);
+            $logoUrl = null;
+        }
+
+        $fondoSubido = formulario_guardar_archivo_visual('fondo', 'fondo');
+        if ($fondoSubido !== null) {
+            formulario_eliminar_archivo_publico($fondoUrl);
+            $fondoUrl = $fondoSubido;
+        } elseif ($quitarFondo) {
+            formulario_eliminar_archivo_publico($fondoUrl);
+            $fondoUrl = null;
+        }
+
         $pdo->beginTransaction();
 
         if ($activo === 1) {
@@ -78,6 +116,9 @@ function form_guardar_config_inscripcion(): void
                        insc_inicio = :inicio,
                        insc_fin = :fin,
                        mensaje_cerrado = :mensaje,
+                       logo_url = :logo_url,
+                       fondo_url = :fondo_url,
+                       color_principal = :color_principal,
                        activo = :activo,
                        actualizado_en = NOW()
                  WHERE id_config = :id_config
@@ -90,6 +131,9 @@ function form_guardar_config_inscripcion(): void
                 ':inicio' => $inicio,
                 ':fin' => $fin,
                 ':mensaje' => mb_strtoupper($mensajeCerrado, 'UTF-8'),
+                ':logo_url' => $logoUrl,
+                ':fondo_url' => $fondoUrl,
+                ':color_principal' => $colorPrincipal,
                 ':activo' => $activo,
                 ':id_config' => $idConfig,
             ]);
@@ -104,8 +148,10 @@ function form_guardar_config_inscripcion(): void
             }
         } else {
             $sql = "
-                INSERT INTO mesas_config (nombre, insc_inicio, insc_fin, mensaje_cerrado, activo, creado_en, actualizado_en)
-                VALUES (:nombre, :inicio, :fin, :mensaje, :activo, NOW(), NOW())
+                INSERT INTO mesas_config
+                    (nombre, insc_inicio, insc_fin, mensaje_cerrado, logo_url, fondo_url, color_principal, activo, creado_en, actualizado_en)
+                VALUES
+                    (:nombre, :inicio, :fin, :mensaje, :logo_url, :fondo_url, :color_principal, :activo, NOW(), NOW())
             ";
 
             $st = $pdo->prepare($sql);
@@ -114,6 +160,9 @@ function form_guardar_config_inscripcion(): void
                 ':inicio' => $inicio,
                 ':fin' => $fin,
                 ':mensaje' => mb_strtoupper($mensajeCerrado, 'UTF-8'),
+                ':logo_url' => $logoUrl,
+                ':fondo_url' => $fondoUrl,
+                ':color_principal' => $colorPrincipal,
                 ':activo' => $activo,
             ]);
 
@@ -122,11 +171,13 @@ function form_guardar_config_inscripcion(): void
 
         $pdo->commit();
 
-        formulario_json([
-            'exito' => true,
-            'id_config' => $idConfig,
-            'mensaje' => 'Configuración guardada correctamente.',
-        ]);
+        $st = $pdo->prepare('SELECT id_config, nombre, insc_inicio, insc_fin, mensaje_cerrado, logo_url, fondo_url, color_principal, activo, creado_en, actualizado_en FROM mesas_config WHERE id_config = :id_config LIMIT 1');
+        $st->execute([':id_config' => $idConfig]);
+        $payload = formulario_config_payload($st->fetch() ?: formulario_config_actual($pdo));
+        $payload['mensaje'] = 'Configuración guardada correctamente.';
+        $payload['tenant'] = formulario_tenant_info();
+
+        formulario_json($payload);
     } catch (Throwable $e) {
         if ($pdo instanceof PDO && $pdo->inTransaction()) {
             $pdo->rollBack();
@@ -136,7 +187,7 @@ function form_guardar_config_inscripcion(): void
 
         formulario_json([
             'exito' => false,
-            'mensaje' => 'Error guardando configuración de inscripción.',
+            'mensaje' => $e instanceof RuntimeException ? $e->getMessage() : 'Error guardando configuración de inscripción.',
         ], 500);
     }
 }

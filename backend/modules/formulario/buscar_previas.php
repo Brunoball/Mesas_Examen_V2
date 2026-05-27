@@ -61,6 +61,7 @@ function form_buscar_previas(): void
                 'exito' => false,
                 'mensaje' => 'No se encontraron materias previas activas para ese DNI.',
                 'ya_inscripto' => false,
+                'tenant' => formulario_tenant_info(),
             ], 200);
         }
 
@@ -156,6 +157,7 @@ function form_buscar_previas(): void
             'gmail' => $gmail,
             'ya_inscripto' => $yaInscriptas,
             'anio_inscripcion' => $anioActual,
+            'tenant' => formulario_tenant_info(),
             'resumen' => [
                 'total_cond3' => $totalCond3,
                 'inscriptas' => $inscriptasCond3,
@@ -174,6 +176,7 @@ function form_buscar_previas(): void
             'exito' => false,
             'mensaje' => 'Error al consultar previas.',
             'detalle' => $e->getMessage(),
+            'tenant' => function_exists('formulario_tenant_info') ? formulario_tenant_info() : null,
         ], 200);
     }
 }

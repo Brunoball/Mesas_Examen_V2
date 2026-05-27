@@ -13,20 +13,27 @@ function form_registrar_inscripcion(): void
     try {
         date_default_timezone_set('America/Argentina/Cordoba');
         $pdo = formulario_pdo();
+        formulario_asegurar_tablas_inscripcion($pdo);
         $in = formulario_body();
 
         if (!formulario_ventana_abierta($pdo)) {
             formulario_json([
                 'exito' => false,
                 'mensaje' => 'La inscripción está cerrada. Consultá Secretaría.',
+                'tenant' => formulario_tenant_info(),
             ], 200);
         }
 
         $dni = formulario_normalizar_dni($in['dni'] ?? '');
+        $gmail = trim((string)($in['gmail'] ?? $in['email'] ?? ''));
         $materias = isset($in['materias']) && is_array($in['materias']) ? $in['materias'] : [];
 
         if (!formulario_validar_dni($dni)) {
             formulario_json(['exito' => false, 'mensaje' => 'DNI inválido.'], 200);
+        }
+
+        if ($gmail === '' || !filter_var($gmail, FILTER_VALIDATE_EMAIL)) {
+            formulario_json(['exito' => false, 'mensaje' => 'Ingresá un Gmail/email válido para confirmar la inscripción.'], 200);
         }
 
         if (count($materias) === 0) {
@@ -35,6 +42,7 @@ function form_registrar_inscripcion(): void
 
         $normalizadas = [];
         foreach ($materias as $materia) {
+            $idPrevia = isset($materia['id_previa']) ? (int)$materia['id_previa'] : 0;
             $idMateria = isset($materia['id_materia']) ? (int)$materia['id_materia'] : 0;
             $idCurso = isset($materia['curso_id']) ? (int)$materia['curso_id'] : 0;
             $idDivision = isset($materia['division_id']) ? (int)$materia['division_id'] : 0;
@@ -43,8 +51,9 @@ function form_registrar_inscripcion(): void
                 formulario_json(['exito' => false, 'mensaje' => 'Estructura de materias inválida.'], 200);
             }
 
-            $clave = $idMateria . '_' . $idCurso . '_' . $idDivision;
+            $clave = ($idPrevia > 0 ? 'p' . $idPrevia : 'm' . $idMateria . '_' . $idCurso . '_' . $idDivision);
             $normalizadas[$clave] = [
+                'id_previa' => $idPrevia,
                 'id_materia' => $idMateria,
                 'curso_id' => $idCurso,
                 'division_id' => $idDivision,
@@ -59,13 +68,21 @@ function form_registrar_inscripcion(): void
         $sqlCheck = "
             SELECT
                 p.id_previa,
+                p.dni,
+                p.alumno,
                 p.id_materia,
                 p.materia_id_curso,
                 p.materia_id_division,
+                p.id_condicion,
                 CASE WHEN COALESCE(p.inscripcion, 0) = 1 THEN 1 ELSE 0 END AS inscripcion,
-                m.materia
+                p.anio,
+                m.materia,
+                c_mat.nombre_curso AS curso,
+                d_mat.nombre_division AS division
             FROM previas p
             INNER JOIN materias m ON m.id_materia = p.id_materia
+            LEFT JOIN curso c_mat ON c_mat.id_curso = p.materia_id_curso
+            LEFT JOIN division d_mat ON d_mat.id_division = p.materia_id_division
             WHERE p.dni = :dni
               AND p.id_condicion = 3
               AND p.activo = 1
@@ -87,12 +104,22 @@ function form_registrar_inscripcion(): void
             $row = $stCheck->fetch();
 
             if ($row) {
+                if ($m['id_previa'] > 0 && (int)$row['id_previa'] !== $m['id_previa']) {
+                    $materiasFaltantes[] = $m;
+                    continue;
+                }
+
                 $materiasValidas[] = [
                     'id_previa' => (int)$row['id_previa'],
                     'id_materia' => (int)$row['id_materia'],
                     'curso_id' => (int)$row['materia_id_curso'],
                     'division_id' => (int)$row['materia_id_division'],
+                    'id_condicion' => (int)$row['id_condicion'],
                     'materia' => (string)$row['materia'],
+                    'curso' => (string)($row['curso'] ?? ''),
+                    'division' => (string)($row['division'] ?? ''),
+                    'alumno' => (string)$row['alumno'],
+                    'anio' => (int)$row['anio'],
                     'inscripcion' => (int)$row['inscripcion'],
                 ];
             } else {
@@ -106,6 +133,7 @@ function form_registrar_inscripcion(): void
                 'exito' => false,
                 'mensaje' => 'Algunas materias no corresponden a previas activas para ese DNI.',
                 'materias_faltantes' => $materiasFaltantes,
+                'tenant' => formulario_tenant_info(),
             ], 200);
         }
 
@@ -118,7 +146,71 @@ function form_registrar_inscripcion(): void
                 'mensaje' => 'Este alumno ya fue inscripto en las materias seleccionadas.',
                 'ya_inscripto' => true,
                 'anio_inscripcion' => (int)date('Y'),
+                'tenant' => formulario_tenant_info(),
             ], 200);
+        }
+
+        $alumno = (string)($materiasValidas[0]['alumno'] ?? '');
+        $anioInscripcion = (int)date('Y');
+        $host = function_exists('request_host_normalizado') ? request_host_normalizado() : (string)($_SERVER['HTTP_HOST'] ?? '');
+
+        $sqlInscripcion = "
+            INSERT INTO formulario_inscripciones (
+                dni, gmail, alumno, anio, estado, origen_host, ip, user_agent, total_materias, creado_en, actualizado_en
+            ) VALUES (
+                :dni, :gmail, :alumno, :anio, 'registrada', :origen_host, :ip, :user_agent, :total_materias, NOW(), NOW()
+            )
+            ON DUPLICATE KEY UPDATE
+                id_inscripcion = LAST_INSERT_ID(id_inscripcion),
+                gmail = VALUES(gmail),
+                alumno = VALUES(alumno),
+                estado = 'registrada',
+                origen_host = VALUES(origen_host),
+                ip = VALUES(ip),
+                user_agent = VALUES(user_agent),
+                actualizado_en = NOW()
+        ";
+        $stInscripcion = $pdo->prepare($sqlInscripcion);
+        $stInscripcion->execute([
+            ':dni' => $dni,
+            ':gmail' => $gmail,
+            ':alumno' => $alumno,
+            ':anio' => $anioInscripcion,
+            ':origen_host' => substr($host, 0, 190),
+            ':ip' => formulario_ip_cliente(),
+            ':user_agent' => substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255),
+            ':total_materias' => count($materiasValidas),
+        ]);
+        $idInscripcion = (int)$pdo->lastInsertId();
+
+        $sqlDetalle = "
+            INSERT INTO formulario_inscripciones_detalle (
+                id_inscripcion, id_previa, id_materia, materia_nombre, curso_id, division_id, id_condicion, estado, creado_en, actualizado_en
+            ) VALUES (
+                :id_inscripcion, :id_previa, :id_materia, :materia_nombre, :curso_id, :division_id, :id_condicion, 'inscripta', NOW(), NOW()
+            )
+            ON DUPLICATE KEY UPDATE
+                id_inscripcion = VALUES(id_inscripcion),
+                id_materia = VALUES(id_materia),
+                materia_nombre = VALUES(materia_nombre),
+                curso_id = VALUES(curso_id),
+                division_id = VALUES(division_id),
+                id_condicion = VALUES(id_condicion),
+                estado = 'inscripta',
+                actualizado_en = NOW()
+        ";
+        $stDetalle = $pdo->prepare($sqlDetalle);
+
+        foreach ($materiasValidas as $m) {
+            $stDetalle->execute([
+                ':id_inscripcion' => $idInscripcion,
+                ':id_previa' => $m['id_previa'],
+                ':id_materia' => $m['id_materia'],
+                ':materia_nombre' => $m['materia'],
+                ':curso_id' => $m['curso_id'],
+                ':division_id' => $m['division_id'],
+                ':id_condicion' => $m['id_condicion'],
+            ]);
         }
 
         $sqlUpdate = "
@@ -145,14 +237,41 @@ function form_registrar_inscripcion(): void
             $marcadas += $stUpdate->rowCount();
         }
 
+        $stTotal = $pdo->prepare("\n            UPDATE formulario_inscripciones fi\n               SET total_materias = (\n                   SELECT COUNT(*)\n                     FROM formulario_inscripciones_detalle fid\n                    WHERE fid.id_inscripcion = fi.id_inscripcion\n                      AND fid.estado <> 'anulada'\n               )\n             WHERE fi.id_inscripcion = :id_inscripcion\n        ");
+        $stTotal->execute([':id_inscripcion' => $idInscripcion]);
+
         $pdo->commit();
+
+        $emailResultado = formulario_enviar_email_confirmacion($pdo, $gmail, $dni, $alumno, $materiasValidas, $anioInscripcion);
+
+        try {
+            $stEmail = $pdo->prepare("\n                UPDATE formulario_inscripciones\n                   SET email_confirmacion_enviado = :enviado,\n                       email_confirmacion_enviado_en = CASE WHEN :enviado2 = 1 THEN NOW() ELSE email_confirmacion_enviado_en END,\n                       email_confirmacion_error = :error\n                 WHERE id_inscripcion = :id_inscripcion\n                 LIMIT 1\n            ");
+            $stEmail->execute([
+                ':enviado' => !empty($emailResultado['enviado']) ? 1 : 0,
+                ':enviado2' => !empty($emailResultado['enviado']) ? 1 : 0,
+                ':error' => !empty($emailResultado['enviado']) ? null : substr((string)($emailResultado['error'] ?? 'Error enviando email.'), 0, 255),
+                ':id_inscripcion' => $idInscripcion,
+            ]);
+        } catch (Throwable $emailUpdateError) {
+            if (function_exists('log_error')) {
+                log_error($emailUpdateError, 'formulario:registrar_inscripcion:update_email_status');
+            }
+        }
 
         formulario_json([
             'exito' => true,
-            'mensaje' => 'Inscripción registrada correctamente.',
+            'mensaje' => !empty($emailResultado['enviado'])
+                ? 'Inscripción registrada correctamente. Te enviamos la confirmación al email ingresado.'
+                : 'Inscripción registrada correctamente, pero no se pudo enviar el email de confirmación. Consultá Secretaría si necesitás constancia.',
+            'id_inscripcion' => $idInscripcion,
+            'dni' => $dni,
+            'gmail' => $gmail,
+            'email_enviado' => !empty($emailResultado['enviado']),
+            'email_error' => $emailResultado['error'] ?? null,
             'insertados' => $marcadas,
             'marcadas' => $marcadas,
-            'anio' => (int)date('Y'),
+            'anio' => $anioInscripcion,
+            'tenant' => formulario_tenant_info(),
         ], 200);
     } catch (Throwable $e) {
         if ($pdo instanceof PDO && $pdo->inTransaction()) {
@@ -167,6 +286,7 @@ function form_registrar_inscripcion(): void
             'exito' => false,
             'mensaje' => 'Error al registrar la inscripción.',
             'detalle' => $e->getMessage(),
+            'tenant' => function_exists('formulario_tenant_info') ? formulario_tenant_info() : null,
         ], 200);
     }
 }

@@ -13,7 +13,6 @@ import Catedras from "./components/Catedras/Catedras";
 import Docentes from "./components/Docentes/Docentes";
 import Previas from "./components/Previas/Previas.jsx";
 import Configuracion from "./components/Configuracion/Configuracion";
-import ConfiguracionFormulario from "./components/ConfiguracionFormulario/ConfiguracionFormulario";
 
 const SESSION_IDLE_TIMEOUT_MS = 60 * 60 * 1000;
 const SESSION_CHECK_INTERVAL_MS = 30 * 1000;
@@ -265,16 +264,6 @@ export default function App() {
           }
         />
 
-        <Route
-          path="/configuracion-formulario"
-          element={
-            <RutaProtegida>
-              <Principal>
-                <ConfiguracionFormulario />
-              </Principal>
-            </RutaProtegida>
-          }
-        />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -2,14 +2,167 @@
 import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import "./Formulario.css";
 import Toast from "../global/Toast";
-import escudo from "../../imagenes/Escudo.png";
 import BASE_URL from "../../config/config";
 
 const API_BASE = String(BASE_URL || "").replace(/\/+$/, "");
+
+const obtenerTenantIdExplicito = () => {
+  try {
+    const params = new URLSearchParams(window.location.search || "");
+    const desdeUrl =
+      params.get("idTenant") ||
+      params.get("id_tenant") ||
+      params.get("tenant_id") ||
+      params.get("tenantId") ||
+      "";
+
+    if (/^\d+$/.test(String(desdeUrl).trim())) {
+      return String(desdeUrl).trim();
+    }
+
+    const posiblesClaves = [
+      "idTenant",
+      "id_tenant",
+      "tenant_id",
+      "tenantId",
+      "lerna_tenant_id",
+      "tenant_actual",
+    ];
+
+    for (const key of posiblesClaves) {
+      const value = localStorage.getItem(key);
+      if (/^\d+$/.test(String(value || "").trim())) {
+        return String(value).trim();
+      }
+    }
+  } catch {
+    // Sin window/localStorage o con almacenamiento bloqueado: se resuelve por host en backend.
+  }
+
+  return "";
+};
+
 const apiUrl = (action) => {
   const base = API_BASE.endsWith("/api.php") ? API_BASE : `${API_BASE}/api.php`;
-  return `${base}?action=${encodeURIComponent(action)}`;
+  const params = new URLSearchParams({ action });
+  const idTenant = obtenerTenantIdExplicito();
+
+  if (idTenant) {
+    params.set("idTenant", idTenant);
+  }
+
+  return `${base}?${params.toString()}`;
 };
+
+const conTenantEnBody = (payload = {}) => {
+  const idTenant = obtenerTenantIdExplicito();
+  return idTenant ? { ...payload, idTenant: Number(idTenant) } : payload;
+};
+
+const getApiOrigin = () => {
+  try {
+    const base = API_BASE.endsWith("/api.php") ? API_BASE : `${API_BASE}/api.php`;
+    return new URL(base, window.location.origin).origin;
+  } catch {
+    return window.location.origin;
+  }
+};
+
+const resolverAssetUrl = (url) => {
+  const value = String(url || "").trim();
+  if (!value) return "";
+
+  if (/^(https?:)?\/\//i.test(value) || value.startsWith("data:") || value.startsWith("blob:")) {
+    return value;
+  }
+
+  const clean = value.replace(/^\.\/+/, "").replace(/^\/html\//, "/");
+  const path = clean.startsWith("/") ? clean : `/${clean}`;
+
+  // Cuando el front corre local pero apunta al backend de Hostinger,
+  // /uploads/... no puede resolverse contra localhost:3000.
+  // Siempre lo convertimos al origen real del backend configurado en BASE_URL.
+  return `${getApiOrigin()}${path}`;
+};
+
+const normalizarColor = (color, fallback = "#c6171d") => {
+  const value = String(color || "").trim();
+  return /^#[0-9a-fA-F]{6}$/.test(value) ? value.toLowerCase() : fallback;
+};
+
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+const hexToRgb = (hex) => {
+  const clean = normalizarColor(hex).replace("#", "");
+  return {
+    r: parseInt(clean.slice(0, 2), 16),
+    g: parseInt(clean.slice(2, 4), 16),
+    b: parseInt(clean.slice(4, 6), 16),
+  };
+};
+
+const rgbToHex = ({ r, g, b }) =>
+  `#${[r, g, b]
+    .map((v) => clamp(Math.round(v), 0, 255).toString(16).padStart(2, "0"))
+    .join("")}`;
+
+const ajustarColor = (hex, amount) => {
+  const rgb = hexToRgb(hex);
+  return rgbToHex({
+    r: rgb.r + amount,
+    g: rgb.g + amount,
+    b: rgb.b + amount,
+  });
+};
+
+const generarTemaFormulario = (cfg) => {
+  const primary = normalizarColor(cfg?.color_principal || cfg?.colorPrincipal);
+  const fondo = resolverAssetUrl(
+    cfg?.fondo_url_absoluta ||
+      cfg?.fondoUrlAbsoluta ||
+      cfg?.fondoUrlAbsolute ||
+      cfg?.fondo_url ||
+      cfg?.fondoUrl
+  );
+
+  return {
+    "--reg-primary": primary,
+    "--reg-primary-light": ajustarColor(primary, 38),
+    "--reg-primary-dark": ajustarColor(primary, -48),
+    "--reg-accent": primary,
+    ...(fondo ? { "--form-bg-image": `url("${fondo}")` } : {}),
+  };
+};
+
+const obtenerLogoFormulario = (cfg) =>
+  resolverAssetUrl(
+    cfg?.logo_url_absoluta ||
+      cfg?.logoUrlAbsoluta ||
+      cfg?.logoUrlAbsolute ||
+      cfg?.logo_url ||
+      cfg?.logoUrl ||
+      ""
+  );
+
+const LogoFormulario = ({ src, className = "hero-logo", alt = "Logo de la escuela" }) => {
+  if (!src) return null;
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      onError={(e) => {
+        // Si la URL guardada en la base es inválida, no mostramos un logo fijo.
+        // Así queda claro que hay que cargar/corregir el logo desde el panel interno.
+        e.currentTarget.style.display = "none";
+      }}
+    />
+  );
+};
+
+const obtenerTituloFormulario = (cfg) =>
+  String(cfg?.titulo || cfg?.nombre || "Mesas de Examen").trim() || "Mesas de Examen";
 
 /* ======== Claves de localStorage ======== */
 const LS = {
@@ -104,11 +257,13 @@ const useVentanaInscripcion = (pollMs = 10000) => {
 
 /* ================== Pantalla fuera de término ================== */
 const InscripcionCerrada = ({ cfg }) => {
-  const titulo = cfg?.titulo || "Mesas de Examen";
+  const titulo = obtenerTituloFormulario(cfg);
   const msg = cfg?.mensaje_cerrado || "Inscripción cerrada / fuera de término.";
+  const logo = obtenerLogoFormulario(cfg);
+  const tema = generarTemaFormulario(cfg);
 
   return (
-    <div className="auth-page">
+    <div className="auth-page is-login-screen" style={tema}>
       <div className="auth-card">
         <aside className="auth-hero is-login">
           <div className="hero-inner">
@@ -117,11 +272,7 @@ const InscripcionCerrada = ({ cfg }) => {
               <p className="hero-sub">Inscripción en línea</p>
             </div>
 
-            <img
-              src={escudo}
-              alt="Escudo IPET 50"
-              className="hero-logo hero-logo--big"
-            />
+            <LogoFormulario src={logo} className="hero-logo hero-logo--big" />
           </div>
         </aside>
 
@@ -158,8 +309,11 @@ const ResumenAlumno = ({
   onVolver,
   onConfirmar,
   ventana,
+  configVisual,
   onVentanaCerro,
 }) => {
+  const logo = obtenerLogoFormulario(configVisual || ventana);
+
   // Materias inscribibles (cond=3)
   const materiasCond3 = data?.alumno?.materias ?? [];
 
@@ -435,9 +589,13 @@ const ResumenAlumno = ({
       gmail: data.gmail ?? "",
       nombre_alumno: data.alumno?.nombre ?? "",
       materias: elegidas.map((m) => ({
+        id_previa: m.id_previa,
         id_materia: m.id_materia,
         curso_id: m.curso_id,
         division_id: m.division_id,
+        materia: m.materia || "",
+        curso: m.curso || "",
+        division: m.division || "",
       })),
       materias_nombres: elegidas.map((m) => m.materia || ""),
     });
@@ -462,7 +620,7 @@ const ResumenAlumno = ({
         <div className="hero-scroll">
           <div className="hero-inner">
             <div className="hero-top">
-              <img src={escudo} alt="Escudo IPET 50" className="hero-logo" />
+              <LogoFormulario src={logo} className="hero-logo" />
               <h1 className="hero-title">¡Bienvenido!</h1>
               <p className="hero-sub">Revisá tus datos de inscripción.</p>
             </div>
@@ -896,7 +1054,7 @@ const Formulario = () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ gmail: gmail.trim(), dni }),
+          body: JSON.stringify(conTenantEnBody({ gmail: gmail.trim(), dni })),
         }
       );
 
@@ -964,10 +1122,13 @@ const Formulario = () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+          body: JSON.stringify(conTenantEnBody({
             dni,
+            gmail,
+            nombre_alumno,
             materias,
-          }),
+            materias_nombres,
+          })),
         }
       );
 
@@ -986,27 +1147,12 @@ const Formulario = () => {
 
       showToastReplace(
         "exito",
-        `Inscripción registrada (${insertados} materia/s).`,
+        json?.mensaje ||
+          cfgActual?.mensaje_confirmacion ||
+          ventana?.mensaje_confirmacion ||
+          `Inscripción registrada (${insertados} materia/s).`,
         duracionExito
       );
-
-      try {
-        await fetch(
-          "https://inscripcion.ipet50.edu.ar/mails/confirm_inscripcion.php",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              toEmail: gmail,
-              nombre: nombre_alumno || "",
-              dni,
-              materias: materias_nombres || [],
-            }),
-          }
-        );
-      } catch (e) {
-        console.warn("Error enviando correo de confirmación", e);
-      }
 
       setDataAlumno(null);
 
@@ -1045,9 +1191,18 @@ const Formulario = () => {
   }
 
   const isLoginScreen = !dataAlumno;
+  const temaFormulario = generarTemaFormulario(ventana);
+  const logoFormulario = obtenerLogoFormulario(ventana);
+  const tituloFormulario = obtenerTituloFormulario(ventana);
+  const textoBienvenida =
+    String(ventana?.mensaje_bienvenida || "").trim() ||
+    "Ingresá tu Gmail y DNI para consultar e inscribirte.";
 
   return (
-    <div className={`auth-page ${isLoginScreen ? "is-login-screen" : ""}`}>
+    <div
+      className={`auth-page ${isLoginScreen ? "is-login-screen" : ""}`}
+      style={temaFormulario}
+    >
       {toast && (
         <Toast
           key={toast.key}
@@ -1064,6 +1219,7 @@ const Formulario = () => {
           onVolver={() => setDataAlumno(null)}
           onConfirmar={confirmarInscripcion}
           ventana={ventana}
+          configVisual={ventana}
           onVentanaCerro={() => {
             setDataAlumno(null);
           }}
@@ -1073,17 +1229,12 @@ const Formulario = () => {
           <aside className="auth-hero is-login">
             <div className="hero-inner">
               <div className="her-container">
-                <h1 className="hero-title">
-                  {ventana?.titulo || "Mesas de Examen · IPET 50"}
-                </h1>
-                <p className="hero-sub">
-                  Ingresá tu Gmail y DNI para consultar e inscribirte.
-                </p>
+                <h1 className="hero-title">{tituloFormulario}</h1>
+                <p className="hero-sub">{textoBienvenida}</p>
               </div>
 
-              <img
-                src={escudo}
-                alt="Escudo IPET 50"
+              <LogoFormulario
+                src={logoFormulario}
                 className="hero-logo hero-logo--big"
               />
             </div>

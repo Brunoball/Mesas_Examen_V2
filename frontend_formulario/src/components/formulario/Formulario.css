@@ -1464,3 +1464,127 @@ html, body{ overflow-x: hidden; }
 @media (max-width: 860px) {
   .auth-form{justify-content: start !important;}
 }
+
+/* =========================================================
+   PERSONALIZACIÓN DINÁMICA DEL FORMULARIO PÚBLICO
+   Estos valores llegan desde mesas_config por form_obtener_config_inscripcion.
+   - --reg-primary / --reg-primary-light / --reg-primary-dark: color principal.
+   - --form-bg-image: fondo configurado en el panel interno.
+   ========================================================= */
+.auth-page,
+.app-root{
+  background-image:
+    linear-gradient(90deg, rgba(15, 23, 42, .22), rgba(15, 23, 42, .16)),
+    var(--form-bg-image, url("../../imagenes/img_fondo.png"));
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.auth-page::before{
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 20%, rgba(255,255,255,.10), transparent 42%);
+  z-index: 0;
+}
+
+.auth-page > *{
+  position: relative;
+  z-index: 1;
+}
+
+.auth-hero{
+  background:
+    radial-gradient(900px 460px at 5% 0%, color-mix(in oklab, var(--reg-primary-light) 70%, transparent), transparent),
+    linear-gradient(135deg, var(--reg-primary), var(--reg-primary-light));
+}
+
+.btn-cta,
+.btn-primary{
+  background: var(--reg-primary) !important;
+}
+
+.btn-cta:hover,
+.btn-primary:hover{
+  background: var(--reg-primary-dark) !important;
+}
+
+.remember input[type="checkbox"]{
+  accent-color: var(--reg-primary);
+}
+
+.fecha-cierre{
+  color: color-mix(in oklab, var(--reg-primary) 85%, var(--ink-700));
+}
+
+.hero-logo{
+  background: color-mix(in oklab, #ffffff 15%, transparent);
+}
+
+/* =========================================================
+   FIX FINAL PERSONALIZACIÓN — 3Devs
+   Evita que vuelva a aparecer la imagen fija img_fondo.png detrás del
+   formulario. El fondo visible ahora sale únicamente de mesas_config.fondo_url
+   y, si no hay fondo cargado, se usa un degradado del color principal.
+   ========================================================= */
+.app-root{
+  background: #0f172a !important;
+  background-image: none !important;
+}
+
+.auth-page,
+.auth-page.is-login-screen{
+  width: 100vw;
+  min-height: 100dvh;
+  background-color: #0f172a !important;
+  background-image:
+    linear-gradient(90deg, rgba(15, 23, 42, .26), rgba(15, 23, 42, .14)),
+    var(--form-bg-image, linear-gradient(135deg, var(--reg-primary-dark), var(--reg-primary-light))) !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+}
+
+.auth-page::before{
+  background:
+    radial-gradient(circle at 50% 20%, rgba(255,255,255,.10), transparent 42%),
+    linear-gradient(90deg, rgba(0,0,0,.18), rgba(0,0,0,.05), rgba(0,0,0,.18)) !important;
+}
+
+.auth-page.is-login-screen .auth-card{
+  width: min(1180px, calc(100vw - 64px));
+  min-height: 560px;
+}
+
+.auth-page.is-login-screen .auth-hero.is-login{
+  background:
+    radial-gradient(900px 520px at 8% 0%, color-mix(in oklab, var(--reg-primary-light) 82%, transparent), transparent 58%),
+    linear-gradient(135deg, var(--reg-primary), var(--reg-primary-light)) !important;
+}
+
+.auth-page.is-login-screen .hero-logo--big{
+  width: 76px;
+  height: 76px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.18);
+  box-shadow: 0 18px 36px -22px rgba(0,0,0,.55);
+}
+
+.auth-page.is-login-screen .hero-title{
+  text-transform: uppercase;
+}
+
+@media (max-width: 860px){
+  .auth-page.is-login-screen{
+    width: 100vw;
+    background-position: center center !important;
+  }
+
+  .auth-page.is-login-screen .auth-card{
+    width: 100vw !important;
+    min-height: 100dvh !important;
+  }
+}

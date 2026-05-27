@@ -12,6 +12,7 @@ function route_formulario(string $action): bool
         case 'form_obtener_config_inscripcion':
         case 'obtener_config_inscripcion':
         case 'formulario_obtener_config_inscripcion':
+        case 'form_admin_obtener_config_inscripcion':
             form_obtener_config_inscripcion();
             return true;
 

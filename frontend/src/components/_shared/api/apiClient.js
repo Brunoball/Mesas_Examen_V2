@@ -137,11 +137,12 @@ function buildHeaders(action, extraHeaders = {}, options = {}) {
   // innecesarios; si hace falta para formularios publicos, va como query param.
   const token = getAuthToken();
   const hasBody = Boolean(options.hasBody);
+  const isFormData = Boolean(options.isFormData);
 
   return {
     Accept: 'application/json',
     'X-Requested-With': 'XMLHttpRequest',
-    ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
+    ...(hasBody && !isFormData ? { 'Content-Type': 'application/json' } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...extraHeaders,
   };
@@ -156,8 +157,13 @@ function agregarCsrfEnBody(action, method, payload) {
 
   const csrf = getCsrfToken();
 
-  if (!csrf || payload instanceof FormData) {
+  if (!csrf) {
     return payload || {};
+  }
+
+  if (payload instanceof FormData) {
+    if (!payload.has('csrf_token')) payload.append('csrf_token', csrf);
+    return payload;
   }
 
   return {
@@ -207,12 +213,13 @@ export async function apiGet(action, params = {}) {
 
 export async function apiPost(action, payload = {}, params = {}) {
   const bodyPayload = agregarCsrfEnBody(action, 'POST', payload);
+  const isFormData = bodyPayload instanceof FormData;
 
   const res = await fetch(buildUrl(action, params), {
     method: 'POST',
     credentials: 'include',
-    headers: buildHeaders(action, {}, { hasBody: true }),
-    body: JSON.stringify(bodyPayload || {}),
+    headers: buildHeaders(action, {}, { hasBody: true, isFormData }),
+    body: isFormData ? bodyPayload : JSON.stringify(bodyPayload || {}),
   });
 
   return handleResponse(action, res);
@@ -224,12 +231,13 @@ export async function apiRequest(action, options = {}) {
   const payload = options.payload || {};
   const hasBody = method !== 'GET';
   const bodyPayload = hasBody ? agregarCsrfEnBody(action, method, payload) : null;
+  const isFormData = bodyPayload instanceof FormData;
 
   const res = await fetch(buildUrl(action, params), {
     method,
     credentials: 'include',
-    headers: buildHeaders(action, options.headers || {}, { hasBody }),
-    ...(hasBody ? { body: JSON.stringify(bodyPayload || {}) } : {}),
+    headers: buildHeaders(action, options.headers || {}, { hasBody, isFormData }),
+    ...(hasBody ? { body: isFormData ? bodyPayload : JSON.stringify(bodyPayload || {}) } : {}),
   });
 
   return handleResponse(action, res);

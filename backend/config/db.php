@@ -143,8 +143,82 @@ function tenant_context(?string $sessionKey = null): ?array
 
 
 /**
- * Intenta leer un id de tenant para endpoints publicos.
- * Prioridad: query/body/header y, si no viene nada, DEFAULT_TENANT_ID del .env.
+ * Host actual sin puerto, normalizado a minusculas.
+ */
+function request_host_normalizado(): string
+{
+    $host = trim((string)($_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? ''));
+    if (strpos($host, ',') !== false) {
+        $host = trim(explode(',', $host)[0]);
+    }
+    $host = preg_replace('/:\d+$/', '', $host) ?: '';
+    $host = strtolower(trim($host));
+    return $host;
+}
+
+function request_host_from_url_or_host(string $value): string
+{
+    $value = trim($value);
+    if ($value === '') {
+        return '';
+    }
+
+    if (preg_match('#^https?://#i', $value) === 1) {
+        $parsed = parse_url($value);
+        $value = is_array($parsed) ? (string)($parsed['host'] ?? '') : '';
+    }
+
+    return request_host_normalizado_from_value($value);
+}
+
+/**
+ * Hosts posibles para resolver el tenant publico.
+ * Si el formulario vive en escuela.lerna.com.ar pero llama a una API central
+ * (por ejemplo panel.lerna.com.ar/api.php), HTTP_HOST es la API; por eso
+ * primero miramos Origin/Referer, que representan el subdominio del formulario.
+ */
+function request_public_tenant_host_candidates(): array
+{
+    $raw = [
+        $_SERVER['HTTP_ORIGIN'] ?? '',
+        $_SERVER['HTTP_REFERER'] ?? '',
+        $_SERVER['HTTP_X_FORWARDED_HOST'] ?? '',
+        $_SERVER['HTTP_HOST'] ?? '',
+    ];
+
+    $hosts = [];
+    foreach ($raw as $value) {
+        $host = request_host_from_url_or_host((string)$value);
+        if ($host !== '') {
+            $hosts[] = $host;
+        }
+    }
+
+    return array_values(array_unique($hosts));
+}
+
+function request_public_tenant_es_local(): bool
+{
+    foreach (request_public_tenant_host_candidates() as $host) {
+        if (request_host_es_local($host)) {
+            return true;
+        }
+    }
+
+    return request_host_es_local(request_host_normalizado());
+}
+
+function request_host_es_local(string $host): bool
+{
+    return in_array($host, ['localhost', '127.0.0.1', '::1'], true)
+        || preg_match('/\.local$/', $host) === 1
+        || preg_match('/^localhost$/', $host) === 1;
+}
+
+/**
+ * Lee un id de tenant enviado de forma explicita por query/body/header.
+ * No usa DEFAULT_TENANT_ID para evitar que un formulario publico caiga
+ * accidentalmente en la DB de otra escuela.
  */
 function public_tenant_id_from_request(): int
 {
@@ -161,7 +235,6 @@ function public_tenant_id_from_request(): int
         $body['id_tenant'] ?? null,
         $body['tenant_id'] ?? null,
         $_SERVER['HTTP_X_TENANT_ID'] ?? null,
-        env_value('DEFAULT_TENANT_ID', '0'),
     ];
 
     foreach ($candidates as $value) {
@@ -174,50 +247,169 @@ function public_tenant_id_from_request(): int
     return 0;
 }
 
-/**
- * Resuelve el tenant para acciones publicas del formulario.
- * Si viene Authorization/X-Session valido, usa ese tenant. Si no, usa DEFAULT_TENANT_ID.
- */
-function public_tenant_context(): ?array
+function public_tenant_context_by_id(int $idTenant): ?array
 {
-    $sessionKey = request_session_key();
-    if ($sessionKey !== '') {
-        $ctx = tenant_context($sessionKey);
-        if ($ctx) {
-            return $ctx;
-        }
-    }
-
-    $idTenant = public_tenant_id_from_request();
     if ($idTenant <= 0) {
         return null;
     }
 
     $master = master_db();
-    $stmt = $master->prepare("
-        SELECT
-            t.idTenant,
-            t.nombre AS tenant_nombre,
-            t.logo_url,
-            t.logo_url AS logo_icono_url,
-            t.db_host,
-            t.db_name,
-            t.db_user,
-            t.db_pass,
-            t.activo AS tenant_activo
-        FROM tenants t
-        WHERE t.idTenant = :idTenant
-          AND t.activo = 1
-        LIMIT 1
-    ");
+    $stmt = $master->prepare("\n        SELECT\n            t.idTenant,\n            t.nombre AS tenant_nombre,\n            t.logo_url,\n            t.logo_url AS logo_icono_url,\n            t.db_host,\n            t.db_name,\n            t.db_user,\n            t.db_pass,\n            t.activo AS tenant_activo,\n            NULL AS dominio_resuelto,\n            'idTenant' AS tenant_resuelto_por\n        FROM tenants t\n        WHERE t.idTenant = :idTenant\n          AND t.activo = 1\n        LIMIT 1\n    ");
     $stmt->execute([':idTenant' => $idTenant]);
 
     $ctx = $stmt->fetch();
-    if (!$ctx) {
+    return $ctx ?: null;
+}
+
+/**
+ * Resuelve el tenant por dominio/subdominio usando la base MASTER.
+ * Este es el camino correcto para formularios publicos:
+ * escuela-a.lerna.com.ar -> tenant A -> DB A.
+ */
+function public_tenant_context_by_host(?string $host = null): ?array
+{
+    $host = request_host_normalizado_from_value($host ?? request_host_normalizado());
+    if ($host === '' || request_host_es_local($host)) {
         return null;
     }
 
-    return $ctx;
+    $candidates = [$host];
+    if (strpos($host, 'www.') === 0) {
+        $candidates[] = substr($host, 4);
+    } else {
+        $candidates[] = 'www.' . $host;
+    }
+    $candidates = array_values(array_unique(array_filter($candidates)));
+
+    $placeholders = implode(',', array_fill(0, count($candidates), '?'));
+    $master = master_db();
+    $stmt = $master->prepare("\n        SELECT\n            t.idTenant,\n            t.nombre AS tenant_nombre,\n            t.logo_url,\n            t.logo_url AS logo_icono_url,\n            t.db_host,\n            t.db_name,\n            t.db_user,\n            t.db_pass,\n            t.activo AS tenant_activo,\n            td.dominio AS dominio_resuelto,\n            td.tipo AS tenant_resuelto_por\n        FROM tenant_dominios td\n        INNER JOIN tenants t ON t.idTenant = td.idTenant\n        WHERE LOWER(td.dominio) IN ({$placeholders})\n          AND td.activo = 1\n          AND t.activo = 1\n        ORDER BY FIELD(LOWER(td.dominio), {$placeholders})\n        LIMIT 1\n    ");
+    $stmt->execute(array_merge($candidates, $candidates));
+
+    $ctx = $stmt->fetch();
+    return $ctx ?: null;
+}
+
+function request_host_normalizado_from_value(string $host): string
+{
+    $host = trim($host);
+    if (strpos($host, ',') !== false) {
+        $host = trim(explode(',', $host)[0]);
+    }
+    $host = preg_replace('/:\d+$/', '', $host) ?: '';
+    return strtolower(trim($host));
+}
+
+function public_default_tenant_id_permitido(): int
+{
+    // En local se permite DEFAULT_TENANT_ID para facilitar pruebas.
+    if (request_public_tenant_es_local()) {
+        return (int)(env_value('DEFAULT_TENANT_ID', '0') ?? '0');
+    }
+
+    // En produccion solo se usa si lo habilitas explicitamente.
+    if (env_bool('PUBLIC_FORM_ALLOW_DEFAULT_TENANT', false)) {
+        return (int)(env_value('DEFAULT_TENANT_ID', '0') ?? '0');
+    }
+
+    return 0;
+}
+
+function public_query_tenant_permitido(): bool
+{
+    if (request_public_tenant_es_local()) {
+        return true;
+    }
+
+    return env_bool('PUBLIC_FORM_ALLOW_QUERY_TENANT', false);
+}
+
+/**
+ * Resuelve el tenant para acciones publicas del formulario.
+ * Prioridad segura:
+ * 1) Dominio/subdominio cargado en tenant_dominios.
+ * 2) idTenant explicito solo en local o si PUBLIC_FORM_ALLOW_QUERY_TENANT=true.
+ * 3) Sesion valida, para el panel/admin.
+ * 4) DEFAULT_TENANT_ID solo en local o si PUBLIC_FORM_ALLOW_DEFAULT_TENANT=true.
+ */
+function public_tenant_context(): ?array
+{
+    static $cache = [];
+
+    $hostCandidates = request_public_tenant_host_candidates();
+    $idFromRequest = public_tenant_id_from_request();
+    $sessionKey = request_session_key();
+    $cacheKey = implode(',', $hostCandidates) . '|' . $idFromRequest . '|' . substr(hash('sha256', $sessionKey), 0, 16);
+
+    if (array_key_exists($cacheKey, $cache)) {
+        return $cache[$cacheKey];
+    }
+
+    foreach ($hostCandidates as $hostCandidate) {
+        $ctx = public_tenant_context_by_host($hostCandidate);
+        if ($ctx) {
+            $ctx['host_origen_resuelto'] = $hostCandidate;
+            $cache[$cacheKey] = $ctx;
+            return $ctx;
+        }
+    }
+
+    if ($idFromRequest > 0 && public_query_tenant_permitido()) {
+        $ctx = public_tenant_context_by_id($idFromRequest);
+        if ($ctx) {
+            $ctx['tenant_resuelto_por'] = 'idTenant_request';
+            $cache[$cacheKey] = $ctx;
+            return $ctx;
+        }
+    }
+
+    if ($sessionKey !== '') {
+        $ctx = tenant_context($sessionKey);
+        if ($ctx) {
+            $ctx['dominio_resuelto'] = null;
+            $ctx['tenant_resuelto_por'] = 'session';
+            $cache[$cacheKey] = $ctx;
+            return $ctx;
+        }
+    }
+
+    $defaultTenantId = public_default_tenant_id_permitido();
+    if ($defaultTenantId > 0) {
+        $ctx = public_tenant_context_by_id($defaultTenantId);
+        if ($ctx) {
+            $ctx['tenant_resuelto_por'] = 'DEFAULT_TENANT_ID';
+            $cache[$cacheKey] = $ctx;
+            return $ctx;
+        }
+    }
+
+    $cache[$cacheKey] = null;
+    return null;
+}
+
+function public_tenant_info(): array
+{
+    $ctx = public_tenant_context();
+    if (!$ctx) {
+        return [
+            'resuelto' => false,
+            'host' => request_host_normalizado(),
+            'hosts_candidatos' => request_public_tenant_host_candidates(),
+        ];
+    }
+
+    return [
+        'resuelto' => true,
+        'idTenant' => (int)($ctx['idTenant'] ?? 0),
+        'nombre' => (string)($ctx['tenant_nombre'] ?? ''),
+        'logo_url' => $ctx['logo_url'] ?? null,
+        'logo_icono_url' => $ctx['logo_icono_url'] ?? ($ctx['logo_url'] ?? null),
+        'dominio' => $ctx['dominio_resuelto'] ?? null,
+        'resuelto_por' => $ctx['tenant_resuelto_por'] ?? null,
+        'host' => request_host_normalizado(),
+        'host_origen_resuelto' => $ctx['host_origen_resuelto'] ?? null,
+        'hosts_candidatos' => request_public_tenant_host_candidates(),
+    ];
 }
 
 /**
@@ -246,7 +438,7 @@ function public_tenant_db(): PDO
 
     $allowFallback = strtolower((string)env_value('ALLOW_DEFAULT_TENANT_DB', 'false')) === 'true';
     if (!$allowFallback) {
-        throw new RuntimeException('No se pudo resolver el tenant publico del formulario. Revisar DEFAULT_TENANT_ID o enviar X-Tenant-Id.');
+        throw new RuntimeException('No se pudo resolver la escuela del formulario. Cargá el subdominio en tenant_dominios o habilitá PUBLIC_FORM_ALLOW_QUERY_TENANT/PUBLIC_FORM_ALLOW_DEFAULT_TENANT para pruebas.');
     }
 
     $host = env_value('DB_HOST', 'localhost') ?? 'localhost';

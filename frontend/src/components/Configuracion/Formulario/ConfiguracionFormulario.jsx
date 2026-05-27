@@ -7,15 +7,19 @@ import {
   faCalendarAlt,
   faClock,
   faCog,
+  faImage,
   faInfoCircle,
+  faPalette,
   faSave,
+  faTrashAlt,
+  faUpload,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   formatoFechaLarga,
   HORAS,
   MINUTOS,
   useConfiguracionFormulario,
-} from "./hooks/useConfiguracionFormulario";
+} from "./hooks/useConfiguracionFormulario.js";
 import Principal, { MesasShellContext } from "../../Principal/Principal";
 import "../../Global/Global_css/roots.css";
 import "../../Global/Global_css/Global_Section.css";
@@ -42,6 +46,26 @@ function openNativePicker(event) {
   }
 }
 
+
+function formatoFechaPublicaPreview(fecha, hora, minuto) {
+  try {
+    if (!fecha) return "-";
+
+    const d = new Date(`${fecha}T${hora}:${minuto}:00`);
+    if (Number.isNaN(d.getTime())) return "-";
+
+    return new Intl.DateTimeFormat("es-AR", {
+      dateStyle: "full",
+      timeStyle: "short",
+    }).format(d);
+  } catch {
+    return "-";
+  }
+}
+
+const MENSAJE_EGRESADO_FORMULARIO =
+  "Si sos egresado, acercate a secretaría para realizar la inscripción.";
+
 export default function ConfiguracionFormulario({ onVolver = null }) {
   const navigate = useNavigate();
   const dentroDeShell = useContext(MesasShellContext);
@@ -63,6 +87,15 @@ export default function ConfiguracionFormulario({ onVolver = null }) {
     setFinMinuto,
     mensajeCerrado,
     setMensajeCerrado,
+    mensajeBienvenida,
+    logoPreview,
+    fondoPreview,
+    colorPrincipal,
+    setColorPrincipal,
+    seleccionarLogo,
+    seleccionarFondo,
+    quitarLogo,
+    quitarFondo,
     cargando,
     guardando,
     toast,
@@ -84,6 +117,11 @@ export default function ConfiguracionFormulario({ onVolver = null }) {
 
     navigate("/configuracion");
   }
+
+  const fechaCierrePublica = formatoFechaPublicaPreview(finFecha, finHora, finMinuto);
+  const textoBienvenidaPreview =
+    String(mensajeBienvenida || "").trim() ||
+    "Ingresá tu Gmail y DNI para consultar e inscribirte.";
 
   const contenido = (
     <div className="cfgFormPage mov-page">
@@ -288,6 +326,87 @@ export default function ConfiguracionFormulario({ onVolver = null }) {
                     />
                     <span className="cc-floatingLabel">Mensaje cuando está cerrado</span>
                   </label>
+
+                  <div className="cfgFormVisualBlock cfgFormGridFull" style={{ "--cfgFormTheme": colorPrincipal }}>
+                    <div className="cfgFormVisualHead">
+                      <span className="cfgFormDateIcon cfgFormDateIcon--visual">
+                        <FontAwesomeIcon icon={faPalette} />
+                      </span>
+                      <div>
+                        <h3>Personalización visual</h3>
+                        <p>Elegí el logo, el fondo y el color principal que verá cada escuela en el formulario público.</p>
+                      </div>
+                    </div>
+
+                    <div className="cfgFormColorRow">
+                      <label className="cfgFormColorField">
+                        <span>Color principal</span>
+                        <div className="cfgFormColorInputWrap">
+                          <input
+                            type="color"
+                            value={colorPrincipal}
+                            onChange={(e) => setColorPrincipal(e.target.value)}
+                            aria-label="Color principal del formulario"
+                          />
+                          <input
+                            type="text"
+                            value={colorPrincipal}
+                            onChange={(e) => setColorPrincipal(e.target.value)}
+                            maxLength={7}
+                            placeholder="#c6171d"
+                          />
+                        </div>
+                      </label>
+                    </div>
+
+                    <div className="cfgFormMediaGrid">
+                      <div className="cfgFormUploadBox">
+                        <label className="cfgFormUploadCard">
+                          <input
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp,image/gif"
+                            onChange={(e) => seleccionarLogo(e.target.files?.[0])}
+                          />
+                          <span className="cfgFormUploadIcon"><FontAwesomeIcon icon={faUpload} /></span>
+                          <strong>Logo de la escuela</strong>
+                          <small>PNG, JPG, WEBP o GIF · hasta 5 MB</small>
+                        </label>
+                        <div className="cfgFormMediaPreview cfgFormMediaPreview--logo">
+                          {logoPreview ? (
+                            <img src={logoPreview} alt="Logo actual del formulario" />
+                          ) : (
+                            <span><FontAwesomeIcon icon={faImage} /> Sin logo</span>
+                          )}
+                        </div>
+                        <button type="button" className="cfgFormMiniBtn" onClick={quitarLogo}>
+                          <FontAwesomeIcon icon={faTrashAlt} /> Quitar logo
+                        </button>
+                      </div>
+
+                      <div className="cfgFormUploadBox">
+                        <label className="cfgFormUploadCard">
+                          <input
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp,image/gif"
+                            onChange={(e) => seleccionarFondo(e.target.files?.[0])}
+                          />
+                          <span className="cfgFormUploadIcon"><FontAwesomeIcon icon={faUpload} /></span>
+                          <strong>Fondo del formulario</strong>
+                          <small>Imagen de la escuela para el fondo público</small>
+                        </label>
+                        <div className="cfgFormMediaPreview cfgFormMediaPreview--fondo">
+                          {fondoPreview ? (
+                            <img src={fondoPreview} alt="Fondo actual del formulario" />
+                          ) : (
+                            <span><FontAwesomeIcon icon={faImage} /> Sin fondo</span>
+                          )}
+                        </div>
+                        <button type="button" className="cfgFormMiniBtn" onClick={quitarFondo}>
+                          <FontAwesomeIcon icon={faTrashAlt} /> Quitar fondo
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="cfgFormActionsMobile">
@@ -332,6 +451,68 @@ export default function ConfiguracionFormulario({ onVolver = null }) {
                       <em className={estaAbierta ? "is-open" : "is-closed"}>
                         {estaAbierta ? "ABIERTA" : "CERRADA"}
                       </em>
+                    </div>
+                  </div>
+
+                  <div
+                    className="cfgFormPublicPreviewExact"
+                    style={{
+                      "--cfgPreviewPrimary": colorPrincipal,
+                      "--cfgPreviewBg": fondoPreview ? `url("${fondoPreview}")` : undefined,
+                    }}
+                    aria-label="Previsualización exacta del formulario público"
+                  >
+                    <div className="cfgPreviewBrowser">
+                      <div className="cfgPreviewRealCard">
+                        <aside className="cfgPreviewHero">
+                          <div className="cfgPreviewHeroInner">
+                            {logoPreview ? (
+                              <img
+                                className="cfgPreviewLogo"
+                                src={logoPreview}
+                                alt="Logo del formulario"
+                              />
+                            ) : (
+                              <span className="cfgPreviewLogo cfgPreviewLogo--empty">
+                                <FontAwesomeIcon icon={faImage} />
+                              </span>
+                            )}
+
+                            <div className="cfgPreviewHeroTexts">
+                              <strong>{titulo || "Mesas Examen"}</strong>
+                              <p>{textoBienvenidaPreview}</p>
+                            </div>
+                          </div>
+                        </aside>
+
+                        <section className="cfgPreviewLogin">
+                          <header className="cfgPreviewLoginHead">
+                            <h3>Iniciar sesión</h3>
+                            <p>
+                              Inscripción abierta hasta{" "}
+                              <b>{fechaCierrePublica}</b>.
+                            </p>
+                            <span>{MENSAJE_EGRESADO_FORMULARIO}</span>
+                          </header>
+
+                          <div className="cfgPreviewFields">
+                            <label>
+                              <em>Gmail</em>
+                              <i />
+                            </label>
+                            <label>
+                              <em>DNI</em>
+                              <i />
+                            </label>
+                            <div className="cfgPreviewRemember">
+                              <u />
+                              <small>Recordarme</small>
+                            </div>
+                          </div>
+
+                          <button type="button">Continuar</button>
+                        </section>
+                      </div>
                     </div>
                   </div>
                 </div>

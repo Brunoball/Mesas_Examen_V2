@@ -22,6 +22,11 @@ $method = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 $envAllowedRaw = (string)env_value('ALLOWED_ORIGIN', '');
 $envAllowed = array_values(array_filter(array_map('trim', explode(',', $envAllowedRaw))));
 
+// Permite comodines simples para subdominios del formulario.
+// Ejemplo .env: ALLOWED_ORIGIN_WILDCARDS=https://*.lerna.3devsnet.com,https://*.tudominio.com.ar
+$envWildcardRaw = (string)env_value('ALLOWED_ORIGIN_WILDCARDS', '');
+$envWildcards = array_values(array_filter(array_map('trim', explode(',', $envWildcardRaw))));
+
 $frontendUrl = trim((string)env_value('FRONTEND_URL', ''));
 if ($frontendUrl !== '') {
     $envAllowed[] = rtrim($frontendUrl, '/');
@@ -38,13 +43,40 @@ $defaultAllowed = [
     'http://127.0.0.1:5173',
 ];
 
+$defaultWildcards = [
+    'https://*.lerna.3devsnet.com',
+];
+
 $allowedOrigins = array_values(array_unique(array_filter(array_merge($defaultAllowed, $envAllowed))));
+$allowedWildcards = array_values(array_unique(array_filter(array_merge($defaultWildcards, $envWildcards))));
+
+function cors_origin_matches_wildcard(string $origin, string $pattern): bool
+{
+    $origin = rtrim(strtolower($origin), '/');
+    $pattern = rtrim(strtolower($pattern), '/');
+
+    if (strpos($pattern, '*') === false) {
+        return $origin === $pattern;
+    }
+
+    $regex = '#^' . str_replace('\*', '[a-z0-9-]+', preg_quote($pattern, '#')) . '$#i';
+    return preg_match($regex, $origin) === 1;
+}
 
 $originPermitido = false;
 
 if ($origin !== '') {
     if (in_array('*', $allowedOrigins, true) || in_array($origin, $allowedOrigins, true)) {
         $originPermitido = true;
+    }
+
+    if (!$originPermitido) {
+        foreach ($allowedWildcards as $wildcard) {
+            if (cors_origin_matches_wildcard($origin, $wildcard)) {
+                $originPermitido = true;
+                break;
+            }
+        }
     }
 
     // Desarrollo: permite cualquier puerto local sin tener que tocar el .env.
