@@ -69,10 +69,10 @@ const AREAS_EXPORT_COLUMNS = [
 ];
 
 const CORRELATIVAS_EXPORT_COLUMNS = [
-  { label: "Materia posterior", value: (item) => safeText(item.materia) },
-  { label: "Curso posterior", value: (item) => safeText(item.curso) },
   { label: "Correlativa anterior", value: (item) => safeText(item.materia_relacionada) },
   { label: "Curso anterior", value: (item) => safeText(item.curso_relacionada) },
+  { label: "Materia posterior", value: (item) => safeText(item.materia) },
+  { label: "Curso posterior", value: (item) => safeText(item.curso) },
   { label: "Tipo", value: (item) => safeText(item.tipo) },
   { label: "Bloqueos", value: (item) => safeText(item.bloqueos) },
   { label: "Estado", value: (item) => (Number(item.activo) === 1 ? "ACTIVA" : "INACTIVA") },

@@ -6,10 +6,10 @@ const CORRELATIVAS_GRID_COLS = "1.25fr .85fr 1.25fr .85fr .75fr .9fr .75fr .8fr"
 const SKELETON_ROWS = 7;
 
 const CORRELATIVAS_COLUMNS = [
-  { key: "posterior", label: "Materia posterior", strong: true },
-  { key: "cursoPosterior", label: "Curso posterior" },
-  { key: "anterior", label: "Correlativa anterior" },
+  { key: "anterior", label: "Correlativa anterior", strong: true },
   { key: "cursoAnterior", label: "Curso anterior" },
+  { key: "posterior", label: "Materia posterior" },
+  { key: "cursoPosterior", label: "Curso posterior" },
   { key: "tipo", label: "Tipo", align: "center" },
   { key: "bloqueos", label: "Bloqueos" },
   { key: "estado", label: "Estado", align: "center" },
@@ -134,17 +134,17 @@ const SeccionCorrelativas = ({
                     style={{ gridTemplateColumns: CORRELATIVAS_GRID_COLS }}
                     role="row"
                   >
-                    <div className="mov-gridCell is-strong" role="cell" data-label="Materia posterior" title={safeText(c.materia)}>
-                      <span className="mov-ellipsissss">{safeText(c.materia)}</span>
-                    </div>
-                    <div className="mov-gridCell" role="cell" data-label="Curso posterior" title={safeText(c.curso)}>
-                      <span className="mov-ellipsissss">{safeText(c.curso)}</span>
-                    </div>
-                    <div className="mov-gridCell" role="cell" data-label="Correlativa anterior" title={safeText(c.materia_relacionada)}>
+                    <div className="mov-gridCell is-strong" role="cell" data-label="Correlativa anterior" title={safeText(c.materia_relacionada)}>
                       <span className="mov-ellipsissss">{safeText(c.materia_relacionada)}</span>
                     </div>
                     <div className="mov-gridCell" role="cell" data-label="Curso anterior" title={safeText(c.curso_relacionada)}>
                       <span className="mov-ellipsissss">{safeText(c.curso_relacionada)}</span>
+                    </div>
+                    <div className="mov-gridCell" role="cell" data-label="Materia posterior" title={safeText(c.materia)}>
+                      <span className="mov-ellipsissss">{safeText(c.materia)}</span>
+                    </div>
+                    <div className="mov-gridCell" role="cell" data-label="Curso posterior" title={safeText(c.curso)}>
+                      <span className="mov-ellipsissss">{safeText(c.curso)}</span>
                     </div>
                     <div className="mov-gridCell is-center" role="cell" data-label="Tipo">
                       <span className="mov-chip materias-badge">{String(c.tipo || "—").toUpperCase()}</span>

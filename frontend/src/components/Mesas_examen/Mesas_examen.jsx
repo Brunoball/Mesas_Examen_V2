@@ -1390,7 +1390,7 @@ const MesasExamen = () => {
             <BotonExportarHistorialGlobal
               className="mov-btn mov-btn--secondary mesas-actionBtn mesas-exportBtn"
               icon={tab === "historial" ? "excel" : "pdf"}
-              label={tab === "historial" ? "Exportar historial" : "Exportar PDF"}
+              label={tab === "historial" ? "Exportar historial" : "PDF"}
               onClick={tab === "historial" ? abrirModalExportarHistorial : abrirModalExportarPdf}
               disabled={cargando || armando || agrupando || (tab === "historial" ? historial?.cargando || exportandoHistorial || totalVisible === 0 : totalVisible === 0)}
             />
