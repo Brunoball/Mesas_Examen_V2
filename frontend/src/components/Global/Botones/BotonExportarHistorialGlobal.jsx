@@ -25,7 +25,7 @@ const BotonExportarHistorialGlobal = ({
   return (
     <button
       type={type}
-      className={`global-exportHistorial-trigger ${className}`.trim()}
+      className={`global-exportHistorial-trigger mov-btn mov-btn--secondary mesas-actionBtn mesas-exportBtn ${className}`.trim()}
       onClick={onClick}
       disabled={disabled || loading}
       title={title}
