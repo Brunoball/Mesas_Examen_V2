@@ -496,7 +496,7 @@ const MesaPdfCard = ({ grupo, esNoAgrupada = false, onEdit, onDelete, onGuardarN
   return (
     <article
       ref={cardRef}
-      className={`mesas-pdf-sheet ${(esNoAgrupada || grupo?.motivo || grupo?.observacion) ? "mesas-pdf-sheet-observada" : ""} ${terminosBusqueda.length > 0 ? "mesas-pdf-sheet--searching" : ""}`}
+      className={`mesas-pdf-sheet ${terminosBusqueda.length > 0 ? "mesas-pdf-sheet--searching" : ""}`}
       data-mesas-search-result={terminosBusqueda.length > 0 ? "true" : undefined}
     >
       <header className="mesas-pdf-header">
@@ -512,13 +512,6 @@ const MesaPdfCard = ({ grupo, esNoAgrupada = false, onEdit, onDelete, onGuardarN
           <strong>N° de mesa: <ResaltarBusqueda value={numerosTexto} terminos={terminosBusqueda} /></strong>
         </div>
       </header>
-
-      {(esNoAgrupada || grupo?.motivo || grupo?.observacion) && (grupo?.motivo || grupo?.observacion) && (
-        <div className={`mesas-pdf-observacion ${!esNoAgrupada ? "mesas-pdf-observacion-info" : ""}`}>
-          <strong>{esNoAgrupada ? "Motivo sin agrupar:" : "Observación:"}</strong>{" "}
-          <ResaltarBusqueda value={grupo.motivo || grupo.observacion} terminos={terminosBusqueda} />
-        </div>
-      )}
 
       <div className="mesas-pdf-table-wrap">
         <div className="mesas-pdf-table mesas-pdf-divTable" role="table" aria-label="Detalle de mesa">
@@ -540,26 +533,25 @@ const MesaPdfCard = ({ grupo, esNoAgrupada = false, onEdit, onDelete, onGuardarN
 
                     {alumnoIndex === 0 && (
                       <div
-                        className={`mesas-pdf-cell pdf-materia-line-cell ${bloque.observacion ? "pdf-row-observada" : ""}`}
+                        className="mesas-pdf-cell pdf-materia-line-cell"
                         style={{ gridRow: `span ${rowSpanMateria}` }}
                         role="cell"
                         data-label="Espacio Curricular"
                       >
                         <strong><ResaltarBusqueda value={bloque.materia} terminos={terminosBusqueda} /></strong>
-                        {bloque.observacion && <small><ResaltarBusqueda value={bloque.observacion} terminos={terminosBusqueda} /></small>}
                       </div>
                     )}
 
-                    <div className={`mesas-pdf-cell pdf-estudiante-cell ${bloque.observacion ? "pdf-row-observada" : ""}`} role="cell" data-label="Estudiante">
+                    <div className="mesas-pdf-cell pdf-estudiante-cell" role="cell" data-label="Estudiante">
                       {alumno ? <ResaltarBusqueda value={alumno.estudiante || alumno.alumno} fallback="Sin estudiante" terminos={terminosBusqueda} /> : "Sin alumnos vinculados"}
                     </div>
-                    <div className={`mesas-pdf-cell pdf-dni-cell ${bloque.observacion ? "pdf-row-observada" : ""}`} role="cell" data-label="DNI">
+                    <div className="mesas-pdf-cell pdf-dni-cell" role="cell" data-label="DNI">
                       {alumno ? <ResaltarBusqueda value={alumno.dni} terminos={terminosBusqueda} /> : "-"}
                     </div>
-                    <div className={`mesas-pdf-cell pdf-curso-cell ${bloque.observacion ? "pdf-row-observada" : ""}`} role="cell" data-label="Curso">
+                    <div className="mesas-pdf-cell pdf-curso-cell" role="cell" data-label="Curso">
                       {alumno ? <ResaltarBusqueda value={obtenerCursoAlumno(alumno)} terminos={terminosBusqueda} /> : "-"}
                     </div>
-                    <div className={`mesas-pdf-cell pdf-nota-cell ${bloque.observacion ? "pdf-row-observada" : ""}`} role="cell" data-label="Nota">
+                    <div className="mesas-pdf-cell pdf-nota-cell" role="cell" data-label="Nota">
                       <SelectorNotaAlumno
                         alumno={alumno}
                         guardando={alumno ? !!guardandoNotas[obtenerKeyNotaAlumno(alumno)] : false}
@@ -569,7 +561,7 @@ const MesaPdfCard = ({ grupo, esNoAgrupada = false, onEdit, onDelete, onGuardarN
 
                     {alumnoIndex === 0 && (
                       <div
-                        className={`mesas-pdf-cell pdf-docente-line-cell ${bloque.observacion ? "pdf-row-observada" : ""}`}
+                        className="mesas-pdf-cell pdf-docente-line-cell"
                         style={{ gridRow: `span ${rowSpanMateria}` }}
                         role="cell"
                         data-label="Docentes"
@@ -1442,9 +1434,9 @@ const MesasExamen = () => {
                       <strong>Resultado del armado</strong>
                       <span>
                         Insertadas: {resumenArmado.insertados ?? 0} | Actualizadas:{" "}
-                        {resumenArmado.actualizados ?? 0} | Observadas: {resumenArmado.observados ?? 0} |{" "}
-                        Grupos finales: {resumenArmado.grupos_finales?.total_grupos_generados ?? "-"} |{" "}
-                        No agrupadas: {resumenArmado.grupos_finales?.total_no_agrupadas ?? "-"}
+                        {resumenArmado.actualizados ?? 0} | Grupos finales:{" "}
+                        {resumenArmado.grupos_finales?.total_grupos_generados ?? "-"} | No agrupadas:{" "}
+                        {resumenArmado.grupos_finales?.total_no_agrupadas ?? "-"}
                       </span>
                     </>
                   )}

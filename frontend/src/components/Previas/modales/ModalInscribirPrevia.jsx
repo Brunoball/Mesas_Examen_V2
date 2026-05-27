@@ -7,6 +7,7 @@ import {
   faSpinner,
   faTimes,
 } from '@fortawesome/free-solid-svg-icons';
+import '../../Global/Global_css/Global_Modals.css';
 import './ModalPrevias.css';
 
 function safeText(value) {

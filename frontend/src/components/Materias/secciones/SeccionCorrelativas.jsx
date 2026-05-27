@@ -2,7 +2,7 @@ import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBoxOpen, faDiagramProject, faEdit, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 
-const CORRELATIVAS_GRID_COLS = "1.25fr .85fr 1.25fr .85fr .75fr .9fr .75fr .8fr";
+const CORRELATIVAS_GRID_COLS = "1.3fr .85fr 1.3fr .85fr .75fr 1fr .8fr";
 const SKELETON_ROWS = 7;
 
 const CORRELATIVAS_COLUMNS = [
@@ -12,11 +12,10 @@ const CORRELATIVAS_COLUMNS = [
   { key: "cursoPosterior", label: "Curso posterior" },
   { key: "tipo", label: "Tipo", align: "center" },
   { key: "bloqueos", label: "Bloqueos" },
-  { key: "estado", label: "Estado", align: "center" },
   { key: "acciones", label: "Acciones", align: "center", actions: true },
 ];
 
-const SKELETON_WIDTHS = ["76%", "46%", "70%", "50%", "42%", "66%", "44%", "40%"];
+const SKELETON_WIDTHS = ["76%", "46%", "70%", "50%", "42%", "66%", "40%"];
 
 function safeText(value) {
   const text = String(value ?? "").trim();
@@ -154,11 +153,6 @@ const SeccionCorrelativas = ({
                         <span>Inscripción: {Number(c.bloquea_inscripcion) === 1 ? "SÍ" : "NO"}</span>
                         <span>Armado: {Number(c.bloquea_armado) === 1 ? "SÍ" : "NO"}</span>
                       </div>
-                    </div>
-                    <div className="mov-gridCell is-center" role="cell" data-label="Estado">
-                      <span className={`mov-chip materias-badge ${Number(c.activo) === 1 ? "mov-chip--ok" : "mov-chip--neutral"}`}>
-                        {Number(c.activo) === 1 ? "ACTIVA" : "INACTIVA"}
-                      </span>
                     </div>
                     <div className="mov-gridCell mov-gridCell--actions is-center" role="cell" data-label="Acciones">
                       <div className="mov-actionsInline">

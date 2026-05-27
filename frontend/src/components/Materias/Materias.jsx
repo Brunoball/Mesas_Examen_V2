@@ -65,7 +65,6 @@ const AREAS_EXPORT_COLUMNS = [
   { label: "Área", value: (item) => safeText(item.area) },
   { label: "Cantidad materias", value: (item) => item.cantidad_materias || 0 },
   { label: "Materias incluidas", value: (item) => safeText(item.materias) },
-  { label: "Estado", value: (item) => (Number(item.activo) === 1 ? "ACTIVA" : "INACTIVA") },
 ];
 
 const CORRELATIVAS_EXPORT_COLUMNS = [
@@ -75,7 +74,6 @@ const CORRELATIVAS_EXPORT_COLUMNS = [
   { label: "Curso posterior", value: (item) => safeText(item.curso) },
   { label: "Tipo", value: (item) => safeText(item.tipo) },
   { label: "Bloqueos", value: (item) => safeText(item.bloqueos) },
-  { label: "Estado", value: (item) => (Number(item.activo) === 1 ? "ACTIVA" : "INACTIVA") },
 ];
 
 const TALLERES_EXPORT_COLUMNS = [

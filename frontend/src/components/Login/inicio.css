@@ -119,7 +119,7 @@
 .ini_brand-content {
   position: relative;
   z-index: 1;
-  width: min(470px, 100%);
+  width: min(500px, 100%);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -148,7 +148,6 @@
 .ini_brand-logo {
   display: block;
   width: min(420px, 100%);
-  max-height: 215px;
   object-fit: contain;
   filter: drop-shadow(0 18px 34px rgba(58, 46, 43, .14));
   user-select: none;

@@ -4,7 +4,6 @@ import {
   faBoxOpen,
   faCheckCircle,
   faEdit,
-  faFileImport,
   faSpinner,
   faPlus,
   faSearch,
@@ -597,7 +596,7 @@ const SKELETON_ROWS = 8;
 
 const PREVIAS_COLUMNS = [
   { key: 'alumno', label: 'Alumno', strong: true },
-  { key: 'dni', label: 'DNI' },
+  { key: 'dni', label: 'DNI', align: 'center'},
   { key: 'materia', label: 'Materia' },
   { key: 'condicion', label: 'Condición', align: 'center' },
   { key: 'curso', label: 'Curso', align: 'center' },
@@ -708,6 +707,11 @@ export default function Previas() {
   const [confirmacionRiesgo, setConfirmacionRiesgo] = useState(false);
   const [modalExportar, setModalExportar] = useState(false);
   const [modalInscripcion, setModalInscripcion] = useState({ abierto: false, item: null, data: null, cargando: false, guardando: false, error: '' });
+
+  function abrirImportarDesdeExportar() {
+    setModalExportar(false);
+    setModalImportar(true);
+  }
 
   function abrirCrear() {
     setModalPrevia({ abierto: true, modo: 'crear', item: null, cargando: false });
@@ -1048,7 +1052,7 @@ export default function Previas() {
                     onClick={limpiarFiltrosPrevias}
                     title="Limpiar filtros de condición, curso y división"
                   >
-                    <FontAwesomeIcon icon={faTimes} /> Limpiar
+                    <FontAwesomeIcon icon={faTimes} /> 
                   </button>
                 )}
               </div>
@@ -1058,15 +1062,12 @@ export default function Previas() {
           <div className="mov-card__actions previas-actionsHead">
             <BotonExportarHistorialGlobal
               className="mov-btn mov-btn--secondary"
-              label="Exportar"
+              label="Exportar / importar"
               icon="excel"
-              disabled={loading || totalVisible === 0}
+              disabled={loading}
               onClick={() => setModalExportar(true)}
             />
 
-            <button type="button" className="mov-btn mov-btn--soft" onClick={() => setModalImportar(true)}>
-              <FontAwesomeIcon icon={faFileImport} /> Importar
-            </button>
             <button type="button" className="mov-btn mov-btn--primary" onClick={abrirCrear}>
               <FontAwesomeIcon icon={faPlus} /> Agregar previa
             </button>
@@ -1116,7 +1117,7 @@ export default function Previas() {
                         </div>
                       </div>
 
-                      <div className="mov-gridCell" role="cell" data-label="DNI" title={safeText(item.dni)}>
+                      <div className="mov-gridCell is-center" role="cell" data-label="DNI" title={safeText(item.dni)}>
                         <span className="mov-ellipsissss previas-dni-cell">{safeText(item.dni)}</span>
                       </div>
 
@@ -1236,7 +1237,7 @@ export default function Previas() {
       <ModalExportarGlobal
         abierto={modalExportar}
         title="Exportar previas"
-        subtitle="Elegí si querés exportar solo la página actual o todos los registros filtrados."
+        subtitle="Elegí cómo exportar las previas o abrí la importación desde este mismo modal."
         tituloArchivo="Mesas · Previas"
         nombreArchivo={`previas_${vista}`}
         columnas={PREVIAS_EXPORT_COLUMNS}
@@ -1252,6 +1253,9 @@ export default function Previas() {
         alcanceActualDescription="Descarga únicamente las previas visibles en esta página."
         alcanceTodosLabel="Exportar todos los registros"
         alcanceTodosDescription="Descarga todas las previas que coinciden con los filtros, la búsqueda y el estado actual."
+        importLabel="Importar"
+        importTitle="Abrir importación de previas"
+        onImportarClick={abrirImportarDesdeExportar}
         onClose={() => setModalExportar(false)}
         onSuccess={(texto) => mostrarMensaje('exito', texto)}
         onError={(texto) => mostrarMensaje('error', texto)}

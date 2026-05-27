@@ -1801,7 +1801,7 @@
   min-height: 80px;
   max-height: none !important;
   overflow: visible !important;
-  padding: 8px 12px 0;
+  padding: 6px 12px 0;
 }
 
 .mesas-card-pdf-fijo .mesas-pdf-table {
@@ -3233,7 +3233,7 @@
 
 .mesas-card-pdf-fijo .mesas-pdf-gridHead,
 .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-gridHead{
-  min-height:44px;
+  min-height:40px;
   background:color-mix(in srgb, var(--balto-bg, #FDFBF7) 72%, #fff);
   border-bottom:1px solid color-mix(in srgb, var(--mov-border, #D6E2F3) 78%, #fff);
 }
@@ -3241,7 +3241,7 @@
 .mesas-card-pdf-fijo .mesas-pdf-gridBody,
 .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-gridBody{
   grid-auto-flow:row dense;
-  grid-auto-rows:minmax(64px, auto);
+  grid-auto-rows:minmax(52px, auto);
   background:#fff;
 }
 
@@ -3285,8 +3285,8 @@
 .mesas-card-pdf-fijo .mesas-pdf-cell,
 .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-cell{
   min-width:0;
-  min-height:64px;
-  padding:12px 14px;
+  min-height:52px;
+  padding:9px 12px;
   display:flex;
   align-items:center;
   overflow:visible;
@@ -3691,4 +3691,61 @@
     width:100%;
     justify-content:space-between;
   }
+}
+
+
+/* Ajuste pedido: armado más compacto y sin resaltado visual por observaciones. */
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-gridHead,
+.mesas-card-pdf-fijo .mesas-pdf-gridHead{
+  min-height:34px;
+}
+
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-headCell,
+.mesas-card-pdf-fijo .mesas-pdf-headCell{
+  padding:7px 10px;
+  font-size:11px;
+  line-height:1.1;
+}
+
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-gridBody,
+.mesas-card-pdf-fijo .mesas-pdf-gridBody{
+  grid-auto-rows:minmax(42px, auto);
+}
+
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-cell,
+.mesas-card-pdf-fijo .mesas-pdf-cell{
+  min-height:42px;
+  padding:5px 10px;
+  font-size:12px;
+  line-height:1.16;
+}
+
+.mesas-shell-card.mesas-card-pdf-fijo .pdf-materia-line-cell,
+.mesas-shell-card.mesas-card-pdf-fijo .pdf-docente-line-cell,
+.mesas-card-pdf-fijo .pdf-materia-line-cell,
+.mesas-card-pdf-fijo .pdf-docente-line-cell{
+  gap:2px;
+}
+
+.mesas-shell-card.mesas-card-pdf-fijo .pdf-materia-line-cell strong,
+.mesas-shell-card.mesas-card-pdf-fijo .pdf-docente-line-cell strong,
+.mesas-card-pdf-fijo .pdf-materia-line-cell strong,
+.mesas-card-pdf-fijo .pdf-docente-line-cell strong,
+.mesas-shell-card.mesas-card-pdf-fijo .pdf-hora-stack strong,
+.mesas-card-pdf-fijo .pdf-hora-stack strong{
+  font-size:12px;
+  line-height:1.05;
+}
+
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-nota-select,
+.mesas-card-pdf-fijo .mesas-nota-select{
+  width:56px;
+  height:28px;
+  border-radius:8px;
+  font-size:11px;
+}
+
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-nota-selectWrap,
+.mesas-card-pdf-fijo .mesas-nota-selectWrap{
+  min-width:58px;
 }

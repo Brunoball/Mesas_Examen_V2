@@ -823,4 +823,23 @@
   font-weight: 620;
 }
 
+.dashbord-footer {
+  flex: 0 0 auto;
+  color: var(--dash-muted);
+  font-size: 13px;
+  font-weight: 420;
+  line-height: 1.25;
+  text-align: right;
+}
+
+.dashbord-footer a {
+  color: var(--dash-action);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.dashbord-footer a:hover {
+  text-decoration: underline;
+}
+
 /* Responsive del Dashboard: ver ../Global/Global_css/Global_DashbordResponsive.css */

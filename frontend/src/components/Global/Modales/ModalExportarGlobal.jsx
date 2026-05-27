@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFileExcel, faFilePdf, faLayerGroup, faList, faSpinner, faTimes } from "@fortawesome/free-solid-svg-icons";
+import { faFileExcel, faFileImport, faFilePdf, faLayerGroup, faList, faSpinner, faTimes } from "@fortawesome/free-solid-svg-icons";
 import "../Global_css/Global_Modals.css";
 import "../Global_css/Global_ExportarHistorial.css";
 
@@ -815,6 +815,10 @@ const ModalExportarGlobal = ({
   cancelLabel = "Cancelar",
   loadingLabel = "Exportando...",
   note = "El PDF y el Excel se descargan directamente, sin abrir una ventana emergente.",
+  importLabel = "Importar",
+  importTitle = "Abrir importación",
+  importDisabled = false,
+  onImportarClick,
   onClose,
   onSuccess,
   onError,
@@ -1054,6 +1058,19 @@ const ModalExportarGlobal = ({
         </section>
 
         <footer className="global-exportHistorial-footer">
+          {typeof onImportarClick === "function" ? (
+            <button
+              type="button"
+              className="global-exportHistorial-action global-exportHistorial-action--import"
+              onClick={onImportarClick}
+              disabled={loading || exportando || importDisabled}
+              title={importTitle}
+            >
+              <FontAwesomeIcon icon={faFileImport} />
+              {importLabel}
+            </button>
+          ) : null}
+
           <button
             type="button"
             className="global-exportHistorial-action global-exportHistorial-action--secondary"

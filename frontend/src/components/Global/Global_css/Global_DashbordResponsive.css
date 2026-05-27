@@ -202,3 +202,11 @@
     padding: 18px;
   }
 }
+
+@media (max-width: 620px) {
+  .dashbord-footer {
+    font-size: 11.5px;
+    line-height: 1.2;
+    text-align: center;
+  }
+}

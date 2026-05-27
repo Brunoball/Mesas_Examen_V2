@@ -277,6 +277,19 @@
   color:#1e293b;
 }
 
+
+.global-exportHistorial-action--import{
+  margin-right:auto;
+  border:1px solid rgba(36,74,145,.20);
+  background:rgba(36,74,145,.08);
+  color:#244a91;
+}
+
+.global-exportHistorial-action--import:hover:not(:disabled){
+  background:rgba(36,74,145,.12);
+  box-shadow:0 10px 20px -16px rgba(36,74,145,.55);
+}
+
 .global-exportHistorial-action--primary{
   border:1px solid #244a91;
   background:#244a91;
@@ -295,8 +308,16 @@
 
 
 
+  .global-exportHistorial-footer{
+    flex-direction:column;
+  }
+
   .global-exportHistorial-action{
     width:100%;
+  }
+
+  .global-exportHistorial-action--import{
+    margin-right:0;
   }
 }
 

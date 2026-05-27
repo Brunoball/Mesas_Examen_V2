@@ -337,6 +337,13 @@ function Dashbord() {
           </div>
         </div>
       )}
+
+      <footer className="dashbord-footer">
+        Desarrollado por{" "}
+        <a href="https://3devsnet.com" target="_blank" rel="noopener noreferrer">
+          3devs.solutions
+        </a>
+      </footer>
     </section>
   );
 }

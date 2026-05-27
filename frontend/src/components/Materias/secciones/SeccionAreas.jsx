@@ -2,18 +2,17 @@ import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBoxOpen, faEdit, faLayerGroup, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 
-const AREAS_GRID_COLS = "1.15fr .85fr 1.7fr .75fr .8fr";
+const AREAS_GRID_COLS = "1.2fr .85fr 2fr .8fr";
 const SKELETON_ROWS = 7;
 
 const AREAS_COLUMNS = [
   { key: "area", label: "Área", strong: true },
   { key: "cantidad", label: "Cantidad materias", align: "center" },
   { key: "materias", label: "Materias incluidas" },
-  { key: "estado", label: "Estado", align: "center" },
   { key: "acciones", label: "Acciones", align: "center", actions: true },
 ];
 
-const SKELETON_WIDTHS = ["70%", "36%", "74%", "46%", "42%"];
+const SKELETON_WIDTHS = ["70%", "36%", "74%", "42%"];
 
 function safeText(value) {
   const text = String(value ?? "").trim();
@@ -143,11 +142,6 @@ const SeccionAreas = ({
                     </div>
                     <div className="mov-gridCell" role="cell" data-label="Materias incluidas" title={safeText(a.materias)}>
                       <span className="mov-ellipsissss">{safeText(a.materias)}</span>
-                    </div>
-                    <div className="mov-gridCell is-center" role="cell" data-label="Estado">
-                      <span className={`mov-chip materias-badge ${Number(a.activo) === 1 ? "mov-chip--ok" : "mov-chip--neutral"}`}>
-                        {Number(a.activo) === 1 ? "ACTIVA" : "INACTIVA"}
-                      </span>
                     </div>
                     <div className="mov-gridCell mov-gridCell--actions is-center" role="cell" data-label="Acciones">
                       <div className="mov-actionsInline">

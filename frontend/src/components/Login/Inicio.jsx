@@ -172,7 +172,6 @@ const Inicio = () => {
         <section className="ini_brand-panel" aria-label="Identidad Lerna">
           <div className="ini_brand-glow" aria-hidden="true" />
           <div className="ini_brand-content">
-            <span className="ini_brand-kicker">Sistema institucional</span>
             <img src={logoLerna} alt="Lerna Mesas de Examen" className="ini_brand-logo" />
             <div className="ini_brand-copy">
               <h2>Gestión de mesas de examen</h2>
@@ -184,7 +183,6 @@ const Inicio = () => {
         <section className="ini_access-panel" aria-label="Formulario de acceso">
           <div className="ini_contenedor">
             <div className="ini_encabezado">
-              <span className="ini_login-badge">Acceso privado</span>
               <h1 className="ini_titulo">Iniciar sesión</h1>
               <p className="ini_subtitulo">
                 Ingresá tus credenciales para continuar al panel del sistema.
