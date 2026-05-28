@@ -159,14 +159,25 @@ function mesas_notificaciones_agrupar_destinatarios(array $filas): array
         if ($idInscripcion <= 0) continue;
 
         $email = trim((string)($row['email'] ?? ''));
+        $emailKey = mb_strtolower($email, 'UTF-8');
         $dni = trim((string)($row['dni'] ?? ''));
         $alumno = trim((string)($row['alumno'] ?? ''));
 
-        if (!isset($mapa[$idInscripcion])) {
-            $mapa[$idInscripcion] = [
+        // Regla correcta: 1 email por alumno/DNI/inscripción.
+        // Si un mismo alumno tiene varias previas, se agrupan en un único correo.
+        // Si dos alumnos distintos usan el mismo Gmail, se envía un correo separado
+        // para cada alumno, porque cada DNI debe recibir su propia notificación.
+        $dniKey = preg_replace('/\D+/', '', $dni);
+        $clave = $dniKey !== '' ? 'dni:' . $dniKey : 'inscripcion:' . $idInscripcion;
+
+        if (!isset($mapa[$clave])) {
+            $mapa[$clave] = [
                 'id_inscripcion' => $idInscripcion,
+                'id_inscripciones' => [],
                 'dni' => $dni,
+                'dnis' => [],
                 'alumno' => $alumno,
+                'alumnos' => [],
                 'email' => $email,
                 'anio' => (int)($row['anio'] ?? date('Y')),
                 'email_valido' => filter_var($email, FILTER_VALIDATE_EMAIL) !== false,
@@ -179,6 +190,16 @@ function mesas_notificaciones_agrupar_destinatarios(array $filas): array
             ];
         }
 
+        if (!in_array($idInscripcion, $mapa[$clave]['id_inscripciones'], true)) {
+            $mapa[$clave]['id_inscripciones'][] = $idInscripcion;
+        }
+        if ($dni !== '' && !in_array($dni, $mapa[$clave]['dnis'], true)) {
+            $mapa[$clave]['dnis'][] = $dni;
+        }
+        if ($alumno !== '' && !in_array($alumno, $mapa[$clave]['alumnos'], true)) {
+            $mapa[$clave]['alumnos'][] = $alumno;
+        }
+
         $fecha = trim((string)($row['fecha_mesa'] ?? ''));
         $turno = trim((string)($row['turno'] ?? ''));
         $horaRaw = trim((string)($row['hora'] ?? ''));
@@ -186,8 +207,11 @@ function mesas_notificaciones_agrupar_destinatarios(array $filas): array
         $enviada = (int)($row['email_mesa_enviado'] ?? 0) === 1;
 
         $materia = [
+            'id_inscripcion' => $idInscripcion,
             'id_detalle' => (int)($row['id_detalle'] ?? 0),
             'id_previa' => (int)($row['id_previa'] ?? 0),
+            'dni' => $dni,
+            'alumno' => $alumno,
             'materia' => trim((string)($row['materia'] ?? '')),
             'curso' => trim((string)($row['curso'] ?? '')),
             'division' => trim((string)($row['division'] ?? '')),
@@ -207,14 +231,23 @@ function mesas_notificaciones_agrupar_destinatarios(array $filas): array
             'email_mesa_error' => $row['email_mesa_error'] ?? null,
         ];
 
-        $mapa[$idInscripcion]['materias'][] = $materia;
-        $mapa[$idInscripcion]['total_materias']++;
-        if ($asignada) $mapa[$idInscripcion]['total_asignadas']++;
-        if ($asignada && $enviada) $mapa[$idInscripcion]['total_notificadas']++;
-        if ($asignada && !$enviada) $mapa[$idInscripcion]['total_pendientes']++;
+        $mapa[$clave]['materias'][] = $materia;
+        $mapa[$clave]['total_materias']++;
+        if ($asignada) $mapa[$clave]['total_asignadas']++;
+        if ($asignada && $enviada) $mapa[$clave]['total_notificadas']++;
+        if ($asignada && !$enviada) $mapa[$clave]['total_pendientes']++;
     }
 
     foreach ($mapa as &$item) {
+        $cantidadAlumnos = count($item['alumnos'] ?? []);
+        if ($cantidadAlumnos > 1) {
+            $item['alumno'] = $cantidadAlumnos . ' alumnos/as';
+            $item['dni'] = implode(' / ', $item['dnis'] ?? []);
+        } elseif ($cantidadAlumnos === 1) {
+            $item['alumno'] = (string)$item['alumnos'][0];
+            $item['dni'] = (string)($item['dnis'][0] ?? $item['dni']);
+        }
+
         if (!$item['email_valido']) {
             $item['estado'] = 'email_invalido';
         } elseif ($item['total_asignadas'] <= 0) {
@@ -387,7 +420,13 @@ function mesas_notificaciones_registrar_lote(): void
         if ((int)($d['total_asignadas'] ?? 0) <= 0) continue;
         if (!$reenviar && (string)($d['estado'] ?? '') === 'enviado') continue;
 
-        $materiasAsignadas = array_values(array_filter($d['materias'] ?? [], static fn(array $m): bool => !empty($m['asignada'])));
+        // Si no se marcó reenvío, el lote incluye únicamente materias todavía no notificadas.
+        // Si se marcó reenvío, incluye todas las materias con mesa asignada.
+        $materiasAsignadas = array_values(array_filter($d['materias'] ?? [], static function (array $m) use ($reenviar): bool {
+            if (empty($m['asignada'])) return false;
+            if ($reenviar) return true;
+            return empty($m['email_mesa_enviado']);
+        }));
         if (!$materiasAsignadas) continue;
 
         $d['materias'] = $materiasAsignadas;
@@ -467,58 +506,183 @@ function mesas_notificaciones_enviados_hoy(PDO $pdo): int
     return (int)$st->fetchColumn();
 }
 
+function mesas_notificaciones_nombre_mes_es(int $mes): string
+{
+    $meses = [
+        1 => 'ENERO',
+        2 => 'FEBRERO',
+        3 => 'MARZO',
+        4 => 'ABRIL',
+        5 => 'MAYO',
+        6 => 'JUNIO',
+        7 => 'JULIO',
+        8 => 'AGOSTO',
+        9 => 'SEPTIEMBRE',
+        10 => 'OCTUBRE',
+        11 => 'NOVIEMBRE',
+        12 => 'DICIEMBRE',
+    ];
+
+    return $meses[$mes] ?? '';
+}
+
+function mesas_notificaciones_titulo_periodo(array $materias, ?int $anioFallback = null): string
+{
+    $conteo = [];
+
+    foreach ($materias as $m) {
+        $fecha = trim((string)($m['fecha_mesa'] ?? ''));
+        if ($fecha === '') continue;
+
+        try {
+            $dt = new DateTime($fecha);
+            $key = $dt->format('Y-m');
+            if (!isset($conteo[$key])) {
+                $conteo[$key] = [
+                    'cantidad' => 0,
+                    'anio' => (int)$dt->format('Y'),
+                    'mes' => (int)$dt->format('n'),
+                ];
+            }
+            $conteo[$key]['cantidad']++;
+        } catch (Throwable $e) {
+            continue;
+        }
+    }
+
+    if ($conteo) {
+        uasort($conteo, static function (array $a, array $b): int {
+            return ($b['cantidad'] <=> $a['cantidad']) ?: ($a['anio'] <=> $b['anio']) ?: ($a['mes'] <=> $b['mes']);
+        });
+        $periodo = reset($conteo);
+        $mes = mesas_notificaciones_nombre_mes_es((int)$periodo['mes']);
+        $anio = (int)$periodo['anio'];
+        if ($mes !== '' && $anio > 0) {
+            return 'MESAS DE EXAMEN ' . $mes . ' ' . $anio;
+        }
+    }
+
+    $anio = $anioFallback ?: (int)date('Y');
+    return 'MESAS DE EXAMEN ' . $anio;
+}
+
 function mesas_notificaciones_html_email(array $item, array $materias, array $cfg, string $subject): string
 {
-    $escuela = trim((string)($cfg['nombre'] ?? ''));
-    if ($escuela === '') $escuela = mesas_notificaciones_tenant_nombre();
+    // La cabecera no debe depender del nombre editable del formulario, porque puede
+    // quedar viejo (por ejemplo: ABRIL 2026). Se calcula desde las fechas reales
+    // de las mesas asignadas y se muestra como en la pantalla de Mesas.
+    $tituloPeriodo = mesas_notificaciones_titulo_periodo($materias, isset($item['anio']) ? (int)$item['anio'] : null);
+    $escuela = trim((string)mesas_notificaciones_tenant_nombre());
+    if ($escuela === '' || mb_strtolower($escuela, 'UTF-8') === 'lerna') {
+        $nombreConfig = trim((string)($cfg['nombre'] ?? ''));
+        if ($nombreConfig !== '' && stripos($nombreConfig, 'MESAS') === false) {
+            $escuela = $nombreConfig;
+        }
+    }
+    if ($escuela === '') $escuela = 'Escuela';
 
-    $alumno = htmlspecialchars((string)($item['alumno'] ?? ''), ENT_QUOTES, 'UTF-8');
-    $dni = htmlspecialchars((string)($item['dni'] ?? ''), ENT_QUOTES, 'UTF-8');
-    $email = htmlspecialchars((string)($item['email'] ?? ''), ENT_QUOTES, 'UTF-8');
+    $tituloPeriodoHtml = htmlspecialchars($tituloPeriodo, ENT_QUOTES, 'UTF-8');
     $escuelaHtml = htmlspecialchars($escuela, ENT_QUOTES, 'UTF-8');
     $subjectHtml = htmlspecialchars($subject, ENT_QUOTES, 'UTF-8');
-    $colorPrincipal = formulario_normalizar_color($cfg['color_principal'] ?? '#1d4ed8', '#1d4ed8');
+    $email = htmlspecialchars((string)($item['email'] ?? ''), ENT_QUOTES, 'UTF-8');
+    // Usa exactamente el color configurado para el formulario público de la escuela.
+    // Ese valor sale de mesas_config.color_principal dentro de la DB del tenant activo.
+    $colorPrincipal = formulario_normalizar_color($cfg['color_principal'] ?? '#c6171d', '#c6171d');
 
-    $plantilla = trim((string)($cfg['plantilla_email_mesa'] ?? ''));
-    if ($plantilla === '') {
-        $plantilla = 'Hola {{alumno}}, ya está disponible la información de tus mesas de examen. Revisá fecha, turno y hora para presentarte a rendir.';
-    }
-
-    $materiasTexto = implode(', ', array_values(array_filter(array_map(static fn(array $m): string => trim((string)($m['materia'] ?? '')), $materias))));
-    $vars = [
-        'alumno' => (string)($item['alumno'] ?? ''),
-        'dni' => (string)($item['dni'] ?? ''),
-        'gmail' => (string)($item['email'] ?? ''),
-        'email' => (string)($item['email'] ?? ''),
-        'escuela' => $escuela,
-        'materias' => $materiasTexto,
-        'materia' => $materiasTexto,
-        'fecha' => date('d/m/Y H:i'),
-    ];
-    $mensajePlano = formulario_render_template($plantilla, $vars);
-    $mensajeHtml = nl2br(htmlspecialchars($mensajePlano, ENT_QUOTES, 'UTF-8'));
-
-    $filasHtml = '';
+    $grupos = [];
     foreach ($materias as $m) {
-        $materia = htmlspecialchars((string)($m['materia'] ?? '-'), ENT_QUOTES, 'UTF-8');
-        $curso = trim((string)($m['curso'] ?? ''));
-        $division = trim((string)($m['division'] ?? ''));
-        $cursoDivision = htmlspecialchars(trim($curso . ($division !== '' ? ' ' . $division : '')), ENT_QUOTES, 'UTF-8');
-        $fecha = htmlspecialchars((string)($m['fecha_texto'] ?? mesas_notificaciones_fecha_texto($m['fecha_mesa'] ?? '')), ENT_QUOTES, 'UTF-8');
-        $turno = htmlspecialchars((string)($m['turno'] ?? '-'), ENT_QUOTES, 'UTF-8');
-        $hora = htmlspecialchars((string)($m['hora'] ?? '-'), ENT_QUOTES, 'UTF-8');
-        $numeroMesa = htmlspecialchars((string)($m['numero_mesa'] ?? '-'), ENT_QUOTES, 'UTF-8');
-        $numeroGrupo = (int)($m['numero_grupo'] ?? 0);
-        $docente = htmlspecialchars((string)($m['docente'] ?? '-'), ENT_QUOTES, 'UTF-8');
-        $grupoHtml = $numeroGrupo > 0 ? '<span style="color:#64748b;font-weight:500;">Grupo ' . $numeroGrupo . '</span>' : '<span style="color:#94a3b8;">-</span>';
+        $dniGrupo = trim((string)($m['dni'] ?? ''));
+        $alumnoGrupo = trim((string)($m['alumno'] ?? ''));
+        if ($dniGrupo === '') $dniGrupo = trim((string)($item['dni'] ?? ''));
+        if ($alumnoGrupo === '') $alumnoGrupo = trim((string)($item['alumno'] ?? ''));
+        $clave = $dniGrupo !== '' ? $dniGrupo : ($alumnoGrupo !== '' ? $alumnoGrupo : 'alumno');
 
-        $cursoHtml = $cursoDivision !== '' ? '<div style="font-size:12px;color:#64748b;margin-top:3px;">' . $cursoDivision . '</div>' : '';
-        $filasHtml .= '\n          <tr>\n            <td style="padding:12px 10px;border-top:1px solid #e2e8f0;vertical-align:top;">\n              <strong style="color:#111827;">' . $materia . '</strong>' . $cursoHtml . '\n            </td>\n            <td style="padding:12px 10px;border-top:1px solid #e2e8f0;vertical-align:top;white-space:nowrap;">' . $fecha . '</td>\n            <td style="padding:12px 10px;border-top:1px solid #e2e8f0;vertical-align:top;white-space:nowrap;">' . $turno . '</td>\n            <td style="padding:12px 10px;border-top:1px solid #e2e8f0;vertical-align:top;white-space:nowrap;"><strong>' . $hora . '</strong></td>\n            <td style="padding:12px 10px;border-top:1px solid #e2e8f0;vertical-align:top;white-space:nowrap;">Mesa ' . $numeroMesa . '<br>' . $grupoHtml . '</td>\n            <td style="padding:12px 10px;border-top:1px solid #e2e8f0;vertical-align:top;">' . $docente . '</td>\n          </tr>';
+        if (!isset($grupos[$clave])) {
+            $grupos[$clave] = [
+                'dni' => $dniGrupo,
+                'alumno' => $alumnoGrupo,
+                'materias' => [],
+            ];
+        }
+        $grupos[$clave]['materias'][] = $m;
     }
 
-    if ($filasHtml === '') {
-        $filasHtml = '<tr><td colspan="6" style="padding:14px;color:#64748b;border-top:1px solid #e2e8f0;">No se encontraron materias asignadas.</td></tr>';
+    $cantidadAlumnos = count($grupos);
+    $titulo = count($materias) > 1 ? 'Tus mesas de examen ya fueron asignadas' : 'Tu mesa de examen ya fue asignada';
+    $intro = count($materias) > 1
+        ? 'Te enviamos el detalle de tus mesas de examen asignadas. Revisá cada materia, fecha, turno, hora y docente para presentarte a rendir.'
+        : 'Te enviamos el detalle de tu mesa de examen asignada. Revisá materia, fecha, turno, hora y docente para presentarte a rendir.';
+
+    $alumnosHtml = '';
+    foreach ($grupos as $grupo) {
+        $alumno = htmlspecialchars((string)($grupo['alumno'] ?: 'Alumno/a'), ENT_QUOTES, 'UTF-8');
+        $dni = htmlspecialchars((string)($grupo['dni'] ?: '-'), ENT_QUOTES, 'UTF-8');
+
+        $itemsHtml = '';
+        foreach ($grupo['materias'] as $m) {
+            $materia = htmlspecialchars((string)($m['materia'] ?? '-'), ENT_QUOTES, 'UTF-8');
+            $curso = trim((string)($m['curso'] ?? ''));
+            $division = trim((string)($m['division'] ?? ''));
+            $cursoDivision = htmlspecialchars(trim($curso . ($division !== '' ? ' ' . $division : '')), ENT_QUOTES, 'UTF-8');
+            $fecha = htmlspecialchars((string)($m['fecha_texto'] ?? mesas_notificaciones_fecha_texto($m['fecha_mesa'] ?? '')), ENT_QUOTES, 'UTF-8');
+            $turno = htmlspecialchars((string)($m['turno'] ?? '-'), ENT_QUOTES, 'UTF-8');
+            $hora = htmlspecialchars((string)($m['hora'] ?? '-'), ENT_QUOTES, 'UTF-8');
+            $docente = htmlspecialchars((string)($m['docente'] ?? '-'), ENT_QUOTES, 'UTF-8');
+            $cursoHtml = $cursoDivision !== '' ? '<div style="font-size:12px;color:rgba(255,255,255,.88);margin-top:4px;">' . $cursoDivision . '</div>' : '';
+
+            $itemsHtml .= "
+              <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"border:1px solid #dbe4f0;border-radius:12px;background:#ffffff;margin:10px 0;border-collapse:separate;overflow:hidden;\">
+                <tr>
+                  <td colspan=\"2\" style=\"padding:14px 16px;background:#f8fafc;border-bottom:1px solid #e2e8f0;\">
+                    <strong style=\"display:block;font-size:15px;line-height:1.35;color:#111827;\">{$materia}</strong>
+                    {$cursoHtml}
+                  </td>
+                </tr>
+                <tr>
+                  <td style=\"width:50%;padding:12px 16px;border-bottom:1px solid #eef2f7;\">
+                    <span style=\"display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#64748b;font-weight:700;\">Fecha</span>
+                    <strong style=\"display:block;margin-top:4px;font-size:14px;color:#111827;\">{$fecha}</strong>
+                  </td>
+                  <td style=\"width:50%;padding:12px 16px;border-bottom:1px solid #eef2f7;\">
+                    <span style=\"display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#64748b;font-weight:700;\">Turno</span>
+                    <strong style=\"display:block;margin-top:4px;font-size:14px;color:#111827;\">{$turno}</strong>
+                  </td>
+                </tr>
+                <tr>
+                  <td style=\"width:50%;padding:12px 16px;border-bottom:1px solid #eef2f7;\">
+                    <span style=\"display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#64748b;font-weight:700;\">Hora</span>
+                    <strong style=\"display:block;margin-top:4px;font-size:15px;color:#111827;\">{$hora}</strong>
+                  </td>
+                  <td style=\"width:50%;padding:12px 16px;border-bottom:1px solid #eef2f7;\">
+                    <span style=\"display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#64748b;font-weight:700;\">Docente</span>
+                    <strong style=\"display:block;margin-top:4px;font-size:14px;color:#111827;\">{$docente}</strong>
+                  </td>
+                </tr>
+              </table>";
+        }
+
+        $alumnosHtml .= "
+          <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"border:1px solid #dbe4f0;border-radius:14px;background:#f8fafc;margin:0 0 18px;border-collapse:separate;overflow:hidden;\">
+            <tr>
+              <td style=\"padding:16px 18px;background:#f1f5f9;border-bottom:1px solid #dbe4f0;\">
+                <strong style=\"display:block;font-size:15px;color:#111827;\">{$alumno}</strong>
+                <span style=\"display:block;margin-top:4px;font-size:13px;color:#475569;\">DNI: {$dni}</span>
+              </td>
+            </tr>
+            <tr>
+              <td style=\"padding:8px 12px 12px;\">
+                {$itemsHtml}
+              </td>
+            </tr>
+          </table>";
     }
+
+    if ($alumnosHtml === '') {
+        $alumnosHtml = '<div style="padding:14px;border:1px solid #dbe4f0;border-radius:12px;color:#64748b;">No se encontraron materias asignadas.</div>';
+    }
+
+    $tituloHtml = htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8');
+    $introHtml = htmlspecialchars($intro, ENT_QUOTES, 'UTF-8');
 
     return <<<HTML
 <!doctype html>
@@ -529,54 +693,24 @@ function mesas_notificaciones_html_email(array $item, array $materias, array $cf
   <title>{$subjectHtml}</title>
 </head>
 <body style="margin:0;padding:0;background:#eef3fb;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">Tu mesa de examen ya fue asignada en {$escuelaHtml}.</div>
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">Mesas de examen asignadas en {$escuelaHtml}.</div>
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#eef3fb;margin:0;padding:0;">
     <tr>
       <td align="center" style="padding:32px 14px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:760px;background:#ffffff;border:1px solid #dbe4f0;border-radius:16px;overflow:hidden;box-shadow:0 18px 45px rgba(15,23,42,.08);">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:720px;background:#ffffff;border:1px solid #dbe4f0;border-radius:16px;overflow:hidden;box-shadow:0 18px 45px rgba(15,23,42,.08);">
           <tr>
             <td style="background:{$colorPrincipal};padding:24px 28px;">
-              <h1 style="margin:0;font-size:23px;line-height:1.25;color:#ffffff;letter-spacing:.2px;">{$escuelaHtml}</h1>
-              <p style="margin:7px 0 0;font-size:14px;line-height:1.45;color:rgba(255,255,255,.88);">Notificación de mesas de examen</p>
+              <h1 style="margin:0;font-size:23px;line-height:1.25;color:#ffffff;letter-spacing:.2px;">{$tituloPeriodoHtml}</h1>
+              <p style="margin:7px 0 0;font-size:14px;line-height:1.45;color:rgba(255,255,255,.88);">{$escuelaHtml} · Notificación de mesas de examen</p>
             </td>
           </tr>
           <tr>
             <td style="padding:30px 28px 28px;">
-              <h2 style="margin:0 0 14px;font-size:22px;line-height:1.25;color:#111827;">Tu mesa de examen ya fue asignada</h2>
-              <p style="margin:0 0 22px;font-size:15px;line-height:1.65;color:#374151;">{$mensajeHtml}</p>
+              <h2 style="margin:0 0 14px;font-size:22px;line-height:1.25;color:#111827;">{$tituloHtml}</h2>
+              <p style="margin:0 0 18px;font-size:15px;line-height:1.65;color:#374151;">{$introHtml}</p>
+              <p style="margin:0 0 20px;font-size:13px;line-height:1.5;color:#64748b;"><strong>Email registrado:</strong> {$email}</p>
 
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border:1px solid #dbe4f0;border-radius:14px;background:#f8fafc;overflow:hidden;margin-bottom:20px;">
-                <tr>
-                  <td style="padding:18px 18px 8px;font-size:14px;line-height:1.45;color:#334155;">
-                    <strong style="display:inline-block;min-width:84px;color:#111827;">Alumno/a:</strong> {$alumno}
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:0 18px 8px;font-size:14px;line-height:1.45;color:#334155;">
-                    <strong style="display:inline-block;min-width:84px;color:#111827;">DNI:</strong> {$dni}
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:0 18px 18px;font-size:14px;line-height:1.45;color:#334155;">
-                    <strong style="display:inline-block;min-width:84px;color:#111827;">Email:</strong> {$email}
-                  </td>
-                </tr>
-              </table>
-
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border:1px solid #dbe4f0;border-radius:14px;background:#ffffff;overflow:hidden;border-collapse:separate;border-spacing:0;">
-                <thead>
-                  <tr>
-                    <th align="left" style="padding:11px 10px;background:#f1f5f9;color:#0f172a;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Materia</th>
-                    <th align="left" style="padding:11px 10px;background:#f1f5f9;color:#0f172a;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Fecha</th>
-                    <th align="left" style="padding:11px 10px;background:#f1f5f9;color:#0f172a;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Turno</th>
-                    <th align="left" style="padding:11px 10px;background:#f1f5f9;color:#0f172a;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Hora</th>
-                    <th align="left" style="padding:11px 10px;background:#f1f5f9;color:#0f172a;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Mesa</th>
-                    <th align="left" style="padding:11px 10px;background:#f1f5f9;color:#0f172a;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Docente</th>
-                  </tr>
-                </thead>
-                <tbody>{$filasHtml}
-                </tbody>
-              </table>
+              {$alumnosHtml}
 
               <p style="margin:22px 0 0;font-size:13px;line-height:1.6;color:#64748b;">Presentate con anticipación en la fecha, turno y hora indicados. Este correo fue generado automáticamente por el sistema de la escuela.</p>
             </td>
@@ -602,6 +736,7 @@ function mesas_notificaciones_enviar_email_mesa(array $item, array $cfg): array
 
     $escuela = trim((string)($cfg['nombre'] ?? mesas_notificaciones_tenant_nombre()));
     $materiasTexto = implode(', ', array_values(array_filter(array_map(static fn(array $m): string => trim((string)($m['materia'] ?? '')), $materias))));
+    $primera = is_array($materias[0] ?? null) ? $materias[0] : [];
     $vars = [
         'alumno' => (string)($item['alumno'] ?? ''),
         'dni' => (string)($item['dni'] ?? ''),
@@ -610,7 +745,11 @@ function mesas_notificaciones_enviar_email_mesa(array $item, array $cfg): array
         'escuela' => $escuela,
         'materias' => $materiasTexto,
         'materia' => $materiasTexto,
-        'fecha' => date('d/m/Y H:i'),
+        'fecha' => (string)($primera['fecha_texto'] ?? date('d/m/Y')),
+        'turno' => (string)($primera['turno'] ?? ''),
+        'hora' => (string)($primera['hora'] ?? ''),
+        'docente' => (string)($primera['docente'] ?? ''),
+        'mesa' => '',
     ];
 
     $subject = trim((string)($item['asunto'] ?? ''));
@@ -619,6 +758,10 @@ function mesas_notificaciones_enviar_email_mesa(array $item, array $cfg): array
     }
     if ($subject === '') $subject = 'Tu mesa de examen ya fue asignada';
     $subject = formulario_render_template($subject, $vars);
+    $alumnoSubject = trim((string)($item['alumno'] ?? ''));
+    if ($alumnoSubject !== '' && mb_stripos($subject, $alumnoSubject, 0, 'UTF-8') === false) {
+        $subject .= ' - ' . $alumnoSubject;
+    }
 
     $html = mesas_notificaciones_html_email($item, $materias, $cfg, $subject);
 
