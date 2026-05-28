@@ -31,6 +31,7 @@ function mesas_armado_grupos_finales(): void
             'reoptimizar' => mesas_armado_grupos_bool($body['reoptimizar'] ?? ($_GET['reoptimizar'] ?? true)),
             'fecha_inicio' => $body['fecha_inicio'] ?? $body['fechaInicio'] ?? ($_GET['fecha_inicio'] ?? $_GET['fechaInicio'] ?? null),
             'fecha_fin' => $body['fecha_fin'] ?? $body['fechaFin'] ?? ($_GET['fecha_fin'] ?? $_GET['fechaFin'] ?? null),
+            'modo_turnos' => $body['modo_turnos'] ?? $body['modoTurnos'] ?? $body['turno_modo'] ?? $body['turnoModo'] ?? ($_GET['modo_turnos'] ?? $_GET['modoTurnos'] ?? $_GET['turno_modo'] ?? $_GET['turnoModo'] ?? 'combinado'),
         ]);
 
         json_response([
@@ -81,6 +82,7 @@ function mesas_armado_grupos_finales_core(PDO $pdo, array $opciones = []): array
     $reoptimizar = (bool)($opciones['reoptimizar'] ?? true);
     $fechaInicioRango = isset($opciones['fecha_inicio']) ? trim((string)$opciones['fecha_inicio']) : null;
     $fechaFinRango = isset($opciones['fecha_fin']) ? trim((string)$opciones['fecha_fin']) : null;
+    $modoTurnos = mesas_armado_normalizar_modo_turnos($opciones['modo_turnos'] ?? $opciones['modoTurnos'] ?? 'combinado');
 
     mesas_armado_grupos_asegurar_tablas($pdo);
 
@@ -200,6 +202,7 @@ function mesas_armado_grupos_finales_core(PDO $pdo, array $opciones = []): array
                     'horas_turnos' => $horasTurnos,
                     'fecha_inicio' => $fechaInicioRango,
                     'fecha_fin' => $fechaFinRango,
+                    'modo_turnos' => $modoTurnos,
                 ]
             );
         }
@@ -227,6 +230,7 @@ function mesas_armado_grupos_finales_core(PDO $pdo, array $opciones = []): array
 
         return [
             'fase' => 6,
+            'modo_turnos' => $modoTurnos,
             'fase_final_reoptimizacion' => $resultadoReoptimizacion,
             'agrupacion_final_generada' => true,
             'reoptimizacion_ejecutada' => is_array($resultadoReoptimizacion),

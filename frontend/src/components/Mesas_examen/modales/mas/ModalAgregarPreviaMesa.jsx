@@ -133,6 +133,9 @@ const ModalAgregarPreviaMesa = ({
               <h3>Agregar alumno a la mesa N° {texto(numeroMesa)}</h3>
               <div className="mas-header-meta">
                 <span>{texto(data?.area || data?.meta?.area, "Área sin definir")}</span>
+                {data?.docente_objetivo?.docente && (
+                  <span>Docente: {texto(data.docente_objetivo.docente)}</span>
+                )}
               </div>
             </div>
           </div>
@@ -161,7 +164,7 @@ const ModalAgregarPreviaMesa = ({
             </div>
           ) : previas.length === 0 ? (
             <div className="mas-empty">
-              No hay previas sin mesa disponibles para esta área, fecha y turno.
+              {data?.mensaje_restriccion || "No hay previas sin mesa disponibles para este mismo docente, área, fecha y turno."}
             </div>
           ) : (
             <div className="mas-tabla-wrap">

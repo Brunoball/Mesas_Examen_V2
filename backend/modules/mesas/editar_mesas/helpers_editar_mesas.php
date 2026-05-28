@@ -2,6 +2,8 @@
 // backend/modules/mesas/editar_mesas/helpers_editar_mesas.php
 declare(strict_types=1);
 
+require_once __DIR__ . '/../armado_rango_helper.php';
+
 function mesas_editar_input_json(): array
 {
     $raw = file_get_contents('php://input');
@@ -317,9 +319,118 @@ function mesas_editar_aplicar_slots_extra_a_grupo(PDO $pdo, array $grupo): array
     return array_merge($grupo, $capacidad);
 }
 
+function mesas_editar_area_nombre_por_id(PDO $pdo, ?int $idArea): string
+{
+    $idArea = (int)($idArea ?? 0);
+    if ($idArea <= 0) {
+        return '';
+    }
+
+    $stmt = $pdo->prepare('SELECT area FROM areas WHERE id_area = ? LIMIT 1');
+    $stmt->execute([$idArea]);
+    return trim((string)($stmt->fetchColumn() ?: ''));
+}
+
+function mesas_editar_area_canonica_grupo(PDO $pdo, int $numeroGrupo): ?array
+{
+    if ($numeroGrupo <= 0) {
+        return null;
+    }
+
+    // mesas_grupos no tiene una cabecera de grupo; el área se guarda repetida por fila.
+    // Si por una edición anterior quedó un grupo con filas de áreas distintas, MIN(id_area)
+    // puede marcar cualquier cosa y después el backend rechaza movimientos válidos.
+    // Tomamos como área del grupo la mayoritaria. Ante empate, la del primer orden.
+    $stmt = $pdo->prepare(''
+        . 'SELECT g.id_area, COUNT(*) AS cantidad, MIN(g.orden) AS primer_orden, MIN(g.id_mesa_grupo) AS primer_id '
+        . 'FROM mesas_grupos g '
+        . 'WHERE g.numero_grupo = ? AND g.id_area IS NOT NULL '
+        . 'GROUP BY g.id_area '
+        . 'ORDER BY cantidad DESC, primer_orden ASC, primer_id ASC, g.id_area ASC '
+        . 'LIMIT 1'
+    );
+    $stmt->execute([$numeroGrupo]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$row || (int)($row['id_area'] ?? 0) <= 0) {
+        return null;
+    }
+
+    $idArea = (int)$row['id_area'];
+    return [
+        'id_area' => $idArea,
+        'area' => mesas_editar_area_nombre_por_id($pdo, $idArea),
+    ];
+}
+
+function mesas_editar_normalizar_area_grupo(PDO $pdo, int $numeroGrupo): ?array
+{
+    $area = mesas_editar_area_canonica_grupo($pdo, $numeroGrupo);
+    if (!$area) {
+        return null;
+    }
+
+    // Deja el grupo consistente. Esto corrige estados viejos donde un número quedó
+    // dentro de un grupo, pero con id_area propio en vez del área del grupo.
+    $stmt = $pdo->prepare(''
+        . 'UPDATE mesas_grupos '
+        . 'SET id_area = ? '
+        . 'WHERE numero_grupo = ? AND (id_area IS NULL OR id_area <> ?)'
+    );
+    $stmt->execute([(int)$area['id_area'], $numeroGrupo, (int)$area['id_area']]);
+
+    return $area;
+}
+
+function mesas_editar_normalizar_areas_grupos_finales(PDO $pdo, ?array $numerosGrupo = null): void
+{
+    $params = [];
+    $where = '';
+
+    if (is_array($numerosGrupo) && count($numerosGrupo) > 0) {
+        $numeros = array_values(array_unique(array_filter(array_map('intval', $numerosGrupo), static fn ($n) => $n > 0)));
+        if (count($numeros) === 0) {
+            return;
+        }
+        $where = 'WHERE numero_grupo IN (' . implode(',', array_fill(0, count($numeros), '?')) . ')';
+        $params = $numeros;
+    }
+
+    $stmt = $pdo->prepare('SELECT DISTINCT numero_grupo FROM mesas_grupos ' . $where . ' ORDER BY numero_grupo ASC');
+    $stmt->execute($params);
+
+    foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $numeroGrupo) {
+        mesas_editar_normalizar_area_grupo($pdo, (int)$numeroGrupo);
+    }
+}
+
+function mesas_editar_aplicar_area_canonica_a_fila_grupo(PDO $pdo, array $grupo): array
+{
+    $numeroGrupo = (int)($grupo['numero_grupo'] ?? $grupo['id_grupo'] ?? 0);
+    if ($numeroGrupo <= 0) {
+        return $grupo;
+    }
+
+    $area = mesas_editar_normalizar_area_grupo($pdo, $numeroGrupo);
+    if ($area) {
+        $grupo['id_area'] = (int)$area['id_area'];
+        $grupo['area'] = $area['area'];
+    }
+
+    return $grupo;
+}
+
+
 function mesas_editar_obtener_grupo_hidratado(PDO $pdo, int $numeroGrupo): ?array
 {
-    mesas_armado_grupos_asegurar_tablas($pdo);
+    // Importante: esta función también se usa dentro de transacciones de edición.
+    // En MySQL/MariaDB los CREATE/ALTER/DROP hacen COMMIT implícito; por eso no
+    // se ejecuta el asegurado estructural si ya hay una transacción activa.
+    if (!$pdo->inTransaction()) {
+        mesas_armado_grupos_asegurar_tablas($pdo);
+    }
+
+    mesas_editar_normalizar_area_grupo($pdo, $numeroGrupo);
 
     $stmt = $pdo->prepare("
         SELECT
@@ -371,7 +482,10 @@ function mesas_editar_obtener_grupo_hidratado(PDO $pdo, int $numeroGrupo): ?arra
 
 function mesas_editar_obtener_no_agrupada_hidratada(PDO $pdo, ?int $idNoAgrupada = null, ?int $numeroMesa = null): ?array
 {
-    mesas_armado_grupos_asegurar_tablas($pdo);
+    // Evita DDL dentro de transacciones de edición para no provocar commits implícitos.
+    if (!$pdo->inTransaction()) {
+        mesas_armado_grupos_asegurar_tablas($pdo);
+    }
 
     $where = [];
     $params = [];
@@ -1202,6 +1316,27 @@ function mesas_editar_resumen_numero_para_grupo_unico(PDO $pdo, int $numeroMesa)
     ];
 }
 
+
+function mesas_editar_validar_fecha_en_rango_armado(PDO $pdo, string $fechaMesa, array $contexto = []): array
+{
+    $rango = isset($contexto['rango_armado']) && is_array($contexto['rango_armado'])
+        ? $contexto['rango_armado']
+        : (function_exists('mesas_armado_rango_obtener_actual') ? mesas_armado_rango_obtener_actual($pdo) : null);
+
+    if (!$rango || empty($rango['fecha_inicio']) || empty($rango['fecha_fin'])) {
+        return [];
+    }
+
+    $inicio = (string)$rango['fecha_inicio'];
+    $fin = (string)$rango['fecha_fin'];
+
+    if ($fechaMesa < $inicio || $fechaMesa > $fin) {
+        return ['La fecha seleccionada está fuera de los días definidos para este armado de mesas (' . $inicio . ' a ' . $fin . ').'];
+    }
+
+    return [];
+}
+
 function mesas_editar_validar_programacion_completa(PDO $pdo, string $tipo, array $data, string $fechaMesa, int $idTurno, string $hora, array $turno, array $contexto = []): array
 {
     $errores = [];
@@ -1215,6 +1350,7 @@ function mesas_editar_validar_programacion_completa(PDO $pdo, string $tipo, arra
         $detalle = mesas_editar_obtener_detalle_numeros($pdo, $numeros);
     }
 
+    $errores = array_merge($errores, mesas_editar_validar_fecha_en_rango_armado($pdo, $fechaMesa, $contexto));
     $errores = array_merge($errores, mesas_editar_validar_docentes($pdo, $detalle, $fechaMesa, $idTurno, $contexto));
     $errores = array_merge($errores, mesas_editar_validar_alumnos($pdo, $detalle, $fechaMesa, $idTurno, $contexto));
     $errores = array_merge($errores, mesas_editar_validar_correlativas($pdo, $detalle, $fechaMesa, $idTurno, $contexto));
@@ -1236,37 +1372,64 @@ function mesas_editar_rango_fechas_para_slots(PDO $pdo, array $data, ?array $gru
     $fechaInicio = mesas_editar_parametro_texto($data['fecha_inicio'] ?? null);
     $fechaFin = mesas_editar_parametro_texto($data['fecha_fin'] ?? null);
 
-    // Solo se usa rango explícito cuando vienen las dos fechas reales.
-    // Si el frontend manda undefined/null como texto, se ignora y se calcula por mes.
     if ($fechaInicio !== '' && $fechaFin !== '') {
-        return [mesas_editar_normalizar_fecha_rango($fechaInicio), mesas_editar_normalizar_fecha_rango($fechaFin)];
+        $inicioSolicitado = mesas_editar_normalizar_fecha_rango($fechaInicio);
+        $finSolicitado = mesas_editar_normalizar_fecha_rango($fechaFin);
+    } else {
+        $anio = mesas_editar_parametro_presente($data['anio'] ?? null) ? (int)$data['anio'] : 0;
+        $mes = mesas_editar_parametro_presente($data['mes'] ?? null) ? (int)$data['mes'] : 0;
+
+        if ($anio > 1900 && $mes >= 1 && $mes <= 12) {
+            $inicio = new DateTimeImmutable(sprintf('%04d-%02d-01', $anio, $mes));
+            $fin = $inicio->modify('last day of this month');
+            $inicioSolicitado = $inicio->format('Y-m-d');
+            $finSolicitado = $fin->format('Y-m-d');
+        } else {
+            $fechaBase = mesas_editar_parametro_texto($grupo['fecha_mesa'] ?? null);
+            if ($fechaBase === '') {
+                $stmt = $pdo->query('SELECT MIN(fecha_mesa) AS inicio FROM mesas WHERE fecha_mesa IS NOT NULL');
+                $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+                $fechaBase = mesas_editar_parametro_texto($row['inicio'] ?? null);
+            }
+
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaBase)) {
+                $fechaBase = (new DateTimeImmutable('today'))->format('Y-m-d');
+            }
+
+            $dt = DateTimeImmutable::createFromFormat('!Y-m-d', $fechaBase) ?: new DateTimeImmutable('today');
+            $inicioSolicitado = $dt->modify('first day of this month')->format('Y-m-d');
+            $finSolicitado = $dt->modify('last day of this month')->format('Y-m-d');
+        }
     }
 
-    $anio = mesas_editar_parametro_presente($data['anio'] ?? null) ? (int)$data['anio'] : 0;
-    $mes = mesas_editar_parametro_presente($data['mes'] ?? null) ? (int)$data['mes'] : 0;
+    $rangoArmado = function_exists('mesas_armado_rango_obtener_actual') ? mesas_armado_rango_obtener_actual($pdo) : null;
+    if (is_array($rangoArmado)
+        && !empty($rangoArmado['fecha_inicio'])
+        && !empty($rangoArmado['fecha_fin'])
+        && function_exists('mesas_armado_rango_intersectar')
+    ) {
+        $interseccion = mesas_armado_rango_intersectar(
+            $inicioSolicitado,
+            $finSolicitado,
+            (string)$rangoArmado['fecha_inicio'],
+            (string)$rangoArmado['fecha_fin']
+        );
 
-    if ($anio > 1900 && $mes >= 1 && $mes <= 12) {
-        $inicio = new DateTimeImmutable(sprintf('%04d-%02d-01', $anio, $mes));
-        $fin = $inicio->modify('last day of this month');
-        return [$inicio->format('Y-m-d'), $fin->format('Y-m-d')];
+        if ($interseccion !== null) {
+            return [$interseccion[0], $interseccion[1]];
+        }
+
+        // No hay solapamiento con los días reales del armado: devolvemos un rango vacío
+        // acotado al rango original para que el frontend bloquee todo el mes consultado.
+        $inicioArmado = (string)$rangoArmado['fecha_inicio'];
+        $finArmado = (string)$rangoArmado['fecha_fin'];
+        if ($finArmado < $inicioArmado) {
+            [$inicioArmado, $finArmado] = [$finArmado, $inicioArmado];
+        }
+        return [$inicioArmado, $finArmado];
     }
 
-    $fechaBase = mesas_editar_parametro_texto($grupo['fecha_mesa'] ?? null);
-    if ($fechaBase === '') {
-        $stmt = $pdo->query('SELECT MIN(fecha_mesa) AS inicio, MAX(fecha_mesa) AS fin FROM mesas WHERE fecha_mesa IS NOT NULL');
-        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
-        $fechaBase = mesas_editar_parametro_texto($row['inicio'] ?? null);
-    }
-
-    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaBase)) {
-        $fechaBase = (new DateTimeImmutable('today'))->format('Y-m-d');
-    }
-
-    $dt = DateTimeImmutable::createFromFormat('!Y-m-d', $fechaBase) ?: new DateTimeImmutable('today');
-    $inicio = $dt->modify('first day of this month');
-    $fin = $dt->modify('last day of this month');
-
-    return [$inicio->format('Y-m-d'), $fin->format('Y-m-d')];
+    return [$inicioSolicitado, $finSolicitado];
 }
 
 function mesas_editar_construir_slots_validos(PDO $pdo, string $tipo, array $data, string $fechaInicio, string $fechaFin): array
@@ -1283,6 +1446,10 @@ function mesas_editar_construir_slots_validos(PDO $pdo, string $tipo, array $dat
     // correlativas, disponibilidad y choques para cada día/turno del calendario.
     // Ahora ese contexto se arma una sola vez por rango y cada slot solo consulta mapas en memoria.
     $contexto = mesas_editar_preparar_contexto_validacion($pdo, $tipo, $data, $fechaInicio, $fechaFin);
+    $rangoArmado = function_exists('mesas_armado_rango_obtener_actual') ? mesas_armado_rango_obtener_actual($pdo) : null;
+    if (is_array($rangoArmado)) {
+        $contexto['rango_armado'] = $rangoArmado;
+    }
 
     $slots = [];
     $totalValidos = 0;
@@ -1332,6 +1499,7 @@ function mesas_editar_construir_slots_validos(PDO $pdo, string $tipo, array $dat
     return [
         'fecha_inicio' => $fechaInicio,
         'fecha_fin' => $fechaFin,
+        'rango_armado' => $rangoArmado,
         'slots' => $slots,
         'total_validos' => $totalValidos,
     ];

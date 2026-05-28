@@ -60,32 +60,45 @@ const GridHead = ({ columns, gridCols }) => (
   </div>
 );
 
-const FilaNoAgrupada = ({ item, agregando, onAgregar }) => (
-  <div className="ag-num-grid-row ag-num-grid-data-row" style={{ gridTemplateColumns: NO_AGRUPADAS_GRID_COLS }} role="row">
-    <div className="ag-num-grid-cell ag-num-center" role="cell" data-label="N° mesa">N° {texto(item.numero_mesa)}</div>
-    <div className="ag-num-grid-cell is-strong" role="cell" data-label="Materia">
-      <TextoExpandibleGlobal value={item.materia} fallback="Sin materia" title="Materia" subtitle={`Mesa N° ${texto(item.numero_mesa)}`} />
+const FilaNoAgrupada = ({ item, agregando, onAgregar }) => {
+  const errores = Array.isArray(item?.validacion?.errores) ? item.validacion.errores.filter(Boolean) : [];
+  const erroresReales = errores.filter((error) => !normalizar(error).includes("area"));
+  const validoBackend = item?.validacion?.valido !== false || erroresReales.length === 0;
+  const agregable = item?.agregable !== false && validoBackend;
+  const tituloAccion = agregable
+    ? "Agregar número al grupo"
+    : (erroresReales.length ? erroresReales.join(" ") : "Este número tiene conflictos y no se puede agregar al grupo.");
+
+  return (
+    <div className={`ag-num-grid-row ag-num-grid-data-row ${!agregable ? "ag-num-row-disabled" : ""}`} style={{ gridTemplateColumns: NO_AGRUPADAS_GRID_COLS }} role="row">
+      <div className="ag-num-grid-cell ag-num-center" role="cell" data-label="N° mesa">N° {texto(item.numero_mesa)}</div>
+      <div className="ag-num-grid-cell is-strong" role="cell" data-label="Materia">
+        <TextoExpandibleGlobal value={item.materia} fallback="Sin materia" title="Materia" subtitle={`Mesa N° ${texto(item.numero_mesa)}`} />
+      </div>
+      <div className="ag-num-grid-cell" role="cell" data-label="Docente">
+        <TextoExpandibleGlobal value={item.docente} fallback="Sin docente" title="Docente" subtitle={`DNI ${texto(item.dni)}`} />
+      </div>
+      <div className="ag-num-grid-cell" role="cell" data-label="Área">
+        <TextoExpandibleGlobal value={item.area} fallback="Sin área" title="Área" subtitle={`Mesa N° ${texto(item.numero_mesa)}`} />
+      </div>
+      <div className="ag-num-grid-cell ag-num-center" role="cell" data-label="Alumnos">{texto(item.cantidad_alumnos, "0")}</div>
+      <div className="ag-num-grid-cell ag-num-center ag-num-grid-actions" role="cell" data-label="Acción">
+        <button
+          type="button"
+          className="mov-iconBtn materias-icon-btn ag-num-add-btn"
+          title={tituloAccion}
+          disabled={agregando || !agregable}
+          onClick={() => {
+            if (!agregable) return;
+            Promise.resolve(onAgregar(item, "no_agrupada")).catch(() => {});
+          }}
+        >
+          <FontAwesomeIcon icon={agregando ? faSpinner : faPlus} spin={agregando} />
+        </button>
+      </div>
     </div>
-    <div className="ag-num-grid-cell" role="cell" data-label="Docente">
-      <TextoExpandibleGlobal value={item.docente} fallback="Sin docente" title="Docente" subtitle={`DNI ${texto(item.dni)}`} />
-    </div>
-    <div className="ag-num-grid-cell" role="cell" data-label="Área">
-      <TextoExpandibleGlobal value={item.area} fallback="Sin área" title="Área" subtitle={`Mesa N° ${texto(item.numero_mesa)}`} />
-    </div>
-    <div className="ag-num-grid-cell ag-num-center" role="cell" data-label="Alumnos">{texto(item.cantidad_alumnos, "0")}</div>
-    <div className="ag-num-grid-cell ag-num-center ag-num-grid-actions" role="cell" data-label="Acción">
-      <button
-        type="button"
-        className="mov-iconBtn materias-icon-btn ag-num-add-btn"
-        title="Agregar número al grupo"
-        disabled={agregando}
-        onClick={() => onAgregar(item, "no_agrupada")}
-      >
-        <FontAwesomeIcon icon={agregando ? faSpinner : faPlus} spin={agregando} />
-      </button>
-    </div>
-  </div>
-);
+  );
+};
 
 const FilaPrevia = ({ item, agregando, onAgregar }) => (
   <div className="ag-num-grid-row ag-num-grid-data-row" style={{ gridTemplateColumns: PREVIAS_GRID_COLS }} role="row">
@@ -106,7 +119,9 @@ const FilaPrevia = ({ item, agregando, onAgregar }) => (
         className="mov-iconBtn materias-icon-btn ag-num-add-btn"
         title="Crear número y agregar al grupo"
         disabled={agregando}
-        onClick={() => onAgregar(item, "previa_sin_mesa")}
+        onClick={() => {
+          Promise.resolve(onAgregar(item, "previa_sin_mesa")).catch(() => {});
+        }}
       >
         <FontAwesomeIcon icon={agregando ? faSpinner : faPlus} spin={agregando} />
       </button>
@@ -114,7 +129,7 @@ const FilaPrevia = ({ item, agregando, onAgregar }) => (
   </div>
 );
 
-const ModalAgregarNumeroGrupo = ({ abierto, data, cargando, agregando, onClose, onAgregar }) => {
+const ModalAgregarNumeroGrupo = ({ abierto, data, cargando, agregando, error, onClose, onAgregar }) => {
   const [tab, setTab] = useState("no_agrupadas");
   const [busqueda, setBusqueda] = useState("");
   const overlayRef = useEscapeClose(abierto, onClose, agregando);
@@ -208,9 +223,13 @@ const ModalAgregarNumeroGrupo = ({ abierto, data, cargando, agregando, onClose, 
             />
           </label>
 
+          {error ? (
+            <div className="ag-num-error">{error}</div>
+          ) : null}
+
           {cargando ? (
             <div className="ag-num-empty">
-              <FontAwesomeIcon icon={faSpinner} spin /> Buscando opciones válidas...
+              <FontAwesomeIcon icon={faSpinner} spin /> Buscando números no agrupados...
             </div>
           ) : tab === "no_agrupadas" ? (
             noAgrupadas.length === 0 ? (

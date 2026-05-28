@@ -48,21 +48,37 @@ function mesas_editar_flechas_mover(): void
         $resultado = mesas_editar_flechas_mover_numero($pdo, $numeroMesa, $numeroGrupoDestino);
 
         if (!$resultado['movido']) {
-            $pdo->rollBack();
-            json_response([
-                'exito' => false,
-                'mensaje' => 'No se puede mover este número de mesa al grupo seleccionado.',
-                'errores' => $resultado['validacion']['errores'] ?? [],
-                'data' => $resultado,
-            ], 422);
-            return;
+            // Si por doble click/carrera el backend alcanzó a moverlo pero la segunda
+            // petición cayó en validación, verificamos el estado real antes de devolver 422.
+            if (mesas_editar_flechas_numero_en_grupo($pdo, $numeroMesa, $numeroGrupoDestino)) {
+                $resultado = mesas_editar_flechas_respuesta_estado_actual(
+                    $pdo,
+                    $numeroMesa,
+                    $numeroGrupoDestino,
+                    null,
+                    'Número de mesa movido correctamente.'
+                );
+            } else {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                json_response([
+                    'exito' => false,
+                    'mensaje' => 'No se puede mover este número de mesa al grupo seleccionado.',
+                    'errores' => $resultado['validacion']['errores'] ?? [],
+                    'data' => $resultado,
+                ], 422);
+                return;
+            }
         }
 
-        $pdo->commit();
+        if ($pdo->inTransaction()) {
+            $pdo->commit();
+        }
 
         json_response([
             'exito' => true,
-            'mensaje' => 'Número de mesa movido correctamente.',
+            'mensaje' => $resultado['mensaje'] ?? 'Número de mesa movido correctamente.',
             'data' => $resultado,
         ]);
     } catch (InvalidArgumentException $e) {

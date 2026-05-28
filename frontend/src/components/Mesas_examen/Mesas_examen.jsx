@@ -61,17 +61,37 @@ const normalizarTextoBusqueda = (valor) =>
     .replace(/\s+/g, " ")
     .trim();
 
+const normalizarTextoBusquedaFlexible = (valor) =>
+  normalizarTextoBusqueda(valor)
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
 const obtenerTerminosBusqueda = (valor) => {
-  const texto = normalizarTextoBusqueda(valor);
+  const texto = normalizarTextoBusquedaFlexible(valor);
   if (!texto) return [];
 
-  return Array.from(new Set(texto.split(" ").filter((termino) => termino.length >= 1)));
+  const palabras = texto.split(" ").filter(Boolean);
+  if (palabras.length <= 1) {
+    return palabras.map((palabra) => ({ tipo: "palabra", valor: palabra }));
+  }
+
+  // Si el usuario escribe un nombre completo o una frase, se resalta solamente
+  // esa coincidencia completa. Así, "GAMBOGGI, BENJAMIN ALEXANDER" no pinta
+  // todos los "BENJAMIN" sueltos de la misma mesa.
+  return [{ tipo: "frase", valor: palabras.join(" ") }];
 };
 
-const crearIndiceNormalizado = (texto) => {
+const crearIndiceBusquedaFlexible = (texto) => {
   const caracteres = Array.from(String(texto || ""));
   let normalizado = "";
   const indicesOriginales = [];
+
+  const agregarEspacio = (indice) => {
+    if (!normalizado || normalizado.endsWith(" ")) return;
+    normalizado += " ";
+    indicesOriginales.push(indice);
+  };
 
   caracteres.forEach((caracter, indice) => {
     const limpio = caracter
@@ -80,21 +100,37 @@ const crearIndiceNormalizado = (texto) => {
       .replace(/[\u0300-\u036f]/g, "");
 
     Array.from(limpio).forEach((charNormalizado) => {
-      normalizado += charNormalizado;
-      indicesOriginales.push(indice);
+      if (/^[\p{L}\p{N}]$/u.test(charNormalizado)) {
+        normalizado += charNormalizado;
+        indicesOriginales.push(indice);
+      } else {
+        agregarEspacio(indice);
+      }
     });
   });
 
+  while (normalizado.endsWith(" ")) {
+    normalizado = normalizado.slice(0, -1);
+    indicesOriginales.pop();
+  }
+
   return { caracteres, normalizado, indicesOriginales };
+};
+
+const obtenerValorTerminoBusqueda = (termino) => {
+  if (!termino) return "";
+  if (typeof termino === "string") return normalizarTextoBusquedaFlexible(termino);
+  return normalizarTextoBusquedaFlexible(termino.valor);
 };
 
 const obtenerRangosResaltado = (texto, terminos = []) => {
   if (!texto || !Array.isArray(terminos) || terminos.length === 0) return [];
 
-  const { caracteres, normalizado, indicesOriginales } = crearIndiceNormalizado(texto);
+  const { caracteres, normalizado, indicesOriginales } = crearIndiceBusquedaFlexible(texto);
   const rangos = [];
 
   terminos
+    .map((termino) => obtenerValorTerminoBusqueda(termino))
     .filter(Boolean)
     .sort((a, b) => b.length - a.length)
     .forEach((termino) => {
@@ -410,6 +446,39 @@ const parseFechaMesa = (valor) => {
 
 const obtenerPartesFechaMesa = (item) =>
   parseFechaMesa(item?.fecha_mesa) || parseFechaMesa(item?.fecha) || null;
+
+const obtenerFechaFiltroMesa = (item) => {
+  const texto = String(item?.fecha_mesa || item?.fecha || "").trim();
+  if (!texto) return "";
+
+  if (/^\d{4}-\d{2}-\d{2}/.test(texto)) {
+    return texto.slice(0, 10);
+  }
+
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(texto)) {
+    const [dia, mes, anio] = texto.split("/");
+    return `${anio}-${mes}-${dia}`;
+  }
+
+  return "";
+};
+
+const obtenerLabelFechaFiltroMesa = (item) => {
+  const partes = obtenerPartesFechaMesa(item);
+  const fechaISO = obtenerFechaFiltroMesa(item);
+
+  if (!partes) {
+    return textoCorto(item?.fecha_mesa || item?.fecha || fechaISO, "Sin fecha");
+  }
+
+  const dia = String(partes.dia).padStart(2, "0");
+  const mes = String(partes.mes).padStart(2, "0");
+  return `${partes.diaSemana} ${dia}/${mes}/${partes.anio}`;
+};
+
+const obtenerClaveTurnoFiltroMesa = (item) => normalizarTextoBusquedaFlexible(item?.turno);
+
+const obtenerLabelTurnoFiltroMesa = (item) => textoCorto(item?.turno, "Sin turno").toUpperCase();
 
 const obtenerTituloVistaPdf = (item) => {
   const partes = obtenerPartesFechaMesa(item);
@@ -1310,7 +1379,9 @@ const MesasExamen = () => {
     setBusqueda,
     tab,
     setTab,
-    mesasFiltradas,
+    gruposFinales,
+    noAgrupadas,
+    mesasFiltradas: mesasFiltradasBase,
     totalGrupos,
     totalNoAgrupadas,
     parametrosArmado,
@@ -1389,6 +1460,72 @@ const MesasExamen = () => {
     };
   }, []);
 
+  const [filtroFechaMesa, setFiltroFechaMesa] = useState("");
+  const [filtroTurnoMesa, setFiltroTurnoMesa] = useState("");
+
+  const baseOpcionesFiltrosMesas = useMemo(() => {
+    if (tab === "historial") return [];
+    return tab === "no-agrupadas"
+      ? (Array.isArray(noAgrupadas) ? noAgrupadas : [])
+      : (Array.isArray(gruposFinales) ? gruposFinales : []);
+  }, [gruposFinales, noAgrupadas, tab]);
+
+  const opcionesFechaMesas = useMemo(() => {
+    const mapa = new Map();
+
+    baseOpcionesFiltrosMesas.forEach((item) => {
+      const value = obtenerFechaFiltroMesa(item);
+      if (!value || mapa.has(value)) return;
+      mapa.set(value, { value, label: obtenerLabelFechaFiltroMesa(item) });
+    });
+
+    return Array.from(mapa.values()).sort((a, b) => a.value.localeCompare(b.value));
+  }, [baseOpcionesFiltrosMesas]);
+
+  const opcionesTurnoMesas = useMemo(() => {
+    const mapa = new Map();
+
+    baseOpcionesFiltrosMesas.forEach((item) => {
+      const value = obtenerClaveTurnoFiltroMesa(item);
+      if (!value || mapa.has(value)) return;
+      mapa.set(value, { value, label: obtenerLabelTurnoFiltroMesa(item) });
+    });
+
+    return Array.from(mapa.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [baseOpcionesFiltrosMesas]);
+
+  useEffect(() => {
+    if (tab === "historial") {
+      if (filtroFechaMesa) setFiltroFechaMesa("");
+      if (filtroTurnoMesa) setFiltroTurnoMesa("");
+      return;
+    }
+
+    if (filtroFechaMesa && !opcionesFechaMesas.some((item) => item.value === filtroFechaMesa)) {
+      setFiltroFechaMesa("");
+    }
+
+    if (filtroTurnoMesa && !opcionesTurnoMesas.some((item) => item.value === filtroTurnoMesa)) {
+      setFiltroTurnoMesa("");
+    }
+  }, [filtroFechaMesa, filtroTurnoMesa, opcionesFechaMesas, opcionesTurnoMesas, tab]);
+
+  const mesasFiltradas = useMemo(() => {
+    const base = Array.isArray(mesasFiltradasBase) ? mesasFiltradasBase : [];
+    if (tab === "historial") return base;
+
+    return base.filter((item) => {
+      const coincideFecha = !filtroFechaMesa || obtenerFechaFiltroMesa(item) === filtroFechaMesa;
+      const coincideTurno = !filtroTurnoMesa || obtenerClaveTurnoFiltroMesa(item) === filtroTurnoMesa;
+      return coincideFecha && coincideTurno;
+    });
+  }, [filtroFechaMesa, filtroTurnoMesa, mesasFiltradasBase, tab]);
+
+  const hayFiltrosMesasActivos = tab !== "historial" && Boolean(filtroFechaMesa || filtroTurnoMesa);
+  const limpiarFiltrosMesas = useCallback(() => {
+    setFiltroFechaMesa("");
+    setFiltroTurnoMesa("");
+  }, []);
 
   const totalHistorialVisible = (Array.isArray(historial?.resultados) ? historial.resultados.length : 0)
     + (Array.isArray(historial?.armados) ? historial.armados.length : 0);
@@ -1850,6 +1987,56 @@ const MesasExamen = () => {
                   </div>
                 </div>
               </div>
+
+              {tab !== "historial" && (
+                <>
+                  <div className="cc-filter mesas-selectFilter mesas-selectFilter--fecha">
+                    <div className={`cc-floatingField mesas-floatingSelect ${filtroFechaMesa ? "is-active" : ""}`}>
+                      <select
+                        className="cc-input cc-input--floating mesas-filterSelect"
+                        value={filtroFechaMesa}
+                        onChange={(e) => setFiltroFechaMesa(e.target.value)}
+                        disabled={cargando || opcionesFechaMesas.length === 0}
+                      >
+                        <option value="">Todas las fechas</option>
+                        {opcionesFechaMesas.map((item) => (
+                          <option key={item.value} value={item.value}>{item.label}</option>
+                        ))}
+                      </select>
+                      <span className="mesas-filterTabs__label mesas-selectLabel">Fecha</span>
+                    </div>
+                  </div>
+
+                  <div className="cc-filter mesas-selectFilter mesas-selectFilter--turno">
+                    <div className={`cc-floatingField mesas-floatingSelect ${filtroTurnoMesa ? "is-active" : ""}`}>
+                      <select
+                        className="cc-input cc-input--floating mesas-filterSelect"
+                        value={filtroTurnoMesa}
+                        onChange={(e) => setFiltroTurnoMesa(e.target.value)}
+                        disabled={cargando || opcionesTurnoMesas.length === 0}
+                      >
+                        <option value="">Todos los turnos</option>
+                        {opcionesTurnoMesas.map((item) => (
+                          <option key={item.value} value={item.value}>{item.label}</option>
+                        ))}
+                      </select>
+                      <span className="mesas-filterTabs__label mesas-selectLabel">Turno</span>
+                    </div>
+                  </div>
+
+                  {hayFiltrosMesasActivos && (
+                    <button
+                      type="button"
+                      className="mesas-clearTableFilters"
+                      onClick={limpiarFiltrosMesas}
+                      title="Limpiar filtros de fecha y turno"
+                    >
+                      <FontAwesomeIcon icon={faTimes} />
+                      Limpiar
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           </div>
 
@@ -1949,11 +2136,13 @@ const MesasExamen = () => {
           ) : mesasFiltradas.length === 0 ? (
             <div className="cc-emptyState mesas-empty mesas-pdf-empty">
               <div className="cc-emptyText">
-                {busqueda
-                  ? "No se encontraron mesas que coincidan con la búsqueda."
-                  : tab === "no-agrupadas"
-                    ? "No hay números pendientes sin agrupar para mostrar."
-                    : "No hay grupos finales cargados. Presioná Crear Mesas para generar el armado."}
+                {hayFiltrosMesasActivos
+                  ? "No hay mesas para la fecha y turno seleccionados."
+                  : busqueda
+                    ? "No se encontraron mesas que coincidan con la búsqueda."
+                    : tab === "no-agrupadas"
+                      ? "No hay números pendientes sin agrupar para mostrar."
+                      : "No hay grupos finales cargados. Presioná Crear Mesas para generar el armado."}
               </div>
             </div>
           ) : (

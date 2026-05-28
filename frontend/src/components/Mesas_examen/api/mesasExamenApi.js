@@ -44,6 +44,7 @@ export const crearArmadoInicialMesas = ({
   limpiar_borrador = true,
   excluir_fines_semana = true,
   tipo_armado = "area",
+  modo_turnos = "combinado",
 }) => {
   const action = tipo_armado === "docentes"
     ? "mesas_armado_crear_docentes"
@@ -55,6 +56,7 @@ export const crearArmadoInicialMesas = ({
     limpiar_borrador,
     excluir_fines_semana,
     tipo_armado,
+    modo_turnos,
   });
 };
 

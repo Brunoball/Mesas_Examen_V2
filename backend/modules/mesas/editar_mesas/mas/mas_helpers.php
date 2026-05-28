@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../helpers_editar_mesas.php';
 
-function mesas_editar_mas_int($valor, string $mensaje): int
-{
-    $numero = (int)($valor ?? 0);
-    if ($numero <= 0) {
-        throw new InvalidArgumentException($mensaje);
+if (!function_exists('mesas_editar_mas_int')) {
+    function mesas_editar_mas_int($valor, string $mensaje): int
+    {
+        $numero = (int)($valor ?? 0);
+        if ($numero <= 0) {
+            throw new InvalidArgumentException($mensaje);
+        }
+        return $numero;
     }
-    return $numero;
 }
 
 function mesas_editar_mas_fecha_formato(?string $fecha): ?string
@@ -109,6 +111,59 @@ function mesas_editar_mas_target_area(PDO $pdo, int $numeroMesa, array $meta): i
     }
 
     return $idArea;
+}
+
+
+function mesas_editar_mas_obtener_docentes_numero(PDO $pdo, int $numeroMesa): array
+{
+    $stmt = $pdo->prepare(''
+        . 'SELECT DISTINCT '
+        . '    me.id_docente, '
+        . "    COALESCE(NULLIF(TRIM(d.docente), ''), CONCAT('Docente ', me.id_docente)) AS docente "
+        . 'FROM mesas me '
+        . 'LEFT JOIN docentes d ON d.id_docente = me.id_docente '
+        . 'WHERE me.numero_mesa = ? '
+        . '  AND me.id_docente IS NOT NULL '
+        . '  AND me.id_docente > 0 '
+        . 'ORDER BY docente ASC'
+    );
+    $stmt->execute([$numeroMesa]);
+
+    $docentes = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $idDocente = (int)($row['id_docente'] ?? 0);
+        if ($idDocente <= 0) {
+            continue;
+        }
+
+        $docentes[] = [
+            'id_docente' => $idDocente,
+            'docente' => trim((string)($row['docente'] ?? ('Docente ' . $idDocente))),
+        ];
+    }
+
+    return $docentes;
+}
+
+function mesas_editar_mas_docente_unico_numero(PDO $pdo, int $numeroMesa, bool $lanzar = true): ?array
+{
+    $docentes = mesas_editar_mas_obtener_docentes_numero($pdo, $numeroMesa);
+    $cantidad = count($docentes);
+
+    if ($cantidad === 1) {
+        return $docentes[0];
+    }
+
+    if (!$lanzar) {
+        return null;
+    }
+
+    if ($cantidad === 0) {
+        throw new InvalidArgumentException('El número de mesa destino no tiene docente asignado. No se puede agregar una previa sin un docente de referencia.');
+    }
+
+    $nombres = implode(', ', array_map(static fn ($docente) => (string)($docente['docente'] ?? ''), $docentes));
+    throw new InvalidArgumentException('Este número de mesa ya tiene más de un docente (' . $nombres . '). Primero corregí esa mesa y después agregá previas.');
 }
 
 function mesas_editar_mas_obtener_previa_base(PDO $pdo, int $idPrevia): ?array
@@ -218,7 +273,7 @@ function mesas_editar_mas_obtener_previa_base(PDO $pdo, int $idPrevia): ?array
     return $row ?: null;
 }
 
-function mesas_editar_mas_obtener_previas_base_por_area(PDO $pdo, int $idArea, int $limite = 250): array
+function mesas_editar_mas_obtener_previas_base_por_area(PDO $pdo, int $idArea, ?int $idDocente = null, int $limite = 250): array
 {
     $sql = "
         SELECT
@@ -318,11 +373,18 @@ function mesas_editar_mas_obtener_previas_base_por_area(PDO $pdo, int $idArea, i
           AND p.activo = 1
           AND p.id_condicion = 3
           AND NOT EXISTS (SELECT 1 FROM mesas me_exist WHERE me_exist.id_previa = p.id_previa)
-        ORDER BY p.alumno ASC, mat.materia ASC
-        LIMIT " . max(1, min(1000, $limite));
+    ";
+
+    $params = [$idArea];
+    if ($idDocente !== null && $idDocente > 0) {
+        $sql .= "\n          AND doc.id_docente = ?";
+        $params[] = $idDocente;
+    }
+
+    $sql .= "\n        ORDER BY p.alumno ASC, mat.materia ASC\n        LIMIT " . max(1, min(1000, $limite));
 
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([$idArea]);
+    $stmt->execute($params);
 
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
@@ -370,7 +432,7 @@ function mesas_editar_mas_detalle_desde_previa(array $previa, int $numeroMesa): 
     ];
 }
 
-function mesas_editar_mas_validar_previa_para_numero(PDO $pdo, int $numeroMesa, array $meta, array $previa): array
+function mesas_editar_mas_validar_previa_para_numero(PDO $pdo, int $numeroMesa, array $meta, array $previa, ?int $idDocenteDestino = null): array
 {
     $errores = [];
     $advertencias = [];
@@ -396,6 +458,29 @@ function mesas_editar_mas_validar_previa_para_numero(PDO $pdo, int $numeroMesa, 
 
     if ((int)($previa['id_docente'] ?? 0) <= 0) {
         $errores[] = 'La previa no tiene docente activo asignado.';
+    }
+
+    $idDocentePrevia = (int)($previa['id_docente'] ?? 0);
+    $idDocenteReferencia = (int)($idDocenteDestino ?? 0);
+    if ($idDocenteReferencia <= 0) {
+        $docenteReferencia = mesas_editar_mas_docente_unico_numero($pdo, $numeroMesa, false);
+        $idDocenteReferencia = (int)($docenteReferencia['id_docente'] ?? 0);
+    }
+
+    if ($idDocenteReferencia <= 0) {
+        $errores[] = 'No se puede agregar en este número porque no tiene un único docente de referencia.';
+    } elseif ($idDocentePrevia > 0 && $idDocentePrevia !== $idDocenteReferencia) {
+        $docenteDestinoNombre = 'docente ID ' . $idDocenteReferencia;
+        $docentesNumero = mesas_editar_mas_obtener_docentes_numero($pdo, $numeroMesa);
+        foreach ($docentesNumero as $docenteNumero) {
+            if ((int)($docenteNumero['id_docente'] ?? 0) === $idDocenteReferencia) {
+                $docenteDestinoNombre = trim((string)($docenteNumero['docente'] ?? $docenteDestinoNombre));
+                break;
+            }
+        }
+
+        $docentePreviaNombre = trim((string)($previa['docente'] ?? ('docente ID ' . $idDocentePrevia)));
+        $errores[] = 'La previa pertenece a ' . $docentePreviaNombre . ', pero este número de mesa pertenece a ' . $docenteDestinoNombre . '. No se pueden mezclar docentes dentro del mismo número de mesa.';
     }
 
     if ((int)($previa['id_taller'] ?? 0) > 0) {
@@ -459,13 +544,37 @@ function mesas_editar_mas_obtener_previas_disponibles(PDO $pdo, int $numeroMesa)
     }
 
     $idArea = mesas_editar_mas_target_area($pdo, $numeroMesa, $meta);
-    $previasBase = mesas_editar_mas_obtener_previas_base_por_area($pdo, $idArea);
+    $docentesDestino = mesas_editar_mas_obtener_docentes_numero($pdo, $numeroMesa);
+    $docenteDestino = count($docentesDestino) === 1 ? $docentesDestino[0] : null;
+
+    if (!$docenteDestino) {
+        $mensajeRestriccion = count($docentesDestino) > 1
+            ? 'Este número de mesa ya tiene más de un docente. Primero corregí esa mesa; después vas a poder agregar solamente previas del docente correspondiente.'
+            : 'Este número de mesa no tiene docente de referencia. No se pueden agregar previas hasta corregir la mesa.';
+
+        return [
+            'numero_mesa' => $numeroMesa,
+            'meta' => $meta,
+            'id_area' => $idArea,
+            'area' => trim((string)($meta['area'] ?? '')),
+            'docente_objetivo' => null,
+            'docentes_destino' => $docentesDestino,
+            'previas' => [],
+            'cantidad' => 0,
+            'descartadas_por_validacion' => 0,
+            'bloqueo_docente' => true,
+            'mensaje_restriccion' => $mensajeRestriccion,
+        ];
+    }
+
+    $idDocenteDestino = (int)$docenteDestino['id_docente'];
+    $previasBase = mesas_editar_mas_obtener_previas_base_por_area($pdo, $idArea, $idDocenteDestino);
 
     $disponibles = [];
     $descartadas = 0;
 
     foreach ($previasBase as $previa) {
-        $validacion = mesas_editar_mas_validar_previa_para_numero($pdo, $numeroMesa, $meta, $previa);
+        $validacion = mesas_editar_mas_validar_previa_para_numero($pdo, $numeroMesa, $meta, $previa, $idDocenteDestino);
         if (!$validacion['valido']) {
             $descartadas++;
             continue;
@@ -479,9 +588,13 @@ function mesas_editar_mas_obtener_previas_disponibles(PDO $pdo, int $numeroMesa)
         'meta' => $meta,
         'id_area' => $idArea,
         'area' => trim((string)($meta['area'] ?? '')),
+        'docente_objetivo' => $docenteDestino,
+        'docentes_destino' => $docentesDestino,
         'previas' => $disponibles,
         'cantidad' => count($disponibles),
         'descartadas_por_validacion' => $descartadas,
+        'bloqueo_docente' => false,
+        'mensaje_restriccion' => '',
     ];
 }
 
@@ -534,7 +647,17 @@ function mesas_editar_mas_agregar_previa(PDO $pdo, int $numeroMesa, int $idPrevi
         throw new InvalidArgumentException('La previa no pertenece al área de este número de mesa.');
     }
 
-    $validacion = mesas_editar_mas_validar_previa_para_numero($pdo, $numeroMesa, $meta, $previa);
+    $docenteDestino = mesas_editar_mas_docente_unico_numero($pdo, $numeroMesa, true);
+    $idDocenteDestino = (int)($docenteDestino['id_docente'] ?? 0);
+    $idDocentePrevia = (int)($previa['id_docente'] ?? 0);
+
+    if ($idDocenteDestino <= 0 || $idDocentePrevia !== $idDocenteDestino) {
+        $nombreDestino = trim((string)($docenteDestino['docente'] ?? ('Docente ID ' . $idDocenteDestino)));
+        $nombrePrevia = trim((string)($previa['docente'] ?? ('Docente ID ' . $idDocentePrevia)));
+        throw new InvalidArgumentException('No se puede agregar esta previa al número de mesa N° ' . $numeroMesa . ': pertenece a ' . $nombrePrevia . ', pero ese número corresponde a ' . $nombreDestino . '.');
+    }
+
+    $validacion = mesas_editar_mas_validar_previa_para_numero($pdo, $numeroMesa, $meta, $previa, $idDocenteDestino);
     if (!$validacion['valido']) {
         return [
             'agregada' => false,

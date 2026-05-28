@@ -53,6 +53,8 @@ function mesas_editar_agregar_numero_obtener_grupo_destino(PDO $pdo, int $numero
         return null;
     }
 
+    $grupo = mesas_editar_aplicar_area_canonica_a_fila_grupo($pdo, $grupo);
+
     $grupo['numero_grupo'] = (int)$grupo['numero_grupo'];
     $grupo['id_grupo'] = (int)$grupo['numero_grupo'];
     $grupo['id_turno'] = (int)$grupo['id_turno'];
@@ -159,10 +161,85 @@ function mesas_editar_agregar_numero_resumen_numero(PDO $pdo, int $numeroMesa): 
     ];
 }
 
-function mesas_editar_agregar_numero_validar_numero_en_grupo(PDO $pdo, int $numeroMesa, array $grupoDestino): array
+
+function mesas_editar_agregar_numero_validar_choques_reales_slot(PDO $pdo, array $detalle, string $fechaMesa, int $idTurno): array
+{
+    $errores = [];
+
+    // Choque interno dentro del grupo destino + número candidato:
+    // un mismo alumno no puede quedar dos veces dentro del mismo grupo/turno.
+    foreach (($detalle['dni_numeros'] ?? []) as $dni => $numerosMap) {
+        if (count($numerosMap) > 1) {
+            $alumno = $detalle['dnis'][$dni] ?? $dni;
+            $errores[] = 'El alumno ' . $alumno . ' aparece en más de un número dentro de este mismo grupo. No puede rendir dos mesas en el mismo turno.';
+        }
+    }
+
+    $numerosExcluir = array_values(array_filter(array_map('intval', $detalle['numeros'] ?? []), static fn ($n) => $n > 0));
+    if (count($numerosExcluir) === 0) {
+        return $errores;
+    }
+
+    $phNumeros = implode(',', array_fill(0, count($numerosExcluir), '?'));
+
+    // Importante para el + de "no agrupadas": una mesa no agrupada se considera libre para mover.
+    // Por eso los choques se validan únicamente contra mesas que YA están dentro de mesas_grupos
+    // en la fecha/turno destino. No se toma la fecha/turno vieja guardada en mesas_no_agrupadas.
+    $idsDocentes = array_values(array_filter(array_map('intval', array_keys($detalle['docentes'] ?? [])), static fn ($id) => $id > 0));
+    if (count($idsDocentes) > 0) {
+        $phDocentes = implode(',', array_fill(0, count($idsDocentes), '?'));
+        $stmt = $pdo->prepare(""
+            . "SELECT DISTINCT g.numero_mesa, me.id_docente, d.docente\n"
+            . "FROM mesas_grupos g\n"
+            . "INNER JOIN mesas me ON me.numero_mesa = g.numero_mesa\n"
+            . "LEFT JOIN docentes d ON d.id_docente = me.id_docente\n"
+            . "WHERE g.fecha_mesa = ?\n"
+            . "  AND g.id_turno = ?\n"
+            . "  AND me.id_docente IN ({$phDocentes})\n"
+            . "  AND g.numero_mesa NOT IN ({$phNumeros})\n"
+            . "ORDER BY d.docente ASC, g.numero_mesa ASC"
+        );
+        $stmt->execute(array_merge([$fechaMesa, $idTurno], $idsDocentes, $numerosExcluir));
+
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $choque) {
+            $errores[] = 'El docente ' . trim((string)($choque['docente'] ?? ('ID ' . $choque['id_docente']))) . ' ya está asignado en la mesa N° ' . (int)$choque['numero_mesa'] . ' para ese mismo turno.';
+        }
+    }
+
+    $dnis = array_keys($detalle['dnis'] ?? []);
+    $dnis = array_values(array_filter(array_map(static fn ($dni) => trim((string)$dni), $dnis), static fn ($dni) => $dni !== ''));
+    if (count($dnis) > 0) {
+        $phDnis = implode(',', array_fill(0, count($dnis), '?'));
+        $stmt = $pdo->prepare(""
+            . "SELECT DISTINCT p.dni, p.alumno, g.numero_mesa\n"
+            . "FROM mesas_grupos g\n"
+            . "INNER JOIN mesas me ON me.numero_mesa = g.numero_mesa\n"
+            . "INNER JOIN previas p ON p.id_previa = me.id_previa\n"
+            . "WHERE g.fecha_mesa = ?\n"
+            . "  AND g.id_turno = ?\n"
+            . "  AND p.dni IN ({$phDnis})\n"
+            . "  AND g.numero_mesa NOT IN ({$phNumeros})\n"
+            . "ORDER BY p.alumno ASC, g.numero_mesa ASC"
+        );
+        $stmt->execute(array_merge([$fechaMesa, $idTurno], $dnis, $numerosExcluir));
+
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $choque) {
+            $errores[] = 'El alumno ' . trim((string)($choque['alumno'] ?? $choque['dni'])) . ' ya tiene la mesa N° ' . (int)$choque['numero_mesa'] . ' en ese mismo turno.';
+        }
+    }
+
+    return $errores;
+}
+
+function mesas_editar_agregar_numero_validar_numero_en_grupo(PDO $pdo, int $numeroMesa, array $grupoDestino, array $opciones = []): array
 {
     $errores = [];
     $advertencias = [];
+
+    // Modo usado por el botón + de edición: permite mezclar áreas y solo bloquea
+    // si realmente hay choque de alumnos/docentes en la fecha y turno del grupo destino.
+    $validarSoloChoquesSlot = !empty($opciones['solo_choques_slot']);
+    $ignorarArea = !empty($opciones['ignorar_area']) || $validarSoloChoquesSlot;
 
     $numeroGrupo = (int)($grupoDestino['numero_grupo'] ?? 0);
     $fechaDestino = substr((string)($grupoDestino['fecha_mesa'] ?? ''), 0, 10);
@@ -205,7 +282,21 @@ function mesas_editar_agregar_numero_validar_numero_en_grupo(PDO $pdo, int $nume
     } else {
         $tipo = trim((string)($resumen['tipo_mesa'] ?? 'simple'));
         if ($tipo === 'taller') {
-            $errores[] = 'Las mesas de taller son exclusivas y no se pueden agregar a otro grupo.';
+            if ($validarSoloChoquesSlot) {
+                $advertencias[] = 'La mesa es de taller, pero en esta edición manual solo se validan choques de alumnos y docentes.';
+            } else {
+                $errores[] = 'Las mesas de taller son exclusivas y no se pueden agregar a otro grupo.';
+            }
+        }
+
+        $idAreaGrupo = (int)($grupoDestino['id_area'] ?? 0);
+        $idAreaNumero = (int)($resumen['id_area'] ?? 0);
+        if ($idAreaGrupo > 0 && $idAreaNumero > 0 && $idAreaGrupo !== $idAreaNumero) {
+            if ($ignorarArea) {
+                $advertencias[] = 'El número pertenece a otra área, pero se permite agregarlo manualmente desde esta edición.';
+            } else {
+                $errores[] = 'El número de mesa no pertenece al área del grupo seleccionado.';
+            }
         }
     }
 
@@ -213,20 +304,36 @@ function mesas_editar_agregar_numero_validar_numero_en_grupo(PDO $pdo, int $nume
         $numerosFinales = array_values(array_unique(array_merge($numerosGrupo, [$numeroMesa])));
         $detalleFinal = mesas_editar_obtener_detalle_numeros($pdo, $numerosFinales);
 
-        $errores = array_merge($errores, mesas_editar_validar_docentes($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
-        $errores = array_merge($errores, mesas_editar_validar_alumnos($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
-        $errores = array_merge($errores, mesas_editar_validar_correlativas($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
+        if ($validarSoloChoquesSlot) {
+            // Modo manual del + de no agrupadas:
+            // - NO valida área.
+            // - NO valida disponibilidad/bloqueos generales del docente.
+            // - NO usa la fecha/turno vieja de la mesa no agrupada.
+            // - Solo bloquea choques reales contra mesas YA agrupadas en la fecha/turno destino.
+            $errores = array_merge(
+                $errores,
+                mesas_editar_agregar_numero_validar_choques_reales_slot($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino)
+            );
+        } else {
+            $errores = array_merge($errores, mesas_editar_validar_docentes($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
+            $errores = array_merge($errores, mesas_editar_validar_alumnos($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
+            $errores = array_merge($errores, mesas_editar_validar_correlativas($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
+        }
     }
 
     return [
         'valido' => count($errores) === 0,
         'errores' => array_values(array_unique($errores)),
-        'advertencias' => $advertencias,
+        'advertencias' => array_values(array_unique($advertencias)),
     ];
 }
 
 function mesas_editar_agregar_numero_obtener_no_agrupadas_disponibles(PDO $pdo, array $grupoDestino): array
 {
+    // En edición manual, el + debe listar todas las mesas no agrupadas reales,
+    // aunque pertenezcan a otra área. El área solo queda como dato visual.
+    // Se mantienen las validaciones fuertes de choques de alumnos/docentes/correlativas
+    // para evitar guardar combinaciones imposibles.
     $stmt = $pdo->query(''
         . 'SELECT '
         . '    n.id AS id_no_agrupada, n.numero_mesa, n.fecha_mesa, DATE_FORMAT(n.fecha_mesa, "%d/%m/%Y") AS fecha, '
@@ -255,8 +362,12 @@ function mesas_editar_agregar_numero_obtener_no_agrupadas_disponibles(PDO $pdo, 
             continue;
         }
 
-        $validacion = mesas_editar_agregar_numero_validar_numero_en_grupo($pdo, $numeroMesa, $grupoDestino);
-        if (!$validacion['valido']) {
+        $validacion = mesas_editar_agregar_numero_validar_numero_en_grupo($pdo, $numeroMesa, $grupoDestino, [
+            'ignorar_area' => true,
+            'solo_choques_slot' => true,
+        ]);
+
+        if (empty($validacion['valido'])) {
             continue;
         }
 
@@ -277,6 +388,9 @@ function mesas_editar_agregar_numero_obtener_no_agrupadas_disponibles(PDO $pdo, 
             'docente' => trim((string)($row['docente'] ?? '')),
             'alumnos_texto' => trim((string)($row['alumnos_texto'] ?? '')),
             'motivo' => trim((string)($row['motivo'] ?? '')),
+            // Si llegó hasta acá, no tiene choques reales en el slot destino.
+            // Por eso el frontend debe dejar el + habilitado siempre.
+            'agregable' => true,
             'validacion' => $validacion,
         ];
     }
@@ -395,6 +509,12 @@ function mesas_editar_agregar_numero_validar_previa_para_slot(PDO $pdo, array $p
 
     if ((int)($previa['id_docente'] ?? 0) <= 0) {
         $errores[] = 'La previa no tiene un docente activo asociado.';
+    }
+
+    $idAreaGrupo = (int)($grupoDestino['id_area'] ?? 0);
+    $idAreaPrevia = (int)($previa['id_area'] ?? 0);
+    if ($idAreaGrupo > 0 && $idAreaPrevia > 0 && $idAreaGrupo !== $idAreaPrevia) {
+        $errores[] = 'La previa no pertenece al área del grupo seleccionado.';
     }
 
     if ((int)($previa['id_taller'] ?? 0) > 0) {
@@ -542,7 +662,10 @@ function mesas_editar_agregar_numero_a_grupo(PDO $pdo, int $numeroGrupo, int $nu
         throw new RuntimeException('No se encontró el grupo destino.');
     }
 
-    $validacion = mesas_editar_agregar_numero_validar_numero_en_grupo($pdo, $numeroMesa, $grupo);
+    $validacion = mesas_editar_agregar_numero_validar_numero_en_grupo($pdo, $numeroMesa, $grupo, [
+        'ignorar_area' => true,
+        'solo_choques_slot' => true,
+    ]);
     if (!$validacion['valido']) {
         return [
             'agregado' => false,
@@ -588,7 +711,7 @@ function mesas_editar_agregar_numero_a_grupo(PDO $pdo, int $numeroGrupo, int $nu
         $fecha,
         $idTurno,
         $hora,
-        $resumen['id_area'],
+        $grupo['id_area'],
         $orden,
         $resumen['tipo_mesa'],
         $resumen['prioridad'],
@@ -666,7 +789,7 @@ function mesas_editar_agregar_numero_crear_grupo_desde_previa(PDO $pdo, int $num
         $fecha,
         $idTurno,
         $hora,
-        $previa['id_area'] !== null ? (int)$previa['id_area'] : null,
+        $grupoReferencia['id_area'] !== null ? (int)$grupoReferencia['id_area'] : null,
         $orden,
     ]);
 

@@ -467,3 +467,12 @@
     white-space:normal;
   }
 }
+
+.ag-num-row-disabled{
+  opacity:.72;
+  background:#f8fafc;
+}
+
+.ag-num-row-disabled:hover{
+  background:#f8fafc;
+}

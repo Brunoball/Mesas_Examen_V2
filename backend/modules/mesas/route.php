@@ -2,6 +2,7 @@
 // backend/modules/mesas/route.php
 declare(strict_types=1);
 
+require_once __DIR__ . '/armado_rango_helper.php';
 require_once __DIR__ . '/armado_mesas/armado_mesas_controller.php';
 require_once __DIR__ . '/armado_mesas_docentes/armado_mesas_docentes_controller.php';
 require_once __DIR__ . '/editar_mesas/route.php';

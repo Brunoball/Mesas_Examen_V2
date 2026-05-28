@@ -16,6 +16,42 @@ import "./ModalCrearMesa.css";
 
 const esFechaValida = (fecha) => /^\d{4}-\d{2}-\d{2}$/.test(String(fecha || ""));
 
+const normalizarTexto = (valor) => String(valor || "")
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase()
+  .trim();
+
+const turnoCoincideModo = (turno, modo) => {
+  const modoNormalizado = normalizarTexto(modo || "combinado");
+
+  if (modoNormalizado === "combinado" || modoNormalizado === "ambos" || modoNormalizado === "todos") {
+    return true;
+  }
+
+  const idTurno = Number(turno?.id_turno ?? turno?.id ?? 0);
+  const nombreTurno = normalizarTexto(turno?.turno ?? turno?.nombre ?? turno?.descripcion ?? "");
+
+  if (modoNormalizado === "manana" || modoNormalizado === "solo_manana") {
+    return idTurno === 1 || nombreTurno.includes("manana") || nombreTurno.includes("matut");
+  }
+
+  if (modoNormalizado === "tarde" || modoNormalizado === "solo_tarde") {
+    return idTurno === 2 || nombreTurno.includes("tarde") || nombreTurno.includes("vesp");
+  }
+
+  return true;
+};
+
+const filtrarTurnosPorModo = (turnos, modo) => (Array.isArray(turnos) ? turnos : [])
+  .filter((turno) => turnoCoincideModo(turno, modo));
+
+const textoModoTurnos = {
+  manana: "Solo mañana",
+  tarde: "Solo tarde",
+  combinado: "Mañana y tarde",
+};
+
 const crearFechaLocal = (fecha) => {
   if (!esFechaValida(fecha)) return null;
 
@@ -58,6 +94,7 @@ const ModalCrearMesa = ({
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
   const [tipoArmado, setTipoArmado] = useState("area");
+  const [modoTurnos, setModoTurnos] = useState("combinado");
   const [, setError] = useState("");
 
   const mostrarError = (mensaje) => {
@@ -73,6 +110,7 @@ const ModalCrearMesa = ({
       setFechaInicio(inicioActual);
       setFechaFin(finTresDiasDespues || inicioActual);
       setTipoArmado("area");
+      setModoTurnos("combinado");
       setError("");
     }
   }, [abierto, parametros]);
@@ -86,6 +124,7 @@ const ModalCrearMesa = ({
 
   const totalPrevias = parametros?.total_previas_para_armar || 0;
   const turnos = parametros?.turnos || [];
+  const turnosFiltrados = filtrarTurnosPorModo(turnos, modoTurnos);
 
   const abrirCalendario = (e) => {
     const input = e.currentTarget;
@@ -158,6 +197,11 @@ const ModalCrearMesa = ({
       return;
     }
 
+    if (turnosFiltrados.length === 0) {
+      mostrarError("No hay turnos activos para la opción seleccionada. Elegí otra opción de turnos.");
+      return;
+    }
+
     setError("");
 
     await onConfirm({
@@ -166,6 +210,7 @@ const ModalCrearMesa = ({
       limpiar_borrador: true,
       excluir_fines_semana: true,
       tipo_armado: tipoArmado,
+      modo_turnos: modoTurnos,
     });
   };
 
@@ -253,8 +298,8 @@ const ModalCrearMesa = ({
               </span>
               <div className="mesas-modal-info-card__body">
                 <span>Turnos</span>
-                <strong>{turnos.length}</strong>
-                <small>activos disponibles</small>
+                <strong>{turnosFiltrados.length}</strong>
+                <small>{textoModoTurnos[modoTurnos] || "seleccionados"}</small>
               </div>
             </div>
           </div>
@@ -267,14 +312,77 @@ const ModalCrearMesa = ({
               </span>
 
               <div className="mesas-turnos-list">
-                {turnos.map((turno) => (
+                {turnosFiltrados.length > 0 ? turnosFiltrados.map((turno) => (
                   <span key={turno.id_turno} className="mesas-turno-pill">
                     {turno.turno}
                   </span>
-                ))}
+                )) : (
+                  <span className="mesas-turno-pill mesas-turno-pill--empty">
+                    No hay turnos activos para esta opción
+                  </span>
+                )}
               </div>
             </div>
           )}
+
+          <div className="mesas-tipo-armado-box mesas-modo-turnos-box">
+            <span className="mesas-tipo-armado-title">
+              Turnos para armar
+            </span>
+
+            <div className="mesas-tipo-armado-grid mesas-modo-turnos-grid">
+              <label className={`mesas-tipo-armado-card mesas-modo-turnos-card ${modoTurnos === "manana" ? "activo" : ""}`}>
+                <input
+                  type="radio"
+                  name="modo_turnos"
+                  checked={modoTurnos === "manana"}
+                  onChange={() => setModoTurnos("manana")}
+                  disabled={cargando}
+                />
+                <span className="mesas-check-visual" aria-hidden="true">
+                  <FontAwesomeIcon icon={faCheck} />
+                </span>
+                <div>
+                  <strong>Solo mañana</strong>
+                  <span>Usa únicamente los slots de turno mañana dentro del rango elegido.</span>
+                </div>
+              </label>
+
+              <label className={`mesas-tipo-armado-card mesas-modo-turnos-card ${modoTurnos === "tarde" ? "activo" : ""}`}>
+                <input
+                  type="radio"
+                  name="modo_turnos"
+                  checked={modoTurnos === "tarde"}
+                  onChange={() => setModoTurnos("tarde")}
+                  disabled={cargando}
+                />
+                <span className="mesas-check-visual" aria-hidden="true">
+                  <FontAwesomeIcon icon={faCheck} />
+                </span>
+                <div>
+                  <strong>Solo tarde</strong>
+                  <span>Usa únicamente los slots de turno tarde dentro del rango elegido.</span>
+                </div>
+              </label>
+
+              <label className={`mesas-tipo-armado-card mesas-modo-turnos-card ${modoTurnos === "combinado" ? "activo" : ""}`}>
+                <input
+                  type="radio"
+                  name="modo_turnos"
+                  checked={modoTurnos === "combinado"}
+                  onChange={() => setModoTurnos("combinado")}
+                  disabled={cargando}
+                />
+                <span className="mesas-check-visual" aria-hidden="true">
+                  <FontAwesomeIcon icon={faCheck} />
+                </span>
+                <div>
+                  <strong>Combinado</strong>
+                  <span>Distribuye entre mañana y tarde para aprovechar mejor todos los días.</span>
+                </div>
+              </label>
+            </div>
+          </div>
 
           <div className="mesas-tipo-armado-box">
             <span className="mesas-tipo-armado-title">
@@ -294,7 +402,7 @@ const ModalCrearMesa = ({
                 </span>
                 <div>
                   <strong>Armado por área</strong>
-                  <span>Usa el armado actual: compacta por área y valida disponibilidad docente.</span>
+                  <span>Reparte entre los slots disponibles, respetando área, docentes, alumnos y correlativas.</span>
                 </div>
               </label>
 
@@ -332,7 +440,7 @@ const ModalCrearMesa = ({
             <button
               type="submit"
               className="btn-modal-confirm"
-              disabled={cargando || totalPrevias === 0 || turnos.length === 0}
+              disabled={cargando || totalPrevias === 0 || turnosFiltrados.length === 0}
             >
               {cargando ? (
                 <>

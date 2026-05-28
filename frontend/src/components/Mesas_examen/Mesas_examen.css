@@ -2070,10 +2070,98 @@
 
 .mesas-headFilters{
   flex:1;
+  min-width:0;
+  display:flex;
+  align-items:flex-end;
+  gap:10px;
+  flex-wrap:wrap;
 }
 
+.mesas-searchFilter{
+  flex:1 1 360px;
+  min-width:280px;
+}
 
+.mesas-selectFilter{
+  flex:0 1 180px;
+  min-width:156px;
+}
 
+.mesas-selectFilter--fecha{
+  flex-basis:205px;
+}
+
+.mesas-selectFilter--turno{
+  flex-basis:170px;
+}
+
+.mesas-floatingSelect{
+  position:relative;
+  width:100%;
+}
+
+.mesas-filterSelect.cc-input{
+  width:100%;
+  min-width:100%;
+  height:44px;
+  padding:0 34px 0 14px;
+  border-radius:10px;
+  font-size:13px;
+  font-weight:650;
+  color:var(--balto-ink, #3A2E2B);
+  background:#fff;
+  cursor:pointer;
+}
+
+.mesas-filterSelect.cc-input:disabled{
+  opacity:.58;
+  cursor:not-allowed;
+}
+
+.mesas-floatingSelect .mesas-selectLabel{
+  position:absolute !important;
+  left:14px !important;
+  top:0 !important;
+  transform:translateY(-50%) !important;
+  z-index:3 !important;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  background:#fff;
+  color:var(--balto-action);
+  padding:0 6px;
+  margin-left:-6px;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.02em;
+  line-height:1;
+  pointer-events:none;
+}
+
+.mesas-clearTableFilters{
+  flex:0 0 auto;
+  height:44px;
+  border:1px solid color-mix(in srgb, var(--mov-border, #D6E2F3) 82%, #fff);
+  border-radius:10px;
+  background:#fff;
+  color:var(--balto-action, #1f4b93);
+  padding:0 12px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  font-size:13px;
+  font-weight:760;
+  cursor:pointer;
+  box-shadow:none;
+  transition:background .16s ease, border-color .16s ease, color .16s ease;
+}
+
+.mesas-clearTableFilters:hover{
+  background:#fff7db;
+  border-color:rgba(196,139,59,.36);
+  color:#8a5a13;
+}
 
 .mesas-floatingSearch,
 .mesas-searchInput{
@@ -2327,9 +2415,17 @@
     grid-template-columns:1fr;
   }
 
-  .mesas-searchFilter{
+  .mesas-searchFilter,
+  .mesas-selectFilter,
+  .mesas-selectFilter--fecha,
+  .mesas-selectFilter--turno{
     width:100%;
     min-width:0;
+    flex-basis:auto;
+  }
+
+  .mesas-clearTableFilters{
+    width:100%;
   }
 
   .mesas-filterTabs{

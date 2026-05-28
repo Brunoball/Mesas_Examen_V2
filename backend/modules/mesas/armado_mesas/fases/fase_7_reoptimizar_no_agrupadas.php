@@ -65,6 +65,7 @@ function mesas_armado_fase_7_reoptimizar_no_agrupadas_core(PDO $pdo, array $opci
         : mesas_armado_grupos_obtener_horas_turnos($pdo);
     $fechaInicioRango = isset($opciones['fecha_inicio']) ? trim((string)$opciones['fecha_inicio']) : null;
     $fechaFinRango = isset($opciones['fecha_fin']) ? trim((string)$opciones['fecha_fin']) : null;
+    $modoTurnos = mesas_armado_normalizar_modo_turnos($opciones['modo_turnos'] ?? $opciones['modoTurnos'] ?? 'combinado');
 
     $numerosIndex = mesas_armado_reopt_indexar_numeros(mesas_armado_grupos_obtener_numeros_mesa($pdo));
     $pendientes = mesas_armado_reopt_obtener_pendientes($pdo, $numerosIndex);
@@ -84,7 +85,7 @@ function mesas_armado_fase_7_reoptimizar_no_agrupadas_core(PDO $pdo, array $opci
         ];
         mesas_armado_reopt_blindar_sql_grupos_con_un_solo_docente($pdo, $horasTurnos, $statsSinPendientes);
         $gruposSinPendientes = mesas_armado_reopt_obtener_grupos_actuales($pdo, $numerosIndex);
-        $slotsSinPendientes = mesas_armado_reopt_obtener_slots_disponibles($pdo, [], $gruposSinPendientes, $fechaInicioRango, $fechaFinRango);
+        $slotsSinPendientes = mesas_armado_reopt_obtener_slots_disponibles($pdo, [], $gruposSinPendientes, $fechaInicioRango, $fechaFinRango, $modoTurnos);
         mesas_armado_reopt_blindar_choques_docente_alumno_salida(
             $pdo,
             $horasTurnos,
@@ -114,7 +115,7 @@ function mesas_armado_fase_7_reoptimizar_no_agrupadas_core(PDO $pdo, array $opci
 
     $disponibilidadDocentes = mesas_armado_obtener_disponibilidad_docentes($pdo);
     $grupos = mesas_armado_reopt_obtener_grupos_actuales($pdo, $numerosIndex);
-    $slotsDisponibles = mesas_armado_reopt_obtener_slots_disponibles($pdo, $pendientes, $grupos, $fechaInicioRango, $fechaFinRango);
+    $slotsDisponibles = mesas_armado_reopt_obtener_slots_disponibles($pdo, $pendientes, $grupos, $fechaInicioRango, $fechaFinRango, $modoTurnos);
     $ocupacion = mesas_armado_reopt_crear_ocupacion_desde_grupos($grupos);
     $estadoGrupo = $confirmarGrupos ? 'validado' : 'borrador';
 
@@ -124,6 +125,7 @@ function mesas_armado_fase_7_reoptimizar_no_agrupadas_core(PDO $pdo, array $opci
         'fase' => 7,
         'reoptimizacion_ejecutada' => true,
         'criterio' => 'primero completa grupos existentes; luego usa correlativas como anclas; despues agrupa simples movibles; por ultimo ejecuta busqueda profunda con donantes, pudiendo sacar una mesa simple de un grupo de 3 o 4 para crear otro grupo valido con una no agrupada; además prioriza mismo docente + misma área para que el docente vaya un solo día, pero nunca deja una mesa simple con un único docente/persona distinta; mínimo 2 docentes distintos, excepto talleres.',
+        'modo_turnos' => $modoTurnos,
         'min_numeros_por_grupo' => $minNumeros,
         'max_numeros_por_grupo' => $maxNumeros,
         'total_no_agrupadas_iniciales' => $totalPendientesInicial,
@@ -353,7 +355,7 @@ function mesas_armado_reopt_obtener_grupos_actuales(PDO $pdo, array $numerosInde
     return $grupos;
 }
 
-function mesas_armado_reopt_obtener_slots_disponibles(PDO $pdo, array $pendientes, array $grupos, ?string $fechaInicioRango = null, ?string $fechaFinRango = null): array
+function mesas_armado_reopt_obtener_slots_disponibles(PDO $pdo, array $pendientes, array $grupos, ?string $fechaInicioRango = null, ?string $fechaFinRango = null, mixed $modoTurnos = 'combinado'): array
 {
     $stmt = $pdo->query("
         SELECT DISTINCT fecha_mesa, id_turno
@@ -382,15 +384,37 @@ function mesas_armado_reopt_obtener_slots_disponibles(PDO $pdo, array $pendiente
         return $fecha >= (string)$fechaInicioRango && $fecha <= (string)$fechaFinRango;
     };
 
+    $turnosPermitidos = [];
+    if (function_exists('mesas_armado_filtrar_turnos_por_modo')) {
+        $stmtTurnosPermitidos = $pdo->query("
+            SELECT id_turno, turno
+            FROM turnos
+            WHERE activo = 1
+            ORDER BY id_turno ASC
+        ");
+
+        foreach (mesas_armado_filtrar_turnos_por_modo($stmtTurnosPermitidos->fetchAll(PDO::FETCH_ASSOC), $modoTurnos) as $turnoPermitido) {
+            $turnosPermitidos[(int)$turnoPermitido['id_turno']] = true;
+        }
+    }
+
+    $modoNormalizado = function_exists('mesas_armado_normalizar_modo_turnos')
+        ? mesas_armado_normalizar_modo_turnos($modoTurnos)
+        : 'combinado';
+
     $slots = [];
     $vistos = [];
 
-    $agregar = static function (?string $fecha, mixed $idTurno) use (&$slots, &$vistos, $enRango): void {
+    $agregar = static function (?string $fecha, mixed $idTurno) use (&$slots, &$vistos, $enRango, $turnosPermitidos, $modoNormalizado): void {
         if ($fecha === null || $fecha === '' || $idTurno === null || (int)$idTurno <= 0) {
             return;
         }
 
         if (!$enRango($fecha)) {
+            return;
+        }
+
+        if ($modoNormalizado !== 'combinado' && !isset($turnosPermitidos[(int)$idTurno])) {
             return;
         }
 
@@ -415,7 +439,7 @@ function mesas_armado_reopt_obtener_slots_disponibles(PDO $pdo, array $pendiente
      * mesa debe quedar en no agrupadas/observada con motivo claro, no moverse a viernes.
      */
     if ($rangoExplicito && function_exists('mesas_armado_obtener_slots')) {
-        foreach (mesas_armado_obtener_slots($pdo, (string)$fechaInicioRango, (string)$fechaFinRango, true) as $slotRango) {
+        foreach (mesas_armado_obtener_slots($pdo, (string)$fechaInicioRango, (string)$fechaFinRango, true, $modoTurnos) as $slotRango) {
             $agregar((string)($slotRango['fecha_mesa'] ?? $slotRango['fecha'] ?? ''), $slotRango['id_turno'] ?? null);
         }
     } else {

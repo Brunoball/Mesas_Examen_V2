@@ -72,6 +72,24 @@ const normalizar = (valor) =>
     .replace(/\s+/g, " ")
     .trim();
 
+const normalizarBusquedaFlexible = (valor) =>
+  normalizar(valor)
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const obtenerFiltroBusqueda = (valor) => {
+  const texto = normalizarBusquedaFlexible(valor);
+  if (!texto) return { modo: "vacio", texto: "", palabras: [] };
+
+  const palabras = texto.split(" ").filter(Boolean);
+  return {
+    modo: palabras.length > 1 ? "frase" : "palabra",
+    texto: palabras.join(" "),
+    palabras,
+  };
+};
+
 const crearClaveSlotsEdicion = ({ tipo, item, anio, mes, fecha_inicio, fecha_fin } = {}) => {
   const tipoReal = tipo === "no_agrupada" ? "no_agrupada" : "grupo";
   const idGrupo = item?.id_grupo || item?.numero_grupo || "";
@@ -80,7 +98,14 @@ const crearClaveSlotsEdicion = ({ tipo, item, anio, mes, fecha_inicio, fecha_fin
   return [tipoReal, idGrupo, idNoAgrupada, numeroMesa, anio || "", mes || "", fecha_inicio || "", fecha_fin || ""].join("|");
 };
 
-const grupoCoincideConBusqueda = (grupo, texto) => {
+const coincideValorBusqueda = (valor, filtro) => {
+  if (!filtro?.texto) return true;
+  return normalizarBusquedaFlexible(valor).includes(filtro.texto);
+};
+
+const grupoCoincideConBusqueda = (grupo, filtro) => {
+  if (!filtro?.texto) return true;
+
   const valoresGrupo = [
     grupo.id_grupo,
     grupo.id_no_agrupada,
@@ -101,18 +126,18 @@ const grupoCoincideConBusqueda = (grupo, texto) => {
     grupo.materia,
   ];
 
-  if (valoresGrupo.some((valor) => normalizar(valor).includes(texto))) {
+  if (valoresGrupo.some((valor) => coincideValorBusqueda(valor, filtro))) {
     return true;
   }
 
   const docentes = Array.isArray(grupo.docentes) ? grupo.docentes : [];
   const materias = Array.isArray(grupo.materias) ? grupo.materias : [];
 
-  if (docentes.some((item) => normalizar(item?.nombre).includes(texto))) {
+  if (docentes.some((item) => coincideValorBusqueda(item?.nombre, filtro))) {
     return true;
   }
 
-  if (materias.some((item) => normalizar(item?.nombre).includes(texto))) {
+  if (materias.some((item) => coincideValorBusqueda(item?.nombre, filtro))) {
     return true;
   }
 
@@ -130,13 +155,15 @@ const grupoCoincideConBusqueda = (grupo, texto) => {
       numero.observacion,
     ];
 
-    if (valoresNumero.some((valor) => normalizar(valor).includes(texto))) {
+    if (valoresNumero.some((valor) => coincideValorBusqueda(valor, filtro))) {
       return true;
     }
 
     const alumnos = Array.isArray(numero.alumnos) ? numero.alumnos : [];
 
     return alumnos.some((alumno) => {
+      const cursoAlumno = [alumno.curso, alumno.division_alumno].filter(Boolean).join(" ");
+      const cursoMateria = [alumno.curso_materia, alumno.division_materia].filter(Boolean).join(" ");
       const valoresAlumno = [
         alumno.estudiante,
         alumno.alumno,
@@ -148,6 +175,8 @@ const grupoCoincideConBusqueda = (grupo, texto) => {
         alumno.division_alumno,
         alumno.curso_materia,
         alumno.division_materia,
+        cursoAlumno,
+        cursoMateria,
         alumno.condicion,
         alumno.estado,
         alumno.observacion,
@@ -155,7 +184,7 @@ const grupoCoincideConBusqueda = (grupo, texto) => {
         alumno.numero_mesa,
       ];
 
-      return valoresAlumno.some((valor) => normalizar(valor).includes(texto));
+      return valoresAlumno.some((valor) => coincideValorBusqueda(valor, filtro));
     });
   });
 };
@@ -214,6 +243,7 @@ export const useMesasExamen = ({ onToast } = {}) => {
   const [cargandoDestinosFlechas, setCargandoDestinosFlechas] = useState(false);
   const [moviendoFlechas, setMoviendoFlechas] = useState(false);
   const [errorFlechas, setErrorFlechas] = useState("");
+  const moviendoFlechasRef = useRef(false);
 
   const [modalEliminarEdicionAbierto, setModalEliminarEdicionAbierto] = useState(false);
   const [targetEliminarEdicion, setTargetEliminarEdicion] = useState(null);
@@ -946,7 +976,13 @@ export const useMesasExamen = ({ onToast } = {}) => {
     const numeroMesa = Number(numeroFlechas?.numero_mesa || numeroFlechas);
     const numeroGrupoDestino = Number(destino?.numero_grupo || destino?.id_grupo || destino);
 
-    if (!numeroMesa || !numeroGrupoDestino) return;
+    if (!numeroMesa || !numeroGrupoDestino) return null;
+
+    // El setState no bloquea instantaneamente un doble click. Este ref evita que
+    // salgan dos POST iguales y que el segundo vuelva con 422 aunque el primero
+    // ya haya movido correctamente la mesa.
+    if (moviendoFlechasRef.current) return null;
+    moviendoFlechasRef.current = true;
 
     setMoviendoFlechas(true);
     setErrorFlechas("");
@@ -961,21 +997,65 @@ export const useMesasExamen = ({ onToast } = {}) => {
       setNumeroFlechas(null);
       setDestinosFlechas(null);
 
-      const grupoActualizado = await recargarGrupoEdicion();
-      if (!grupoActualizado) {
-        setModalEditarAbierto(false);
-        setGrupoEdicion(null);
+      const grupoDestino = response?.data?.grupo_destino || null;
+      if (grupoDestino) {
+        setModalEditarAbierto(true);
+        setGrupoEdicion(grupoDestino);
+        setTipoEdicion("grupo");
+        await cargarSlotsEdicion({ item: grupoDestino, tipo: "grupo" });
+        await cargarMesas();
+      } else {
+        const grupoActualizado = await recargarGrupoEdicion();
+        if (!grupoActualizado) {
+          setModalEditarAbierto(false);
+          setGrupoEdicion(null);
+        }
       }
 
-      mostrarToast("exito", "Mesa movida con éxito.");
+      mostrarToast("exito", response?.data?.sin_cambios ? "La mesa ya estaba en ese grupo." : "Mesa movida con éxito.");
       return response;
     } catch (err) {
-      setErrorFlechas(err.message || "No se pudo mover el número de mesa.");
-      throw err;
+      // Recuperación defensiva: en este flujo el backend viejo podía mover la mesa
+      // y aun así devolver 422 por una segunda validación. Antes de mostrar error,
+      // verificamos si el número ya quedó dentro del grupo destino.
+      try {
+        const verificacion = await obtenerMesaEdicion({
+          tipo: "grupo",
+          id_grupo: numeroGrupoDestino,
+          numero_grupo: numeroGrupoDestino,
+          numero_mesa: numeroMesa,
+        });
+
+        const grupoVerificado = verificacion?.data?.grupo || null;
+        const numeros = Array.isArray(grupoVerificado?.numeros) ? grupoVerificado.numeros : [];
+        const yaEstaMovido = numeros.some((num) => Number(num?.numero_mesa) === numeroMesa);
+
+        if (yaEstaMovido) {
+          setModalFlechasAbierto(false);
+          setNumeroFlechas(null);
+          setDestinosFlechas(null);
+          setErrorFlechas("");
+          setModalEditarAbierto(true);
+          setGrupoEdicion(grupoVerificado);
+          setTipoEdicion("grupo");
+          await cargarSlotsEdicion({ item: grupoVerificado, tipo: "grupo" });
+          await cargarMesas();
+          mostrarToast("exito", "Mesa movida con éxito.");
+          return { exito: true, recuperado: true, data: { grupo_destino: grupoVerificado } };
+        }
+      } catch (_) {
+        // Si la verificación también falla, ahí sí mostramos el error original abajo.
+      }
+
+      const erroresBackend = Array.isArray(err?.data?.errores) ? err.data.errores : [];
+      const detalle = erroresBackend.length ? ` ${erroresBackend.join(" ")}` : "";
+      setErrorFlechas((err.message || "No se pudo mover el número de mesa.") + detalle);
+      return null;
     } finally {
+      moviendoFlechasRef.current = false;
       setMoviendoFlechas(false);
     }
-  }, [numeroFlechas, recargarGrupoEdicion, mostrarToast]);
+  }, [numeroFlechas, recargarGrupoEdicion, cargarSlotsEdicion, cargarMesas, mostrarToast]);
 
 
   const cargarOpcionesAgregarNumero = useCallback(async (grupoDestino = grupoAgregarNumero) => {
@@ -1464,15 +1544,14 @@ export const useMesasExamen = ({ onToast } = {}) => {
   }, [tab, busqueda, cargarHistorial]);
 
   const gruposFiltrados = useMemo(() => {
-    const texto = normalizar(busqueda);
-    const terminos = texto.split(" ").filter(Boolean);
+    const filtro = obtenerFiltroBusqueda(busqueda);
     const base = tab === "no-agrupadas" ? [...noAgrupadas] : tab === "historial" ? [] : [...gruposFinales];
 
-    if (terminos.length === 0) {
+    if (!filtro.texto) {
       return base;
     }
 
-    return base.filter((item) => terminos.every((termino) => grupoCoincideConBusqueda(item, termino)));
+    return base.filter((item) => grupoCoincideConBusqueda(item, filtro));
   }, [busqueda, gruposFinales, noAgrupadas, tab]);
 
   const totalGrupos = gruposFinales.length;

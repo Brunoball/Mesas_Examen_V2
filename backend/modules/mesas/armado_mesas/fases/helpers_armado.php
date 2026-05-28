@@ -36,7 +36,79 @@ function mesas_armado_ajustar_a_dia_habil(string $fecha, string $direccion = 'si
     return $d->format('Y-m-d');
 }
 
-function mesas_armado_obtener_slots(PDO $pdo, string $fechaInicio, string $fechaFin, bool $excluirFinesSemana = true): array
+
+function mesas_armado_normalizar_texto_turno(mixed $valor): string
+{
+    $texto = mb_strtolower(trim((string)$valor), 'UTF-8');
+
+    return strtr($texto, [
+        'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
+        'ä' => 'a', 'ë' => 'e', 'ï' => 'i', 'ö' => 'o', 'ü' => 'u',
+        'ñ' => 'n',
+    ]);
+}
+
+function mesas_armado_normalizar_modo_turnos(mixed $modo): string
+{
+    $texto = mesas_armado_normalizar_texto_turno($modo);
+    $texto = str_replace([' ', '-'], '_', $texto);
+
+    if ($texto === '' || $texto === 'combinado' || $texto === 'ambos' || $texto === 'todos' || $texto === 'manana_y_tarde') {
+        return 'combinado';
+    }
+
+    if ($texto === 'manana' || $texto === 'solo_manana' || $texto === 'turno_manana') {
+        return 'manana';
+    }
+
+    if ($texto === 'tarde' || $texto === 'solo_tarde' || $texto === 'turno_tarde') {
+        return 'tarde';
+    }
+
+    return 'combinado';
+}
+
+function mesas_armado_turno_coincide_modo(array $turno, string $modoTurnos): bool
+{
+    $modo = mesas_armado_normalizar_modo_turnos($modoTurnos);
+
+    if ($modo === 'combinado') {
+        return true;
+    }
+
+    $idTurno = (int)($turno['id_turno'] ?? 0);
+    $nombre = mesas_armado_normalizar_texto_turno($turno['turno'] ?? $turno['nombre'] ?? $turno['descripcion'] ?? '');
+
+    if ($modo === 'manana') {
+        return $idTurno === 1
+            || str_contains($nombre, 'manana')
+            || str_contains($nombre, 'matut');
+    }
+
+    if ($modo === 'tarde') {
+        return $idTurno === 2
+            || str_contains($nombre, 'tarde')
+            || str_contains($nombre, 'vesp');
+    }
+
+    return true;
+}
+
+function mesas_armado_filtrar_turnos_por_modo(array $turnos, mixed $modoTurnos): array
+{
+    $modo = mesas_armado_normalizar_modo_turnos($modoTurnos);
+
+    if ($modo === 'combinado') {
+        return array_values($turnos);
+    }
+
+    return array_values(array_filter(
+        $turnos,
+        static fn (array $turno): bool => mesas_armado_turno_coincide_modo($turno, $modo)
+    ));
+}
+
+function mesas_armado_obtener_slots(PDO $pdo, string $fechaInicio, string $fechaFin, bool $excluirFinesSemana = true, mixed $modoTurnos = 'combinado'): array
 {
     // Regla obligatoria del armado: nunca se generan mesas sábado ni domingo.
     // Aunque el frontend envíe otro valor, el backend siempre descarta fines de semana.
@@ -49,7 +121,10 @@ function mesas_armado_obtener_slots(PDO $pdo, string $fechaInicio, string $fecha
         ORDER BY id_turno ASC
     ");
 
-    $turnos = $stmtTurnos->fetchAll(PDO::FETCH_ASSOC);
+    $turnos = mesas_armado_filtrar_turnos_por_modo(
+        $stmtTurnos->fetchAll(PDO::FETCH_ASSOC),
+        $modoTurnos
+    );
 
     if (count($turnos) === 0) {
         return [];

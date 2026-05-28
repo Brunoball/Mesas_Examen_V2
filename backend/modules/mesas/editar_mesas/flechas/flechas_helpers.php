@@ -214,6 +214,10 @@ function mesas_editar_flechas_validar_destino(PDO $pdo, int $numeroMesa, array $
     }
 
     $numeroGrupoDestino = (int)($grupoDestino['numero_grupo'] ?? 0);
+    if ($numeroGrupoDestino > 0) {
+        $grupoDestino = mesas_editar_aplicar_area_canonica_a_fila_grupo($pdo, $grupoDestino);
+    }
+
     $cantidadDestino = (int)($grupoDestino['cantidad_numeros'] ?? 0);
     $fechaDestino = substr((string)($grupoDestino['fecha_mesa'] ?? ''), 0, 10);
     $idTurnoDestino = (int)($grupoDestino['id_turno'] ?? 0);
@@ -311,6 +315,8 @@ function mesas_editar_flechas_normalizar_destino_salida(PDO $pdo, array $grupo, 
 
 function mesas_editar_flechas_obtener_destinos(PDO $pdo, int $numeroMesa): array
 {
+    mesas_editar_normalizar_areas_grupos_finales($pdo);
+
     $metaOrigen = mesas_editar_flechas_obtener_numero_meta($pdo, $numeroMesa);
     if (!$metaOrigen) {
         throw new RuntimeException('No se encontró el número de mesa origen.');
@@ -352,6 +358,100 @@ function mesas_editar_flechas_obtener_destinos(PDO $pdo, int $numeroMesa): array
         'destinos' => $destinos,
         'cantidad' => count($destinos),
         'descartados_por_validacion' => $descartados,
+    ];
+}
+
+
+function mesas_editar_flechas_numero_en_grupo(PDO $pdo, int $numeroMesa, int $numeroGrupo): bool
+{
+    if ($numeroMesa <= 0 || $numeroGrupo <= 0) {
+        return false;
+    }
+
+    $stmt = $pdo->prepare('SELECT 1 FROM mesas_grupos WHERE numero_mesa = ? AND numero_grupo = ? LIMIT 1');
+    $stmt->execute([$numeroMesa, $numeroGrupo]);
+    return (bool)$stmt->fetchColumn();
+}
+
+function mesas_editar_flechas_consolidar_numero_en_destino(PDO $pdo, int $numeroMesa, int $numeroGrupoDestino): array
+{
+    $stmtGruposOrigen = $pdo->prepare('SELECT DISTINCT numero_grupo FROM mesas_grupos WHERE numero_mesa = ? AND numero_grupo <> ?');
+    $stmtGruposOrigen->execute([$numeroMesa, $numeroGrupoDestino]);
+    $gruposOrigen = array_values(array_filter(array_map('intval', $stmtGruposOrigen->fetchAll(PDO::FETCH_COLUMN)), static fn ($n) => $n > 0));
+
+    // Si por un doble click o por un commit implícito quedó la mesa en dos grupos,
+    // dejamos una sola pertenencia: la del grupo destino solicitado por el usuario.
+    $stmtDeleteOtros = $pdo->prepare('DELETE FROM mesas_grupos WHERE numero_mesa = ? AND numero_grupo <> ?');
+    $stmtDeleteOtros->execute([$numeroMesa, $numeroGrupoDestino]);
+
+    $stmtDeleteNo = $pdo->prepare('DELETE FROM mesas_no_agrupadas WHERE numero_mesa = ?');
+    $stmtDeleteNo->execute([$numeroMesa]);
+
+    // Si por carrera quedaron dos filas iguales en el destino, conservamos la más antigua.
+    $stmtDuplicados = $pdo->prepare('SELECT id_mesa_grupo FROM mesas_grupos WHERE numero_mesa = ? AND numero_grupo = ? ORDER BY id_mesa_grupo ASC');
+    $stmtDuplicados->execute([$numeroMesa, $numeroGrupoDestino]);
+    $ids = array_map('intval', $stmtDuplicados->fetchAll(PDO::FETCH_COLUMN));
+    if (count($ids) > 1) {
+        $idsBorrar = array_slice($ids, 1);
+        $ph = implode(',', array_fill(0, count($idsBorrar), '?'));
+        $pdo->prepare("DELETE FROM mesas_grupos WHERE id_mesa_grupo IN ({$ph})")->execute($idsBorrar);
+    }
+
+    // Sincronizamos fecha/turno/hora/área de la mesa con el grupo destino real.
+    $stmtDestino = $pdo->prepare('SELECT fecha_mesa, id_turno, hora, id_area FROM mesas_grupos WHERE numero_grupo = ? ORDER BY orden ASC, id_mesa_grupo ASC LIMIT 1');
+    $stmtDestino->execute([$numeroGrupoDestino]);
+    $destino = $stmtDestino->fetch(PDO::FETCH_ASSOC) ?: [];
+
+    if (!empty($destino)) {
+        $stmtUpdateMesas = $pdo->prepare('UPDATE mesas SET fecha_mesa = ?, id_turno = ?, estado = IF(estado = "observada", estado, "borrador") WHERE numero_mesa = ?');
+        $stmtUpdateMesas->execute([
+            substr((string)($destino['fecha_mesa'] ?? ''), 0, 10),
+            (int)($destino['id_turno'] ?? 0),
+            $numeroMesa,
+        ]);
+
+        $stmtUpdateGrupo = $pdo->prepare('UPDATE mesas_grupos SET fecha_mesa = ?, id_turno = ?, hora = ?, id_area = ? WHERE numero_mesa = ? AND numero_grupo = ?');
+        $stmtUpdateGrupo->execute([
+            substr((string)($destino['fecha_mesa'] ?? ''), 0, 10),
+            (int)($destino['id_turno'] ?? 0),
+            $destino['hora'] ?? null,
+            $destino['id_area'] !== null ? (int)$destino['id_area'] : null,
+            $numeroMesa,
+            $numeroGrupoDestino,
+        ]);
+    }
+
+    mesas_editar_flechas_reordenar_grupo($pdo, $numeroGrupoDestino);
+    foreach ($gruposOrigen as $numeroGrupoOrigen) {
+        mesas_editar_flechas_reparar_grupo_origen($pdo, $numeroGrupoOrigen);
+    }
+
+    return $gruposOrigen;
+}
+
+function mesas_editar_flechas_respuesta_estado_actual(PDO $pdo, int $numeroMesa, int $numeroGrupoDestino, ?int $numeroGrupoOrigen = null, string $mensaje = 'Número de mesa movido correctamente.'): array
+{
+    $gruposOrigen = mesas_editar_flechas_consolidar_numero_en_destino($pdo, $numeroMesa, $numeroGrupoDestino);
+    $grupoDestino = mesas_editar_obtener_grupo_hidratado($pdo, $numeroGrupoDestino);
+
+    return [
+        'movido' => true,
+        'sin_cambios' => true,
+        'idempotente' => true,
+        'mensaje' => $mensaje,
+        'numero_mesa' => $numeroMesa,
+        'numero_grupo_origen' => $numeroGrupoOrigen ?: ($gruposOrigen[0] ?? $numeroGrupoDestino),
+        'numero_grupo_destino' => $numeroGrupoDestino,
+        'fecha_mesa' => $grupoDestino['fecha_mesa'] ?? null,
+        'id_turno' => $grupoDestino['id_turno'] ?? null,
+        'validacion' => [
+            'valido' => true,
+            'errores' => [],
+            'advertencias' => [],
+        ],
+        'grupo_destino' => $grupoDestino,
+        'grupo_origen' => null,
+        'reparacion_origen' => ['accion' => 'estado_final_ya_cumplido'],
     ];
 }
 
@@ -409,6 +509,8 @@ function mesas_editar_flechas_mover_numero(PDO $pdo, int $numeroMesa, int $numer
         throw new RuntimeException('No se encontró el número de mesa origen.');
     }
 
+    mesas_editar_normalizar_areas_grupos_finales($pdo, [$numeroGrupoDestino]);
+
     $stmtDestino = $pdo->prepare(''
         . 'SELECT '
         . '    g.numero_grupo, MIN(g.fecha_mesa) AS fecha_mesa, DATE_FORMAT(MIN(g.fecha_mesa), "%d/%m/%Y") AS fecha, '
@@ -432,8 +534,37 @@ function mesas_editar_flechas_mover_numero(PDO $pdo, int $numeroMesa, int $numer
         throw new RuntimeException('No se encontró el grupo destino.');
     }
 
+    $grupoDestino = mesas_editar_aplicar_area_canonica_a_fila_grupo($pdo, $grupoDestino);
+
+    $numeroGrupoOrigen = (int)($metaOrigen['numero_grupo'] ?? 0);
+
+    // Blindaje idempotente fuerte: si el frontend dispara dos POST iguales o si el
+    // primer intento ya alcanzó a insertar la mesa en el destino, el segundo intento
+    // NO debe devolver 422. Se consolida el estado final pedido y se responde éxito.
+    if ($numeroGrupoOrigen === $numeroGrupoDestino || mesas_editar_flechas_numero_en_grupo($pdo, $numeroMesa, $numeroGrupoDestino)) {
+        return mesas_editar_flechas_respuesta_estado_actual(
+            $pdo,
+            $numeroMesa,
+            $numeroGrupoDestino,
+            $numeroGrupoOrigen,
+            'El número de mesa ya está en el grupo destino.'
+        );
+    }
+
     $validacion = mesas_editar_flechas_validar_destino($pdo, $numeroMesa, $metaOrigen, $grupoDestino);
     if (!$validacion['valido']) {
+        // Segundo blindaje: si la validación falla porque otra llamada simultánea ya
+        // dejó la mesa en el destino, el estado final es correcto. Respondemos éxito.
+        if (mesas_editar_flechas_numero_en_grupo($pdo, $numeroMesa, $numeroGrupoDestino)) {
+            return mesas_editar_flechas_respuesta_estado_actual(
+                $pdo,
+                $numeroMesa,
+                $numeroGrupoDestino,
+                $numeroGrupoOrigen,
+                'El número de mesa ya había sido movido al grupo destino.'
+            );
+        }
+
         return [
             'movido' => false,
             'validacion' => $validacion,
@@ -442,7 +573,6 @@ function mesas_editar_flechas_mover_numero(PDO $pdo, int $numeroMesa, int $numer
         ];
     }
 
-    $numeroGrupoOrigen = (int)($metaOrigen['numero_grupo'] ?? 0);
     $resumen = mesas_editar_flechas_resumen_numero_para_grupo($pdo, $numeroMesa, $metaOrigen);
     $fechaDestino = substr((string)$grupoDestino['fecha_mesa'], 0, 10);
     $idTurnoDestino = (int)$grupoDestino['id_turno'];

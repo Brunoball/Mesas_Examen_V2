@@ -376,6 +376,21 @@
   font-weight:700;
 }
 
+
+.mesas-turno-pill--empty{
+  color:#b45309;
+  border-color:rgba(245,158,11,.22);
+  background:rgba(245,158,11,.10);
+}
+
+.mesas-modo-turnos-grid{
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+}
+
+.mesas-modo-turnos-card{
+  min-height:104px;
+}
+
 .mesas-tipo-armado-box{
   display:flex;
   flex-direction:column;
@@ -618,7 +633,8 @@
 
   .mesas-modal-grid,
   .mesas-modal-info,
-  .mesas-tipo-armado-grid{
+  .mesas-tipo-armado-grid,
+  .mesas-modo-turnos-grid{
     grid-template-columns:1fr;
   }
 

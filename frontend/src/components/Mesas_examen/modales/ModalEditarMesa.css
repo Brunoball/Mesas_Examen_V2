@@ -304,10 +304,11 @@
 .editar-mesa-time-input{
   display:flex;
   align-items:center;
+  gap:8px;
   cursor:pointer;
 }
 
-.editar-mesa-time-input input{
+.editar-mesa-time-input select{
   flex:1 1 auto;
   width:100%;
   min-width:0;
@@ -318,6 +319,22 @@
   color:var(--gm-ink, #3A2E2B);
   font:inherit;
   cursor:pointer;
+  appearance:none;
+  -webkit-appearance:none;
+  -moz-appearance:none;
+}
+
+.editar-mesa-time-input select option{
+  color:var(--gm-ink, #3A2E2B);
+  background:#fff;
+}
+
+.editar-mesa-time-icon{
+  flex:0 0 auto;
+  color:var(--gm-ink, #3A2E2B);
+  opacity:.75;
+  pointer-events:none;
+  font-size:13px;
 }
 
 .editar-mesa-help{
@@ -999,4 +1016,34 @@
   align-items:center;
   gap:8px;
   line-height:1.35;
+}
+
+/* Selector de horario dividido: hora por un lado y minutos por el otro, respetando el rango permitido. */
+.editar-mesa-time-split{
+  padding:0 10px;
+}
+
+.editar-mesa-time-split select{
+  flex:0 1 58px;
+  width:58px;
+  min-width:44px;
+  padding:0;
+  text-align:center;
+  text-align-last:center;
+  font-weight:720;
+}
+
+.editar-mesa-time-separator{
+  flex:0 0 auto;
+  color:var(--gm-ink, #3A2E2B);
+  opacity:.78;
+  font-size:18px;
+  line-height:1;
+  font-weight:820;
+  transform:translateY(-1px);
+  user-select:none;
+}
+
+.editar-mesa-time-split .editar-mesa-time-icon{
+  margin-left:auto;
 }

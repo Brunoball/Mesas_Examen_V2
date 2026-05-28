@@ -82,12 +82,14 @@ const ModalMoverNumeroMesa = ({
   destinosData,
   cargando,
   moviendo,
+  error,
   onClose,
   onConfirm,
 }) => {
   const [busqueda, setBusqueda] = useState("");
   const [seleccionado, setSeleccionado] = useState(null);
   const overlayRef = useEscapeClose(abierto, onClose, moviendo);
+  const confirmandoRef = useRef(false);
 
   const destinos = useMemo(() => {
     const textoBusqueda = normalizar(busqueda);
@@ -99,6 +101,7 @@ const ModalMoverNumeroMesa = ({
     if (abierto) {
       setBusqueda("");
       setSeleccionado(null);
+      confirmandoRef.current = false;
     }
   }, [abierto, numero?.numero_mesa, destinosData?.numero_mesa]);
 
@@ -110,8 +113,16 @@ const ModalMoverNumeroMesa = ({
   const meta = destinosData?.meta || numero || {};
 
   const confirmar = () => {
-    if (!seleccionado || moviendo) return;
-    onConfirm?.(seleccionado);
+    if (!seleccionado || moviendo || confirmandoRef.current) return;
+    confirmandoRef.current = true;
+    Promise.resolve(onConfirm?.(seleccionado))
+      .catch(() => {
+        // El hook ya muestra el error dentro del modal; evitamos que React muestre
+        // el overlay rojo de "Uncaught runtime errors" por una promesa rechazada.
+      })
+      .finally(() => {
+        confirmandoRef.current = false;
+      });
   };
 
   return createPortal((
@@ -181,6 +192,10 @@ const ModalMoverNumeroMesa = ({
                 />
               </div>
             </label>
+
+            {error ? (
+              <div className="flechas-error">{error}</div>
+            ) : null}
 
             {cargando ? (
               <div className="flechas-loading">

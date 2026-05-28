@@ -14,6 +14,7 @@ import {
   faUser,
   faTimes,
   faTriangleExclamation,
+  faClock,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "../../Global/Global_css/Global_Modals.css";
@@ -101,6 +102,66 @@ const ajustarHoraARango = (hora, turno = "") => {
   if (valor < min) return rango.min;
   if (valor > max) return rango.max;
   return base;
+};
+
+const minutosAHora = (minutos) => {
+  const horas = Math.floor(minutos / 60);
+  const mins = minutos % 60;
+  return `${String(horas).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+};
+
+const generarOpcionesHoras = (rango) => {
+  const min = horaAMinutos(rango?.min);
+  const max = horaAMinutos(rango?.max);
+  if (min === null || max === null || max < min) return [];
+
+  const horaMin = Math.floor(min / 60);
+  const horaMax = Math.floor(max / 60);
+
+  const opciones = [];
+  for (let hora = horaMin; hora <= horaMax; hora += 1) {
+    opciones.push(String(hora).padStart(2, "0"));
+  }
+  return opciones;
+};
+
+const generarOpcionesMinutos = (rango, horaSeleccionada) => {
+  const min = horaAMinutos(rango?.min);
+  const max = horaAMinutos(rango?.max);
+  const horaNumero = Number(horaSeleccionada);
+
+  if (min === null || max === null || max < min || Number.isNaN(horaNumero)) return [];
+
+  const opciones = [];
+  for (let minuto = 0; minuto <= 59; minuto += 1) {
+    const total = horaNumero * 60 + minuto;
+    if (total >= min && total <= max) {
+      opciones.push(String(minuto).padStart(2, "0"));
+    }
+  }
+  return opciones;
+};
+
+const obtenerPartesHora = (valor, turno = "") => {
+  const horaAjustada = ajustarHoraARango(valor, turno);
+  return {
+    hora: horaAjustada.slice(0, 2),
+    minuto: horaAjustada.slice(3, 5),
+  };
+};
+
+const obtenerMinutoMasCercano = (minutoActual, opciones = []) => {
+  if (!opciones.length) return "00";
+  if (opciones.includes(minutoActual)) return minutoActual;
+
+  const actual = Number(minutoActual);
+  if (Number.isNaN(actual)) return opciones[0];
+
+  return opciones.reduce((mejor, opcion) => {
+    const distanciaActual = Math.abs(Number(opcion) - actual);
+    const distanciaMejor = Math.abs(Number(mejor) - actual);
+    return distanciaActual < distanciaMejor ? opcion : mejor;
+  }, opciones[0]);
 };
 
 const formatearHoraInput = (valor, turno = "") => {
@@ -226,12 +287,22 @@ const CalendarMesa = ({ fechaSeleccionada, idTurno, slotsDisponibles = [], carga
   const slotsPorFecha = useMemo(() => {
     const mapa = new Map();
     (Array.isArray(slotsDisponibles) ? slotsDisponibles : []).forEach((slot) => {
-      if (String(slot?.id_turno) === String(idTurno)) {
-        mapa.set(claveSlot(slot.fecha_mesa, slot.id_turno), slot);
-      }
+      const fecha = normalizarFechaInput(slot?.fecha_mesa);
+      if (!fecha) return;
+      const actuales = mapa.get(fecha) || [];
+      actuales.push(slot);
+      mapa.set(fecha, actuales);
     });
     return mapa;
-  }, [slotsDisponibles, idTurno]);
+  }, [slotsDisponibles]);
+
+  const slotsPorFechaTurno = useMemo(() => {
+    const mapa = new Map();
+    (Array.isArray(slotsDisponibles) ? slotsDisponibles : []).forEach((slot) => {
+      mapa.set(claveSlot(slot.fecha_mesa, slot.id_turno), slot);
+    });
+    return mapa;
+  }, [slotsDisponibles]);
 
   useEffect(() => {
     if (typeof onMesChange === "function") {
@@ -264,23 +335,29 @@ const CalendarMesa = ({ fechaSeleccionada, idTurno, slotsDisponibles = [], carga
           const ymd = toYmd(fecha);
           const weekend = esFinDeSemana(fecha);
           const activo = ymd === ymdSeleccionado;
-          const slot = slotsPorFecha.get(claveSlot(ymd, idTurno));
-          const disponible = !!slot?.valido;
+          const slotsDelDia = slotsPorFecha.get(ymd) || [];
+          const slotTurnoActual = slotsPorFechaTurno.get(claveSlot(ymd, idTurno));
+          const slotDisponible = slotsDelDia.find((slot) => !!slot?.valido) || null;
+          const disponible = !!slotDisponible;
+          const turnoActualDisponible = !!slotTurnoActual?.valido;
           const bloqueado = weekend || cargandoSlots || !disponible;
+          const erroresDia = slotsDelDia
+            .flatMap((slot) => Array.isArray(slot?.errores) ? slot.errores : [])
+            .filter(Boolean);
           const motivo = weekend
             ? "Sábados y domingos no disponibles"
             : cargandoSlots
               ? "Validando disponibilidad..."
               : disponible
-                ? "Fecha y turno disponible"
-                : (slot?.errores || ["Fecha/turno no disponible para esta mesa"]).join(" | ");
+                ? (turnoActualDisponible ? "Fecha y turno disponible" : "Fecha disponible en otro turno. Al seleccionarla se ajusta el turno automáticamente.")
+                : (erroresDia.length > 0 ? erroresDia : ["Día fuera del rango del armado o sin turnos compatibles para esta mesa"]).join(" | ");
 
           return (
             <button
               key={ymd}
               type="button"
               className={`editar-mesa-day ${fueraMes ? "muted" : ""} ${activo ? "active" : ""} ${weekend ? "weekend" : ""} ${disponible ? "available" : "blocked"}`}
-              onClick={() => !bloqueado && onChange(ymd)}
+              onClick={() => !bloqueado && onChange(ymd, slotDisponible)}
               disabled={bloqueado}
               title={motivo}
             >
@@ -364,7 +441,6 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
   const [fechaMesa, setFechaMesa] = useState("");
   const [idTurno, setIdTurno] = useState("");
   const [hora, setHora] = useState("07:30");
-  const horaInputRef = useRef(null);
   const overlayRef = useEscapeClose(abierto, onClose, guardando);
   const esNoAgrupada = tipo === "no_agrupada";
 
@@ -401,15 +477,22 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
     return lista.filter((slot) => slot?.valido);
   }, [slotsDisponibles]);
 
-  const turnosConSlotsValidos = useMemo(() => {
+  const turnosValidosPorFecha = useMemo(() => {
     const mapa = new Map();
     slotsValidos.forEach((slot) => {
+      const fecha = normalizarFechaInput(slot?.fecha_mesa);
       const id = String(slot?.id_turno || "");
-      if (!id) return;
-      mapa.set(id, (mapa.get(id) || 0) + 1);
+      if (!fecha || !id) return;
+      const setTurnos = mapa.get(fecha) || new Set();
+      setTurnos.add(id);
+      mapa.set(fecha, setTurnos);
     });
     return mapa;
   }, [slotsValidos]);
+
+  const turnosDisponiblesFechaSeleccionada = useMemo(() => {
+    return turnosValidosPorFecha.get(fechaMesa) || new Set();
+  }, [turnosValidosPorFecha, fechaMesa]);
 
   const turnoSeleccionado = useMemo(
     () => turnos.find((item) => String(item.id_turno) === String(idTurno))?.turno || grupo?.turno || "",
@@ -417,6 +500,9 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
   );
 
   const rangoHorario = useMemo(() => obtenerRangoHorarioPorTurno(turnoSeleccionado), [turnoSeleccionado]);
+  const partesHora = useMemo(() => obtenerPartesHora(hora, turnoSeleccionado), [hora, turnoSeleccionado]);
+  const opcionesHoras = useMemo(() => generarOpcionesHoras(rangoHorario), [rangoHorario]);
+  const opcionesMinutos = useMemo(() => generarOpcionesMinutos(rangoHorario, partesHora.hora), [rangoHorario, partesHora.hora]);
 
   const slotSeleccionadoValido = useMemo(() => {
     if (!fechaMesa || !idTurno) return false;
@@ -453,8 +539,9 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
 
     if (actualEsValido) return;
 
+    const primeroMismaFecha = slotsValidos.find((slot) => normalizarFechaInput(slot.fecha_mesa) === fechaMesa);
     const primeroMismoTurno = slotsValidos.find((slot) => String(slot.id_turno) === String(idTurno));
-    const primero = primeroMismoTurno || slotsValidos[0];
+    const primero = primeroMismaFecha || primeroMismoTurno || slotsValidos[0];
 
     if (primero) {
       setFechaMesa(normalizarFechaInput(primero.fecha_mesa));
@@ -462,6 +549,18 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
       setHora(formatearHoraInput(primero.hora_sugerida, primero.turno));
     }
   }, [abierto, cargandoSlots, slotsDisponibles, slotsValidos, fechaMesa, idTurno]);
+
+  const handleFechaChange = useCallback((fecha, slotDisponible = null) => {
+    const fechaNormalizada = normalizarFechaInput(fecha);
+    if (!fechaNormalizada) return;
+
+    setFechaMesa(fechaNormalizada);
+
+    if (slotDisponible?.id_turno && String(slotDisponible.id_turno) !== String(idTurno)) {
+      setIdTurno(String(slotDisponible.id_turno));
+      setHora(formatearHoraInput(slotDisponible.hora_sugerida, slotDisponible.turno));
+    }
+  }, [idTurno]);
 
   if (!abierto) return null;
 
@@ -526,27 +625,16 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
     agregarNumero.eliminarSlotExtra(grupo);
   };
 
-  const abrirSelectorHora = () => {
-    const input = horaInputRef.current;
-    if (!input) return;
-
-    input.focus({ preventScroll: true });
-
-    if (typeof input.showPicker === "function") {
-      try {
-        input.showPicker();
-      } catch (_) {
-        // Algunos navegadores solo permiten showPicker con una acción directa del usuario.
-      }
-    }
+  const handleHoraParteChange = (event) => {
+    const nuevaHora = String(event.target.value).padStart(2, "0");
+    const minutosValidos = generarOpcionesMinutos(rangoHorario, nuevaHora);
+    const minutoSeguro = obtenerMinutoMasCercano(partesHora.minuto, minutosValidos);
+    setHora(ajustarHoraARango(`${nuevaHora}:${minutoSeguro}`, turnoSeleccionado));
   };
 
-  const handleHoraChange = (event) => {
-    setHora(ajustarHoraARango(event.target.value, turnoSeleccionado));
-  };
-
-  const handleHoraBlur = (event) => {
-    setHora(ajustarHoraARango(event.target.value, turnoSeleccionado));
+  const handleMinutoParteChange = (event) => {
+    const nuevoMinuto = String(event.target.value).padStart(2, "0");
+    setHora(ajustarHoraARango(`${partesHora.hora}:${nuevoMinuto}`, turnoSeleccionado));
   };
 
   return createPortal((
@@ -584,11 +672,15 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
                       {turnos.map((turno) => {
                         const id = String(turno.id_turno);
                         const haySlotsCargados = !!slotsDisponibles && !cargandoSlots;
-                        const sinFechasValidas = haySlotsCargados && slotsValidos.length > 0 && !turnosConSlotsValidos.has(id);
+                        const hayFechaSeleccionada = !!fechaMesa;
+                        const turnoBloqueadoEnFecha = haySlotsCargados
+                          && hayFechaSeleccionada
+                          && slotsValidos.length > 0
+                          && !turnosDisponiblesFechaSeleccionada.has(id);
 
                         return (
-                          <option key={turno.id_turno} value={turno.id_turno} disabled={sinFechasValidas}>
-                            {turno.turno}{sinFechasValidas ? " — sin fechas" : ""}
+                          <option key={turno.id_turno} value={turno.id_turno} disabled={turnoBloqueadoEnFecha}>
+                            {turno.turno}{turnoBloqueadoEnFecha ? " — bloqueado ese día" : ""}
                           </option>
                         );
                       })}
@@ -597,17 +689,27 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
 
                   <label>
                     <span>Horario</span>
-                    <div className="editar-mesa-time-input" onClick={abrirSelectorHora} title={`Permitido: ${rangoHorario.texto}`}>
-                      <input
-                        ref={horaInputRef}
-                        type="time"
-                        value={hora}
-                        min={rangoHorario.min}
-                        max={rangoHorario.max}
-                        step="60"
-                        onChange={handleHoraChange}
-                        onBlur={handleHoraBlur}
-                      />
+                    <div className="editar-mesa-time-input editar-mesa-time-split" title={`Permitido: ${rangoHorario.texto}`}>
+                      <select
+                        value={partesHora.hora}
+                        onChange={handleHoraParteChange}
+                        aria-label={`Hora permitida de ${rangoHorario.texto}`}
+                      >
+                        {opcionesHoras.map((opcion) => (
+                          <option key={opcion} value={opcion}>{opcion}</option>
+                        ))}
+                      </select>
+                      <span className="editar-mesa-time-separator">:</span>
+                      <select
+                        value={partesHora.minuto}
+                        onChange={handleMinutoParteChange}
+                        aria-label={`Minutos permitidos de ${rangoHorario.texto}`}
+                      >
+                        {opcionesMinutos.map((opcion) => (
+                          <option key={opcion} value={opcion}>{opcion}</option>
+                        ))}
+                      </select>
+                      <FontAwesomeIcon icon={faClock} className="editar-mesa-time-icon" />
                     </div>
                     <small className="editar-mesa-help">Permitido: {rangoHorario.texto}</small>
                   </label>
@@ -618,7 +720,7 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
                   idTurno={idTurno}
                   slotsDisponibles={slotsDisponibles?.slots || []}
                   cargandoSlots={cargandoSlots}
-                  onChange={setFechaMesa}
+                  onChange={handleFechaChange}
                   onMesChange={cargarSlotsMes}
                 />
 

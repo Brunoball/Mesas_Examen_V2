@@ -52,6 +52,7 @@ function mesas_armado_fase_3_validar_y_calendarizar(): void
         'marcar_armada' => filter_var($body['marcar_armada'] ?? $body['marcarArmada'] ?? false, FILTER_VALIDATE_BOOLEAN),
         // En la acción directa de calendarización mantenemos validación estricta.
         'permitir_observadas' => filter_var($body['permitir_observadas'] ?? $body['permitirObservadas'] ?? false, FILTER_VALIDATE_BOOLEAN),
+        'modo_turnos' => $body['modo_turnos'] ?? $body['modoTurnos'] ?? $body['turno_modo'] ?? $body['turnoModo'] ?? 'combinado',
     ];
 
     try {
@@ -123,6 +124,7 @@ function mesas_armado_fase_3_validar_y_calendarizar_core(
     $limpiarAsignacionPrevia = (bool)($opciones['limpiar_asignacion_previa'] ?? true);
     $marcarArmada = (bool)($opciones['marcar_armada'] ?? false);
     $permitirObservadas = (bool)($opciones['permitir_observadas'] ?? false);
+    $modoTurnos = mesas_armado_normalizar_modo_turnos($opciones['modo_turnos'] ?? $opciones['modoTurnos'] ?? 'combinado');
 
     if (!mesas_armado_fecha_valida($fechaInicio) || !mesas_armado_fecha_valida($fechaFin)) {
         throw new InvalidArgumentException('Las fechas deben tener formato válido YYYY-MM-DD.');
@@ -132,7 +134,7 @@ function mesas_armado_fase_3_validar_y_calendarizar_core(
         throw new InvalidArgumentException('La fecha de fin no puede ser menor que la fecha de inicio.');
     }
 
-    $slots = mesas_armado_obtener_slots($pdo, $fechaInicio, $fechaFin, true);
+    $slots = mesas_armado_obtener_slots($pdo, $fechaInicio, $fechaFin, true, $modoTurnos);
 
     if (count($slots) === 0) {
         return [
@@ -144,6 +146,7 @@ function mesas_armado_fase_3_validar_y_calendarizar_core(
                 'fecha_inicio' => $fechaInicio,
                 'fecha_fin' => $fechaFin,
                 'excluir_fines_semana' => true,
+                'modo_turnos' => $modoTurnos,
                 'calendarizacion_ejecutada' => false,
             ],
         ];
@@ -224,11 +227,12 @@ function mesas_armado_fase_3_validar_y_calendarizar_core(
                 : 'Fase 3 no pudo asignar fecha/turno a ninguna mesa.'),
         'data' => [
             'fase' => 3,
-            'criterio' => 'compactacion_por_area_prioridad_volumen_disponibilidad',
+            'criterio' => 'distribucion_balanceada_por_slots_area_prioridad_volumen_disponibilidad',
             'fecha_inicio' => $fechaInicio,
             'fecha_fin' => $fechaFin,
             'slots_habiles' => $slots,
             'total_slots_habiles' => count($slots),
+            'modo_turnos' => $modoTurnos,
             'excluir_fines_semana' => true,
             'marcar_armada' => $marcarArmada,
             'auto_reparar_numeracion' => $autoRepararNumeracion,
@@ -921,6 +925,9 @@ function mesas_armado_calendarizar_grupos(
     $ocupacionAlumno = [];
     $previaSlotIndex = [];
     $slotsPorArea = [];
+    $cargaSlots = array_fill(0, count($slots), 0);
+    $cargaSlotsArea = [];
+    $planDistribucion = mesas_armado_crear_plan_distribucion_slots($grupos, $slots);
     $resumenSlots = [];
     $asignadas = [];
     $noCalendarizadas = [];
@@ -934,7 +941,10 @@ function mesas_armado_calendarizar_grupos(
             $ocupacionAlumno,
             $previaSlotIndex,
             $relacionesCorrelativas,
-            $slotsPorArea
+            $slotsPorArea,
+            $cargaSlots,
+            $cargaSlotsArea,
+            $planDistribucion
         );
 
         if ($slotAsignado === null) {
@@ -1006,6 +1016,12 @@ function mesas_armado_calendarizar_grupos(
         }
         $slotsPorArea[$areaKey][$slotIndex] = true;
 
+        $cargaSlots[$slotIndex] = (int)($cargaSlots[$slotIndex] ?? 0) + 1;
+        if (!isset($cargaSlotsArea[$areaKey])) {
+            $cargaSlotsArea[$areaKey] = [];
+        }
+        $cargaSlotsArea[$areaKey][$slotIndex] = (int)($cargaSlotsArea[$areaKey][$slotIndex] ?? 0) + 1;
+
         $slotResumenKey = $fecha . '|' . $idTurno . '|' . $areaKey;
         if (!isset($resumenSlots[$slotResumenKey])) {
             $resumenSlots[$slotResumenKey] = [
@@ -1055,9 +1071,11 @@ function mesas_armado_calendarizar_grupos(
         'primeras_calendarizadas' => array_slice($asignadas, 0, 50),
         'no_calendarizadas' => array_slice($noCalendarizadas, 0, 50),
         'resumen_para_futura_agrupacion' => array_slice($resumenSlots, 0, 80),
+        'plan_distribucion_slots' => $planDistribucion,
         'criterio_profesional' => [
             'fecha_turno_en_mesas' => 'La fecha_mesa/id_turno cargada en mesas es la propuesta operativa del numero_mesa. En mesas_grupos solo se deben unir numeros que ya comparten ese mismo slot, salvo que una reoptimización los mueva juntos.',
-            'compactacion' => 'Para maximizar agrupación futura, las mesas no prioritarias buscan primero slots ya abiertos de su misma area.',
+            'distribucion' => 'El armado ya no llena solamente los primeros slots: calcula cuántos slots conviene usar por área y reparte las mesas entre esos slots para aprovechar el rango completo sin dejar buckets individuales cuando sea posible.',
+            'compactacion' => 'La compactación por área sigue existiendo, pero ahora tiene un límite operativo para no saturar mañana/tarde del primer día y abrir más opciones de reacomodo.',
             'prioridad' => 'Correlativa anterior, correlativas y mesas con mayor cantidad de alumnos se procesan antes para quedarse con los primeros slots disponibles.',
             'taller' => 'Taller sigue siendo especial: no se mezcla dentro del mismo numero_mesa, pero puede compartir fecha/turno con otros numeros si no chocan docentes ni alumnos.',
         ],
@@ -1065,7 +1083,7 @@ function mesas_armado_calendarizar_grupos(
             '1_prioridad_academica' => 'correlativa anterior/equivalente/posterior como prioridad de orden; no como tipo aislado obligatorio',
             '2_volumen' => 'mayor cantidad de alumnos y previas primero',
             '3_restriccion_docente' => 'docentes con disponibilidad cargada primero',
-            '4_compactacion_area' => 'misma area intenta quedar en mismo slot para facilitar mesas_grupos',
+            '4_distribucion_balanceada' => 'misma area se reparte en slots suficientes para formar grupos de 2 a 4 sin concentrar todo al inicio',
             '5_disponibilidad' => 'slot hábil donde el docente esté disponible por día de semana y turno; se evita choque de alumno y de docente, salvo mismo docente + misma área compatible para compactar números sin duplicar días.',
         ],
     ];
@@ -1170,9 +1188,12 @@ function mesas_armado_buscar_slot_disponible_para_grupo(
     array $ocupacionAlumno,
     array $previaSlotIndex,
     array $relacionesCorrelativas,
-    array $slotsPorArea
+    array $slotsPorArea,
+    array $cargaSlots = [],
+    array $cargaSlotsArea = [],
+    array $planDistribucion = []
 ): ?array {
-    $indicesCandidatos = mesas_armado_indices_slots_para_grupo($grupo, $slots, $slotsPorArea);
+    $indicesCandidatos = mesas_armado_indices_slots_para_grupo($grupo, $slots, $slotsPorArea, $cargaSlots, $cargaSlotsArea, $planDistribucion);
 
     foreach ($indicesCandidatos as $idx) {
         if (!isset($slots[$idx])) {
@@ -1231,8 +1252,104 @@ function mesas_armado_buscar_slot_disponible_para_grupo(
     return null;
 }
 
-function mesas_armado_indices_slots_para_grupo(array $grupo, array $slots, array $slotsPorArea): array
+function mesas_armado_crear_plan_distribucion_slots(array $grupos, array $slots): array
 {
+    $totalSlots = count($slots);
+
+    if ($totalSlots === 0) {
+        return [];
+    }
+
+    $totalesPorArea = [];
+
+    foreach ($grupos as $grupo) {
+        $areaKey = (string)($grupo['area_key'] ?? 'sin_area');
+        if ($areaKey === '') {
+            $areaKey = 'sin_area';
+        }
+
+        $totalesPorArea[$areaKey] = (int)($totalesPorArea[$areaKey] ?? 0) + 1;
+    }
+
+    $plan = [];
+
+    foreach ($totalesPorArea as $areaKey => $totalArea) {
+        $totalArea = max(1, (int)$totalArea);
+
+        /*
+         * Cantidad de slots sugeridos por área:
+         * - Usa la mayor cantidad posible sin forzar buckets de 1 mesa cuando se puede evitar.
+         * - Ejemplo: 12 mesas / 6 slots => 6 slots de 2 mesas.
+         * - Ejemplo: 5 mesas / 6 slots => 2 slots, para formar 3 + 2.
+         */
+        $slotsSugeridos = max(1, (int)floor($totalArea / 2));
+        $slotsUsar = min($totalSlots, $slotsSugeridos);
+
+        $plan[$areaKey] = [
+            'total_numeros_area' => $totalArea,
+            'slots_sugeridos' => $slotsUsar,
+            'indices_slots' => mesas_armado_generar_indices_slots_equilibrados($totalSlots, $slotsUsar, (string)$areaKey),
+        ];
+    }
+
+    return $plan;
+}
+
+function mesas_armado_generar_indices_slots_equilibrados(int $totalSlots, int $slotsUsar, string $semilla): array
+{
+    if ($totalSlots <= 0) {
+        return [];
+    }
+
+    $slotsUsar = max(1, min($totalSlots, $slotsUsar));
+    $offset = (int)(abs(crc32($semilla)) % $totalSlots);
+
+    if ($slotsUsar >= $totalSlots) {
+        $indices = range(0, $totalSlots - 1);
+    } elseif ($slotsUsar === 1) {
+        $indices = [0];
+    } else {
+        $indices = [];
+        for ($i = 0; $i < $slotsUsar; $i++) {
+            $idx = (int)round(($i * ($totalSlots - 1)) / max(1, $slotsUsar - 1));
+            $indices[] = max(0, min($totalSlots - 1, $idx));
+        }
+
+        $indices = array_values(array_unique($indices));
+
+        for ($i = 0; count($indices) < $slotsUsar && $i < $totalSlots; $i++) {
+            if (!in_array($i, $indices, true)) {
+                $indices[] = $i;
+            }
+        }
+    }
+
+    $rotados = [];
+    foreach ($indices as $idx) {
+        $rotado = ((int)$idx + $offset) % $totalSlots;
+        if (!in_array($rotado, $rotados, true)) {
+            $rotados[] = $rotado;
+        }
+    }
+
+    for ($i = 0; count($rotados) < $slotsUsar && $i < $totalSlots; $i++) {
+        $idx = ($i + $offset) % $totalSlots;
+        if (!in_array($idx, $rotados, true)) {
+            $rotados[] = $idx;
+        }
+    }
+
+    return $rotados;
+}
+
+function mesas_armado_indices_slots_para_grupo(
+    array $grupo,
+    array $slots,
+    array $slotsPorArea,
+    array $cargaSlots = [],
+    array $cargaSlotsArea = [],
+    array $planDistribucion = []
+): array {
     $total = count($slots);
 
     if ($total === 0) {
@@ -1241,30 +1358,80 @@ function mesas_armado_indices_slots_para_grupo(array $grupo, array $slots, array
 
     $todos = range(0, $total - 1);
     $areaKey = (string)($grupo['area_key'] ?? 'sin_area');
+    if ($areaKey === '') {
+        $areaKey = 'sin_area';
+    }
+
     $slotsMismaArea = isset($slotsPorArea[$areaKey]) ? array_map('intval', array_keys($slotsPorArea[$areaKey])) : [];
     sort($slotsMismaArea);
 
-    $esCorrelativaPrioritaria = (int)($grupo['prioridad'] ?? 0) >= 2 || (int)($grupo['orden_correlativa'] ?? 9) <= 1;
-    $esTaller = (string)($grupo['tipo_mesa'] ?? '') === 'taller';
+    $slotsPlan = $planDistribucion[$areaKey]['indices_slots'] ?? $todos;
+    $slotsPlan = array_values(array_filter(array_map('intval', (array)$slotsPlan), static fn (int $idx): bool => $idx >= 0 && $idx < $total));
 
-    // Las prioritarias buscan el primer slot real disponible. Las normales chicas
-    // intentan compactarse primero con su area para que la futura mesa_grupo sea más fácil.
-    if ($esCorrelativaPrioritaria || $esTaller) {
-        return $todos;
+    if (count($slotsPlan) === 0) {
+        $slotsPlan = $todos;
     }
 
-    $vistos = [];
-    $ordenados = [];
-
-    foreach (array_merge($slotsMismaArea, $todos) as $idx) {
-        $idx = (int)$idx;
-        if (!isset($vistos[$idx])) {
-            $vistos[$idx] = true;
-            $ordenados[] = $idx;
+    $ordenPlan = [];
+    foreach ($slotsPlan as $orden => $idx) {
+        if (!isset($ordenPlan[$idx])) {
+            $ordenPlan[$idx] = (int)$orden;
         }
     }
 
-    return $ordenados;
+    $ordenadosBase = [];
+    $vistos = [];
+
+    foreach (array_merge($slotsPlan, $slotsMismaArea, $todos) as $idx) {
+        $idx = (int)$idx;
+        if ($idx < 0 || $idx >= $total || isset($vistos[$idx])) {
+            continue;
+        }
+
+        $vistos[$idx] = true;
+        $ordenadosBase[] = $idx;
+    }
+
+    $esCorrelativaAnterior = (int)($grupo['orden_correlativa'] ?? 9) === 0;
+
+    if ($esCorrelativaAnterior) {
+        // Las anteriores deben quedar lo más temprano posible para no bloquear a sus posteriores.
+        return $todos;
+    }
+
+    $cargaArea = $cargaSlotsArea[$areaKey] ?? [];
+
+    usort($ordenadosBase, static function (int $a, int $b) use ($ordenPlan, $cargaSlots, $cargaArea): int {
+        $aEnPlan = isset($ordenPlan[$a]) ? 0 : 1;
+        $bEnPlan = isset($ordenPlan[$b]) ? 0 : 1;
+
+        $aCargaArea = (int)($cargaArea[$a] ?? 0);
+        $bCargaArea = (int)($cargaArea[$b] ?? 0);
+        $aCargaSlot = (int)($cargaSlots[$a] ?? 0);
+        $bCargaSlot = (int)($cargaSlots[$b] ?? 0);
+
+        // No satura buckets de la misma área por arriba de 4 si todavía hay slots del plan con menos carga.
+        $aBucketSaturado = $aCargaArea >= 4 ? 1 : 0;
+        $bBucketSaturado = $bCargaArea >= 4 ? 1 : 0;
+
+        return [
+            $aEnPlan,
+            $aBucketSaturado,
+            $aCargaArea,
+            $aCargaSlot,
+            $ordenPlan[$a] ?? 9999,
+            $a,
+        ] <=> [
+            $bEnPlan,
+            $bBucketSaturado,
+            $bCargaArea,
+            $bCargaSlot,
+            $ordenPlan[$b] ?? 9999,
+            $b,
+        ];
+    });
+
+    return $ordenadosBase;
 }
 
 function mesas_armado_slot_respeta_correlativas(array $grupo, int $slotIndex, array $previaSlotIndex, array $relacionesCorrelativas): bool
