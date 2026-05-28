@@ -334,3 +334,25 @@ export const obtenerPerfilInstitucional = () => {
 export const obtenerLogoInstitucionalMesas = () => {
   return apiGet("perfil_logo_institucional");
 };
+
+export const listarNotificacionesEmailMesas = () => {
+  return apiGet("mesas_notificaciones_email_listar");
+};
+
+export const crearLoteNotificacionesEmailMesas = ({ reenviar = false, asunto = "" } = {}) => {
+  return apiPost("mesas_notificaciones_email_registrar_lote", {
+    reenviar: reenviar ? 1 : 0,
+    asunto,
+  });
+};
+
+export const procesarLoteNotificacionesEmailMesas = ({ id_lote, limite = 20 } = {}) => {
+  return apiPost("mesas_notificaciones_email_registrar_envios", limpiarParams({
+    id_lote,
+    limite,
+  }));
+};
+
+export const obtenerEstadoLoteNotificacionesEmailMesas = ({ id_lote } = {}) => {
+  return apiGet("mesas_notificaciones_email_estado", limpiarParams({ id_lote }));
+};

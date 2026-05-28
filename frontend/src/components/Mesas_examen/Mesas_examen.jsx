@@ -16,6 +16,7 @@ import {
   faTimes,
   faChevronUp,
   faChevronDown,
+  faEnvelope,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "../Global/Global_css/roots.css";
@@ -28,10 +29,10 @@ import BASE_URL from "../../config/config";
 import { useMesasExamen } from "./hooks/useMesasExamen";
 import ModalCrearMesa from "./modales/ModalCrearMesa";
 import ModalEditarMesa from "./modales/ModalEditarMesa";
-import ModalCambiosDocentePendientes from "./modales/cambios_docente/ModalCambiosDocentePendientes";
 import ModalEliminarGlobal from "../Global/Modales/ModalEliminarGlobal";
 import Toast from "../Global/Toast";
 import ModalTituloPdfMesas from "./modales/exportar_pdf/ModalTituloPdfMesas";
+import ModalNotificacionesEmailMesas from "./modales/notificaciones_email/ModalNotificacionesEmailMesas";
 import { descargarPdfMesas } from "./modales/exportar_pdf/mesasPdfExporter";
 import ModalExportarHistorialGlobal from "../Global/Modales/ModalExportarGlobal";
 import BotonExportarHistorialGlobal from "../Global/Botones/BotonExportarHistorialGlobal";
@@ -1248,6 +1249,114 @@ const HistorialMesasPanel = ({ historial, busqueda = "", terminosBusqueda = [] }
 };
 
 
+const ModalCambiosDocentePendientes = ({
+  abierto = false,
+  cambios = [],
+  cargando = false,
+  resolviendoId = null,
+  ignorandoId = null,
+  onClose,
+  onAplicar,
+  onIgnorar,
+  onAbrirMesa,
+}) => {
+  if (!abierto) return null;
+
+  const lista = Array.isArray(cambios) ? cambios : [];
+
+  const contenido = (
+    <div className="mesas-docenteCambioOverlay" role="dialog" aria-modal="true" aria-label="Cambios de docente pendientes">
+      <div className="mesas-docenteCambioModal">
+        <div className="mesas-docenteCambioModal__head">
+          <div className="mesas-docenteCambioModal__icon">
+            <FontAwesomeIcon icon={faTriangleExclamation} />
+          </div>
+          <div>
+            <h3>Cambios de docente detectados</h3>
+            <p>
+              Hay números de mesa armados con una cátedra cuyo docente fue modificado. Revisalos para evitar cruces o docentes incorrectos en el armado.
+            </p>
+          </div>
+          <button type="button" className="mesas-docenteCambioModal__close" onClick={onClose} title="Cerrar">
+            <FontAwesomeIcon icon={faTimes} />
+          </button>
+        </div>
+
+        {cargando ? (
+          <div className="mesas-docenteCambioModal__loading">
+            <FontAwesomeIcon icon={faSpinner} spin /> Buscando cambios pendientes...
+          </div>
+        ) : lista.length === 0 ? (
+          <div className="mesas-docenteCambioModal__empty">No hay cambios pendientes.</div>
+        ) : (
+          <div className="mesas-docenteCambioList">
+            {lista.map((cambio) => {
+              const id = Number(cambio?.id_cambio || 0);
+              const ocupado = resolviendoId === id || ignorandoId === id;
+
+              return (
+                <article key={id || `${cambio?.numero_mesa}-${cambio?.id_catedra}`} className="mesas-docenteCambioItem">
+                  <div className="mesas-docenteCambioItem__main">
+                    <strong>Mesa N° {textoCorto(cambio?.numero_mesa)}</strong>
+                    {cambio?.numero_grupo && <span>Grupo {cambio.numero_grupo}</span>}
+                    <small>{textoCorto(cambio?.materia, "Materia sin especificar")}</small>
+                  </div>
+
+                  <div className="mesas-docenteCambioItem__docentes">
+                    <div>
+                      <span>Antes</span>
+                      <strong>{textoCorto(cambio?.docente_anterior, "Sin docente")}</strong>
+                    </div>
+                    <div>
+                      <span>Nuevo</span>
+                      <strong>{textoCorto(cambio?.docente_nuevo, "Sin docente")}</strong>
+                    </div>
+                  </div>
+
+                  <div className="mesas-docenteCambioItem__meta">
+                    <span>{textoCorto(cambio?.fecha_mesa_texto || cambio?.fecha_mesa, "Sin fecha")}</span>
+                    <span>{textoCorto(cambio?.turno, "Sin turno")}</span>
+                  </div>
+
+                  <div className="mesas-docenteCambioItem__actions">
+                    <button
+                      type="button"
+                      className="mesas-docenteCambioBtn mesas-docenteCambioBtn--ghost"
+                      onClick={() => onAbrirMesa?.(cambio)}
+                      disabled={ocupado}
+                    >
+                      Ver mesa
+                    </button>
+                    <button
+                      type="button"
+                      className="mesas-docenteCambioBtn mesas-docenteCambioBtn--primary"
+                      onClick={() => onAplicar?.(cambio)}
+                      disabled={ocupado}
+                    >
+                      {resolviendoId === id ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faEdit} />}
+                      Aplicar y editar
+                    </button>
+                    <button
+                      type="button"
+                      className="mesas-docenteCambioBtn mesas-docenteCambioBtn--danger"
+                      onClick={() => onIgnorar?.(cambio)}
+                      disabled={ocupado}
+                    >
+                      {ignorandoId === id ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faTimes} />}
+                      Ignorar
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  return typeof document !== "undefined" ? createPortal(contenido, document.body) : contenido;
+};
 
 const MesasExamen = () => {
   const dentroDeShell = useContext(MesasShellContext);
@@ -1316,6 +1425,15 @@ const MesasExamen = () => {
 
   const [indiceBusquedaActivo, setIndiceBusquedaActivo] = useState(0);
   const [datosInstitucionales, setDatosInstitucionales] = useState(() => obtenerDatosInstitucionalesLocales());
+  const [modalNotificacionesEmailAbierto, setModalNotificacionesEmailAbierto] = useState(false);
+
+  const abrirModalNotificacionesEmail = useCallback(() => {
+    setModalNotificacionesEmailAbierto(true);
+  }, []);
+
+  const cerrarModalNotificacionesEmail = useCallback(() => {
+    setModalNotificacionesEmailAbierto(false);
+  }, []);
 
   useEffect(() => {
     let cancelado = false;
@@ -1819,8 +1937,8 @@ const MesasExamen = () => {
               </div>
             </div>
 
-            <div className="mesas-headFilters">
-              <div className="mesas-searchFilter">
+            <div className="mov-headFilters mesas-headFilters">
+              <div className="cc-filter mesas-searchFilter">
                 <div className={`cc-floatingField cc-floatingField--search mesas-floatingSearch ${hayBusquedaActiva ? "is-active" : ""}`}>
                   <div className="cc-searchInput">
                     <div className="cc-searchInput__fieldWrap">
@@ -1883,7 +2001,7 @@ const MesasExamen = () => {
 
               {tab !== "historial" && (
                 <>
-                  <div className="mesas-selectFilter mesas-selectFilter--fecha">
+                  <div className="cc-filter mesas-selectFilter mesas-selectFilter--fecha">
                     <div className={`cc-floatingField mesas-floatingSelect ${filtroFechaMesa ? "is-active" : ""}`}>
                       <select
                         className="cc-input cc-input--floating mesas-filterSelect"
@@ -1900,7 +2018,7 @@ const MesasExamen = () => {
                     </div>
                   </div>
 
-                  <div className="mesas-selectFilter mesas-selectFilter--turno">
+                  <div className="cc-filter mesas-selectFilter mesas-selectFilter--turno">
                     <div className={`cc-floatingField mesas-floatingSelect ${filtroTurnoMesa ? "is-active" : ""}`}>
                       <select
                         className="cc-input cc-input--floating mesas-filterSelect"
@@ -1925,7 +2043,7 @@ const MesasExamen = () => {
                       title="Limpiar filtros de fecha y turno"
                     >
                       <FontAwesomeIcon icon={faTimes} />
-                      
+                      Limpiar
                     </button>
                   )}
                 </>
@@ -1941,6 +2059,17 @@ const MesasExamen = () => {
               onClick={tab === "historial" ? abrirModalExportarHistorial : abrirModalExportarPdf}
               disabled={cargando || armando || agrupando || (tab === "historial" ? historial?.cargando || exportandoHistorial || totalVisible === 0 : totalVisible === 0)}
             />
+
+            <button
+              className="mov-btn mov-btn--secondary mesas-actionBtn mesas-notifyBtn"
+              type="button"
+              onClick={abrirModalNotificacionesEmail}
+              disabled={cargando || armando || agrupando || tab === "historial" || !hayMesasCreadas}
+              title={!hayMesasCreadas ? "Primero tenés que crear y asignar las mesas." : "Notificar por email fecha, turno, hora y materia"}
+            >
+              <FontAwesomeIcon icon={faEnvelope} />
+              Notificar
+            </button>
 
             <button
               className="mov-btn mov-btn--primary mesas-actionBtn mesas-createBtn"
@@ -1965,7 +2094,7 @@ const MesasExamen = () => {
               title={!hayMesasCreadas ? "No hay mesas creadas para eliminar." : "Eliminar mesas"}
             >
               <FontAwesomeIcon icon={faTrash} />
-              Eliminar
+              Eliminar mesas
             </button>
           </div>
         </div>
@@ -2122,6 +2251,12 @@ const MesasExamen = () => {
         loading={exportandoPdf}
         onClose={cerrarModalExportarPdf}
         onConfirm={confirmarExportarPdf}
+      />
+
+      <ModalNotificacionesEmailMesas
+        abierto={modalNotificacionesEmailAbierto}
+        onClose={cerrarModalNotificacionesEmail}
+        onToast={mostrarToastGlobal}
       />
 
       <ModalExportarHistorialGlobal
