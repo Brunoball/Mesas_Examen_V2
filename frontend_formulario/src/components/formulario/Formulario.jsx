@@ -725,18 +725,7 @@ const ResumenAlumno = ({
           )}
 
           {mostrarAvisoCorrelativas && (
-            <div
-              style={{
-                marginTop: "10px",
-                padding: "10px",
-                borderRadius: "8px",
-                background: "#fef3c7",
-                color: "#92400e",
-                fontSize: "14px",
-                fontWeight: "500",
-                border: "1px solid #facc15",
-              }}
-            >
+            <div className="form-alert form-alert--warning">
               Materias correlativas: primero seleccioná la anterior para poder
               inscribirte a la posterior.
             </div>
@@ -805,18 +794,7 @@ const ResumenAlumno = ({
                     )}
 
                     {m.es_correlativa && !yaInscripto && (
-                      <span
-                        style={{
-                          display: "inline-block",
-                          marginLeft: "8px",
-                          padding: "2px 7px",
-                          borderRadius: "999px",
-                          background: "#fef3c7",
-                          color: "#92400e",
-                          fontSize: "11px",
-                          fontWeight: "700",
-                        }}
-                      >
+                      <span className="badge-correlativa">
                         CORRELATIVA
                       </span>
                     )}
@@ -827,14 +805,7 @@ const ResumenAlumno = ({
                   </small>
 
                   {bloqueadaPorCorrelativa && (
-                    <small
-                      style={{
-                        display: "block",
-                        marginTop: "6px",
-                        color: "#92400e",
-                        fontWeight: "600",
-                      }}
-                    >
+                    <small className="materia-lock-hint">
                       {mensajeBloqueo || "Primero seleccioná la anterior"}
                     </small>
                   )}
@@ -1251,17 +1222,7 @@ const Formulario = () => {
                 .
               </p>
 
-              <p
-                style={{
-                  marginTop: "10px",
-                  padding: "10px",
-                  borderRadius: "8px",
-                  background: "#fee2e2",
-                  color: "#991b1b",
-                  fontSize: "14px",
-                  fontWeight: "500",
-                }}
-              >
+              <p className="form-alert form-alert--danger">
                 Si sos egresado, acercate a secretaría para realizar la
                 inscripción.
               </p>

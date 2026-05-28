@@ -1082,3 +1082,176 @@
 .editar-mesa-time-split .editar-mesa-time-icon{
   margin-left:auto;
 }
+
+/* =========================================================
+   Ajuste final modal editar:
+   - El modal NO toma alto completo de pantalla.
+   - El cuerpo usa un único scroll si el contenido supera el alto disponible.
+   - Programación queda más angosta/compacta.
+   - Programación y Slots se igualan en altura dentro de la misma fila.
+   - Calendario y grilla no generan scroll propio.
+========================================================= */
+@media (min-width:1081px){
+  .editar-mesa-panel{
+    width:min(1080px, 96vw);
+    height:auto !important;
+    max-height:94dvh !important;
+    overflow:hidden !important;
+  }
+
+  .editar-mesa-panel > .editar-mesa-body{
+    flex:0 1 auto !important;
+    max-height:calc(94dvh - 132px) !important;
+    min-height:0 !important;
+    grid-template-columns:minmax(265px, 330px) minmax(0, 1fr) !important;
+    grid-template-rows:auto !important;
+    align-items:stretch !important;
+    gap:12px !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+  }
+
+  .editar-mesa-programacion,
+  .editar-mesa-slots-wrap{
+    align-self:stretch !important;
+    height:auto !important;
+    min-height:0 !important;
+  }
+
+  .editar-mesa-programacion{
+    padding:12px !important;
+    display:flex !important;
+    flex-direction:column !important;
+    overflow:visible !important;
+  }
+
+  .editar-mesa-programacion .editar-mesa-section-line{
+    margin:7px 0 10px !important;
+  }
+
+  .editar-mesa-programacion .editar-mesa-fields{
+    gap:10px !important;
+    margin-bottom:10px !important;
+  }
+
+  .editar-mesa-programacion .editar-mesa-fields select,
+  .editar-mesa-programacion .editar-mesa-time-input{
+    height:40px !important;
+    padding:0 10px !important;
+    border-radius:11px !important;
+    font-size:12.8px !important;
+  }
+
+  .editar-mesa-programacion .editar-mesa-time-split{
+    padding:0 8px !important;
+  }
+
+  .editar-mesa-programacion .editar-mesa-time-split select{
+    flex-basis:50px !important;
+    width:50px !important;
+    min-width:42px !important;
+  }
+
+  .editar-mesa-programacion .editar-mesa-help{
+    margin-top:5px !important;
+    font-size:10.8px !important;
+  }
+
+  .editar-mesa-programacion .editar-mesa-calendar-card{
+    padding:10px !important;
+    border-radius:13px !important;
+    overflow:visible !important;
+  }
+
+  .editar-mesa-programacion .editar-mesa-calendar-head{
+    margin-bottom:8px !important;
+  }
+
+  .editar-mesa-programacion .editar-mesa-calendar-head button{
+    width:28px !important;
+    height:28px !important;
+    border-radius:9px !important;
+  }
+
+  .editar-mesa-programacion .editar-mesa-calendar-head strong{
+    font-size:13px !important;
+  }
+
+  .editar-mesa-programacion .editar-mesa-calendar-weekdays,
+  .editar-mesa-programacion .editar-mesa-calendar-grid{
+    overflow:visible !important;
+  }
+
+  .editar-mesa-programacion .editar-mesa-calendar-weekdays span{
+    padding:5px 0 !important;
+    font-size:10px !important;
+  }
+
+  .editar-mesa-programacion .editar-mesa-calendar-grid{
+    gap:4px 0 !important;
+  }
+
+  .editar-mesa-programacion .editar-mesa-day{
+    width:31px !important;
+    height:31px !important;
+    border-radius:9px !important;
+    font-size:11.5px !important;
+  }
+
+  .editar-mesa-programacion .editar-mesa-disponibilidad-info,
+  .editar-mesa-programacion .editar-mesa-disponibilidad-error,
+  .editar-mesa-programacion .editar-mesa-error{
+    min-height:38px !important;
+    padding:9px 10px !important;
+    font-size:11.8px !important;
+  }
+
+  .editar-mesa-slots-wrap{
+    display:flex !important;
+    flex-direction:column !important;
+    overflow:visible !important;
+  }
+
+  .editar-mesa-slots-wrap > .editar-mesa-slots-card{
+    flex:1 1 auto !important;
+    height:auto !important;
+    min-height:0 !important;
+    display:flex !important;
+    flex-direction:column !important;
+    overflow:visible !important;
+  }
+
+  .editar-mesa-slots-grid{
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    height:auto !important;
+    overflow: auto;
+    align-content:stretch !important;
+    grid-auto-rows:minmax(116px, 1fr) !important;
+    padding-right:0 !important;
+  }
+}
+
+@media (max-width:1080px){
+  .editar-mesa-panel{
+    height:auto !important;
+    max-height:calc(100dvh - 24px) !important;
+  }
+
+  .editar-mesa-panel > .editar-mesa-body{
+    flex:0 1 auto !important;
+    max-height:calc(100dvh - 128px) !important;
+    grid-template-rows:auto !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+  }
+
+  .editar-mesa-programacion,
+  .editar-mesa-slots-wrap,
+  .editar-mesa-slots-wrap > .editar-mesa-slots-card,
+  .editar-mesa-slots-grid{
+    height:auto !important;
+    min-height:0 !important;
+    overflow:visible !important;
+  }
+}

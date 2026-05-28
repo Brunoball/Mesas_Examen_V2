@@ -2061,17 +2061,6 @@ const MesasExamen = () => {
             />
 
             <button
-              className="mov-btn mov-btn--secondary mesas-actionBtn mesas-notifyBtn"
-              type="button"
-              onClick={abrirModalNotificacionesEmail}
-              disabled={cargando || armando || agrupando || tab === "historial" || !hayMesasCreadas}
-              title={!hayMesasCreadas ? "Primero tenés que crear y asignar las mesas." : "Notificar por email fecha, turno, hora y materia"}
-            >
-              <FontAwesomeIcon icon={faEnvelope} />
-              Notificar
-            </button>
-
-            <button
               className="mov-btn mov-btn--primary mesas-actionBtn mesas-createBtn"
               type="button"
               onClick={abrirModalCrear}
@@ -2086,16 +2075,6 @@ const MesasExamen = () => {
               Crear Mesas
             </button>
 
-            <button
-              className="mov-btn mov-btn--danger mesas-actionBtn mesas-deleteBtn"
-              type="button"
-              onClick={eliminarBorrador}
-              disabled={cargando || armando || agrupando || !hayMesasCreadas}
-              title={!hayMesasCreadas ? "No hay mesas creadas para eliminar." : "Eliminar mesas"}
-            >
-              <FontAwesomeIcon icon={faTrash} />
-              Eliminar mesas
-            </button>
           </div>
         </div>
 
@@ -2195,7 +2174,33 @@ const MesasExamen = () => {
 
         {tab !== "historial" && (
           <div className="mesas-recordsFoot">
-            Mostrando <b>{totalVisible}</b> de <b>{totalReferencia}</b> registros
+            <div className="mesas-recordsFoot__counter">
+              Mostrando <b>{totalVisible}</b> de <b>{totalReferencia}</b> registros
+            </div>
+
+            <div className="mesas-recordsFoot__actions" aria-label="Acciones del armado de mesas">
+              <button
+                className="mov-btn mov-btn--secondary mesas-footActionBtn mesas-notifyBtn"
+                type="button"
+                onClick={abrirModalNotificacionesEmail}
+                disabled={cargando || armando || agrupando || !hayMesasCreadas}
+                title={!hayMesasCreadas ? "Primero tenés que crear y asignar las mesas." : "Notificar por email fecha, turno, hora y materia"}
+              >
+                <FontAwesomeIcon icon={faEnvelope} />
+                Notificar
+              </button>
+
+              <button
+                className="mov-btn mov-btn--danger mesas-footActionBtn mesas-deleteBtn"
+                type="button"
+                onClick={eliminarBorrador}
+                disabled={cargando || armando || agrupando || !hayMesasCreadas}
+                title={!hayMesasCreadas ? "No hay mesas creadas para eliminar." : "Eliminar mesas"}
+              >
+                <FontAwesomeIcon icon={faTrash} />
+                Eliminar mesas
+              </button>
+            </div>
           </div>
         )}
       </section>

@@ -12,6 +12,7 @@ import {
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 
+import "../../../Global/Global_css/Global_Modals.css";
 import "./ModalNotificacionesEmailMesas.css";
 import {
   crearLoteNotificacionesEmailMesas,
@@ -46,11 +47,16 @@ const obtenerPayload = (res) => {
   return res?.data || res || {};
 };
 
-const CardResumen = ({ label, value, hint, tone = "neutral" }) => (
+const CardResumen = ({ label, value, hint, tone = "neutral", icon = faEnvelope }) => (
   <div className={`mesasMail-card mesasMail-card--${tone}`}>
-    <span>{label}</span>
-    <strong>{value ?? 0}</strong>
-    {hint ? <small>{hint}</small> : null}
+    <span className="mesasMail-card__icon" aria-hidden="true">
+      <FontAwesomeIcon icon={icon} />
+    </span>
+    <div className="mesasMail-card__body">
+      <span className="mesasMail-card__title">{label}</span>
+      <strong>{value ?? 0}</strong>
+      {hint ? <small>{hint}</small> : null}
+    </div>
   </div>
 );
 
@@ -227,102 +233,152 @@ export default function ModalNotificacionesEmailMesas({ abierto = false, onClose
   if (!abierto) return null;
 
   const contenido = (
-    <div className="mesasMail-backdrop" role="dialog" aria-modal="true">
-      <div className="mesasMail-modal">
-        <div className="mesasMail-head">
-          <div>
-            <span className="mesasMail-kicker"><FontAwesomeIcon icon={faEnvelope} /> Notificaciones</span>
-            <h2>Notificar mesas asignadas</h2>
+    <div className="gm-modalOverlay mesasMail-overlay" role="dialog" aria-modal="true" aria-labelledby="mesas-mail-title">
+      <div className="gm-modal mesasMail-modal gm-modal--mesasMail">
+        <div className="gm-modal__header mesasMail-header">
+          <div className="gm-modal__headIcon" aria-hidden="true">
+            <FontAwesomeIcon icon={faEnvelope} />
+          </div>
+
+          <div className="gm-modal__headText">
+            <h2 id="mesas-mail-title">Notificar mesas asignadas</h2>
             <p>Envía un único email por DNI con todas las materias, fecha, turno, hora y mesa correspondiente.</p>
           </div>
-          <button type="button" className="mesasMail-close" onClick={cerrar} title="Cerrar">
+
+          <button type="button" className="gm-modal__close" onClick={cerrar} title="Cerrar">
             <FontAwesomeIcon icon={faXmark} />
           </button>
         </div>
 
-        <div className="mesasMail-summary">
-          <CardResumen label="Emails registrados" value={resumen?.total_destinatarios || 0} hint="1 por DNI inscripto" />
-          <CardResumen label="Listos para enviar" value={resumen?.pendientes || 0} tone="warn" hint="Con mesa asignada" />
-          <CardResumen label="Ya enviados" value={resumen?.enviados || 0} tone="ok" hint="No se repiten salvo reenvío" />
-          <CardResumen label="Sin mesa / inválidos" value={(resumen?.sin_mesa || 0) + (resumen?.email_invalido || 0)} tone="danger" hint="No entran al lote" />
-        </div>
-
-        {lote?.id_lote ? (
-          <div className="mesasMail-progressBox">
-            <div className="mesasMail-progressTop">
-              <div>
-                <strong>Lote #{lote.id_lote}</strong>
-                <span>{texto(lote.estado, "preparado")}</span>
-              </div>
-              <b>{statsLote.porcentaje}%</b>
+        <div className="gm-modal__form mesasMail-layout">
+          <div className="gm-modal__content mesasMail-content">
+            <div className="mesasMail-summary">
+              <CardResumen icon={faEnvelope} label="Emails registrados" value={resumen?.total_destinatarios || 0} hint="1 por DNI inscripto" />
+              <CardResumen icon={faPaperPlane} label="Listos para enviar" value={resumen?.pendientes || 0} tone="warn" hint="Con mesa asignada" />
+              <CardResumen icon={faCheckCircle} label="Ya enviados" value={resumen?.enviados || 0} tone="ok" hint="No se repiten salvo reenvío" />
+              <CardResumen icon={faTriangleExclamation} label="Sin mesa / inválidos" value={(resumen?.sin_mesa || 0) + (resumen?.email_invalido || 0)} tone="danger" hint="No entran al lote" />
             </div>
-            <div className="mesasMail-progressBar" aria-label="Progreso de envío">
-              <span style={{ width: `${statsLote.porcentaje}%` }} />
-            </div>
-            <div className="mesasMail-progressStats">
-              <span><FontAwesomeIcon icon={faCheckCircle} /> Enviados: <b>{statsLote.enviados}</b></span>
-              <span><FontAwesomeIcon icon={faClock} /> Pendientes: <b>{statsLote.pendientes}</b></span>
-              <span><FontAwesomeIcon icon={faTriangleExclamation} /> Errores: <b>{statsLote.errores}</b></span>
-              <span>Total: <b>{statsLote.total}</b></span>
-            </div>
-            {mensajeEnvio ? <p className="mesasMail-progressMsg">{mensajeEnvio}</p> : null}
-          </div>
-        ) : null}
 
-        <div className="mesasMail-controls">
-          <label className="mesasMail-field">
-            <span>Asunto del email</span>
-            <input value={asunto} onChange={(e) => setAsunto(e.target.value)} disabled={enviando} />
-          </label>
-          <label className="mesasMail-check">
-            <input type="checkbox" checked={reenviar} onChange={(e) => setReenviar(e.target.checked)} disabled={enviando} />
-            <span>Reenviar también a alumnos ya notificados</span>
-          </label>
-        </div>
+            <div className={`mesasMail-workRow ${lote?.id_lote ? "has-lote" : "no-lote"}`}>
+              {lote?.id_lote ? (
+                <section className="gm-panel mesasMail-progressBox" aria-label="Estado del lote de envío">
+                  <div className="gm-panel__body mesasMail-progressBody">
+                    <div className="mesasMail-progressTop">
+                      <div className="mesasMail-loteInfo">
+                        <strong>Lote #{lote.id_lote}</strong>
+                        <span>{texto(lote.estado, "preparado")}</span>
+                      </div>
+                      <b>{statsLote.porcentaje}%</b>
+                    </div>
+                    <div className="mesasMail-progressBar" aria-label="Progreso de envío">
+                      <span style={{ width: `${statsLote.porcentaje}%` }} />
+                    </div>
+                    <div className="mesasMail-progressStats">
+                      <span><FontAwesomeIcon icon={faCheckCircle} /> Enviados: <b>{statsLote.enviados}</b></span>
+                      <span><FontAwesomeIcon icon={faClock} /> Pendientes: <b>{statsLote.pendientes}</b></span>
+                      <span><FontAwesomeIcon icon={faTriangleExclamation} /> Errores: <b>{statsLote.errores}</b></span>
+                      <span>Total: <b>{statsLote.total}</b></span>
+                    </div>
+                    {mensajeEnvio ? <p className="mesasMail-progressMsg">{mensajeEnvio}</p> : null}
+                  </div>
+                </section>
+              ) : null}
 
-        {error ? <div className="mesasMail-error"><FontAwesomeIcon icon={faTriangleExclamation} /> {error}</div> : null}
-
-        <div className="mesasMail-listHead">
-          <h3>Emails encontrados</h3>
-          <button type="button" className="mesasMail-btn mesasMail-btn--ghost" onClick={cargarDatos} disabled={cargando || enviando}>
-            <FontAwesomeIcon icon={cargando ? faSpinner : faRotate} spin={cargando} /> Actualizar
-          </button>
-        </div>
-
-        <div className="mesasMail-list">
-          {cargando ? (
-            <div className="mesasMail-empty"><FontAwesomeIcon icon={faSpinner} spin /> Cargando emails...</div>
-          ) : destinatariosVisibles.length === 0 ? (
-            <div className="mesasMail-empty">Todavía no hay emails registrados desde el formulario de inscripción.</div>
-          ) : destinatariosVisibles.map((dest) => (
-            <article className="mesasMail-row" key={dest.id_inscripcion || `${dest.dni}-${dest.email}`}>
-              <div className="mesasMail-rowMain">
-                <div>
-                  <strong>{texto(dest.alumno, "Alumno sin nombre")}</strong>
-                  <span>DNI {texto(dest.dni)} · {texto(dest.email)}</span>
+              <section className="gm-panel mesasMail-configPanel">
+                <div className="gm-panel__head gm-panel__head--split">
+                  <div>
+                    <span className="gm-panel__eyebrow">Configuración</span>
+                    <h3><FontAwesomeIcon icon={faEnvelope} /> Datos del email</h3>
+                  </div>
+                  <span className="gm-panel__tag">{limites?.daily_limit || 900} emails/día</span>
                 </div>
-                <span className={`mesasMail-badge mesasMail-badge--${estadoClase(dest.estado)}`}>{estadoLabel[dest.estado] || texto(dest.estado)}</span>
+
+                <div className="gm-panel__body mesasMail-controls">
+                  <label className="gm-field mesasMail-field">
+                    <input
+                      className="gm-input"
+                      value={asunto}
+                      onChange={(e) => setAsunto(e.target.value)}
+                      disabled={enviando}
+                      placeholder=" "
+                    />
+                    <span className="gm-label">Asunto del email</span>
+                  </label>
+
+                  <label className={`mesasMail-check ${reenviar ? "is-checked" : ""}`}>
+                    <input
+                      type="checkbox"
+                      checked={reenviar}
+                      onChange={(e) => setReenviar(e.target.checked)}
+                      disabled={enviando}
+                    />
+                    <span>Reenviar también a alumnos ya notificados</span>
+                  </label>
+                </div>
+              </section>
+            </div>
+
+            {error ? (
+              <div className="gm-alert gm-alert--error gm-alert--banner mesasMail-error">
+                <FontAwesomeIcon icon={faTriangleExclamation} />
+                <span>{error}</span>
               </div>
-              <div className="mesasMail-rowMeta">
-                <span>{dest.total_materias || 0} materia/s inscriptas</span>
-                <span>{dest.total_asignadas || 0} con mesa asignada</span>
-                <span>{dest.total_notificadas || 0} notificadas</span>
+            ) : null}
+
+            <section className="gm-panel mesasMail-listPanel">
+              <div className="gm-panel__head gm-panel__head--split mesasMail-listHead">
+                <div>
+                  <span className="gm-panel__eyebrow">Destinatarios</span>
+                  <h3><FontAwesomeIcon icon={faEnvelope} /> Emails encontrados</h3>
+                </div>
+
+                <button type="button" className="gm-btn gm-btn--soft" onClick={cargarDatos} disabled={cargando || enviando}>
+                  <FontAwesomeIcon icon={cargando ? faSpinner : faRotate} spin={cargando} /> Actualizar
+                </button>
               </div>
-              <div className="mesasMail-materias">
-                {(dest.materias || []).map((materia) => (
-                  <MateriaItem key={materia.id_detalle || materia.id_previa || `${materia.materia}-${materia.fecha_mesa}`} materia={materia} />
+
+              <div className="gm-panel__body mesasMail-list">
+                {cargando ? (
+                  <div className="gm-emptySchedule mesasMail-empty"><FontAwesomeIcon icon={faSpinner} spin /> Cargando emails...</div>
+                ) : destinatariosVisibles.length === 0 ? (
+                  <div className="gm-emptySchedule mesasMail-empty">Todavía no hay emails registrados desde el formulario de inscripción.</div>
+                ) : destinatariosVisibles.map((dest) => (
+                  <article className="mesasMail-row" key={dest.id_inscripcion || `${dest.dni}-${dest.email}`}>
+                    <div className="mesasMail-rowMain">
+                      <div>
+                        <strong>{texto(dest.alumno, "Alumno sin nombre")}</strong>
+                        <span>DNI {texto(dest.dni)} · {texto(dest.email)}</span>
+                      </div>
+                      <span className={`mesasMail-badge mesasMail-badge--${estadoClase(dest.estado)}`}>{estadoLabel[dest.estado] || texto(dest.estado)}</span>
+                    </div>
+                    <div className="mesasMail-rowMeta">
+                      <span>{dest.total_materias || 0} materia/s inscriptas</span>
+                      <span>{dest.total_asignadas || 0} con mesa asignada</span>
+                      <span>{dest.total_notificadas || 0} notificadas</span>
+                    </div>
+                    <div className="mesasMail-materias">
+                      {(dest.materias || []).map((materia) => (
+                        <MateriaItem key={materia.id_detalle || materia.id_previa || `${materia.materia}-${materia.fecha_mesa}`} materia={materia} />
+                      ))}
+                    </div>
+                  </article>
                 ))}
               </div>
-            </article>
-          ))}
-        </div>
+            </section>
+          </div>
 
-        <div className="mesasMail-foot">
-          <p>El envío usa cola por lotes para no pasar los límites del correo. Límite configurado: {limites?.daily_limit || 900} emails/día.</p>
-          <button type="button" className="mesasMail-btn mesasMail-btn--primary" onClick={iniciarEnvio} disabled={enviando || cargando || (resumen?.pendientes || 0) <= 0 && !reenviar}>
-            <FontAwesomeIcon icon={enviando ? faSpinner : faPaperPlane} spin={enviando} />
-            {enviando ? "Enviando por lotes..." : "Enviar notificaciones"}
-          </button>
+          <div className="gm-modal__actions mesasMail-foot">
+            <p>El envío usa cola por lotes para no pasar los límites del correo.</p>
+            <button
+              type="button"
+              className="gm-btn gm-btn--primary"
+              onClick={iniciarEnvio}
+              disabled={enviando || cargando || ((resumen?.pendientes || 0) <= 0 && !reenviar)}
+            >
+              <FontAwesomeIcon icon={enviando ? faSpinner : faPaperPlane} spin={enviando} />
+              {enviando ? "Enviando por lotes..." : "Enviar notificaciones"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

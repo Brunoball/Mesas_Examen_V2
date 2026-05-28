@@ -1,490 +1,573 @@
-.mesasMail-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 22px;
-  background: rgba(15, 23, 42, 0.58);
-  backdrop-filter: blur(6px);
+/* =========================================================
+   Mesas — Modal Notificaciones Email
+   Base visual: Global_Modals.css. Este archivo solo ajusta
+   estructura propia del resumen, progreso y listado.
+========================================================= */
+
+.mesasMail-overlay.gm-modalOverlay{
+  z-index:100;
 }
 
-.mesasMail-modal {
-  width: min(1120px, 96vw);
-  max-height: 92vh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  background: #ffffff;
-  border-radius: 24px;
-  border: 1px solid rgba(226, 232, 240, 0.95);
-  box-shadow: 0 30px 90px rgba(15, 23, 42, 0.24);
+.mesasMail-modal.gm-modal{
+  width:min(1120px, 96vw);
+  max-height:min(94vh, 820px);
+  background:var(--gm-bg, #FDFBF7);
 }
 
-.mesasMail-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 24px 26px 18px;
-  border-bottom: 1px solid #e5e7eb;
+.mesasMail-layout.gm-modal__form{
+  min-height:0;
 }
 
-.mesasMail-kicker {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-  font-size: 13px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  color: #2563eb;
+.mesasMail-content.gm-modal__content{
+  padding:14px 16px 16px !important;
+  gap:12px;
+  overflow-x:hidden;
+  scrollbar-gutter:stable;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(58, 46, 43, .18) transparent;
 }
 
-.mesasMail-head h2 {
-  margin: 0;
-  color: #0f172a;
-  font-size: 24px;
-  line-height: 1.15;
+.mesasMail-content.gm-modal__content::-webkit-scrollbar{
+  width:8px;
 }
 
-.mesasMail-head p {
-  margin: 8px 0 0;
-  color: #64748b;
-  font-size: 14px;
-  line-height: 1.5;
+.mesasMail-content.gm-modal__content::-webkit-scrollbar-track{
+  background:transparent;
 }
 
-.mesasMail-close {
-  width: 40px;
-  height: 40px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  background: #ffffff;
-  color: #475569;
-  cursor: pointer;
-  transition: .18s ease;
+.mesasMail-content.gm-modal__content::-webkit-scrollbar-thumb{
+  background:rgba(58, 46, 43, .18);
+  border-radius:999px;
 }
 
-.mesasMail-close:hover {
-  background: #f8fafc;
-  color: #0f172a;
-  transform: translateY(-1px);
+/* Resumen superior: tarjetas tipo dashboard */
+.mesasMail-summary{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0, 1fr));
+  gap:10px;
 }
 
-.mesasMail-summary {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  padding: 18px 26px 10px;
+.mesasMail-card{
+  position:relative;
+  min-height:92px;
+  padding:14px;
+  border:1px solid rgba(58, 46, 43, .085);
+  border-radius:18px;
+  background:linear-gradient(180deg, #fff, color-mix(in srgb, var(--gm-bg, #FDFBF7) 54%, #fff));
+  box-shadow:0 18px 38px -30px rgba(58, 46, 43, .44), 0 1px 0 rgba(58, 46, 43, .035);
+  display:flex;
+  align-items:center;
+  gap:12px;
+  overflow:hidden;
 }
 
-.mesasMail-card {
-  min-height: 92px;
-  padding: 15px 16px;
-  border: 1px solid #e2e8f0;
-  border-radius: 18px;
-  background: linear-gradient(180deg, #ffffff, #f8fafc);
+.mesasMail-card::after{
+  content:"";
+  position:absolute;
+  inset:auto -32px -46px auto;
+  width:92px;
+  height:92px;
+  border-radius:999px;
+  background:rgba(196, 139, 59, .07);
+  pointer-events:none;
 }
 
-.mesasMail-card span {
-  display: block;
-  color: #64748b;
-  font-size: 13px;
-  font-weight: 700;
+.mesasMail-card__icon{
+  width:42px;
+  height:42px;
+  border-radius:15px;
+  flex:0 0 42px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(196, 139, 59, .1);
+  color:var(--gm-action, #C48B3B);
+  font-size:16px;
+  box-shadow:inset 0 0 0 1px rgba(196, 139, 59, .11);
 }
 
-.mesasMail-card strong {
-  display: block;
-  margin-top: 8px;
-  color: #0f172a;
-  font-size: 29px;
-  line-height: 1;
+.mesasMail-card__body{
+  position:relative;
+  z-index:1;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
 }
 
-.mesasMail-card small {
-  display: block;
-  margin-top: 7px;
-  color: #94a3b8;
-  font-size: 12px;
+.mesasMail-card__title{
+  color:var(--gm-muted, #786661);
+  font-size:10.5px;
+  font-weight:780;
+  text-transform:uppercase;
+  letter-spacing:.07em;
+  line-height:1.25;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 
-.mesasMail-card--ok { border-color: #bbf7d0; background: #f0fdf4; }
-.mesasMail-card--warn { border-color: #fde68a; background: #fffbeb; }
-.mesasMail-card--danger { border-color: #fecaca; background: #fef2f2; }
+.mesasMail-card strong{
+  color:var(--gm-ink, #3A2E2B);
+  font-size:26px;
+  line-height:1;
+  font-weight:720;
+  letter-spacing:-.04em;
+}
 
-.mesasMail-progressBox {
-  margin: 8px 26px 12px;
-  padding: 16px;
-  border-radius: 18px;
-  border: 1px solid #c7d2fe;
-  background: #eef2ff;
+.mesasMail-card small{
+  color:color-mix(in srgb, var(--gm-text, #786661) 78%, #fff);
+  font-size:12px;
+  line-height:1.25;
+  font-weight:520;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.mesasMail-card--ok .mesasMail-card__icon,
+.mesasMail-card--ok::after{
+  color:var(--gm-success, #22AD5C);
+  background:rgba(34, 173, 92, .1);
+}
+
+.mesasMail-card--ok strong{
+  color:var(--gm-success, #22AD5C);
+}
+
+.mesasMail-card--warn .mesasMail-card__icon,
+.mesasMail-card--warn::after{
+  color:color-mix(in srgb, var(--gm-warning, #F59E0B) 82%, #000);
+  background:rgba(245, 158, 11, .1);
+}
+
+.mesasMail-card--warn strong{
+  color:color-mix(in srgb, var(--gm-warning, #F59E0B) 82%, #000);
+}
+
+.mesasMail-card--danger .mesasMail-card__icon,
+.mesasMail-card--danger::after{
+  color:var(--gm-danger, #E13D45);
+  background:rgba(225, 61, 69, .1);
+}
+
+.mesasMail-card--danger strong{
+  color:var(--gm-danger, #E13D45);
+}
+
+.mesasMail-card--ok{ border-color:rgba(34, 173, 92, .14); }
+.mesasMail-card--warn{ border-color:rgba(245, 158, 11, .16); }
+.mesasMail-card--danger{ border-color:rgba(225, 61, 69, .14); }
+
+/* Progreso */
+/* Fila lote + configuración */
+.mesasMail-workRow{
+  display:grid;
+  align-items:stretch;
+  gap:12px;
+}
+
+.mesasMail-workRow.has-lote{
+  grid-template-columns:minmax(280px, .72fr) minmax(0, 1.28fr);
+}
+
+.mesasMail-workRow.no-lote{
+  grid-template-columns:1fr;
+}
+
+.mesasMail-workRow > .gm-panel{
+  min-width:0;
+  height:100%;
+}
+
+.mesasMail-progressBox.gm-panel{
+  border-color:rgba(196, 139, 59, .14) !important;
+  background:linear-gradient(180deg, rgba(196, 139, 59, .075), #fff 72%) !important;
+  box-shadow:0 14px 30px -28px rgba(58, 46, 43, .42) !important;
+}
+
+.mesasMail-progressBody.gm-panel__body{
+  justify-content:center;
+  gap: 0 !important;
 }
 
 .mesasMail-progressTop,
-.mesasMail-progressStats {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
+.mesasMail-progressStats{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
 }
 
-.mesasMail-progressTop strong {
-  display: block;
-  color: #111827;
-  font-size: 15px;
+.mesasMail-progressTop{
+  min-height:45px;
+}
+
+.mesasMail-loteInfo{
+  min-width:0;
+}
+
+.mesasMail-progressTop strong{
+  display:block;
+  color:var(--gm-ink, #3A2E2B);
+  font-size:14px;
+  font-weight:720;
 }
 
 .mesasMail-progressTop span,
-.mesasMail-progressStats span {
-  color: #475569;
-  font-size: 13px;
+.mesasMail-progressStats span{
+  color:var(--gm-muted, #786661);
+  font-size:12.5px;
+  font-weight:560;
 }
 
-.mesasMail-progressTop b {
-  color: #3730a3;
-  font-size: 20px;
+.mesasMail-progressTop b{
+  flex:0 0 auto;
+  min-width:62px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:8px 10px;
+  border-radius:999px;
+  background:rgba(196, 139, 59, .1);
+  border:1px solid rgba(196, 139, 59, .14);
+  color:var(--gm-action, #C48B3B);
+  font-size:18px;
+  line-height:1;
+  font-weight:760;
 }
 
-.mesasMail-progressBar {
-  height: 12px;
-  margin: 12px 0;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #dbeafe;
+.mesasMail-progressBar{
+  height:10px;
+  margin:12px 0;
+  overflow:hidden;
+  border-radius:999px;
+  background:rgba(196, 139, 59, .13);
 }
 
-.mesasMail-progressBar span {
-  display: block;
-  height: 100%;
-  width: 0;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #2563eb, #7c3aed);
-  transition: width .28s ease;
+.mesasMail-progressBar span{
+  display:block;
+  height:100%;
+  width:0;
+  border-radius:inherit;
+  background:linear-gradient(90deg, var(--gm-action, #C48B3B), color-mix(in srgb, var(--gm-ink, #3A2E2B) 72%, var(--gm-action, #C48B3B)));
+  transition:width 280ms ease;
 }
 
-.mesasMail-progressStats b {
-  color: #111827;
+.mesasMail-progressStats b{
+  color:var(--gm-ink, #3A2E2B);
+  font-weight:730;
 }
 
-.mesasMail-progressMsg {
-  margin: 10px 0 0;
-  color: #334155;
-  font-size: 13px;
-  font-weight: 600;
+.mesasMail-progressMsg{
+  margin:10px 0 0;
+  color:color-mix(in srgb, var(--gm-text, #786661) 84%, #000);
+  font-size:12.5px;
+  font-weight:620;
+  line-height:1.4;
 }
 
-.mesasMail-controls {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: end;
-  gap: 14px;
-  padding: 4px 26px 14px;
+/* Configuración */
+.mesasMail-configPanel.gm-panel,
+.mesasMail-listPanel.gm-panel{
+  border-color:rgba(58, 46, 43, .085) !important;
+  box-shadow:0 14px 30px -28px rgba(58, 46, 43, .42) !important;
 }
 
-.mesasMail-field span {
-  display: block;
-  margin-bottom: 7px;
-  color: #475569;
-  font-size: 13px;
-  font-weight: 800;
+.mesasMail-controls.gm-panel__body{
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) minmax(260px, auto);
+  align-items:end;
+  gap:12px;
 }
 
-.mesasMail-field input {
-  width: 100%;
-  min-height: 42px;
-  padding: 10px 13px;
-  border: 1px solid #cbd5e1;
-  border-radius: 13px;
-  color: #0f172a;
-  outline: none;
+.mesasMail-check{
+  min-height:45px;
+  display:inline-flex;
+  align-items:center;
+  gap:9px;
+  padding:10px 13px;
+  border:1.5px solid rgba(58, 46, 43, .11);
+  border-radius:12px;
+  color:color-mix(in srgb, var(--gm-text, #786661) 86%, #000);
+  font-size:12.5px;
+  line-height:1.25;
+  font-weight:660;
+  background:color-mix(in srgb, var(--gm-bg, #FDFBF7) 62%, #fff);
+  cursor:pointer;
+  transition:border-color var(--gm-trans, 160ms ease), background var(--gm-trans, 160ms ease), box-shadow var(--gm-trans, 160ms ease);
 }
 
-.mesasMail-field input:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
+.mesasMail-check:hover{
+  border-color:rgba(196, 139, 59, .2);
+  background:#fff;
 }
 
-.mesasMail-check {
-  min-height: 42px;
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  padding: 10px 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 13px;
-  color: #334155;
-  font-size: 13px;
-  font-weight: 700;
-  background: #f8fafc;
+.mesasMail-check.is-checked{
+  border-color:rgba(196, 139, 59, .28);
+  background:rgba(196, 139, 59, .07);
+  box-shadow:var(--gm-focus, 0 0 0 4px rgba(196, 139, 59, .14));
 }
 
-.mesasMail-error {
-  margin: 0 26px 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid #fecaca;
-  background: #fef2f2;
-  color: #991b1b;
-  font-size: 13px;
-  font-weight: 700;
+.mesasMail-check input{
+  width:16px;
+  height:16px;
+  margin:0;
+  accent-color:var(--gm-action, #C48B3B);
+  cursor:pointer;
 }
 
-.mesasMail-listHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 0 26px 12px;
+.mesasMail-check input:disabled,
+.mesasMail-check input:disabled + span{
+  cursor:not-allowed;
 }
 
-.mesasMail-listHead h3 {
-  margin: 0;
-  color: #0f172a;
-  font-size: 16px;
+.mesasMail-error.gm-alert{
+  margin:0;
 }
 
-.mesasMail-list {
-  padding: 0 26px 18px;
-  overflow: auto;
-  min-height: 220px;
+/* Listado */
+.mesasMail-listHead.gm-panel__head{
+  min-height:54px;
 }
 
-.mesasMail-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  min-height: 180px;
-  border: 1px dashed #cbd5e1;
-  border-radius: 18px;
-  color: #64748b;
-  background: #f8fafc;
-  font-weight: 700;
+.mesasMail-list.gm-panel__body{
+  gap:10px;
+  max-height:min(46vh, 420px);
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding:12px !important;
+  scrollbar-gutter:stable;
 }
 
-.mesasMail-row {
-  padding: 15px;
-  border: 1px solid #e2e8f0;
-  border-radius: 18px;
-  background: #ffffff;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, .04);
+.mesasMail-list.gm-panel__body::-webkit-scrollbar{
+  width:8px;
 }
 
-.mesasMail-row + .mesasMail-row {
-  margin-top: 12px;
+.mesasMail-list.gm-panel__body::-webkit-scrollbar-thumb{
+  background:rgba(58, 46, 43, .16);
+  border-radius:999px;
 }
 
-.mesasMail-rowMain {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+.mesasMail-empty.gm-emptySchedule{
+  min-height:180px;
+  color:var(--gm-muted, #786661);
+  font-weight:650;
 }
 
-.mesasMail-rowMain strong {
-  display: block;
-  color: #111827;
-  font-size: 15px;
+.mesasMail-row{
+  padding:14px;
+  border:1px solid rgba(58, 46, 43, .085);
+  border-radius:15px;
+  background:#fff;
+  box-shadow:0 12px 30px -28px rgba(58, 46, 43, .42), 0 1px 0 rgba(58, 46, 43, .03);
 }
 
-.mesasMail-rowMain span:not(.mesasMail-badge) {
-  display: block;
-  margin-top: 4px;
-  color: #64748b;
-  font-size: 13px;
+.mesasMail-rowMain{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
 }
 
-.mesasMail-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 92px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 900;
+.mesasMail-rowMain strong{
+  display:block;
+  color:var(--gm-ink, #3A2E2B);
+  font-size:14px;
+  font-weight:720;
+  line-height:1.2;
 }
 
-.mesasMail-badge--ok { background: #dcfce7; color: #166534; }
-.mesasMail-badge--warn { background: #fef3c7; color: #92400e; }
-.mesasMail-badge--danger { background: #fee2e2; color: #991b1b; }
-.mesasMail-badge--muted { background: #f1f5f9; color: #64748b; }
-
-.mesasMail-rowMeta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 12px 0;
+.mesasMail-rowMain span:not(.mesasMail-badge){
+  display:block;
+  margin-top:4px;
+  color:var(--gm-muted, #786661);
+  font-size:12.5px;
+  line-height:1.35;
+  font-weight:500;
 }
 
-.mesasMail-rowMeta span {
-  padding: 5px 9px;
-  border-radius: 999px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  color: #475569;
-  font-size: 12px;
-  font-weight: 700;
+.mesasMail-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:92px;
+  padding:6px 10px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:820;
+  letter-spacing:.02em;
+  white-space:nowrap;
 }
 
-.mesasMail-materias {
-  display: grid;
-  gap: 8px;
+.mesasMail-badge--ok{
+  background:rgba(34, 173, 92, .1);
+  border:1px solid rgba(34, 173, 92, .18);
+  color:color-mix(in srgb, var(--gm-success, #22AD5C) 68%, #000);
 }
 
-.mesasMail-materiaItem {
-  display: grid;
-  grid-template-columns: 1.2fr 1.8fr;
-  gap: 12px;
-  align-items: center;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+.mesasMail-badge--warn{
+  background:rgba(245, 158, 11, .1);
+  border:1px solid rgba(245, 158, 11, .2);
+  color:color-mix(in srgb, var(--gm-warning, #F59E0B) 72%, #000);
 }
 
-.mesasMail-materiaItem strong {
-  display: block;
-  color: #0f172a;
-  font-size: 13px;
+.mesasMail-badge--danger{
+  background:rgba(225, 61, 69, .1);
+  border:1px solid rgba(225, 61, 69, .18);
+  color:color-mix(in srgb, var(--gm-danger, #E13D45) 72%, #000);
 }
 
-.mesasMail-materiaItem span {
-  color: #64748b;
-  font-size: 12px;
+.mesasMail-badge--muted{
+  background:rgba(58, 46, 43, .055);
+  border:1px solid rgba(58, 46, 43, .09);
+  color:var(--gm-muted, #786661);
 }
 
-.mesasMail-materiaDatos {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  align-items: center;
+.mesasMail-rowMeta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin:12px 0;
+}
+
+.mesasMail-rowMeta span{
+  padding:5px 9px;
+  border-radius:999px;
+  background:rgba(196, 139, 59, .055);
+  border:1px solid rgba(196, 139, 59, .12);
+  color:color-mix(in srgb, var(--gm-action, #C48B3B) 76%, #000);
+  font-size:11.5px;
+  font-weight:680;
+}
+
+.mesasMail-materias{
+  display:grid;
+  gap:8px;
+}
+
+.mesasMail-materiaItem{
+  display:grid;
+  grid-template-columns:minmax(0, 1.1fr) minmax(0, 1.9fr);
+  gap:12px;
+  align-items:center;
+  padding:10px 12px;
+  border-radius:13px;
+  background:linear-gradient(180deg, #fff, color-mix(in srgb, var(--gm-bg, #FDFBF7) 68%, #fff));
+  border:1px solid rgba(58, 46, 43, .08);
+}
+
+.mesasMail-materiaItem strong{
+  display:block;
+  color:var(--gm-ink, #3A2E2B);
+  font-size:12.5px;
+  font-weight:700;
+  line-height:1.25;
+}
+
+.mesasMail-materiaItem span{
+  color:var(--gm-muted, #786661);
+  font-size:11.5px;
+  line-height:1.25;
+}
+
+.mesasMail-materiaDatos{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0, 1fr));
+  gap:7px;
+  align-items:center;
 }
 
 .mesasMail-materiaDatos span,
-.mesasMail-materiaDatos b {
-  min-height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 5px 7px;
-  border-radius: 10px;
-  background: #ffffff;
-  color: #334155;
-  font-size: 12px;
-  border: 1px solid #e2e8f0;
+.mesasMail-materiaDatos b{
+  min-height:28px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:5px 7px;
+  border-radius:10px;
+  background:#fff;
+  color:color-mix(in srgb, var(--gm-text, #786661) 84%, #000);
+  font-size:11.5px;
+  font-weight:630;
+  border:1px solid rgba(58, 46, 43, .08);
+  min-width:0;
 }
 
-.mesasMail-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 15px 26px 22px;
-  border-top: 1px solid #e5e7eb;
-  background: #fbfdff;
+.mesasMail-materiaDatos b{
+  color:var(--gm-action, #C48B3B);
 }
 
-.mesasMail-foot p {
-  margin: 0;
-  color: #64748b;
-  font-size: 13px;
-  line-height: 1.45;
+/* Footer */
+.mesasMail-foot.gm-modal__actions{
+  justify-content:space-between;
+  gap:14px;
 }
 
-.mesasMail-btn {
-  min-height: 40px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 15px;
-  border: 0;
-  border-radius: 13px;
-  cursor: pointer;
-  font-weight: 900;
-  transition: .18s ease;
+.mesasMail-foot p{
+  margin:0;
+  color:var(--gm-muted, #786661);
+  font-size:12.5px;
+  line-height:1.4;
+  font-weight:520;
 }
 
-.mesasMail-btn:disabled {
-  opacity: .65;
-  cursor: not-allowed;
-}
-
-.mesasMail-btn--primary {
-  color: #ffffff;
-  background: linear-gradient(135deg, #2563eb, #7c3aed);
-  box-shadow: 0 12px 26px rgba(37, 99, 235, .24);
-}
-
-.mesasMail-btn--ghost {
-  color: #334155;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-}
-
-.mesasMail-btn:not(:disabled):hover {
-  transform: translateY(-1px);
-}
-
-@media (max-width: 900px) {
-  .mesasMail-modal {
-    width: 98vw;
-    max-height: 94vh;
-    border-radius: 18px;
-  }
-
-  .mesasMail-summary,
-  .mesasMail-controls {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .mesasMail-materiaItem {
-    grid-template-columns: 1fr;
-  }
-
-  .mesasMail-materiaDatos {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .mesasMail-foot {
-    flex-direction: column;
-    align-items: stretch;
+@media (max-width: 1020px){
+  .mesasMail-workRow.has-lote{
+    grid-template-columns:1fr;
   }
 }
 
-@media (max-width: 620px) {
-  .mesasMail-backdrop {
-    padding: 8px;
+@media (max-width: 900px){
+  .mesasMail-modal.gm-modal{
+    width:98vw;
+    max-height:94vh;
   }
 
-  .mesasMail-head,
-  .mesasMail-summary,
-  .mesasMail-controls,
-  .mesasMail-listHead,
-  .mesasMail-list,
-  .mesasMail-foot {
-    padding-left: 14px;
-    padding-right: 14px;
+  .mesasMail-summary{
+    grid-template-columns:repeat(2, minmax(0, 1fr));
   }
 
-  .mesasMail-summary,
-  .mesasMail-controls {
-    grid-template-columns: 1fr;
+  .mesasMail-card{
+    min-height:88px;
   }
 
-  .mesasMail-rowMain {
-    flex-direction: column;
+  .mesasMail-controls.gm-panel__body{
+    grid-template-columns:1fr;
+  }
+
+  .mesasMail-materiaItem{
+    grid-template-columns:1fr;
+  }
+
+  .mesasMail-materiaDatos{
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+  }
+
+  .mesasMail-foot.gm-modal__actions{
+    align-items:stretch;
+    flex-direction:column;
+  }
+}
+
+@media (max-width: 620px){
+  .mesasMail-summary{
+    grid-template-columns:1fr;
+  }
+
+  .mesasMail-card__title,
+  .mesasMail-card small{
+    white-space:normal;
+  }
+
+  .mesasMail-rowMain{
+    flex-direction:column;
+  }
+
+  .mesasMail-badge{
+    width:100%;
+    justify-content:center;
   }
 }

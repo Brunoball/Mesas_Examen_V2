@@ -1519,9 +1519,7 @@ html, body{ overflow-x: hidden; }
   color: color-mix(in oklab, var(--reg-primary) 85%, var(--ink-700));
 }
 
-.hero-logo{
-  background: color-mix(in oklab, #ffffff 15%, transparent);
-}
+
 
 /* =========================================================
    FIX FINAL PERSONALIZACIÓN — 3Devs
@@ -1586,5 +1584,241 @@ html, body{ overflow-x: hidden; }
   .auth-page.is-login-screen .auth-card{
     width: 100vw !important;
     min-height: 100dvh !important;
+  }
+}
+
+/* =========================================================
+   TIPOGRAFÍA DEL SISTEMA — FORMULARIO PÚBLICO
+   Unifica los textos con el resto de Mesas/Lerna sin tocar la
+   paleta: los colores siguen saliendo de las variables dinámicas.
+   ========================================================= */
+.auth-page,
+.auth-page *{
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.auth-page{
+  letter-spacing: -0.01em;
+}
+
+.auth-card{
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.hero-title{
+  font-size: clamp(24px, 2.45vw, 34px);
+  font-weight: 760;
+  line-height: 1.06;
+  letter-spacing: -0.04em;
+  text-transform: none !important;
+}
+
+.auth-hero.is-login .hero-title{
+  font-size: clamp(24px, 2.35vw, 32px);
+  font-weight: 660;
+  letter-spacing: -0.04em;
+}
+
+.hero-sub,
+.auth-sub,
+.hf-hint{
+  font-size: 14px;
+  font-weight: 460;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+}
+
+.auth-title{
+  font-size: clamp(22px, 1.65vw, 28px);
+  font-weight: 720;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+}
+
+.materias-pendientes-section .auth-title,
+.tercera-materia-section .auth-title{
+  font-size: clamp(18px, 1.25vw, 22px);
+  font-weight: 680;
+  letter-spacing: -0.025em;
+}
+
+.field-label,
+.hf-label{
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+}
+
+.field-input,
+.hf-input{
+  font-size: 14px;
+  font-weight: 520;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  font-family: inherit;
+}
+
+.btn-cta,
+.btn-primary,
+.btn-light,
+.btn-hero-secondary{
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+}
+
+.form-extra,
+.remember,
+.remember span{
+  font-size: 14px;
+  font-weight: 460;
+  letter-spacing: -0.01em;
+}
+
+.ventana-pill{
+  font-size: 13px;
+  font-weight: 560;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.fecha-cierre{
+  font-weight: 660;
+}
+
+.materia-card .nombre{
+  font-size: 15px;
+  font-weight: 680;
+  line-height: 1.22;
+  letter-spacing: -0.02em;
+}
+
+.materia-card .sub,
+.materia-lock-hint{
+  font-size: 12.5px;
+  font-weight: 520;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.badge-inscripto,
+.badge-correlativa{
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-left: .5rem;
+  padding: .16rem .45rem;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.badge-correlativa{
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.materia-lock-hint{
+  display: block;
+  margin-top: 6px;
+  color: #92400e;
+}
+
+.form-alert{
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.form-alert--warning{
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #facc15;
+}
+
+.form-alert--danger{
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.closed-box,
+.closed-list li{
+  font-size: 14px;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.closed-box > p:first-child{
+  font-size: 14px;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+}
+
+.closed-list li,
+.closed-list li strong{
+  font-weight: 560;
+}
+
+.loading-center{
+  font-size: 14px;
+  font-weight: 520;
+}
+
+@media (max-width: 860px){
+  .auth-title{
+    font-size: clamp(20px, 5.2vw, 24px);
+    font-weight: 700;
+  }
+
+  .hero-title,
+  .auth-hero.is-login .hero-title,
+  .auth-page.is-login-screen .auth-hero.is-login .hero-title{
+    font-size: clamp(20px, 5.4vw, 24px) !important;
+    font-weight: 720 !important;
+    letter-spacing: -0.035em !important;
+  }
+
+  .hero-sub,
+  .auth-sub,
+  .hf-hint,
+  .form-alert{
+    font-size: 13px;
+  }
+
+  .field-label,
+  .hf-label{
+    font-size: 11px !important;
+    font-weight: 600;
+  }
+
+  .field-input,
+  .hf-input{
+    font-size: 13.5px !important;
+    font-weight: 520;
+  }
+
+  .materia-card .nombre{
+    font-size: 14px;
+    font-weight: 650;
+  }
+
+  .materia-card .sub,
+  .materia-lock-hint{
+    font-size: 11.8px;
   }
 }
