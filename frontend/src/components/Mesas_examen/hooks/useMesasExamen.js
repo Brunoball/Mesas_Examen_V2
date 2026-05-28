@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   agregarPreviaMas,
+  aplicarCambioDocenteMesa,
   confirmarAgregarNumeroGrupo,
   crearArmadoInicialMesas,
   crearGruposFinalesMesas,
@@ -13,8 +14,10 @@ import {
   eliminarSlotExtraGrupo,
   guardarNotaPreviaMesa,
   guardarProgramacionMesa,
+  ignorarCambioDocenteMesa,
   habilitarSlotExtraGrupo,
   listarHistorialMesas,
+  listarCambiosDocenteMesasPendientes,
   obtenerDetalleHistorialArmado,
   obtenerExportacionHistorialMesas,
   listarMesasGruposFinales,
@@ -232,6 +235,12 @@ export const useMesasExamen = ({ onToast } = {}) => {
   const [eliminandoArmado, setEliminandoArmado] = useState(false);
   const [guardandoNotas, setGuardandoNotas] = useState({});
 
+  const [cambiosDocentePendientes, setCambiosDocentePendientes] = useState([]);
+  const [modalCambiosDocenteAbierto, setModalCambiosDocenteAbierto] = useState(false);
+  const [cargandoCambiosDocente, setCargandoCambiosDocente] = useState(false);
+  const [resolviendoCambioDocenteId, setResolviendoCambioDocenteId] = useState(null);
+  const [ignorandoCambioDocenteId, setIgnorandoCambioDocenteId] = useState(null);
+
   const [historialResultados, setHistorialResultados] = useState([]);
   const [historialArmados, setHistorialArmados] = useState([]);
   const [historialResumen, setHistorialResumen] = useState(null);
@@ -295,6 +304,27 @@ export const useMesasExamen = ({ onToast } = {}) => {
     setErrorAgregarNumero("");
   }, []);
 
+  const cargarCambiosDocentePendientes = useCallback(async ({ abrirModal = true } = {}) => {
+    setCargandoCambiosDocente(true);
+
+    try {
+      const response = await listarCambiosDocenteMesasPendientes();
+      const data = Array.isArray(response?.data) ? response.data : [];
+      setCambiosDocentePendientes(data);
+
+      if (abrirModal && data.length > 0) {
+        setModalCambiosDocenteAbierto(true);
+      }
+
+      return data;
+    } catch (err) {
+      setCambiosDocentePendientes([]);
+      return [];
+    } finally {
+      setCargandoCambiosDocente(false);
+    }
+  }, []);
+
   const cargarMesas = useCallback(async ({ silencioso = false } = {}) => {
     if (!silencioso) {
       setCargando(true);
@@ -302,13 +332,20 @@ export const useMesasExamen = ({ onToast } = {}) => {
     setError("");
 
     try {
-      const [responseGrupos, responseNoAgrupadas] = await Promise.all([
+      const [responseGrupos, responseNoAgrupadas, responseCambiosDocente] = await Promise.all([
         listarMesasGruposFinales({ busqueda: "" }),
         listarMesasNoAgrupadas({ busqueda: "" }),
+        listarCambiosDocenteMesasPendientes().catch(() => ({ data: [] })),
       ]);
 
       setGruposFinales(responseGrupos.data || []);
       setNoAgrupadas(responseNoAgrupadas.data || []);
+
+      const cambios = Array.isArray(responseCambiosDocente?.data) ? responseCambiosDocente.data : [];
+      setCambiosDocentePendientes(cambios);
+      if (cambios.length > 0 && !silencioso) {
+        setModalCambiosDocenteAbierto(true);
+      }
     } catch (err) {
       setError(err.message || "Error al cargar las mesas finales.");
       setGruposFinales([]);
@@ -1321,12 +1358,100 @@ export const useMesasExamen = ({ onToast } = {}) => {
     }
   }, [cargarMesas, grupoEdicion, modalEditarAbierto, recargarGrupoEdicion, mostrarToast]);
 
+  const cerrarModalCambiosDocente = useCallback(() => {
+    setModalCambiosDocenteAbierto(false);
+  }, []);
+
+  const abrirModalCambiosDocente = useCallback(async () => {
+    // Siempre vuelve a consultar la tabla temporal para no mostrar datos viejos.
+    return cargarCambiosDocentePendientes({ abrirModal: true });
+  }, [cargarCambiosDocentePendientes]);
+
+  const abrirMesaDesdeCambioDocente = useCallback(async (cambio = {}) => {
+    const numeroMesa = Number(cambio?.numero_mesa || 0);
+    if (!numeroMesa) return null;
+
+    const numeroGrupo = Number(cambio?.numero_grupo || 0);
+    const item = numeroGrupo > 0
+      ? gruposFinales.find((grupo) => Number(grupo?.numero_grupo || grupo?.id_grupo || 0) === numeroGrupo)
+      : noAgrupadas.find((mesa) => Number(mesa?.numero_mesa || mesa?.numeros?.[0]?.numero_mesa || 0) === numeroMesa);
+
+    if (numeroGrupo > 0) {
+      setTab("grupos-finales");
+      await abrirModalEditar(item || { numero_grupo: numeroGrupo, id_grupo: numeroGrupo }, "grupo");
+    } else {
+      setTab("no-agrupadas");
+      await abrirModalEditar(item || { numero_mesa: numeroMesa }, "no_agrupada");
+    }
+
+    setModalCambiosDocenteAbierto(false);
+    return item || null;
+  }, [abrirModalEditar, gruposFinales, noAgrupadas]);
+
+  const aplicarCambioDocentePendiente = useCallback(async (cambio = {}) => {
+    const idCambio = Number(cambio?.id_cambio || 0);
+    if (!idCambio) return null;
+
+    setResolviendoCambioDocenteId(idCambio);
+
+    try {
+      const response = await aplicarCambioDocenteMesa({ id_cambio: idCambio });
+      await cargarMesas({ silencioso: true });
+      await cargarCambiosDocentePendientes({ abrirModal: false });
+
+      const data = response?.data || {};
+      const tipo = data?.tipo === "no_agrupada" ? "no_agrupada" : "grupo";
+      const grupo = data?.grupo || null;
+      const target = data?.target || {};
+
+      if (tipo === "no_agrupada") {
+        setTab("no-agrupadas");
+        await abrirModalEditar(grupo || { id_no_agrupada: target?.id_no_agrupada, numero_mesa: target?.numero_mesa || cambio?.numero_mesa }, "no_agrupada");
+      } else {
+        setTab("grupos-finales");
+        await abrirModalEditar(grupo || { id_grupo: target?.id_grupo || target?.numero_grupo || cambio?.numero_grupo, numero_grupo: target?.numero_grupo || cambio?.numero_grupo }, "grupo");
+      }
+
+      setModalCambiosDocenteAbierto(false);
+      mostrarToast("exito", "Cambio de docente aplicado. Revisá si la mesa debe reubicarse.", 3600);
+      return response;
+    } catch (err) {
+      mostrarToast("error", err.message || "No se pudo aplicar el cambio de docente.", 4200);
+      throw err;
+    } finally {
+      setResolviendoCambioDocenteId(null);
+    }
+  }, [abrirModalEditar, cargarCambiosDocentePendientes, cargarMesas, mostrarToast]);
+
+  const ignorarCambioDocentePendiente = useCallback(async (cambio = {}) => {
+    const idCambio = Number(cambio?.id_cambio || 0);
+    if (!idCambio) return null;
+
+    setIgnorandoCambioDocenteId(idCambio);
+
+    try {
+      const response = await ignorarCambioDocenteMesa({ id_cambio: idCambio });
+      const pendientes = await cargarCambiosDocentePendientes({ abrirModal: false });
+      if (pendientes.length === 0) {
+        setModalCambiosDocenteAbierto(false);
+      }
+      mostrarToast("exito", "Aviso de cambio de docente ignorado.", 2800);
+      return response;
+    } catch (err) {
+      mostrarToast("error", err.message || "No se pudo ignorar el aviso.", 3800);
+      throw err;
+    } finally {
+      setIgnorandoCambioDocenteId(null);
+    }
+  }, [cargarCambiosDocentePendientes, mostrarToast]);
+
   const eliminarMesaDesdeEdicion = abrirConfirmarEliminarMesa;
 
   useEffect(() => {
     cargarMesas();
     cargarParametrosArmado();
-  }, [cargarMesas, cargarParametrosArmado]);
+    cargarCambiosDocentePendientes({ abrirModal: true });
+  }, [cargarMesas, cargarParametrosArmado, cargarCambiosDocentePendientes]);
 
   useEffect(() => {
     if (tab !== "historial") return;
@@ -1500,6 +1625,20 @@ export const useMesasExamen = ({ onToast } = {}) => {
       obtenerExportacion: obtenerExportacionHistorial,
       verDetalleArmado: verDetalleHistorialArmado,
       cerrarDetalleArmado: cerrarDetalleHistorialArmado,
+    },
+
+    cambiosDocente: {
+      pendientes: cambiosDocentePendientes,
+      modalAbierto: modalCambiosDocenteAbierto,
+      cargando: cargandoCambiosDocente,
+      resolviendoId: resolviendoCambioDocenteId,
+      ignorandoId: ignorandoCambioDocenteId,
+      recargar: cargarCambiosDocentePendientes,
+      cerrar: cerrarModalCambiosDocente,
+      abrir: abrirModalCambiosDocente,
+      abrirMesa: abrirMesaDesdeCambioDocente,
+      aplicar: aplicarCambioDocentePendiente,
+      ignorar: ignorarCambioDocentePendiente,
     },
 
     crearMesas,

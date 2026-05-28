@@ -452,6 +452,28 @@ const obtenerTextoNumerosMesa = (grupo) => {
   return String(grupo?.numeros_mesa_texto || grupo?.numero_mesa || "-").replace(/,/g, " · ");
 };
 
+const obtenerNumerosItemMesa = (grupo) => {
+  const numeros = Array.isArray(grupo?.numeros) ? grupo.numeros : [];
+  const desdeNumeros = numeros
+    .map((numero) => Number(numero?.numero_mesa || 0))
+    .filter((numero) => numero > 0);
+
+  if (desdeNumeros.length > 0) return desdeNumeros;
+
+  const numeroUnico = Number(grupo?.numero_mesa || 0);
+  if (numeroUnico > 0) return [numeroUnico];
+
+  return String(grupo?.numeros_mesa_texto || "")
+    .split(/[,·]/)
+    .map((item) => Number(String(item).trim()))
+    .filter((numero) => numero > 0);
+};
+
+const obtenerCambiosDocenteParaGrupo = (grupo, cambiosPorNumero = new Map()) => {
+  const numeros = obtenerNumerosItemMesa(grupo);
+  return numeros.flatMap((numero) => cambiosPorNumero.get(Number(numero)) || []);
+};
+
 const obtenerCursoAlumno = (alumno) => {
   if (!alumno) return "-";
 
@@ -644,6 +666,8 @@ const MesaPdfCard = ({
   onGuardarNota,
   guardandoNotas = {},
   terminosBusqueda = [],
+  cambiosDocentePendientes = [],
+  onAbrirCambiosDocente,
   cardRef = null,
   logoInstitucionalUrl = "",
   institucionNombre = "Institución",
@@ -654,13 +678,21 @@ const MesaPdfCard = ({
     bloques.reduce((total, bloque) => total + Math.max(1, bloque.alumnos.length), 0)
   );
   const numerosTexto = obtenerTextoNumerosMesa(grupo);
+  const tieneCambioDocentePendiente = Array.isArray(cambiosDocentePendientes) && cambiosDocentePendientes.length > 0;
+  const numerosCambiados = useMemo(() => new Set(
+    (Array.isArray(cambiosDocentePendientes) ? cambiosDocentePendientes : [])
+      .map((cambio) => Number(cambio?.numero_mesa || 0))
+      .filter((numero) => numero > 0)
+  ), [cambiosDocentePendientes]);
+  const numerosHeader = useMemo(() => obtenerNumerosItemMesa(grupo), [grupo]);
   let horaMostrada = false;
 
   return (
     <article
       ref={cardRef}
-      className={`mesas-pdf-sheet ${terminosBusqueda.length > 0 ? "mesas-pdf-sheet--searching" : ""}`}
+      className={`mesas-pdf-sheet ${terminosBusqueda.length > 0 ? "mesas-pdf-sheet--searching" : ""} ${tieneCambioDocentePendiente ? "mesas-pdf-sheet--docenteCambio" : ""}`}
       data-mesas-search-result={terminosBusqueda.length > 0 ? "true" : undefined}
+      data-mesa-docente-cambio={tieneCambioDocentePendiente ? "true" : undefined}
     >
       <header className="mesas-pdf-header">
         <div className="mesas-pdf-brand">
@@ -672,7 +704,39 @@ const MesaPdfCard = ({
         </div>
         <div className="mesas-pdf-meta">
           <span><ResaltarBusqueda value={obtenerFechaResumenPdf(grupo)} terminos={terminosBusqueda} /></span>
-          <strong>N° de mesa: <ResaltarBusqueda value={numerosTexto} terminos={terminosBusqueda} /></strong>
+          <strong className="mesas-numeroMesaHeaderWrap">
+            <span>N° de mesa:</span>
+            {numerosHeader.length > 0 ? (
+              <span className="mesas-numeroMesaHeaderList">
+                {numerosHeader.map((numero, index) => {
+                  const afectado = numerosCambiados.has(Number(numero));
+                  return (
+                    <React.Fragment key={`numero-header-${numero}-${index}`}>
+                      <span
+                        className={`mesas-numeroMesaHeader ${afectado ? "mesas-numeroMesaHeader--docenteCambio" : ""}`}
+                        title={afectado ? "Este número tiene cambio de docente pendiente" : undefined}
+                      >
+                        <ResaltarBusqueda value={String(numero)} terminos={terminosBusqueda} />
+                      </span>
+                      {index < numerosHeader.length - 1 && <span className="mesas-numeroMesaHeaderSep">·</span>}
+                    </React.Fragment>
+                  );
+                })}
+              </span>
+            ) : (
+              <ResaltarBusqueda value={numerosTexto} terminos={terminosBusqueda} />
+            )}
+          </strong>
+          {tieneCambioDocentePendiente && (
+            <button
+              type="button"
+              className="mesas-docenteCambioBadge"
+              onClick={onAbrirCambiosDocente}
+              title="Ver cambios de docente pendientes"
+            >
+              <FontAwesomeIcon icon={faTriangleExclamation} /> Docente cambiado pendiente
+            </button>
+          )}
         </div>
       </header>
 
@@ -1113,6 +1177,116 @@ const HistorialMesasPanel = ({ historial, busqueda = "", terminosBusqueda = [] }
   );
 };
 
+
+const ModalCambiosDocentePendientes = ({
+  abierto = false,
+  cambios = [],
+  cargando = false,
+  resolviendoId = null,
+  ignorandoId = null,
+  onClose,
+  onAplicar,
+  onIgnorar,
+  onAbrirMesa,
+}) => {
+  if (!abierto) return null;
+
+  const lista = Array.isArray(cambios) ? cambios : [];
+
+  const contenido = (
+    <div className="mesas-docenteCambioOverlay" role="dialog" aria-modal="true" aria-label="Cambios de docente pendientes">
+      <div className="mesas-docenteCambioModal">
+        <div className="mesas-docenteCambioModal__head">
+          <div className="mesas-docenteCambioModal__icon">
+            <FontAwesomeIcon icon={faTriangleExclamation} />
+          </div>
+          <div>
+            <h3>Cambios de docente detectados</h3>
+            <p>
+              Hay números de mesa armados con una cátedra cuyo docente fue modificado. Revisalos para evitar cruces o docentes incorrectos en el armado.
+            </p>
+          </div>
+          <button type="button" className="mesas-docenteCambioModal__close" onClick={onClose} title="Cerrar">
+            <FontAwesomeIcon icon={faTimes} />
+          </button>
+        </div>
+
+        {cargando ? (
+          <div className="mesas-docenteCambioModal__loading">
+            <FontAwesomeIcon icon={faSpinner} spin /> Buscando cambios pendientes...
+          </div>
+        ) : lista.length === 0 ? (
+          <div className="mesas-docenteCambioModal__empty">No hay cambios pendientes.</div>
+        ) : (
+          <div className="mesas-docenteCambioList">
+            {lista.map((cambio) => {
+              const id = Number(cambio?.id_cambio || 0);
+              const ocupado = resolviendoId === id || ignorandoId === id;
+
+              return (
+                <article key={id || `${cambio?.numero_mesa}-${cambio?.id_catedra}`} className="mesas-docenteCambioItem">
+                  <div className="mesas-docenteCambioItem__main">
+                    <strong>Mesa N° {textoCorto(cambio?.numero_mesa)}</strong>
+                    {cambio?.numero_grupo && <span>Grupo {cambio.numero_grupo}</span>}
+                    <small>{textoCorto(cambio?.materia, "Materia sin especificar")}</small>
+                  </div>
+
+                  <div className="mesas-docenteCambioItem__docentes">
+                    <div>
+                      <span>Antes</span>
+                      <strong>{textoCorto(cambio?.docente_anterior, "Sin docente")}</strong>
+                    </div>
+                    <div>
+                      <span>Nuevo</span>
+                      <strong>{textoCorto(cambio?.docente_nuevo, "Sin docente")}</strong>
+                    </div>
+                  </div>
+
+                  <div className="mesas-docenteCambioItem__meta">
+                    <span>{textoCorto(cambio?.fecha_mesa_texto || cambio?.fecha_mesa, "Sin fecha")}</span>
+                    <span>{textoCorto(cambio?.turno, "Sin turno")}</span>
+                  </div>
+
+                  <div className="mesas-docenteCambioItem__actions">
+                    <button
+                      type="button"
+                      className="mesas-docenteCambioBtn mesas-docenteCambioBtn--ghost"
+                      onClick={() => onAbrirMesa?.(cambio)}
+                      disabled={ocupado}
+                    >
+                      Ver mesa
+                    </button>
+                    <button
+                      type="button"
+                      className="mesas-docenteCambioBtn mesas-docenteCambioBtn--primary"
+                      onClick={() => onAplicar?.(cambio)}
+                      disabled={ocupado}
+                    >
+                      {resolviendoId === id ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faEdit} />}
+                      Aplicar y editar
+                    </button>
+                    <button
+                      type="button"
+                      className="mesas-docenteCambioBtn mesas-docenteCambioBtn--danger"
+                      onClick={() => onIgnorar?.(cambio)}
+                      disabled={ocupado}
+                    >
+                      {ignorandoId === id ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faTimes} />}
+                      Ignorar
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  return typeof document !== "undefined" ? createPortal(contenido, document.body) : contenido;
+};
+
 const MesasExamen = () => {
   const dentroDeShell = useContext(MesasShellContext);
   const [toastGlobal, setToastGlobal] = useState(null);
@@ -1165,6 +1339,7 @@ const MesasExamen = () => {
     flechasEdicion,
     agregarNumeroEdicion,
     historial,
+    cambiosDocente,
     guardandoNotas,
     guardarNotaAlumno,
     crearMesas,
@@ -1227,6 +1402,46 @@ const MesasExamen = () => {
   const indiceBusquedaVisible = hayResultadosBusqueda ? Math.min(indiceBusquedaActivo + 1, totalResultadosBusqueda) : 0;
   const terminosBusqueda = useMemo(() => obtenerTerminosBusqueda(busqueda), [busqueda]);
   const tarjetasMesasRefs = useRef({});
+  const cambiosDocentePorNumero = useMemo(() => {
+    const mapa = new Map();
+    const pendientes = Array.isArray(cambiosDocente?.pendientes) ? cambiosDocente.pendientes : [];
+
+    pendientes.forEach((cambio) => {
+      const numero = Number(cambio?.numero_mesa || 0);
+      if (!numero) return;
+      const actuales = mapa.get(numero) || [];
+      actuales.push(cambio);
+      mapa.set(numero, actuales);
+    });
+
+    return mapa;
+  }, [cambiosDocente?.pendientes]);
+
+  const cambiosDocentePendientesLista = Array.isArray(cambiosDocente?.pendientes) ? cambiosDocente.pendientes : [];
+  const totalCambiosDocentePendientes = cambiosDocentePendientesLista.length;
+  const textoNumerosCambiosDocente = useMemo(() => {
+    const numeros = Array.from(new Set(
+      cambiosDocentePendientesLista
+        .map((cambio) => Number(cambio?.numero_mesa || 0))
+        .filter((numero) => numero > 0)
+    ));
+
+    if (numeros.length === 0) return "Sin número específico";
+    return numeros.slice(0, 8).join(" · ") + (numeros.length > 8 ? ` · +${numeros.length - 8}` : "");
+  }, [cambiosDocentePendientesLista]);
+
+  const abrirPanelCambiosDocente = useCallback(() => {
+    if (typeof cambiosDocente?.abrir === "function") {
+      cambiosDocente.abrir();
+      return;
+    }
+
+    cambiosDocente?.recargar?.({ abrirModal: true });
+  }, [cambiosDocente]);
+
+  const recargarCambiosDocente = useCallback(() => {
+    cambiosDocente?.recargar?.({ abrirModal: false });
+  }, [cambiosDocente]);
 
   const capturarScrollVistaMesas = useCallback(() => {
     if (typeof window === "undefined" || typeof document === "undefined") return null;
@@ -1705,6 +1920,24 @@ const MesasExamen = () => {
           </div>
         )}
 
+        {tab !== "historial" && totalCambiosDocentePendientes > 0 && (
+          <div className="mesas-docenteCambioAlert">
+            <div className="mesas-docenteCambioAlert__icon">
+              <FontAwesomeIcon icon={faTriangleExclamation} />
+            </div>
+            <div className="mesas-docenteCambioAlert__text">
+              <strong>{totalCambiosDocentePendientes} cambio{totalCambiosDocentePendientes === 1 ? "" : "s"} de docente pendiente{totalCambiosDocentePendientes === 1 ? "" : "s"}</strong>
+              <span>Números afectados: {textoNumerosCambiosDocente}. Podés cerrar el popup y volver a abrirlo desde acá.</span>
+            </div>
+            <div className="mesas-docenteCambioAlert__actions">
+              <button type="button" onClick={abrirPanelCambiosDocente}>Ver cambios</button>
+              <button type="button" className="secondary" onClick={recargarCambiosDocente} disabled={!!cambiosDocente?.cargando}>
+                {cambiosDocente?.cargando ? <FontAwesomeIcon icon={faSpinner} spin /> : "Actualizar"}
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className={`mesas-pdf-view ${tab === "historial" ? "mesas-pdf-view--historial" : ""}`}>
           {tab === "historial" ? (
             <HistorialMesasPanel historial={historial} busqueda={busqueda} terminosBusqueda={terminosBusqueda} />
@@ -1726,6 +1959,7 @@ const MesasExamen = () => {
           ) : (
             mesasFiltradas.map((item) => {
               const idTarjeta = obtenerIdGrupo(item);
+              const cambiosItem = obtenerCambiosDocenteParaGrupo(item, cambiosDocentePorNumero);
 
               return (
               <MesaPdfCard
@@ -1733,6 +1967,8 @@ const MesasExamen = () => {
                 cardRef={(node) => registrarTarjetaMesa(idTarjeta, node)}
                 grupo={item}
                 esNoAgrupada={tab === "no-agrupadas"}
+                cambiosDocentePendientes={cambiosItem}
+                onAbrirCambiosDocente={abrirPanelCambiosDocente}
                 onEdit={() => abrirModalEditar(item, tab === "no-agrupadas" ? "no_agrupada" : "grupo")}
                 onDelete={() => eliminarMesaDesdeEdicion(construirPayloadEliminar(item, tab))}
                 onGuardarNota={guardarNotaAlumnoManteniendoScroll}
@@ -1762,6 +1998,18 @@ const MesasExamen = () => {
         onToast={mostrarToastGlobal}
       />
 
+      <ModalCambiosDocentePendientes
+        abierto={!!cambiosDocente?.modalAbierto}
+        cambios={cambiosDocente?.pendientes || []}
+        cargando={!!cambiosDocente?.cargando}
+        resolviendoId={cambiosDocente?.resolviendoId}
+        ignorandoId={cambiosDocente?.ignorandoId}
+        onClose={cambiosDocente?.cerrar}
+        onAplicar={cambiosDocente?.aplicar}
+        onIgnorar={cambiosDocente?.ignorar}
+        onAbrirMesa={cambiosDocente?.abrirMesa}
+      />
+
       <ModalEditarMesa
         abierto={modalEditarAbierto}
         grupo={grupoEdicion}
@@ -1782,6 +2030,7 @@ const MesasExamen = () => {
         flechas={flechasEdicion}
         eliminar={eliminarEdicion}
         agregarNumero={agregarNumeroEdicion}
+        cambiosDocentePendientes={cambiosDocentePendientesLista}
       />
 
       <ModalTituloPdfMesas

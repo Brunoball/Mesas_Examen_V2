@@ -7,6 +7,7 @@ require_once __DIR__ . '/armado_mesas_docentes/armado_mesas_docentes_controller.
 require_once __DIR__ . '/editar_mesas/route.php';
 require_once __DIR__ . '/resultados/route_resultados.php';
 require_once __DIR__ . '/historial_mesas/route_historial.php';
+require_once __DIR__ . '/docentes_cambios/route_docentes_cambios.php';
 
 function route_mesas(string $action): bool
 {
@@ -19,6 +20,10 @@ function route_mesas(string $action): bool
     }
 
     if (route_mesas_historial($action)) {
+        return true;
+    }
+
+    if (route_mesas_docentes_cambios($action)) {
         return true;
     }
 

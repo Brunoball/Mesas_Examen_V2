@@ -5,6 +5,14 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/helpers.php';
 
+// El helper de avisos de mesas es opcional para que Cátedras no se rompa
+// si todavía no se copió la carpeta nueva al servidor.
+$__catedrasCambiosDocentesHelper = __DIR__ . '/../mesas/docentes_cambios/docentes_cambios_helpers.php';
+if (is_file($__catedrasCambiosDocentesHelper)) {
+    require_once $__catedrasCambiosDocentesHelper;
+}
+unset($__catedrasCambiosDocentesHelper);
+
 function catedras_int($value): int
 {
     return is_numeric($value) ? (int)$value : 0;
@@ -20,6 +28,39 @@ function catedras_paginacion(): array
         'por_pagina' => $porPagina,
         'offset' => ($pagina - 1) * $porPagina,
     ];
+}
+
+/**
+ * Registra un aviso pendiente cuando se cambia el docente de una cátedra
+ * que ya forma parte de una mesa armada.
+ *
+ * Se usa un wrapper local para evitar errores si el helper de Mesas todavía
+ * no fue copiado y para que el módulo Cátedras no dependa fuerte del módulo Mesas.
+ */
+function catedras_registrar_cambio_docente_en_mesas(PDO $pdo, int $idCatedra, ?int $idDocenteAnterior, ?int $idDocenteNuevo): int
+{
+    $funcion = 'mesas_docentes_cambios_registrar_catedra_actualizada';
+
+    if (!function_exists($funcion)) {
+        $helper = __DIR__ . '/../mesas/docentes_cambios/docentes_cambios_helpers.php';
+        if (is_file($helper)) {
+            require_once $helper;
+        }
+    }
+
+    if (!function_exists($funcion)) {
+        if (function_exists('log_error')) {
+            log_error(
+                new RuntimeException('No se encontró docentes_cambios_helpers.php para registrar cambios pendientes de docente en mesas.'),
+                'catedras_registrar_cambio_docente_en_mesas_helper_faltante'
+            );
+        }
+        return 0;
+    }
+
+    /** @var callable $callable */
+    $callable = $funcion;
+    return (int)$callable($pdo, $idCatedra, $idDocenteAnterior, $idDocenteNuevo);
 }
 
 function catedras_catalogos(): void
@@ -170,15 +211,21 @@ function catedras_asignar_docente(): void
     }
 
     try {
-        $stmtCat = $pdo->prepare('SELECT id_catedra FROM catedras WHERE id_catedra = :id_catedra AND activo = 1 LIMIT 1');
+        $stmtCat = $pdo->prepare('SELECT id_catedra, id_docente FROM catedras WHERE id_catedra = :id_catedra AND activo = 1 LIMIT 1');
         $stmtCat->execute([':id_catedra' => $idCatedra]);
+        $catedraActual = $stmtCat->fetch(PDO::FETCH_ASSOC);
 
-        if (!$stmtCat->fetch(PDO::FETCH_ASSOC)) {
+        if (!$catedraActual) {
             json_response([
                 'exito' => false,
                 'mensaje' => 'La cátedra no existe o está inactiva.',
             ], 404);
         }
+
+        $idDocenteAnterior = isset($catedraActual['id_docente']) && $catedraActual['id_docente'] !== null
+            ? (int)$catedraActual['id_docente']
+            : null;
+        $idDocenteNuevo = $idDocente > 0 ? $idDocente : null;
 
         if ($idDocente > 0) {
             $stmtDoc = $pdo->prepare('SELECT id_docente FROM docentes WHERE id_docente = :id_docente AND activo = 1 LIMIT 1');
@@ -201,9 +248,25 @@ function catedras_asignar_docente(): void
         $stmt->bindValue(':id_catedra', $idCatedra, PDO::PARAM_INT);
         $stmt->execute();
 
+        $cambiosMesas = 0;
+        try {
+            $cambiosMesas = catedras_registrar_cambio_docente_en_mesas(
+                $pdo,
+                $idCatedra,
+                $idDocenteAnterior,
+                $idDocenteNuevo
+            );
+        } catch (Throwable $e) {
+            // El cambio de cátedra no debe fallar por el aviso de mesas. Lo dejamos logueado.
+            log_error($e, 'catedras_asignar_docente_registrar_cambio_mesas');
+        }
+
         json_response([
             'exito' => true,
             'mensaje' => $idDocente > 0 ? 'Docente asignado correctamente.' : 'Docente quitado correctamente.',
+            'data' => [
+                'cambios_mesas_pendientes' => $cambiosMesas,
+            ],
         ]);
     } catch (Throwable $e) {
         log_error($e, __FUNCTION__);

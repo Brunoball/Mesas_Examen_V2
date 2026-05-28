@@ -312,6 +312,19 @@ export const obtenerExportacionHistorialMesas = ({ busqueda = "", limite_armados
   }));
 };
 
+
+export const listarCambiosDocenteMesasPendientes = () => {
+  return apiGet("mesas_docentes_cambios_pendientes");
+};
+
+export const aplicarCambioDocenteMesa = ({ id_cambio } = {}) => {
+  return apiPost("mesas_docentes_cambios_aplicar", { id_cambio });
+};
+
+export const ignorarCambioDocenteMesa = ({ id_cambio } = {}) => {
+  return apiPost("mesas_docentes_cambios_ignorar", { id_cambio });
+};
+
 export const obtenerPerfilInstitucional = () => {
   return apiGet("perfil_obtener");
 };

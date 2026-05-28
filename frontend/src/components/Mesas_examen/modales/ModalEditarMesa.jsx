@@ -13,6 +13,7 @@ import {
   faTrash,
   faUser,
   faTimes,
+  faTriangleExclamation,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "../../Global/Global_css/Global_Modals.css";
@@ -292,28 +293,50 @@ const CalendarMesa = ({ fechaSeleccionada, idTurno, slotsDisponibles = [], carga
   );
 };
 
-const SlotNumero = ({ numero, onVerPrevias, onAgregarPrevia, onMoverNumero, onEliminarNumero }) => (
-  <article className="editar-mesa-slot-card">
-    <div className="editar-mesa-slot-actions">
-      <span className="editar-mesa-numero-chip">N° {texto(numero?.numero_mesa)}</span>
-      <button type="button" title="Ver previas / alumnos" onClick={() => onVerPrevias && onVerPrevias(numero)}>
-        <FontAwesomeIcon icon={faUser} />
-      </button>
-      <button type="button" title="Agregar previa / alumno" onClick={() => onAgregarPrevia && onAgregarPrevia(numero)}>
-        <FontAwesomeIcon icon={faPlus} />
-      </button>
-      <button type="button" title="Mover número a otro grupo" onClick={() => onMoverNumero && onMoverNumero(numero)}>
-        <FontAwesomeIcon icon={faExchangeAlt} />
-      </button>
-      <button type="button" title="Quitar número del grupo" onClick={() => onEliminarNumero && onEliminarNumero(numero)}>
-        <FontAwesomeIcon icon={faTrash} />
-      </button>
-    </div>
+const obtenerResumenCambioDocente = (cambios = []) => {
+  const cambio = Array.isArray(cambios) ? cambios[0] : null;
+  if (!cambio) return "Docente cambiado pendiente";
 
-    <h3>{texto(numero?.materia, "Sin materia")}</h3>
-    <p>Docentes: {texto(numero?.docente, "Sin docente")}</p>
-  </article>
-);
+  const anterior = texto(cambio?.docente_anterior || cambio?.docente_anterior_nombre, "Sin docente anterior");
+  const nuevo = texto(cambio?.docente_nuevo || cambio?.docente_nuevo_nombre, "Sin docente nuevo");
+  return `${anterior} → ${nuevo}`;
+};
+
+const SlotNumero = ({ numero, cambiosDocente = [], onVerPrevias, onAgregarPrevia, onMoverNumero, onEliminarNumero }) => {
+  const tieneCambioDocente = Array.isArray(cambiosDocente) && cambiosDocente.length > 0;
+
+  return (
+    <article className={`editar-mesa-slot-card ${tieneCambioDocente ? "editar-mesa-slot-card--docenteCambio" : ""}`}>
+      <div className="editar-mesa-slot-actions">
+        <span className={`editar-mesa-numero-chip ${tieneCambioDocente ? "editar-mesa-numero-chip--docenteCambio" : ""}`}>
+          N° {texto(numero?.numero_mesa)}
+        </span>
+        <button type="button" title="Ver previas / alumnos" onClick={() => onVerPrevias && onVerPrevias(numero)}>
+          <FontAwesomeIcon icon={faUser} />
+        </button>
+        <button type="button" title="Agregar previa / alumno" onClick={() => onAgregarPrevia && onAgregarPrevia(numero)}>
+          <FontAwesomeIcon icon={faPlus} />
+        </button>
+        <button type="button" title="Mover número a otro grupo" onClick={() => onMoverNumero && onMoverNumero(numero)}>
+          <FontAwesomeIcon icon={faExchangeAlt} />
+        </button>
+        <button type="button" title="Quitar número del grupo" onClick={() => onEliminarNumero && onEliminarNumero(numero)}>
+          <FontAwesomeIcon icon={faTrash} />
+        </button>
+      </div>
+
+      {tieneCambioDocente && (
+        <div className="editar-mesa-docenteCambioNotice">
+          <FontAwesomeIcon icon={faTriangleExclamation} />
+          <span>{obtenerResumenCambioDocente(cambiosDocente)}</span>
+        </div>
+      )}
+
+      <h3>{texto(numero?.materia, "Sin materia")}</h3>
+      <p>Docentes: {texto(numero?.docente, "Sin docente")}</p>
+    </article>
+  );
+};
 
 const SlotVacio = ({ onClick, esExtraLibre = false, eliminando = false, onEliminarSlot }) => (
   <div className={`editar-mesa-slot-empty ${esExtraLibre ? "editar-mesa-slot-empty-extra" : ""}`}>
@@ -337,7 +360,7 @@ const SlotVacio = ({ onClick, esExtraLibre = false, eliminando = false, onElimin
   </div>
 );
 
-const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardando, slotsDisponibles, cargandoSlots = false, onClose, onSave, onCrearGrupoUnico, onDelete, onLoadSlots, persona = {}, mas = {}, flechas = {}, eliminar = {}, agregarNumero = {} }) => {
+const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardando, slotsDisponibles, cargandoSlots = false, onClose, onSave, onCrearGrupoUnico, onDelete, onLoadSlots, persona = {}, mas = {}, flechas = {}, eliminar = {}, agregarNumero = {}, cambiosDocentePendientes = [] }) => {
   const [fechaMesa, setFechaMesa] = useState("");
   const [idTurno, setIdTurno] = useState("");
   const [hora, setHora] = useState("07:30");
@@ -349,6 +372,24 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
     const base = Array.isArray(grupo?.numeros) ? grupo.numeros : [];
     return base;
   }, [grupo]);
+
+  const cambiosDocentePorNumero = useMemo(() => {
+    const mapa = new Map();
+    (Array.isArray(cambiosDocentePendientes) ? cambiosDocentePendientes : []).forEach((cambio) => {
+      const numeroMesa = Number(cambio?.numero_mesa || 0);
+      if (!numeroMesa) return;
+      const actuales = mapa.get(numeroMesa) || [];
+      actuales.push(cambio);
+      mapa.set(numeroMesa, actuales);
+    });
+    return mapa;
+  }, [cambiosDocentePendientes]);
+
+  const obtenerCambiosNumero = useCallback((numero) => {
+    const numeroMesa = Number(numero?.numero_mesa || 0);
+    if (!numeroMesa) return [];
+    return cambiosDocentePorNumero.get(numeroMesa) || [];
+  }, [cambiosDocentePorNumero]);
 
   const grupoTieneTaller = useMemo(() => esGrupoTaller(grupo, numeros), [grupo, numeros]);
   const capacidadSlots = useMemo(() => calcularCapacidadSlots(grupo, numeros), [grupo, numeros]);
@@ -611,15 +652,25 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
                       o crear un grupo nuevo donde será una <strong>mesa única</strong> (un solo número en el grupo).
                     </p>
 
-                    {numeros[0] && (
-                      <article className="editar-mesa-no-agrupada-numero">
-                        <div>
-                          <span className="editar-mesa-numero-chip">N° {texto(numeros[0]?.numero_mesa)}</span>
-                          <strong>{texto(numeros[0]?.materia || grupo?.materia, "Sin materia")}</strong>
-                        </div>
-                        <p>Docentes: {texto(numeros[0]?.docente || grupo?.docente, "Sin docente")}</p>
-                      </article>
-                    )}
+                    {numeros[0] && (() => {
+                      const cambiosNumero = obtenerCambiosNumero(numeros[0]);
+                      const tieneCambioDocente = cambiosNumero.length > 0;
+                      return (
+                        <article className={`editar-mesa-no-agrupada-numero ${tieneCambioDocente ? "editar-mesa-no-agrupada-numero--docenteCambio" : ""}`}>
+                          <div>
+                            <span className={`editar-mesa-numero-chip ${tieneCambioDocente ? "editar-mesa-numero-chip--docenteCambio" : ""}`}>N° {texto(numeros[0]?.numero_mesa)}</span>
+                            <strong>{texto(numeros[0]?.materia || grupo?.materia, "Sin materia")}</strong>
+                          </div>
+                          {tieneCambioDocente && (
+                            <div className="editar-mesa-docenteCambioNotice">
+                              <FontAwesomeIcon icon={faTriangleExclamation} />
+                              <span>{obtenerResumenCambioDocente(cambiosNumero)}</span>
+                            </div>
+                          )}
+                          <p>Docentes: {texto(numeros[0]?.docente || grupo?.docente, "Sin docente")}</p>
+                        </article>
+                      );
+                    })()}
 
                     <button
                       type="button"
@@ -669,6 +720,7 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
                           <SlotNumero
                             key={slot.numero_mesa || index}
                             numero={slot}
+                            cambiosDocente={obtenerCambiosNumero(slot)}
                             onVerPrevias={persona.abrirPreviasNumero}
                             onAgregarPrevia={mas.abrirAgregarNumero}
                             onMoverNumero={flechas.abrirMoverNumero}
