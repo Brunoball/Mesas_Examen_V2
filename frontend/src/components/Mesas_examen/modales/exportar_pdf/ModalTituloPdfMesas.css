@@ -7,7 +7,7 @@
 .mesas-title-pdf-overlay{
   position:fixed;
   inset:0;
-  z-index:2147483000;
+  z-index:100;
   display:flex;
   align-items:center;
   justify-content:center;

@@ -1,0 +1,232 @@
+/* =========================================================
+   Mesas — Modal de cambios de docente pendientes
+   Usa Global_Modals.css como base y solo define estilos propios.
+========================================================= */
+
+.docenteCambio-modalOverlay.gm-modalOverlay{
+  z-index:100;
+}
+
+.docenteCambio-modal.gm-modal{
+  width:min(980px, 96vw);
+  max-height:min(88vh, 760px);
+}
+
+.docenteCambio-modal__header.gm-modal__header{
+  min-height:78px;
+}
+
+.docenteCambio-modal__headText p{
+  max-width:820px;
+}
+
+.docenteCambio-modal__headIcon.gm-modal__headIcon,
+.docenteCambio-empty__icon.gm-emptySchedule__icon{
+  color:#fff;
+  background:rgba(245,158,11,.18);
+  border-color:rgba(255,255,255,.22);
+}
+
+.docenteCambio-modal__content.gm-modal__content{
+  padding:16px;
+  gap:12px;
+  overflow-x:hidden;
+  overflow-y:auto;
+  background:linear-gradient(180deg, #fff 0%, var(--gm-bg, #FDFBF7) 100%);
+  scrollbar-gutter:stable;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(58,46,43,.18) transparent;
+}
+
+.docenteCambio-modal__content.gm-modal__content::-webkit-scrollbar{
+  width:8px;
+}
+
+.docenteCambio-modal__content.gm-modal__content::-webkit-scrollbar-track{
+  background:transparent;
+}
+
+.docenteCambio-modal__content.gm-modal__content::-webkit-scrollbar-thumb{
+  background:rgba(58,46,43,.18);
+  border-radius:999px;
+}
+
+.docenteCambio-empty.gm-emptySchedule{
+  min-height:190px;
+  border-style:solid;
+}
+
+.docenteCambio-empty__icon.gm-emptySchedule__icon{
+  color:var(--gm-action, #C48B3B);
+  background:rgba(196,139,59,.08);
+  border:1px solid rgba(196,139,59,.14);
+}
+
+.docenteCambio-list{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.docenteCambio-item.gm-panel{
+  overflow:hidden;
+  border-color:rgba(58,46,43,.09);
+  background:#fff;
+  box-shadow:0 14px 30px -28px rgba(58,46,43,.42);
+  transition:border-color var(--gm-trans, 160ms ease), box-shadow var(--gm-trans, 160ms ease), transform var(--gm-trans, 160ms ease);
+}
+
+
+
+.docenteCambio-item__body{
+  min-width:0;
+  padding:14px;
+}
+
+.docenteCambio-cardGrid{
+  min-width:0;
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:12px;
+}
+
+.docenteCambio-infoCard{
+  min-width:0;
+  min-height:104px;
+  padding:14px 15px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:7px;
+  border:1px solid rgba(58,46,43,.09);
+  border-radius:18px;
+  background:linear-gradient(180deg, #fff 0%, rgba(253,251,247,.72) 100%);
+  box-shadow:0 10px 24px -24px rgba(58,46,43,.38);
+}
+
+.docenteCambio-infoCard--mesa{
+  border-color:rgba(196,139,59,.15);
+  background:linear-gradient(180deg, rgba(196,139,59,.07) 0%, #fff 100%);
+}
+
+.docenteCambio-infoCard--nuevo{
+  border-color:rgba(0,85,187,.14);
+  background:linear-gradient(180deg, rgba(0,85,187,.055) 0%, #fff 100%);
+}
+
+.docenteCambio-infoCard__label{
+  color:color-mix(in srgb, var(--gm-action, #C48B3B) 76%, #000);
+  font-size:10.5px;
+  font-weight:760;
+  letter-spacing:.09em;
+  line-height:1.1;
+  text-transform:uppercase;
+}
+
+.docenteCambio-infoCard strong{
+  min-width:0;
+  color:var(--gm-ink, #3A2E2B);
+  font-size:16px;
+  font-weight:680;
+  line-height:1.18;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.docenteCambio-infoCard p{
+  min-width:0;
+  margin:0;
+  color:var(--gm-muted, #786661);
+  font-size:12.5px;
+  font-weight:500;
+  line-height:1.35;
+}
+
+.docenteCambio-infoCard p span{
+  display:block;
+  min-width:0;
+  margin-top:2px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.docenteCambio-item__actions.gm-modal__actions{
+  padding:12px 14px 14px;
+  justify-content:flex-end;
+  gap:9px;
+  background:linear-gradient(180deg, rgba(253,251,247,.82) 0%, #fff 100%);
+  border-top:1px solid rgba(58,46,43,.08);
+}
+
+.docenteCambio-btn.gm-btn{
+  min-height:39px;
+  border-radius:13px;
+  padding-inline:15px;
+  font-size:12.5px;
+  font-weight:690;
+}
+
+.docenteCambio-btn--danger.gm-btn{
+  color:var(--gm-danger, #E13D45);
+  border-color:rgba(225,61,69,.16);
+  background:rgba(225,61,69,.055);
+}
+
+.docenteCambio-btn--danger.gm-btn:hover:not(:disabled){
+  transform:translateY(-1px);
+  border-color:rgba(225,61,69,.28);
+  background:rgba(225,61,69,.095);
+  box-shadow:0 8px 20px rgba(225,61,69,.10);
+}
+
+@media (max-width:720px){
+  .docenteCambio-modal.gm-modal{
+    width:100%;
+    max-height:100%;
+  }
+
+  .docenteCambio-modal__header.gm-modal__header{
+    min-height:auto;
+  }
+
+  .docenteCambio-modal__content.gm-modal__content{
+    padding:11px;
+  }
+
+  .docenteCambio-item__body{
+    padding:12px;
+  }
+
+  .docenteCambio-cardGrid{
+    gap:10px;
+  }
+
+  .docenteCambio-infoCard{
+    min-height:96px;
+    padding:13px;
+    border-radius:16px;
+  }
+
+  .docenteCambio-item__actions.gm-modal__actions{
+    justify-content:stretch;
+    flex-wrap:wrap;
+    padding:11px 12px 12px;
+  }
+
+  .docenteCambio-btn.gm-btn{
+    flex:1 1 145px;
+  }
+}
+
+@media (max-width:520px){
+  .docenteCambio-cardGrid{
+    grid-template-columns:1fr;
+  }
+
+  .docenteCambio-btn.gm-btn{
+    flex-basis:100%;
+    width:100%;
+  }
+}
