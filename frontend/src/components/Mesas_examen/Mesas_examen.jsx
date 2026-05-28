@@ -2220,6 +2220,8 @@ const MesasExamen = () => {
         eliminar={eliminarEdicion}
         agregarNumero={agregarNumeroEdicion}
         cambiosDocentePendientes={cambiosDocentePendientesLista}
+        aplicandoCambioDocenteId={cambiosDocente?.resolviendoId}
+        onAplicarCambioDocente={cambiosDocente?.aplicar}
       />
 
       <ModalTituloPdfMesas

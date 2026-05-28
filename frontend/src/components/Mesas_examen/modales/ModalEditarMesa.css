@@ -1016,6 +1016,41 @@
   align-items:center;
   gap:8px;
   line-height:1.35;
+  flex-wrap:wrap;
+}
+
+.editar-mesa-docenteCambioNotice > span{
+  flex:1 1 auto;
+  min-width:160px;
+}
+
+.editar-mesa-docenteCambioNotice__btn{
+  flex:0 0 auto;
+  border:1px solid rgba(180,83,9,.24);
+  background:linear-gradient(180deg, #fff, #fff7ed);
+  color:#9a3412;
+  border-radius:999px;
+  padding:5px 10px;
+  font-size:11px;
+  font-weight:900;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  cursor:pointer;
+  box-shadow:0 7px 16px -14px rgba(154,52,18,.65);
+  transition:transform var(--gm-trans, 160ms ease), box-shadow var(--gm-trans, 160ms ease), border-color var(--gm-trans, 160ms ease);
+}
+
+.editar-mesa-docenteCambioNotice__btn:hover:not(:disabled){
+  transform:translateY(-1px);
+  border-color:rgba(180,83,9,.42);
+  box-shadow:0 9px 18px -14px rgba(154,52,18,.82);
+}
+
+.editar-mesa-docenteCambioNotice__btn:disabled{
+  opacity:.68;
+  cursor:not-allowed;
 }
 
 /* Selector de horario dividido: hora por un lado y minutos por el otro, respetando el rango permitido. */

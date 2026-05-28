@@ -379,8 +379,26 @@ const obtenerResumenCambioDocente = (cambios = []) => {
   return `${anterior} → ${nuevo}`;
 };
 
-const SlotNumero = ({ numero, cambiosDocente = [], onVerPrevias, onAgregarPrevia, onMoverNumero, onEliminarNumero }) => {
+const SlotNumero = ({
+  numero,
+  cambiosDocente = [],
+  aplicandoCambioDocenteId = null,
+  onAplicarCambioDocente,
+  onVerPrevias,
+  onAgregarPrevia,
+  onMoverNumero,
+  onEliminarNumero,
+}) => {
   const tieneCambioDocente = Array.isArray(cambiosDocente) && cambiosDocente.length > 0;
+  const cambioDocentePrincipal = tieneCambioDocente ? cambiosDocente[0] : null;
+  const idCambioDocentePrincipal = Number(cambioDocentePrincipal?.id_cambio || 0);
+  const aplicandoCambioDocente = idCambioDocentePrincipal > 0 && Number(aplicandoCambioDocenteId || 0) === idCambioDocentePrincipal;
+  const puedeAplicarCambioDocente = tieneCambioDocente && typeof onAplicarCambioDocente === "function" && idCambioDocentePrincipal > 0;
+
+  const handleAplicarCambioDocente = () => {
+    if (!puedeAplicarCambioDocente || aplicandoCambioDocente) return;
+    onAplicarCambioDocente(cambioDocentePrincipal);
+  };
 
   return (
     <article className={`editar-mesa-slot-card ${tieneCambioDocente ? "editar-mesa-slot-card--docenteCambio" : ""}`}>
@@ -406,6 +424,18 @@ const SlotNumero = ({ numero, cambiosDocente = [], onVerPrevias, onAgregarPrevia
         <div className="editar-mesa-docenteCambioNotice">
           <FontAwesomeIcon icon={faTriangleExclamation} />
           <span>{obtenerResumenCambioDocente(cambiosDocente)}</span>
+          {puedeAplicarCambioDocente && (
+            <button
+              type="button"
+              className="editar-mesa-docenteCambioNotice__btn"
+              onClick={handleAplicarCambioDocente}
+              disabled={aplicandoCambioDocente}
+              title="Aplicar el nuevo docente y recargar esta mesa"
+            >
+              {aplicandoCambioDocente && <FontAwesomeIcon icon={faSpinner} spin />}
+              Aplicar cambio
+            </button>
+          )}
         </div>
       )}
 
@@ -437,7 +467,29 @@ const SlotVacio = ({ onClick, esExtraLibre = false, eliminando = false, onElimin
   </div>
 );
 
-const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardando, slotsDisponibles, cargandoSlots = false, onClose, onSave, onCrearGrupoUnico, onDelete, onLoadSlots, persona = {}, mas = {}, flechas = {}, eliminar = {}, agregarNumero = {}, cambiosDocentePendientes = [] }) => {
+const ModalEditarMesa = ({
+  abierto,
+  grupo,
+  tipo,
+  turnos = [],
+  cargando,
+  guardando,
+  slotsDisponibles,
+  cargandoSlots = false,
+  onClose,
+  onSave,
+  onCrearGrupoUnico,
+  onDelete,
+  onLoadSlots,
+  persona = {},
+  mas = {},
+  flechas = {},
+  eliminar = {},
+  agregarNumero = {},
+  cambiosDocentePendientes = [],
+  aplicandoCambioDocenteId = null,
+  onAplicarCambioDocente,
+}) => {
   const [fechaMesa, setFechaMesa] = useState("");
   const [idTurno, setIdTurno] = useState("");
   const [hora, setHora] = useState("07:30");
@@ -757,6 +809,10 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
                     {numeros[0] && (() => {
                       const cambiosNumero = obtenerCambiosNumero(numeros[0]);
                       const tieneCambioDocente = cambiosNumero.length > 0;
+                      const cambioDocentePrincipal = tieneCambioDocente ? cambiosNumero[0] : null;
+                      const idCambioDocentePrincipal = Number(cambioDocentePrincipal?.id_cambio || 0);
+                      const aplicandoCambioDocente = idCambioDocentePrincipal > 0 && Number(aplicandoCambioDocenteId || 0) === idCambioDocentePrincipal;
+                      const puedeAplicarCambioDocente = tieneCambioDocente && typeof onAplicarCambioDocente === "function" && idCambioDocentePrincipal > 0;
                       return (
                         <article className={`editar-mesa-no-agrupada-numero ${tieneCambioDocente ? "editar-mesa-no-agrupada-numero--docenteCambio" : ""}`}>
                           <div>
@@ -767,6 +823,18 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
                             <div className="editar-mesa-docenteCambioNotice">
                               <FontAwesomeIcon icon={faTriangleExclamation} />
                               <span>{obtenerResumenCambioDocente(cambiosNumero)}</span>
+                              {puedeAplicarCambioDocente && (
+                                <button
+                                  type="button"
+                                  className="editar-mesa-docenteCambioNotice__btn"
+                                  onClick={() => !aplicandoCambioDocente && onAplicarCambioDocente(cambioDocentePrincipal)}
+                                  disabled={aplicandoCambioDocente}
+                                  title="Aplicar el nuevo docente y recargar esta mesa"
+                                >
+                                  {aplicandoCambioDocente && <FontAwesomeIcon icon={faSpinner} spin />}
+                                  Aplicar cambio
+                                </button>
+                              )}
                             </div>
                           )}
                           <p>Docentes: {texto(numeros[0]?.docente || grupo?.docente, "Sin docente")}</p>
@@ -823,6 +891,8 @@ const ModalEditarMesa = ({ abierto, grupo, tipo, turnos = [], cargando, guardand
                             key={slot.numero_mesa || index}
                             numero={slot}
                             cambiosDocente={obtenerCambiosNumero(slot)}
+                            aplicandoCambioDocenteId={aplicandoCambioDocenteId}
+                            onAplicarCambioDocente={onAplicarCambioDocente}
                             onVerPrevias={persona.abrirPreviasNumero}
                             onAgregarPrevia={mas.abrirAgregarNumero}
                             onMoverNumero={flechas.abrirMoverNumero}
