@@ -522,7 +522,6 @@ export default function Docentes() {
           onConfirm={confirmarOperacion}
           onClose={() => setModalConfirmar({ abierto: false, tipo: '', item: null })}
           onToast={mostrarMensaje}
-          hideLocalError
           {...obtenerConfigModalConfirmar()}
         />
       )}

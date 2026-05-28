@@ -153,36 +153,6 @@
   font-weight:470;
 }
 
-.modal-importar-previas__resultado{
-  padding:12px 13px;
-  border-radius:14px;
-  border:1px solid transparent;
-  font-size:13px;
-  line-height:1.4;
-}
-
-.modal-importar-previas__resultado.is-ok{
-  border-color:color-mix(in srgb, var(--gm-success) 24%, #fff);
-  background:color-mix(in srgb, var(--gm-success) 9%, #fff);
-  color:color-mix(in srgb, var(--gm-success) 60%, var(--gm-ink));
-}
-
-.modal-importar-previas__resultado.is-error{
-  border-color:color-mix(in srgb, var(--gm-danger) 24%, #fff);
-  background:color-mix(in srgb, var(--gm-danger) 8%, #fff);
-  color:color-mix(in srgb, var(--gm-danger) 68%, var(--gm-ink));
-}
-
-.modal-importar-previas__resultadoHead{
-  display:flex;
-  align-items:flex-start;
-  gap:8px;
-}
-
-.modal-importar-previas__resultadoHead svg{
-  margin-top:2px;
-  flex:0 0 auto;
-}
 
 .modal-importar-previas__stats{
   display:flex;
@@ -411,7 +381,3 @@
   }
 }
 
-/* El resultado visible de importar queda como indicadores; errores/alertas van por toast. */
-.modal-importar-previas__resultado > .modal-importar-previas__stats{
-  margin-top:0;
-}

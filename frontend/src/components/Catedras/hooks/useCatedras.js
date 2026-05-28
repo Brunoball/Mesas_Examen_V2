@@ -32,6 +32,15 @@ export function useCatedras() {
   // Igual que Previas: se cargan 100 registros por página.
   const paginacion = usePaginacion(100);
 
+  const cerrarError = useCallback(() => {
+    setError('');
+  }, []);
+
+  const cerrarMensaje = useCallback(() => {
+    window.clearTimeout(window.__catedrasMsgTimer);
+    setMensaje(null);
+  }, []);
+
   const mostrarMensaje = useCallback((tipo, texto) => {
     setMensaje({ tipo, texto });
     window.clearTimeout(window.__catedrasMsgTimer);
@@ -138,8 +147,10 @@ export function useCatedras() {
     catalogos,
     loading,
     error,
+    cerrarError,
     mensaje,
     mostrarMensaje,
+    cerrarMensaje,
     busqueda,
     setBusqueda,
     filtros,

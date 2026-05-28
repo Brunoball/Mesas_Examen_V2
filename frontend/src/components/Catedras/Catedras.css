@@ -240,24 +240,8 @@
   border-radius:10px;
 }
 
-.catedras-alerta{
-  border-radius:12px;
-  padding:10px 12px;
-  font-size:13px;
-  font-weight:560;
-}
 
-.catedras-alerta-error{
-  background:color-mix(in srgb, var(--balto-danger) 10%, #fff);
-  color:color-mix(in srgb, var(--balto-danger) 60%, var(--balto-ink));
-  border:1px solid color-mix(in srgb, var(--balto-danger) 24%, #fff);
-}
 
-.catedras-alerta-success{
-  background:rgba(34,173,92,.10);
-  color:#16864a;
-  border:1px solid rgba(34,173,92,.22);
-}
 
 @media (max-width:1260px){
   .catedras-card__head,

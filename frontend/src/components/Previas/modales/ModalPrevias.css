@@ -576,17 +576,6 @@
   text-transform:uppercase;
 }
 
-.previas-insc-error{
-  margin-top:2px;
-  padding:12px 14px;
-  border:1px solid rgba(225,61,69,.24);
-  border-left:3px solid var(--gm-danger, var(--balto-danger, #E13D45));
-  border-radius:12px;
-  background:rgba(225,61,69,.08);
-  color:color-mix(in srgb, var(--gm-danger, var(--balto-danger, #E13D45)) 62%, #000);
-  font-size:13px;
-  font-weight:700;
-}
 
 .previas-insc-loading{
   min-height:260px;

@@ -14,6 +14,7 @@ import { useCatedras } from './hooks/useCatedras';
 import ModalAsignarDocente from './modales/ModalAsignarDocente';
 import ModalExportarGlobal from '../Global/Modales/ModalExportarGlobal.jsx';
 import BotonExportarHistorialGlobal from '../Global/Botones/BotonExportarHistorialGlobal.jsx';
+import Toast from '../Global/Toast.jsx';
 import '../Global/Global_css/roots.css';
 import '../Global/Global_css/Global_Section.css';
 import '../Global/Global_css/Global_DivTable.css';
@@ -98,8 +99,10 @@ export default function Catedras() {
     catalogos,
     loading,
     error,
+    cerrarError,
     mensaje,
     mostrarMensaje,
+    cerrarMensaje,
     busqueda,
     setBusqueda,
     filtros,
@@ -139,14 +142,6 @@ export default function Catedras() {
 
   const contenido = (
     <div className="catedras-page mov-page">
-      {mensaje && (
-        <div className={`mov-alert catedras-alerta ${mensaje.tipo === 'success' ? 'catedras-alerta-success' : 'catedras-alerta-error'}`}>
-          {mensaje.texto}
-        </div>
-      )}
-
-      {error && <div className="mov-alert catedras-alerta catedras-alerta-error">{error}</div>}
-
       <section className="catedras-card mov-card mov-card--table">
         <div className="mov-card__head catedras-card__head">
           <div className="mov-card__headLeft catedras-card__headLeft">
@@ -389,6 +384,24 @@ export default function Catedras() {
           docentes={catalogos.docentes}
           onGuardar={handleAsignarDocente}
           onCerrar={cerrarModalAsignar}
+        />
+      )}
+
+      {mensaje && (
+        <Toast
+          tipo={mensaje.tipo}
+          mensaje={mensaje.texto}
+          duracion={mensaje.tipo === 'error' ? 4200 : 2800}
+          onClose={cerrarMensaje}
+        />
+      )}
+
+      {error && (
+        <Toast
+          tipo="error"
+          mensaje={error}
+          duracion={4200}
+          onClose={cerrarError}
         />
       )}
     </div>

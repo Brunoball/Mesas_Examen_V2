@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -8,6 +8,7 @@ import {
   faTimes,
 } from '@fortawesome/free-solid-svg-icons';
 import '../../Global/Global_css/Global_Modals.css';
+import Toast from '../../Global/Toast.jsx';
 import './ModalPrevias.css';
 
 function safeText(value) {
@@ -35,17 +36,34 @@ export default function ModalInscribirPrevia({
   error = '',
   onClose,
   onConfirm,
+  onToast,
 }) {
   const materias = useMemo(() => normalizarMaterias(data?.materias), [data]);
   const principal = useMemo(() => materias.find((m) => m.principal) || materias[0] || null, [materias]);
   const [email, setEmail] = useState('');
   const [seleccionadas, setSeleccionadas] = useState([]);
-  const [localError, setLocalError] = useState('');
+  const [toastLocal, setToastLocal] = useState(null);
+
+  const mostrarToast = useCallback((tipo, mensaje, duracion = 4200) => {
+    if (!mensaje) return;
+
+    if (typeof onToast === 'function') {
+      onToast(tipo, mensaje, duracion);
+      return;
+    }
+
+    setToastLocal({
+      id: Date.now(),
+      tipo,
+      mensaje,
+      duracion,
+    });
+  }, [onToast]);
 
   useEffect(() => {
     if (!open) return;
     setEmail('');
-    setLocalError('');
+    setToastLocal(null);
     setSeleccionadas(principal?.id_previa ? [principal.id_previa] : []);
   }, [open, principal?.id_previa]);
 
@@ -69,6 +87,11 @@ export default function ModalInscribirPrevia({
     };
   }, [open, saving, onClose]);
 
+  useEffect(() => {
+    if (!open || !error) return;
+    mostrarToast('error', error, 5200);
+  }, [open, error, mostrarToast]);
+
   if (!open) return null;
 
   const alumno = safeText(data?.alumno || principal?.alumno);
@@ -91,16 +114,16 @@ export default function ModalInscribirPrevia({
     if (saving || loading) return;
 
     if (seleccionadas.length === 0) {
-      setLocalError('Seleccioná al menos una materia para inscribir.');
+      mostrarToast('advertencia', 'Seleccioná al menos una materia para inscribir.', 5200);
       return;
     }
 
     if (!emailValido) {
-      setLocalError('Ingresá un email válido para enviar el comprobante.');
+      mostrarToast('advertencia', 'Ingresá un email válido para enviar el comprobante.', 5200);
       return;
     }
 
-    setLocalError('');
+    setToastLocal(null);
     await onConfirm?.({ idsPrevias: seleccionadas, gmail: email.trim() });
   };
 
@@ -172,11 +195,6 @@ export default function ModalInscribirPrevia({
                 </div>
               </div>
 
-              {(localError || error) && (
-                <div className="previas-insc-error">
-                  {localError || error}
-                </div>
-              )}
             </>
           )}
         </div>
@@ -193,5 +211,19 @@ export default function ModalInscribirPrevia({
     </div>
   );
 
-  return createPortal(contenido, document.body);
+  return createPortal(
+    <>
+      {toastLocal && (
+        <Toast
+          key={toastLocal.id}
+          tipo={toastLocal.tipo}
+          mensaje={toastLocal.mensaje}
+          duracion={toastLocal.duracion}
+          onClose={() => setToastLocal(null)}
+        />
+      )}
+      {contenido}
+    </>,
+    document.body
+  );
 }

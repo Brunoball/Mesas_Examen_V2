@@ -175,20 +175,6 @@
   word-break:break-word;
 }
 
-.gdel-alert{
-  margin:0 0 12px;
-  padding:10px 12px;
-  border-radius:12px;
-  font-size:13px;
-  font-weight:650;
-}
-
-.gdel-alert--error{
-  border:1px solid rgba(225,61,69,.22);
-  background:rgba(225,61,69,.08);
-  color:color-mix(in srgb, var(--balto-danger, #e13d45) 70%, #3A2E2B);
-}
-
 .gdel-reason{
   display:grid;
   gap:7px;

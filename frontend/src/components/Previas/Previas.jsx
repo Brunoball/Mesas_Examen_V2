@@ -734,7 +734,7 @@ export default function Previas() {
     if (res.ok) {
       setModalInscripcion({ abierto: true, item, data: res.data, cargando: false, guardando: false, error: '' });
     } else {
-      setModalInscripcion((prev) => ({ ...prev, cargando: false, error: res.mensaje || 'No se pudieron cargar las materias.' }));
+      setModalInscripcion((prev) => ({ ...prev, cargando: false, error: '' }));
     }
   }
 
@@ -747,7 +747,7 @@ export default function Previas() {
       return res;
     }
 
-    setModalInscripcion((prev) => ({ ...prev, guardando: false, error: res.mensaje || 'No se pudo inscribir.' }));
+    setModalInscripcion((prev) => ({ ...prev, guardando: false, error: '' }));
     return res;
   }
 
@@ -1291,6 +1291,7 @@ export default function Previas() {
           loading={modalInscripcion.cargando}
           saving={modalInscripcion.guardando}
           error={modalInscripcion.error}
+          onToast={mostrarMensaje}
           onClose={() => setModalInscripcion({ abierto: false, item: null, data: null, cargando: false, guardando: false, error: '' })}
           onConfirm={confirmarInscripcionManual}
         />

@@ -8,6 +8,7 @@ import {
   faUserCheck,
   faUserSlash,
 } from '@fortawesome/free-solid-svg-icons';
+import Toast from '../Toast';
 import '../Global_css/Global_ModalEliminar.css';
 
 function safeText(value) {
@@ -112,12 +113,11 @@ export default function ModalEliminarGlobal({
 
   closeOnSuccess = true,
   confirmDisabled = false,
-  hideLocalError = false,
 }) {
   const cancelRef = useRef(null);
   const [procesandoInterno, setProcesandoInterno] = useState(false);
   const [reason, setReason] = useState(initialReason);
-  const [localError, setLocalError] = useState('');
+  const [toastLocal, setToastLocal] = useState(null);
 
   const config = OPERACION_CONFIG[operacion] || OPERACION_CONFIG.advertencia;
   const isLoading = loading || procesandoInterno;
@@ -136,12 +136,24 @@ export default function ModalEliminarGlobal({
   useEffect(() => {
     if (!open) return;
     setReason(initialReason || '');
-    setLocalError('');
+    setToastLocal(null);
   }, [open, initialReason]);
 
   const showToast = useCallback(
     (tipo, mensaje, duracion = 2800) => {
-      if (typeof onToast === 'function') onToast(tipo, mensaje, duracion);
+      if (!mensaje) return;
+
+      if (typeof onToast === 'function') {
+        onToast(tipo, mensaje, duracion);
+        return;
+      }
+
+      setToastLocal({
+        id: Date.now(),
+        tipo,
+        mensaje,
+        duracion,
+      });
     },
     [onToast]
   );
@@ -167,7 +179,7 @@ export default function ModalEliminarGlobal({
 
     const cleanReason = reason.trim();
     if (showReason && reasonRequired && !cleanReason) {
-      setLocalError('Tenés que completar el motivo para continuar.');
+      showToast('error', 'Tenés que completar el motivo para continuar.', 4200);
       return;
     }
 
@@ -178,7 +190,7 @@ export default function ModalEliminarGlobal({
       }
     }
 
-    setLocalError('');
+    setToastLocal(null);
     setProcesandoInterno(true);
     showToast('cargando', resolvedLoadingMessage, 12000);
 
@@ -195,7 +207,6 @@ export default function ModalEliminarGlobal({
       cerrarAlFinal = closeOnSuccess;
     } catch (error) {
       const mensaje = error?.message || resolvedErrorMessage;
-      setLocalError(mensaje);
       showToast('error', mensaje, 4200);
     } finally {
       setProcesandoInterno(false);
@@ -260,7 +271,18 @@ export default function ModalEliminarGlobal({
   if (!open) return null;
 
   return createPortal(
-    <div
+    <>
+      {toastLocal && (
+        <Toast
+          key={toastLocal.id}
+          tipo={toastLocal.tipo}
+          mensaje={toastLocal.mensaje}
+          duracion={toastLocal.duracion}
+          onClose={() => setToastLocal(null)}
+        />
+      )}
+
+      <div
       className="gdel-overlay"
       role="dialog"
       aria-modal="true"
@@ -300,8 +322,6 @@ export default function ModalEliminarGlobal({
             </>
           ) : null}
         </p>
-
-        {localError && !hideLocalError && <div className="gdel-alert gdel-alert--error">{localError}</div>}
 
         {!hideDefaultCard && resolvedDetails.length > 0 && (
           <div className="gdel-card">
@@ -350,7 +370,8 @@ export default function ModalEliminarGlobal({
           </button>
         </div>
       </div>
-    </div>,
+    </div>
+    </>,
     document.body
   );
 }

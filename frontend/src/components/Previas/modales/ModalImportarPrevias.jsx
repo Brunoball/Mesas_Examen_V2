@@ -76,7 +76,6 @@ export default function ModalImportarPrevias({
   const [procesando, setProcesando] = useState(false);
   const [previsualizando, setPrevisualizando] = useState(false);
   const [descargando, setDescargando] = useState(false);
-  const [resultado, setResultado] = useState(null);
   const [preview, setPreview] = useState(null);
 
   function mostrarToast(tipo, texto, duracion = 4200) {
@@ -107,13 +106,11 @@ export default function ModalImportarPrevias({
   if (!open) return null;
 
   async function seleccionarArchivo(file) {
-    setResultado(null);
     setPreview(null);
 
     if (!file) return;
 
     if (!String(file.name || '').toLowerCase().endsWith('.xlsx')) {
-      setResultado(null);
       mostrarToast('advertencia', 'Seleccioná un archivo Excel con extensión .xlsx.', 5200);
       setArchivo(null);
       return;
@@ -127,20 +124,15 @@ export default function ModalImportarPrevias({
 
     if (res?.ok) {
       setPreview(res.data || {});
-      setResultado(null);
       mostrarToast('exito', res.mensaje || 'Vista previa generada correctamente.', 3200);
     } else {
-      setResultado(null);
       mostrarToast('error', mensajeToastResultado(res, 'No se pudo previsualizar el Excel.'), 5200);
     }
   }
 
   async function descargarPlantilla() {
     setDescargando(true);
-    const res = await onDescargarPlantilla?.();
-    if (res && res.ok === false) {
-      setResultado(null);
-    }
+    await onDescargarPlantilla?.();
     setDescargando(false);
   }
 
@@ -148,19 +140,16 @@ export default function ModalImportarPrevias({
     if (!archivo || procesando || previsualizando || !preview?.valido) return;
 
     setProcesando(true);
-    setResultado(null);
     const res = await onImportar?.(archivo);
     setProcesando(false);
 
     if (res?.ok) {
-      setResultado({ ok: true, data: res.data || {} });
       setArchivo(null);
       setPreview(null);
       if (inputRef.current) inputRef.current.value = '';
       return;
     }
 
-    setResultado(null);
     mostrarToast('error', mensajeToastResultado(res, 'No se pudo importar el archivo.'), 5200);
   }
 
@@ -296,15 +285,6 @@ export default function ModalImportarPrevias({
                   )}
                 </div>
 
-                {resultado?.ok && resultado.data && (
-                  <div className="modal-importar-previas__resultado is-ok" aria-label="Indicadores de importación">
-                    <div className="modal-importar-previas__stats">
-                      <span>Procesadas: <b>{resultado.data.total_procesadas ?? 0}</b></span>
-                      <span>Nuevas: <b>{resultado.data.nuevas ?? 0}</b></span>
-                      <span>Actualizadas: <b>{resultado.data.actualizadas ?? 0}</b></span>
-                    </div>
-                  </div>
-                )}
               </div>
             </section>
           </div>

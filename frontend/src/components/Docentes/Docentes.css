@@ -267,36 +267,6 @@ background:rgba(196,139,59,.07);
 }
 
 /* =========================
-   Alertas
-========================= */
-.docentes-alerta{
-  border-radius:12px;
-  font-size:13px;
-}
-
-.docentes-alerta-success{
-  background:color-mix(in srgb, var(--balto-success) 10%, #fff) !important;
-  border-color:color-mix(in srgb, var(--balto-success) 24%, #fff) !important;
-  color:color-mix(in srgb, var(--balto-success) 58%, var(--balto-ink)) !important;
-}
-
-.docentes-alerta-error{
-  background:color-mix(in srgb, var(--balto-danger) 10%, #fff) !important;
-  border-color:color-mix(in srgb, var(--balto-danger) 24%, #fff) !important;
-  color:color-mix(in srgb, var(--balto-danger) 60%, var(--balto-ink)) !important;
-}
-
-.docentes-alerta-info{
-  background:rgba(196,139,59,.08);
-  color:var(--balto-action);
-  border:1px solid rgba(196,139,59,.18);
-  border-radius:12px;
-  padding:10px 12px;
-  font-size:13px;
-  font-weight:520;
-}
-
-/* =========================
    Botones usados en modales
 ========================= */
 .docentes-btn{
