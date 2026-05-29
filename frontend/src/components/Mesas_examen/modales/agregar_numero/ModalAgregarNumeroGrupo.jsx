@@ -21,6 +21,7 @@ const coincide = (item, busqueda, campos) => {
 
 const NO_AGRUPADAS_GRID_COLS = "0.8fr 1.55fr 1.3fr 1.05fr 0.75fr 0.65fr";
 const PREVIAS_GRID_COLS = "0.9fr 1.45fr 1.45fr 0.95fr 1.25fr 0.65fr";
+const COLUMNAS_CENTRADAS = new Set(["numero", "dni", "alumno", "curso", "accion"]);
 
 const isTopMesaModal = (node) => {
   if (typeof document === "undefined" || !node) return true;
@@ -53,7 +54,11 @@ const useEscapeClose = (abierto, onClose, disabled = false) => {
 const GridHead = ({ columns, gridCols }) => (
   <div className="ag-num-grid-row ag-num-grid-head" style={{ gridTemplateColumns: gridCols }} role="row">
     {columns.map((column) => (
-      <div key={column.key} className="ag-num-grid-cell ag-num-grid-cell-head" role="columnheader">
+      <div
+        key={column.key}
+        className={`ag-num-grid-cell ag-num-grid-cell-head ${COLUMNAS_CENTRADAS.has(column.key) ? "ag-num-center" : ""}`}
+        role="columnheader"
+      >
         {column.label}
       </div>
     ))}
@@ -102,14 +107,14 @@ const FilaNoAgrupada = ({ item, agregando, onAgregar }) => {
 
 const FilaPrevia = ({ item, agregando, onAgregar }) => (
   <div className="ag-num-grid-row ag-num-grid-data-row" style={{ gridTemplateColumns: PREVIAS_GRID_COLS }} role="row">
-    <div className="ag-num-grid-cell" role="cell" data-label="DNI">{texto(item.dni)}</div>
-    <div className="ag-num-grid-cell is-strong" role="cell" data-label="Alumno">
+    <div className="ag-num-grid-cell ag-num-center" role="cell" data-label="DNI">{texto(item.dni)}</div>
+    <div className="ag-num-grid-cell is-strong ag-num-center" role="cell" data-label="Alumno">
       <TextoExpandibleGlobal value={item.alumno} title="Alumno" subtitle={`DNI ${texto(item.dni)}`} />
     </div>
     <div className="ag-num-grid-cell" role="cell" data-label="Materia">
       <TextoExpandibleGlobal value={item.materia} title="Materia" subtitle={`DNI ${texto(item.dni)}`} />
     </div>
-    <div className="ag-num-grid-cell" role="cell" data-label="Curso / Div.">{texto(item.curso)}</div>
+    <div className="ag-num-grid-cell ag-num-center" role="cell" data-label="Curso / Div.">{texto(item.curso)}</div>
     <div className="ag-num-grid-cell" role="cell" data-label="Docente">
       <TextoExpandibleGlobal value={item.docente} fallback="Sin docente" title="Docente" subtitle={`Mesa N° ${texto(item.numero_mesa)}`} />
     </div>
@@ -190,7 +195,7 @@ const ModalAgregarNumeroGrupo = ({ abierto, data, cargando, agregando, error, on
               </div>
             </div>
           </div>
-          <button type="button" onClick={onClose} disabled={agregando} aria-label="Cerrar">
+          <button type="button" className="mesa-submodal-close" onClick={onClose} disabled={agregando} aria-label="Cerrar">
             <FontAwesomeIcon icon={faTimes} />
           </button>
         </header>
@@ -273,7 +278,7 @@ const ModalAgregarNumeroGrupo = ({ abierto, data, cargando, agregando, error, on
         </section>
 
         <footer className="ag-num-footer">
-          <button type="button" onClick={onClose} disabled={agregando}>Cerrar</button>
+          <button type="button" className="mesa-submodal-footer-close" onClick={onClose} disabled={agregando}>Cerrar</button>
         </footer>
       </div>
     </div>

@@ -377,7 +377,8 @@
   letter-spacing:.02em;
 }
 
-.mas-grid-cell-actions{
+.mas-grid-cell-actions,
+.mas-grid-cell.is-center{
   justify-content:center;
   text-align:center;
 }
@@ -456,3 +457,100 @@
     white-space:normal;
   }
 }
+
+/* =========================================================
+   Submodales editar mesa — cierre y columna Alumno unificados
+========================================================= */
+.mas-modal-header .mesa-submodal-close{
+  width:34px;
+  height:34px;
+  min-width:34px;
+  min-height:34px;
+  padding:0;
+  border-radius:11px;
+  border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.09);
+  color:#fff;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:0;
+  font-size:15px;
+  line-height:1;
+  cursor:pointer;
+}
+
+.mas-modal-header .mesa-submodal-close:hover:not(:disabled){
+  transform:translateY(-1px);
+  background:rgba(255,255,255,.18);
+  border-color:rgba(255,255,255,.32);
+}
+
+.mas-btn.cancelar.mesa-submodal-footer-close{
+  min-width:110px;
+  min-height:40px;
+  padding:0 18px;
+  border-radius:12px;
+  border:1px solid rgba(58,46,43,.14);
+  background:#fff;
+  color:var(--gm-ink, #3A2E2B);
+  box-shadow:0 10px 22px -18px rgba(58,46,43,.38);
+  font-size:14px;
+  line-height:1;
+  font-weight:680;
+  letter-spacing:-.01em;
+}
+
+.mas-btn.cancelar.mesa-submodal-footer-close:hover:not(:disabled){
+  transform:translateY(-1px);
+  border-color:rgba(196,139,59,.28);
+  background:#FFFCF7;
+}
+
+.mas-grid-cell.is-center .ginfo-inline{
+  justify-content:center;
+  text-align:center;
+}
+
+.mas-grid-cell.is-center .ginfo-inline__text{
+  text-align:center;
+}
+
+/* =========================================================
+   Submodales editar mesa — acciones con marrón claro Lerna
+========================================================= */
+.mas-modal-footer .mas-btn.confirmar{
+  min-width:150px;
+  min-height:40px;
+  height:40px;
+  padding:0 18px;
+  border-radius:12px;
+  border:1px solid color-mix(in srgb, var(--gm-action, #C48B3B) 58%, #fff);
+  background:linear-gradient(180deg, color-mix(in srgb, var(--gm-action, #C48B3B) 94%, #fff) 0%, var(--gm-action, #C48B3B) 100%);
+  color:#fff;
+  box-shadow:0 12px 24px -16px rgba(196,139,59,.62);
+  font-size:14px;
+  line-height:1;
+  font-weight:720;
+  letter-spacing:-.01em;
+  transition:transform var(--gm-trans, 160ms ease), box-shadow var(--gm-trans, 160ms ease), background var(--gm-trans, 160ms ease), border-color var(--gm-trans, 160ms ease), opacity var(--gm-trans, 160ms ease);
+}
+
+.mas-modal-footer .mas-btn.confirmar:hover:not(:disabled){
+  transform:translateY(-1px);
+  border-color:color-mix(in srgb, var(--gm-action, #C48B3B) 72%, #fff);
+  background:linear-gradient(180deg, color-mix(in srgb, var(--gm-action, #C48B3B) 90%, #fff) 0%, color-mix(in srgb, var(--gm-action, #C48B3B) 86%, #3A2E2B) 100%);
+  box-shadow:0 16px 28px -16px rgba(196,139,59,.72);
+}
+
+.mas-radio.activo{
+  border-color:var(--gm-action, #C48B3B);
+  background:var(--gm-action, #C48B3B);
+  box-shadow:0 0 0 4px rgba(196,139,59,.12);
+}
+
+.mas-grid-data-row.seleccionada{
+  background:rgba(196,139,59,.08);
+  box-shadow:inset 3px 0 0 var(--gm-action, #C48B3B);
+}
+

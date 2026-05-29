@@ -476,3 +476,81 @@
 .ag-num-row-disabled:hover{
   background:#f8fafc;
 }
+
+/* =========================================================
+   Submodales editar mesa — cierre y columna Alumno unificados
+========================================================= */
+.ag-num-header .mesa-submodal-close{
+  width:34px;
+  height:34px;
+  min-width:34px;
+  min-height:34px;
+  padding:0;
+  border-radius:11px;
+  border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.09);
+  color:#fff;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:0;
+  font-size:15px;
+  line-height:1;
+  cursor:pointer;
+}
+
+.ag-num-header .mesa-submodal-close:hover:not(:disabled){
+  transform:translateY(-1px);
+  background:rgba(255,255,255,.18);
+  border-color:rgba(255,255,255,.32);
+}
+
+.ag-num-footer .mesa-submodal-footer-close{
+  min-width:110px;
+  min-height:40px;
+  padding:0 18px;
+  border-radius:12px;
+  border:1px solid rgba(58,46,43,.14);
+  background:#fff;
+  color:var(--gm-ink, #3A2E2B);
+  box-shadow:0 10px 22px -18px rgba(58,46,43,.38);
+  font-size:14px;
+  line-height:1;
+  font-weight:680;
+  letter-spacing:-.01em;
+}
+
+.ag-num-footer .mesa-submodal-footer-close:hover:not(:disabled){
+  transform:translateY(-1px);
+  border-color:rgba(196,139,59,.28);
+  background:#FFFCF7;
+}
+
+.ag-num-grid-cell.ag-num-center .ginfo-inline{
+  justify-content:center;
+  text-align:center;
+}
+
+.ag-num-grid-cell.ag-num-center .ginfo-inline__text{
+  text-align:center;
+}
+
+/* =========================================================
+   Submodales editar mesa — acciones con marrón claro Lerna
+========================================================= */
+.ag-num-add-btn.mov-iconBtn,
+.ag-num-grid-actions .materias-icon-btn{
+  color:color-mix(in srgb, var(--gm-action, #C48B3B) 86%, #3A2E2B) !important;
+  background:rgba(196,139,59,.10) !important;
+  border:1px solid rgba(196,139,59,.20) !important;
+  box-shadow:0 8px 18px -16px rgba(196,139,59,.52) !important;
+}
+
+.ag-num-add-btn.mov-iconBtn:hover:not(:disabled),
+.ag-num-grid-actions .materias-icon-btn:hover:not(:disabled){
+  color:#fff !important;
+  background:var(--gm-action, #C48B3B) !important;
+  border-color:color-mix(in srgb, var(--gm-action, #C48B3B) 70%, #fff) !important;
+  filter:none;
+}
+

@@ -13,6 +13,7 @@ const texto = (valor, fallback = "-") => {
 };
 
 const MOVER_GRID_COLS = "0.75fr 0.8fr 1fr 0.85fr 1.4fr 1.2fr 0.95fr";
+const COLUMNAS_CENTRADAS = new Set(["seleccionar", "mesa", "fecha", "turno", "estado"]);
 
 const isTopMesaModal = (node) => {
   if (typeof document === "undefined" || !node) return true;
@@ -45,7 +46,11 @@ const useEscapeClose = (abierto, onClose, disabled = false) => {
 const GridHead = ({ columns, gridCols }) => (
   <div className="persona-grid-row persona-grid-head" style={{ gridTemplateColumns: gridCols }} role="row">
     {columns.map((column) => (
-      <div key={column.key} className="persona-grid-cell persona-grid-cell-head" role="columnheader">
+      <div
+        key={column.key}
+        className={`persona-grid-cell persona-grid-cell-head ${COLUMNAS_CENTRADAS.has(column.key) ? "is-center" : ""}`}
+        role="columnheader"
+      >
         {column.label}
       </div>
     ))}
@@ -102,7 +107,7 @@ const ModalMoverPreviaMesa = ({ abierto, previa, destinosData, cargando, moviend
               </div>
             </div>
           </div>
-          <button type="button" className="persona-close" onClick={onClose} aria-label="Cerrar" disabled={moviendo}>
+          <button type="button" className="persona-close mesa-submodal-close" onClick={onClose} aria-label="Cerrar" disabled={moviendo}>
             <FontAwesomeIcon icon={faTimes} />
           </button>
         </header>
@@ -150,33 +155,48 @@ const ModalMoverPreviaMesa = ({ abierto, previa, destinosData, cargando, moviend
                 <div className="persona-grid-body" role="rowgroup">
                   {destinos.map((destino) => {
                     const errores = Array.isArray(destino.errores) ? destino.errores : [];
+                    const seleccionado = String(numeroSeleccionado) === String(destino.numero_mesa);
+                    const seleccionarDestino = () => {
+                      if (!destino.valido || moviendo) return;
+                      setNumeroSeleccionado(String(destino.numero_mesa));
+                    };
+
                     return (
                       <div
                         key={destino.numero_mesa}
-                        className={`persona-grid-row persona-grid-data-row ${!destino.valido ? "persona-row-disabled" : ""}`}
+                        className={`persona-grid-row persona-grid-data-row ${destino.valido ? "persona-row-selectable" : "persona-row-disabled"} ${seleccionado ? "persona-row-selected" : ""}`}
                         style={{ gridTemplateColumns: MOVER_GRID_COLS }}
                         role="row"
+                        tabIndex={destino.valido && !moviendo ? 0 : -1}
+                        aria-selected={seleccionado}
+                        onClick={seleccionarDestino}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            seleccionarDestino();
+                          }
+                        }}
                       >
                         <div className="persona-grid-cell persona-grid-cell-actions" role="cell" data-label="Seleccionar">
                           <input
                             type="radio"
                             name="numero-destino-previa"
                             value={destino.numero_mesa}
-                            checked={String(numeroSeleccionado) === String(destino.numero_mesa)}
+                            checked={seleccionado}
                             disabled={!destino.valido || moviendo}
                             onChange={(e) => setNumeroSeleccionado(e.target.value)}
                           />
                         </div>
                         <div className="persona-grid-cell is-center" role="cell" data-label="N° Mesa">{texto(destino.numero_mesa)}</div>
-                        <div className="persona-grid-cell" role="cell" data-label="Fecha">{texto(destino.fecha)}</div>
-                        <div className="persona-grid-cell" role="cell" data-label="Turno">{texto(destino.turno)}</div>
+                        <div className="persona-grid-cell is-center" role="cell" data-label="Fecha">{texto(destino.fecha)}</div>
+                        <div className="persona-grid-cell is-center" role="cell" data-label="Turno">{texto(destino.turno)}</div>
                         <div className="persona-grid-cell" role="cell" data-label="Materia">
                           <TextoExpandibleGlobal value={destino.materia} title="Materia destino" subtitle={`Mesa N° ${texto(destino.numero_mesa)}`} />
                         </div>
                         <div className="persona-grid-cell" role="cell" data-label="Docente">
                           <TextoExpandibleGlobal value={destino.docente} title="Docente destino" subtitle={`Mesa N° ${texto(destino.numero_mesa)}`} />
                         </div>
-                        <div className="persona-grid-cell persona-grid-cell-actions" role="cell" data-label="Estado">
+                        <div className="persona-grid-cell persona-grid-cell-actions is-center" role="cell" data-label="Estado">
                           {destino.valido ? (
                             <span className="persona-status-ok">Disponible</span>
                           ) : (
@@ -194,7 +214,7 @@ const ModalMoverPreviaMesa = ({ abierto, previa, destinosData, cargando, moviend
         </section>
 
         <footer className="persona-modal-footer persona-modal-footer-actions">
-          <button type="button" className="persona-btn-secondary" onClick={onClose} disabled={moviendo}>Cancelar</button>
+          <button type="button" className="persona-btn-secondary mesa-submodal-footer-close" onClick={onClose} disabled={moviendo}>Cerrar</button>
           <button
             type="button"
             className="persona-btn-primary"

@@ -152,6 +152,23 @@
   opacity: 0.56;
 }
 
+.persona-table-mover .persona-grid-data-row.persona-row-selectable{
+  cursor:pointer;
+}
+
+.persona-table-mover .persona-grid-data-row.persona-row-selected{
+  background:#f3f7ff;
+  box-shadow:inset 3px 0 0 var(--gm-action, #C48B3B);
+}
+
+.persona-table-mover .persona-grid-data-row.persona-row-selected:hover{
+  background:#eef4ff;
+}
+
+.persona-table-mover .persona-grid-data-row.persona-row-disabled{
+  cursor:not-allowed;
+}
+
 .persona-actions {
   display: flex;
   align-items: center;
@@ -775,3 +792,104 @@
     min-height:76px;
   }
 }
+
+/* =========================================================
+   Submodales editar mesa — cierre y columna Alumno unificados
+========================================================= */
+.persona-close.mesa-submodal-close{
+  width:34px;
+  height:34px;
+  min-width:34px;
+  min-height:34px;
+  padding:0;
+  border-radius:11px;
+  border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.09);
+  color:#fff;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:0;
+  font-size:15px;
+  line-height:1;
+  cursor:pointer;
+}
+
+.persona-close.mesa-submodal-close:hover:not(:disabled){
+  transform:translateY(-1px);
+  background:rgba(255,255,255,.18);
+  border-color:rgba(255,255,255,.32);
+}
+
+.persona-btn-secondary.mesa-submodal-footer-close{
+  min-width:110px;
+  min-height:40px;
+  padding:0 18px;
+  border-radius:12px;
+  border:1px solid rgba(58,46,43,.14);
+  background:#fff;
+  color:var(--gm-ink, #3A2E2B);
+  box-shadow:0 10px 22px -18px rgba(58,46,43,.38);
+  font-size:14px;
+  line-height:1;
+  font-weight:680;
+  letter-spacing:-.01em;
+}
+
+.persona-btn-secondary.mesa-submodal-footer-close:hover:not(:disabled){
+  transform:translateY(-1px);
+  border-color:rgba(196,139,59,.28);
+  background:#FFFCF7;
+}
+
+.persona-grid-cell.is-center .ginfo-inline{
+  justify-content:center;
+  text-align:center;
+}
+
+.persona-grid-cell.is-center .ginfo-inline__text{
+  text-align:center;
+}
+
+/* =========================================================
+   Submodales editar mesa — acciones con marrón claro Lerna
+========================================================= */
+.persona-modal-footer .persona-btn-primary{
+  min-width:150px;
+  min-height:40px;
+  height:40px;
+  padding:0 18px;
+  border-radius:12px;
+  border:1px solid color-mix(in srgb, var(--gm-action, #C48B3B) 58%, #fff);
+  background:linear-gradient(180deg, color-mix(in srgb, var(--gm-action, #C48B3B) 94%, #fff) 0%, var(--gm-action, #C48B3B) 100%);
+  color:#fff;
+  box-shadow:0 12px 24px -16px rgba(196,139,59,.62);
+  font-size:14px;
+  line-height:1;
+  font-weight:720;
+  letter-spacing:-.01em;
+  transition:transform var(--gm-trans, 160ms ease), box-shadow var(--gm-trans, 160ms ease), background var(--gm-trans, 160ms ease), border-color var(--gm-trans, 160ms ease), opacity var(--gm-trans, 160ms ease);
+}
+
+.persona-modal-footer .persona-btn-primary:hover:not(:disabled){
+  transform:translateY(-1px);
+  border-color:color-mix(in srgb, var(--gm-action, #C48B3B) 72%, #fff);
+  background:linear-gradient(180deg, color-mix(in srgb, var(--gm-action, #C48B3B) 90%, #fff) 0%, color-mix(in srgb, var(--gm-action, #C48B3B) 86%, #3A2E2B) 100%);
+  box-shadow:0 16px 28px -16px rgba(196,139,59,.72);
+}
+
+.persona-actions .persona-action-icon:not(.materias-icon-danger),
+.persona-actions .materias-icon-btn:not(.materias-icon-danger){
+  color:color-mix(in srgb, var(--gm-action, #C48B3B) 86%, #3A2E2B) !important;
+  background:rgba(196,139,59,.10) !important;
+  border:1px solid rgba(196,139,59,.20) !important;
+  box-shadow:0 8px 18px -16px rgba(196,139,59,.52) !important;
+}
+
+.persona-actions .persona-action-icon:not(.materias-icon-danger):hover,
+.persona-actions .materias-icon-btn:not(.materias-icon-danger):hover{
+  color:#fff !important;
+  background:var(--gm-action, #C48B3B) !important;
+  border-color:color-mix(in srgb, var(--gm-action, #C48B3B) 70%, #fff) !important;
+}
+

@@ -622,6 +622,11 @@ const ModalEditarMesa = ({
   const slots = [...numeros];
   while (slots.length < capacidadSlots) slots.push(null);
 
+  const slotsGridClassName = [
+    "editar-mesa-slots-grid",
+    slots.length <= 2 ? "editar-mesa-slots-grid--fila-unica" : "",
+  ].filter(Boolean).join(" ");
+
   const handleSave = () => {
     if (!grupo || !slotSeleccionadoValido) return;
 
@@ -884,7 +889,7 @@ const ModalEditarMesa = ({
                       </div>
                     )}
 
-                    <div className="editar-mesa-slots-grid">
+                    <div className={slotsGridClassName}>
                       {slots.map((slot, index) => (
                         slot ? (
                           <SlotNumero

@@ -1902,7 +1902,9 @@ const MesasExamen = () => {
 
   const contenido = (
     <div className="mesas-page mov-page">
-      <section className="mesas-shell-card mesas-card-pdf-mode mesas-card-pdf-fijo mov-card mov-card--table">
+      <section
+        className={`mesas-shell-card mesas-card-pdf-mode mesas-card-pdf-fijo mov-card mov-card--table ${tab !== "historial" ? "mesas-shell-card--tablas" : "mesas-shell-card--historial"}`}
+      >
         <div className="mov-card__head mesas-card__head mesas-panel-head">
           <div className="mov-card__headLeft mesas-card__headLeft">
             <div className="title-mov mesas-titleBox">
@@ -2041,9 +2043,9 @@ const MesasExamen = () => {
                       className="mesas-clearTableFilters"
                       onClick={limpiarFiltrosMesas}
                       title="Limpiar filtros de fecha y turno"
+                      aria-label="Limpiar filtros de fecha y turno"
                     >
                       <FontAwesomeIcon icon={faTimes} />
-                      Limpiar
                     </button>
                   )}
                 </>
@@ -2053,7 +2055,7 @@ const MesasExamen = () => {
 
           <div className="mov-card__actions mesas-actionsHead">
             <BotonExportarHistorialGlobal
-              className="mov-btn mov-btn--secondary mesas-actionBtn mesas-exportBtn"
+              className={`mov-btn mov-btn--secondary mesas-actionBtn mesas-exportBtn ${tab !== "historial" ? "mesas-headPdfBtn" : ""}`}
               icon={tab === "historial" ? "excel" : "pdf"}
               label={tab === "historial" ? "Exportar historial" : "PDF"}
               onClick={tab === "historial" ? abrirModalExportarHistorial : abrirModalExportarPdf}
@@ -2061,7 +2063,7 @@ const MesasExamen = () => {
             />
 
             <button
-              className="mov-btn mov-btn--primary mesas-actionBtn mesas-createBtn"
+              className={`mov-btn mov-btn--primary mesas-actionBtn mesas-createBtn ${hayMesasCreadas ? "mesas-btn--displayNone" : ""}`}
               type="button"
               onClick={abrirModalCrear}
               disabled={cargando || armando || agrupando || hayMesasCreadas}
@@ -2074,6 +2076,32 @@ const MesasExamen = () => {
               )}
               Crear Mesas
             </button>
+
+            {tab !== "historial" && (
+              <>
+                <button
+                  className="mov-btn mov-btn--secondary mesas-actionBtn mesas-wideActionBtn mesas-wideActionsOnly mesas-notifyBtn"
+                  type="button"
+                  onClick={abrirModalNotificacionesEmail}
+                  disabled={cargando || armando || agrupando || !hayMesasCreadas}
+                  title={!hayMesasCreadas ? "Primero tenés que crear y asignar las mesas." : "Notificar por email fecha, turno, hora y materia"}
+                >
+                  <FontAwesomeIcon icon={faEnvelope} />
+                  Notificar
+                </button>
+
+                <button
+                  className={`mov-btn mov-btn--danger mesas-actionBtn mesas-wideActionBtn mesas-wideActionsOnly mesas-deleteBtn ${!hayMesasCreadas ? "mesas-btn--displayNone" : ""}`}
+                  type="button"
+                  onClick={eliminarBorrador}
+                  disabled={cargando || armando || agrupando || !hayMesasCreadas}
+                  title={!hayMesasCreadas ? "No hay mesas creadas para eliminar." : "Eliminar mesas"}
+                >
+                  <FontAwesomeIcon icon={faTrash} />
+                  Eliminar mesas
+                </button>
+              </>
+            )}
 
           </div>
         </div>
@@ -2179,6 +2207,14 @@ const MesasExamen = () => {
             </div>
 
             <div className="mesas-recordsFoot__actions" aria-label="Acciones del armado de mesas">
+              <BotonExportarHistorialGlobal
+                className="mov-btn mov-btn--secondary mesas-footActionBtn mesas-footPdfBtn"
+                icon="pdf"
+                label="PDF"
+                onClick={abrirModalExportarPdf}
+                disabled={cargando || armando || agrupando || totalVisible === 0}
+              />
+
               <button
                 className="mov-btn mov-btn--secondary mesas-footActionBtn mesas-notifyBtn"
                 type="button"
@@ -2191,7 +2227,7 @@ const MesasExamen = () => {
               </button>
 
               <button
-                className="mov-btn mov-btn--danger mesas-footActionBtn mesas-deleteBtn"
+                className={`mov-btn mov-btn--danger mesas-footActionBtn mesas-deleteBtn ${!hayMesasCreadas ? "mesas-btn--displayNone" : ""}`}
                 type="button"
                 onClick={eliminarBorrador}
                 disabled={cargando || armando || agrupando || !hayMesasCreadas}

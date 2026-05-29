@@ -39,6 +39,7 @@ const previaCoincide = (previa, busqueda) => {
 };
 
 const MAS_GRID_COLS = "0.75fr 0.9fr 1.45fr 0.85fr 1.45fr 1.2fr";
+const COLUMNAS_CENTRADAS = new Set(["seleccionar", "dni", "alumno", "curso"]);
 
 const isTopMesaModal = (node) => {
   if (typeof document === "undefined" || !node) return true;
@@ -71,7 +72,11 @@ const useEscapeClose = (abierto, onClose, disabled = false) => {
 const GridHead = ({ columns, gridCols }) => (
   <div className="mas-grid-row mas-grid-head" style={{ gridTemplateColumns: gridCols }} role="row">
     {columns.map((column) => (
-      <div key={column.key} className="mas-grid-cell mas-grid-cell-head" role="columnheader">
+      <div
+        key={column.key}
+        className={`mas-grid-cell mas-grid-cell-head ${COLUMNAS_CENTRADAS.has(column.key) ? "is-center" : ""}`}
+        role="columnheader"
+      >
         {column.label}
       </div>
     ))}
@@ -139,7 +144,7 @@ const ModalAgregarPreviaMesa = ({
               </div>
             </div>
           </div>
-          <button type="button" onClick={onClose} disabled={agregando} aria-label="Cerrar">
+          <button type="button" className="mesa-submodal-close" onClick={onClose} disabled={agregando} aria-label="Cerrar">
             <FontAwesomeIcon icon={faTimes} />
           </button>
         </header>
@@ -190,11 +195,11 @@ const ModalAgregarPreviaMesa = ({
                             {activa && <FontAwesomeIcon icon={faCheck} />}
                           </button>
                         </div>
-                        <div className="mas-grid-cell" role="cell" data-label="DNI">{texto(previa.dni)}</div>
-                        <div className="mas-grid-cell is-strong" role="cell" data-label="Alumno">
+                        <div className="mas-grid-cell is-center" role="cell" data-label="DNI">{texto(previa.dni)}</div>
+                        <div className="mas-grid-cell is-strong is-center" role="cell" data-label="Alumno">
                           <TextoExpandibleGlobal value={previa.alumno} title="Alumno" subtitle={`Mesa N° ${texto(numeroMesa)}`} />
                         </div>
-                        <div className="mas-grid-cell" role="cell" data-label="Curso">{texto(previa.curso)}</div>
+                        <div className="mas-grid-cell is-center" role="cell" data-label="Curso">{texto(previa.curso)}</div>
                         <div className="mas-grid-cell" role="cell" data-label="Materia">
                           <TextoExpandibleGlobal value={previa.materia} title="Materia" subtitle={`Mesa N° ${texto(numeroMesa)}`} />
                         </div>
@@ -211,7 +216,7 @@ const ModalAgregarPreviaMesa = ({
         </section>
 
         <footer className="mas-modal-footer">
-          <button type="button" className="mas-btn cancelar" onClick={onClose} disabled={agregando}>
+          <button type="button" className="mas-btn cancelar mesa-submodal-footer-close" onClick={onClose} disabled={agregando}>
             Cerrar
           </button>
           <button

@@ -13,6 +13,7 @@ const texto = (valor, fallback = "-") => {
 };
 
 const PREVIAS_GRID_COLS = "0.85fr 1.35fr 0.85fr 1.45fr 1.25fr 0.72fr";
+const COLUMNAS_CENTRADAS = new Set(["dni", "alumno", "curso", "accion"]);
 
 const isTopMesaModal = (node) => {
   if (typeof document === "undefined" || !node) return true;
@@ -45,7 +46,11 @@ const useEscapeClose = (abierto, onClose, disabled = false) => {
 const GridHead = ({ columns, gridCols }) => (
   <div className="persona-grid-row persona-grid-head" style={{ gridTemplateColumns: gridCols }} role="row">
     {columns.map((column) => (
-      <div key={column.key} className="persona-grid-cell persona-grid-cell-head" role="columnheader">
+      <div
+        key={column.key}
+        className={`persona-grid-cell persona-grid-cell-head ${COLUMNAS_CENTRADAS.has(column.key) ? "is-center" : ""}`}
+        role="columnheader"
+      >
         {column.label}
       </div>
     ))}
@@ -89,7 +94,7 @@ const ModalPreviasMesa = ({ abierto, numero, data, cargando, onClose, onMover, o
               )}
             </div>
           </div>
-          <button type="button" className="persona-close" onClick={onClose} aria-label="Cerrar">
+          <button type="button" className="persona-close mesa-submodal-close" onClick={onClose} aria-label="Cerrar">
             <FontAwesomeIcon icon={faTimes} />
           </button>
         </header>
@@ -113,11 +118,11 @@ const ModalPreviasMesa = ({ abierto, numero, data, cargando, onClose, onMover, o
                       style={{ gridTemplateColumns: PREVIAS_GRID_COLS }}
                       role="row"
                     >
-                      <div className="persona-grid-cell" role="cell" data-label="DNI">{texto(previa.dni)}</div>
-                      <div className="persona-grid-cell is-strong" role="cell" data-label="Alumno">
+                      <div className="persona-grid-cell is-center" role="cell" data-label="DNI">{texto(previa.dni)}</div>
+                      <div className="persona-grid-cell is-strong is-center" role="cell" data-label="Alumno">
                         <TextoExpandibleGlobal value={previa.alumno} title="Alumno" subtitle={`Mesa N° ${texto(numeroMesa)}`} />
                       </div>
-                      <div className="persona-grid-cell" role="cell" data-label="Curso">{texto(previa.curso)}</div>
+                      <div className="persona-grid-cell is-center" role="cell" data-label="Curso">{texto(previa.curso)}</div>
                       <div className="persona-grid-cell" role="cell" data-label="Materia">
                         <TextoExpandibleGlobal value={previa.materia} title="Materia" subtitle={`Mesa N° ${texto(numeroMesa)}`} />
                       </div>
@@ -153,7 +158,7 @@ const ModalPreviasMesa = ({ abierto, numero, data, cargando, onClose, onMover, o
         </section>
 
         <footer className="persona-modal-footer">
-          <button type="button" className="persona-btn-secondary" onClick={onClose}>Cerrar</button>
+          <button type="button" className="persona-btn-secondary mesa-submodal-footer-close" onClick={onClose}>Cerrar</button>
         </footer>
       </div>
     </div>

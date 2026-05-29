@@ -142,7 +142,7 @@ const ModalMoverNumeroMesa = ({
             </div>
           </div>
 
-          <button type="button" onClick={onClose} disabled={moviendo} aria-label="Cerrar">
+          <button type="button" className="mesa-submodal-close" onClick={onClose} disabled={moviendo} aria-label="Cerrar">
             <FontAwesomeIcon icon={faTimes} />
           </button>
         </header>
@@ -272,8 +272,8 @@ const ModalMoverNumeroMesa = ({
         </section>
 
         <footer className="flechas-footer">
-          <button type="button" className="flechas-btn cancelar" onClick={onClose} disabled={moviendo}>
-            Cancelar
+          <button type="button" className="flechas-btn cancelar mesa-submodal-footer-close" onClick={onClose} disabled={moviendo}>
+            Cerrar
           </button>
           <button type="button" className="flechas-btn mover" onClick={confirmar} disabled={!seleccionado || moviendo}>
             <FontAwesomeIcon icon={moviendo ? faSpinner : faCheck} spin={moviendo} />
