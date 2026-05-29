@@ -7,9 +7,9 @@ const SKELETON_ROWS = 7;
 
 const CORRELATIVAS_COLUMNS = [
   { key: "anterior", label: "Correlativa anterior", strong: true },
-  { key: "cursoAnterior", label: "Curso anterior" },
+  { key: "cursoAnterior", label: "Curso anterior", align: "center" },
   { key: "posterior", label: "Materia posterior" },
-  { key: "cursoPosterior", label: "Curso posterior" },
+  { key: "cursoPosterior", label: "Curso posterior", align: "center" },
   { key: "tipo", label: "Tipo", align: "center" },
   { key: "bloqueos", label: "Bloqueos" },
   { key: "acciones", label: "Acciones", align: "center", actions: true },
@@ -136,13 +136,13 @@ const SeccionCorrelativas = ({
                     <div className="mov-gridCell is-strong" role="cell" data-label="Correlativa anterior" title={safeText(c.materia_relacionada)}>
                       <span className="mov-ellipsissss">{safeText(c.materia_relacionada)}</span>
                     </div>
-                    <div className="mov-gridCell" role="cell" data-label="Curso anterior" title={safeText(c.curso_relacionada)}>
+                    <div className="mov-gridCell is-center" role="cell" data-label="Curso anterior" title={safeText(c.curso_relacionada)}>
                       <span className="mov-ellipsissss">{safeText(c.curso_relacionada)}</span>
                     </div>
                     <div className="mov-gridCell" role="cell" data-label="Materia posterior" title={safeText(c.materia)}>
                       <span className="mov-ellipsissss">{safeText(c.materia)}</span>
                     </div>
-                    <div className="mov-gridCell" role="cell" data-label="Curso posterior" title={safeText(c.curso)}>
+                    <div className="mov-gridCell is-center" role="cell" data-label="Curso posterior" title={safeText(c.curso)}>
                       <span className="mov-ellipsissss">{safeText(c.curso)}</span>
                     </div>
                     <div className="mov-gridCell is-center" role="cell" data-label="Tipo">

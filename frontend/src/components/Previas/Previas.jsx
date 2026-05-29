@@ -591,7 +591,7 @@ function usePrevias() {
   };
 }
 
-const PREVIAS_GRID_COLS = '1.35fr .75fr 1.25fr .85fr .8fr .85fr .9fr';
+const PREVIAS_GRID_COLS = '1.35fr .5fr 2fr .5fr .5fr .5fr .9fr';
 const SKELETON_ROWS = 8;
 
 const PREVIAS_COLUMNS = [

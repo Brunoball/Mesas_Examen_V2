@@ -7,8 +7,8 @@ const SKELETON_ROWS = 7;
 
 const TALLERES_COLUMNS = [
   { key: "taller", label: "Taller", strong: true },
-  { key: "curso", label: "Curso" },
-  { key: "division", label: "División" },
+  { key: "curso", label: "Curso", align: "center" },
+  { key: "division", label: "División", align: "center" },
   { key: "cantidad", label: "Cantidad cátedras", align: "center" },
   { key: "catedras", label: "Cátedras incluidas" },
   { key: "estado", label: "Estado", align: "center" },
@@ -20,6 +20,60 @@ const SKELETON_WIDTHS = ["72%", "48%", "48%", "36%", "76%", "46%", "42%"];
 function safeText(value) {
   const text = String(value ?? "").trim();
   return text || "—";
+}
+
+function formatearNombreTaller(value) {
+  const text = safeText(value);
+  if (text === "—") return text;
+
+  const normalizado = text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\./g, "")
+    .replace(/-/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (/^utp\s+(primer|segundo|tercer|cuarto|quinto|sexto|septimo)\s+(ano|anio)$/.test(normalizado)) {
+    return text;
+  }
+
+  const clave = normalizado
+    .replace(/^utp\s+/, "")
+    .replace(/\b(curso|ano|anio)\b/g, "")
+    .replace(/[°º]/g, "")
+    .replace(/\s+/g, "");
+
+  const anios = {
+    "1": "Primer",
+    "1ero": "Primer",
+    "1ro": "Primer",
+    primero: "Primer",
+    primer: "Primer",
+    "2": "Segundo",
+    "2do": "Segundo",
+    segundo: "Segundo",
+    "3": "Tercer",
+    "3ero": "Tercer",
+    "3ro": "Tercer",
+    tercero: "Tercer",
+    tercer: "Tercer",
+    "4": "Cuarto",
+    "4to": "Cuarto",
+    cuarto: "Cuarto",
+    "5": "Quinto",
+    "5to": "Quinto",
+    quinto: "Quinto",
+    "6": "Sexto",
+    "6to": "Sexto",
+    sexto: "Sexto",
+    "7": "Séptimo",
+    "7mo": "Séptimo",
+    septimo: "Séptimo",
+  };
+
+  return anios[clave] ? `UTP ${anios[clave]} año` : text;
 }
 
 function alignClass(align) {
@@ -133,13 +187,13 @@ const SeccionTalleres = ({
                     style={{ gridTemplateColumns: TALLERES_GRID_COLS }}
                     role="row"
                   >
-                    <div className="mov-gridCell is-strong" role="cell" data-label="Taller" title={safeText(t.taller)}>
-                      <span className="mov-ellipsissss">{safeText(t.taller)}</span>
+                    <div className="mov-gridCell is-strong" role="cell" data-label="Taller" title={formatearNombreTaller(t.taller)}>
+                      <span className="mov-ellipsissss">{formatearNombreTaller(t.taller)}</span>
                     </div>
-                    <div className="mov-gridCell" role="cell" data-label="Curso" title={safeText(t.curso)}>
+                    <div className="mov-gridCell is-center" role="cell" data-label="Curso" title={safeText(t.curso)}>
                       <span className="mov-ellipsissss">{safeText(t.curso)}</span>
                     </div>
-                    <div className="mov-gridCell" role="cell" data-label="División" title={safeText(t.division)}>
+                    <div className="mov-gridCell is-center" role="cell" data-label="División" title={safeText(t.division)}>
                       <span className="mov-ellipsissss">{safeText(t.division)}</span>
                     </div>
                     <div className="mov-gridCell is-center" role="cell" data-label="Cantidad cátedras">

@@ -21,7 +21,7 @@ const coincide = (item, busqueda, campos) => {
 
 const NO_AGRUPADAS_GRID_COLS = "0.75fr 0.6fr 1.55fr 1.3fr 1.05fr 0.75fr";
 const PREVIAS_GRID_COLS = "0.75fr 0.9fr 1.45fr 1.45fr 0.95fr 1.25fr";
-const COLUMNAS_CENTRADAS = new Set(["seleccionar", "numero", "dni", "alumno", "curso"]);
+const COLUMNAS_CENTRADAS = new Set(["seleccionar", "numero", "dni", "alumno", "alumnos", "curso"]);
 
 const itemKeyNoAgrupada = (item) => `no-${item?.numero_mesa}`;
 const itemKeyPrevia = (item) => `previa-${item?.id_previa}`;
