@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faSearch, faSpinner, faTimes } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faPlus, faSearch, faSpinner, faTimes } from "@fortawesome/free-solid-svg-icons";
 import "./agregar_numero.css";
 import TextoExpandibleGlobal from "../../../Global/Modales/TextoExpandibleGlobal";
 
@@ -19,9 +19,24 @@ const coincide = (item, busqueda, campos) => {
   return campos.some((campo) => normalizar(item?.[campo]).includes(q));
 };
 
-const NO_AGRUPADAS_GRID_COLS = "0.8fr 1.55fr 1.3fr 1.05fr 0.75fr 0.65fr";
-const PREVIAS_GRID_COLS = "0.9fr 1.45fr 1.45fr 0.95fr 1.25fr 0.65fr";
-const COLUMNAS_CENTRADAS = new Set(["numero", "dni", "alumno", "curso", "accion"]);
+const NO_AGRUPADAS_GRID_COLS = "0.75fr 0.6fr 1.55fr 1.3fr 1.05fr 0.75fr";
+const PREVIAS_GRID_COLS = "0.75fr 0.9fr 1.45fr 1.45fr 0.95fr 1.25fr";
+const COLUMNAS_CENTRADAS = new Set(["seleccionar", "numero", "dni", "alumno", "curso"]);
+
+const itemKeyNoAgrupada = (item) => `no-${item?.numero_mesa}`;
+const itemKeyPrevia = (item) => `previa-${item?.id_previa}`;
+
+const obtenerValidacionNoAgrupada = (item) => {
+  const errores = Array.isArray(item?.validacion?.errores) ? item.validacion.errores.filter(Boolean) : [];
+  const erroresReales = errores.filter((error) => !normalizar(error).includes("area"));
+  const validoBackend = item?.validacion?.valido !== false || erroresReales.length === 0;
+  const agregable = item?.agregable !== false && validoBackend;
+  const titulo = agregable
+    ? "Seleccionar número"
+    : (erroresReales.length ? erroresReales.join(" ") : "Este número tiene conflictos y no se puede agregar al grupo.");
+
+  return { agregable, titulo };
+};
 
 const isTopMesaModal = (node) => {
   if (typeof document === "undefined" || !node) return true;
@@ -65,17 +80,57 @@ const GridHead = ({ columns, gridCols }) => (
   </div>
 );
 
-const FilaNoAgrupada = ({ item, agregando, onAgregar }) => {
-  const errores = Array.isArray(item?.validacion?.errores) ? item.validacion.errores.filter(Boolean) : [];
-  const erroresReales = errores.filter((error) => !normalizar(error).includes("area"));
-  const validoBackend = item?.validacion?.valido !== false || erroresReales.length === 0;
-  const agregable = item?.agregable !== false && validoBackend;
-  const tituloAccion = agregable
-    ? "Agregar número al grupo"
-    : (erroresReales.length ? erroresReales.join(" ") : "Este número tiene conflictos y no se puede agregar al grupo.");
+const SelectorFila = ({ activo, disabled, title, ariaLabel, onSelect }) => (
+  <button
+    type="button"
+    className={`ag-num-radio ${activo ? "activo" : ""}`}
+    disabled={disabled}
+    title={title}
+    aria-label={ariaLabel}
+    aria-pressed={activo}
+    onClick={(event) => {
+      event.stopPropagation();
+      onSelect?.();
+    }}
+  >
+    {activo && <FontAwesomeIcon icon={faCheck} />}
+  </button>
+);
+
+const FilaNoAgrupada = ({ item, agregando, seleccionado, onSelect }) => {
+  const { agregable, titulo } = obtenerValidacionNoAgrupada(item);
+  const puedeSeleccionar = agregable && !agregando;
+
+  const seleccionar = () => {
+    if (!puedeSeleccionar) return;
+    onSelect?.(item);
+  };
 
   return (
-    <div className={`ag-num-grid-row ag-num-grid-data-row ${!agregable ? "ag-num-row-disabled" : ""}`} style={{ gridTemplateColumns: NO_AGRUPADAS_GRID_COLS }} role="row">
+    <div
+      className={`ag-num-grid-row ag-num-grid-data-row ${puedeSeleccionar ? "ag-num-row-selectable" : "ag-num-row-disabled"} ${seleccionado ? "ag-num-row-selected" : ""}`}
+      style={{ gridTemplateColumns: NO_AGRUPADAS_GRID_COLS }}
+      role="row"
+      tabIndex={puedeSeleccionar ? 0 : -1}
+      aria-selected={seleccionado}
+      title={!puedeSeleccionar ? titulo : undefined}
+      onClick={seleccionar}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          seleccionar();
+        }
+      }}
+    >
+      <div className="ag-num-grid-cell ag-num-center ag-num-grid-actions" role="cell" data-label="Seleccionar">
+        <SelectorFila
+          activo={seleccionado}
+          disabled={!puedeSeleccionar}
+          title={seleccionado ? "Deseleccionar número" : titulo}
+          ariaLabel={`${seleccionado ? "Deseleccionar" : "Seleccionar"} mesa N° ${texto(item.numero_mesa)}`}
+          onSelect={seleccionar}
+        />
+      </div>
       <div className="ag-num-grid-cell ag-num-center" role="cell" data-label="N° mesa">N° {texto(item.numero_mesa)}</div>
       <div className="ag-num-grid-cell is-strong" role="cell" data-label="Materia">
         <TextoExpandibleGlobal value={item.materia} fallback="Sin materia" title="Materia" subtitle={`Mesa N° ${texto(item.numero_mesa)}`} />
@@ -87,56 +142,60 @@ const FilaNoAgrupada = ({ item, agregando, onAgregar }) => {
         <TextoExpandibleGlobal value={item.area} fallback="Sin área" title="Área" subtitle={`Mesa N° ${texto(item.numero_mesa)}`} />
       </div>
       <div className="ag-num-grid-cell ag-num-center" role="cell" data-label="Alumnos">{texto(item.cantidad_alumnos, "0")}</div>
-      <div className="ag-num-grid-cell ag-num-center ag-num-grid-actions" role="cell" data-label="Acción">
-        <button
-          type="button"
-          className="mov-iconBtn materias-icon-btn ag-num-add-btn"
-          title={tituloAccion}
-          disabled={agregando || !agregable}
-          onClick={() => {
-            if (!agregable) return;
-            Promise.resolve(onAgregar(item, "no_agrupada")).catch(() => {});
-          }}
-        >
-          <FontAwesomeIcon icon={agregando ? faSpinner : faPlus} spin={agregando} />
-        </button>
+    </div>
+  );
+};
+
+const FilaPrevia = ({ item, agregando, seleccionado, onSelect }) => {
+  const puedeSeleccionar = !agregando;
+  const seleccionar = () => {
+    if (!puedeSeleccionar) return;
+    onSelect?.(item);
+  };
+
+  return (
+    <div
+      className={`ag-num-grid-row ag-num-grid-data-row ${puedeSeleccionar ? "ag-num-row-selectable" : "ag-num-row-disabled"} ${seleccionado ? "ag-num-row-selected" : ""}`}
+      style={{ gridTemplateColumns: PREVIAS_GRID_COLS }}
+      role="row"
+      tabIndex={puedeSeleccionar ? 0 : -1}
+      aria-selected={seleccionado}
+      onClick={seleccionar}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          seleccionar();
+        }
+      }}
+    >
+      <div className="ag-num-grid-cell ag-num-center ag-num-grid-actions" role="cell" data-label="Seleccionar">
+        <SelectorFila
+          activo={seleccionado}
+          disabled={!puedeSeleccionar}
+          title={seleccionado ? "Deseleccionar previa" : "Seleccionar previa"}
+          ariaLabel={`${seleccionado ? "Deseleccionar" : "Seleccionar"} previa de ${texto(item.alumno)}`}
+          onSelect={seleccionar}
+        />
+      </div>
+      <div className="ag-num-grid-cell ag-num-center" role="cell" data-label="DNI">{texto(item.dni)}</div>
+      <div className="ag-num-grid-cell is-strong ag-num-center" role="cell" data-label="Alumno">
+        <TextoExpandibleGlobal value={item.alumno} title="Alumno" subtitle={`DNI ${texto(item.dni)}`} />
+      </div>
+      <div className="ag-num-grid-cell" role="cell" data-label="Materia">
+        <TextoExpandibleGlobal value={item.materia} title="Materia" subtitle={`DNI ${texto(item.dni)}`} />
+      </div>
+      <div className="ag-num-grid-cell ag-num-center" role="cell" data-label="Curso / Div.">{texto(item.curso)}</div>
+      <div className="ag-num-grid-cell" role="cell" data-label="Docente">
+        <TextoExpandibleGlobal value={item.docente} fallback="Sin docente" title="Docente" subtitle={`Mesa N° ${texto(item.numero_mesa)}`} />
       </div>
     </div>
   );
 };
 
-const FilaPrevia = ({ item, agregando, onAgregar }) => (
-  <div className="ag-num-grid-row ag-num-grid-data-row" style={{ gridTemplateColumns: PREVIAS_GRID_COLS }} role="row">
-    <div className="ag-num-grid-cell ag-num-center" role="cell" data-label="DNI">{texto(item.dni)}</div>
-    <div className="ag-num-grid-cell is-strong ag-num-center" role="cell" data-label="Alumno">
-      <TextoExpandibleGlobal value={item.alumno} title="Alumno" subtitle={`DNI ${texto(item.dni)}`} />
-    </div>
-    <div className="ag-num-grid-cell" role="cell" data-label="Materia">
-      <TextoExpandibleGlobal value={item.materia} title="Materia" subtitle={`DNI ${texto(item.dni)}`} />
-    </div>
-    <div className="ag-num-grid-cell ag-num-center" role="cell" data-label="Curso / Div.">{texto(item.curso)}</div>
-    <div className="ag-num-grid-cell" role="cell" data-label="Docente">
-      <TextoExpandibleGlobal value={item.docente} fallback="Sin docente" title="Docente" subtitle={`Mesa N° ${texto(item.numero_mesa)}`} />
-    </div>
-    <div className="ag-num-grid-cell ag-num-center ag-num-grid-actions" role="cell" data-label="Acción">
-      <button
-        type="button"
-        className="mov-iconBtn materias-icon-btn ag-num-add-btn"
-        title="Crear número y agregar al grupo"
-        disabled={agregando}
-        onClick={() => {
-          Promise.resolve(onAgregar(item, "previa_sin_mesa")).catch(() => {});
-        }}
-      >
-        <FontAwesomeIcon icon={agregando ? faSpinner : faPlus} spin={agregando} />
-      </button>
-    </div>
-  </div>
-);
-
 const ModalAgregarNumeroGrupo = ({ abierto, data, cargando, agregando, error, onClose, onAgregar }) => {
   const [tab, setTab] = useState("no_agrupadas");
   const [busqueda, setBusqueda] = useState("");
+  const [seleccionActual, setSeleccionActual] = useState(null);
   const overlayRef = useEscapeClose(abierto, onClose, agregando);
 
   const noAgrupadas = useMemo(() => {
@@ -149,32 +208,78 @@ const ModalAgregarNumeroGrupo = ({ abierto, data, cargando, agregando, error, on
     return lista.filter((item) => coincide(item, busqueda, ["dni", "alumno", "materia", "curso", "docente", "area"]));
   }, [data, busqueda]);
 
+  useEffect(() => {
+    if (!abierto) {
+      setSeleccionActual(null);
+      setBusqueda("");
+      setTab("no_agrupadas");
+    }
+  }, [abierto]);
+
+  useEffect(() => {
+    if (!abierto) return;
+    setSeleccionActual(null);
+  }, [abierto, data?.meta?.numero_grupo, data?.meta?.fecha, data?.meta?.turno]);
+
   if (!abierto) return null;
 
   const portalTarget = typeof document !== "undefined" ? document.body : null;
   if (!portalTarget) return null;
 
   const meta = data?.meta || {};
+  const tipoActual = tab === "no_agrupadas" ? "no_agrupada" : "previa_sin_mesa";
   const placeholder = tab === "no_agrupadas"
     ? "Buscar por número, materia, docente, alumno..."
     : "Buscar por DNI, alumno, materia, curso...";
 
+  const seleccionVisible = (() => {
+    if (!seleccionActual || seleccionActual.tipo !== tipoActual) return null;
+    const lista = tab === "no_agrupadas" ? noAgrupadas : previas;
+    const makeKey = tab === "no_agrupadas" ? itemKeyNoAgrupada : itemKeyPrevia;
+    const item = lista.find((actual) => makeKey(actual) === seleccionActual.key) || null;
+    if (!item) return null;
+    if (tab === "no_agrupadas" && !obtenerValidacionNoAgrupada(item).agregable) return null;
+    return { ...seleccionActual, item };
+  })();
+
+  const puedeConfirmar = !!seleccionVisible && !agregando && !cargando && typeof onAgregar === "function";
+
+  const seleccionarNoAgrupada = (item) => {
+    const key = itemKeyNoAgrupada(item);
+    setSeleccionActual((actual) => (actual?.key === key ? null : { tipo: "no_agrupada", key, item }));
+  };
+
+  const seleccionarPrevia = (item) => {
+    const key = itemKeyPrevia(item);
+    setSeleccionActual((actual) => (actual?.key === key ? null : { tipo: "previa_sin_mesa", key, item }));
+  };
+
+  const confirmarSeleccion = () => {
+    if (!puedeConfirmar) return;
+    Promise.resolve(onAgregar(seleccionVisible.item, seleccionVisible.tipo)).catch(() => {});
+  };
+
+  const cambiarTab = (nuevoTab) => {
+    setTab(nuevoTab);
+    setSeleccionActual(null);
+  };
+
   const columnsNoAgrupadas = [
+    { key: "seleccionar", label: "Seleccionar" },
     { key: "numero", label: "N° mesa" },
     { key: "materia", label: "Materia" },
     { key: "docente", label: "Docente" },
     { key: "area", label: "Área" },
     { key: "alumnos", label: "Alumnos" },
-    { key: "accion", label: "Acción" },
   ];
 
   const columnsPrevias = [
+    { key: "seleccionar", label: "Seleccionar" },
     { key: "dni", label: "DNI" },
     { key: "alumno", label: "Alumno" },
     { key: "materia", label: "Materia" },
     { key: "curso", label: "Curso / Div." },
     { key: "docente", label: "Docente" },
-    { key: "accion", label: "Acción" },
   ];
 
   return createPortal((
@@ -204,14 +309,14 @@ const ModalAgregarNumeroGrupo = ({ abierto, data, cargando, agregando, error, on
           <button
             type="button"
             className={tab === "no_agrupadas" ? "active" : ""}
-            onClick={() => setTab("no_agrupadas")}
+            onClick={() => cambiarTab("no_agrupadas")}
           >
             Mesas no agrupadas
           </button>
           <button
             type="button"
             className={tab === "previas" ? "active" : ""}
-            onClick={() => setTab("previas")}
+            onClick={() => cambiarTab("previas")}
           >
             Previas sin número de mesa
           </button>
@@ -244,14 +349,18 @@ const ModalAgregarNumeroGrupo = ({ abierto, data, cargando, agregando, error, on
                 <div className="ag-num-table ag-num-div-table" role="table" aria-label="Mesas no agrupadas disponibles">
                   <GridHead columns={columnsNoAgrupadas} gridCols={NO_AGRUPADAS_GRID_COLS} />
                   <div className="ag-num-grid-body" role="rowgroup">
-                    {noAgrupadas.map((item) => (
-                      <FilaNoAgrupada
-                        key={`no-${item.numero_mesa}`}
-                        item={item}
-                        agregando={agregando}
-                        onAgregar={onAgregar}
-                      />
-                    ))}
+                    {noAgrupadas.map((item) => {
+                      const key = itemKeyNoAgrupada(item);
+                      return (
+                        <FilaNoAgrupada
+                          key={key}
+                          item={item}
+                          agregando={agregando}
+                          seleccionado={seleccionVisible?.key === key}
+                          onSelect={seleccionarNoAgrupada}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -263,14 +372,18 @@ const ModalAgregarNumeroGrupo = ({ abierto, data, cargando, agregando, error, on
               <div className="ag-num-table ag-num-div-table" role="table" aria-label="Previas sin número de mesa">
                 <GridHead columns={columnsPrevias} gridCols={PREVIAS_GRID_COLS} />
                 <div className="ag-num-grid-body" role="rowgroup">
-                  {previas.map((item) => (
-                    <FilaPrevia
-                      key={`previa-${item.id_previa}`}
-                      item={item}
-                      agregando={agregando}
-                      onAgregar={onAgregar}
-                    />
-                  ))}
+                  {previas.map((item) => {
+                    const key = itemKeyPrevia(item);
+                    return (
+                      <FilaPrevia
+                        key={key}
+                        item={item}
+                        agregando={agregando}
+                        seleccionado={seleccionVisible?.key === key}
+                        onSelect={seleccionarPrevia}
+                      />
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -279,6 +392,15 @@ const ModalAgregarNumeroGrupo = ({ abierto, data, cargando, agregando, error, on
 
         <footer className="ag-num-footer">
           <button type="button" className="mesa-submodal-footer-close" onClick={onClose} disabled={agregando}>Cerrar</button>
+          <button
+            type="button"
+            className="ag-num-confirm-btn"
+            onClick={confirmarSeleccion}
+            disabled={!puedeConfirmar}
+          >
+            <FontAwesomeIcon icon={agregando ? faSpinner : faPlus} spin={agregando} />
+            Confirmar
+          </button>
         </footer>
       </div>
     </div>

@@ -893,3 +893,72 @@
   border-color:color-mix(in srgb, var(--gm-action, #C48B3B) 70%, #fff) !important;
 }
 
+
+/* =========================================================
+   Mover previa — filas y checklist igual a Agregar alumno
+========================================================= */
+.persona-table-mover .persona-grid-data-row{
+  border-bottom:1px solid #e2e8f0;
+  background:#fff;
+  transition:background var(--gm-trans, 160ms ease), box-shadow var(--gm-trans, 160ms ease), transform var(--gm-trans, 160ms ease), opacity var(--gm-trans, 160ms ease);
+}
+
+.persona-table-mover .persona-grid-data-row:nth-child(even){
+  background:#fff;
+}
+
+.persona-table-mover .persona-grid-data-row.persona-row-selectable{
+  cursor:pointer;
+}
+
+.persona-table-mover .persona-grid-data-row.persona-row-selectable:hover{
+  background:rgba(196,139,59,.055);
+}
+
+.persona-table-mover .persona-grid-data-row.persona-row-selectable:focus-visible{
+  outline:2px solid color-mix(in srgb, var(--gm-action, #C48B3B) 72%, #fff);
+  outline-offset:-2px;
+  background:rgba(196,139,59,.06);
+}
+
+.persona-table-mover .persona-grid-data-row.persona-row-selected,
+.persona-table-mover .persona-grid-data-row.persona-row-selected:hover,
+.persona-table-mover .persona-grid-data-row.persona-row-selected:nth-child(even){
+  background:rgba(196,139,59,.08);
+  box-shadow:inset 3px 0 0 var(--gm-action, #C48B3B);
+}
+
+.persona-table-mover .persona-grid-cell{
+  min-height:52px;
+  padding:13px 12px;
+}
+
+.persona-radio{
+  width:24px;
+  height:24px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:2px solid #94a3b8;
+  border-radius:50%;
+  background:#fff;
+  color:#fff;
+  cursor:pointer;
+  transition:background var(--gm-trans, 160ms ease), border-color var(--gm-trans, 160ms ease), box-shadow var(--gm-trans, 160ms ease), transform var(--gm-trans, 160ms ease), opacity var(--gm-trans, 160ms ease);
+}
+
+.persona-radio.activo{
+  border-color:var(--gm-action, #C48B3B);
+  background:var(--gm-action, #C48B3B);
+  box-shadow:0 0 0 4px rgba(196,139,59,.12);
+}
+
+.persona-table-mover .persona-grid-data-row.persona-row-selectable:hover .persona-radio:not(.activo){
+  border-color:color-mix(in srgb, var(--gm-action, #C48B3B) 58%, #94a3b8);
+  box-shadow:0 0 0 4px rgba(196,139,59,.08);
+}
+
+.persona-radio:disabled{
+  cursor:not-allowed;
+  opacity:.58;
+}

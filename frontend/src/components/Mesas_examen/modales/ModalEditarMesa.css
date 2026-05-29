@@ -590,8 +590,23 @@
   box-shadow:0 14px 26px -22px rgba(58,46,43,.40), 0 0 0 4px rgba(196,139,59,.035);
 }
 
+.editar-mesa-slot-info{
+  width:100%;
+  flex:1 1 auto;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:center;
+  gap:6px;
+  padding:4px 0 2px;
+  text-align:left;
+}
+
 .editar-mesa-slot-card h3{
+  width:100%;
   margin:0;
+  text-align:left;
   color:var(--gm-ink, #3A2E2B);
   font-size:13.2px;
   line-height:1.2;
@@ -603,7 +618,9 @@
 }
 
 .editar-mesa-slot-card p{
+  width:100%;
   margin:0;
+  text-align:left;
   color:var(--gm-muted, #786661);
   font-size:12px;
   line-height:1.35;
@@ -613,8 +630,12 @@
 .editar-mesa-slot-actions{
   display:flex;
   align-items:center;
-  gap:6px;
+  justify-content: space-between;
   flex-wrap:wrap;
+}
+.buttons-accions{
+display: flex;
+gap: 6px;
 }
 
 .editar-mesa-numero-chip{

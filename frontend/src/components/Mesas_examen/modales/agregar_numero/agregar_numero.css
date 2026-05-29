@@ -554,3 +554,110 @@
   filter:none;
 }
 
+
+/* =========================================================
+   Agregar número al grupo — selección por fila + confirmar
+========================================================= */
+.ag-num-footer{
+  justify-content:flex-end;
+  align-items:center;
+  gap:12px;
+}
+
+.ag-num-footer .ag-num-confirm-btn{
+  min-width:140px;
+  min-height:40px;
+  height:40px;
+  padding:0 18px;
+  border-radius:12px;
+  border:1px solid color-mix(in srgb, var(--gm-action, #C48B3B) 58%, #fff);
+  background:linear-gradient(180deg, color-mix(in srgb, var(--gm-action, #C48B3B) 94%, #fff) 0%, var(--gm-action, #C48B3B) 100%);
+  color:#fff;
+  box-shadow:0 12px 24px -16px rgba(196,139,59,.62);
+  font-size:14px;
+  line-height:1;
+  font-weight:720;
+  letter-spacing:-.01em;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  cursor:pointer;
+  transition:transform var(--gm-trans, 160ms ease), box-shadow var(--gm-trans, 160ms ease), background var(--gm-trans, 160ms ease), border-color var(--gm-trans, 160ms ease), opacity var(--gm-trans, 160ms ease);
+}
+
+.ag-num-footer .ag-num-confirm-btn:hover:not(:disabled){
+  transform:translateY(-1px);
+  border-color:color-mix(in srgb, var(--gm-action, #C48B3B) 72%, #fff);
+  background:linear-gradient(180deg, color-mix(in srgb, var(--gm-action, #C48B3B) 90%, #fff) 0%, color-mix(in srgb, var(--gm-action, #C48B3B) 86%, #3A2E2B) 100%);
+  box-shadow:0 16px 28px -16px rgba(196,139,59,.72);
+}
+
+.ag-num-footer .ag-num-confirm-btn:disabled{
+  cursor:not-allowed;
+  opacity:.55;
+}
+
+.ag-num-grid-data-row.ag-num-row-selectable{
+  cursor:pointer;
+  transition:background var(--gm-trans, 160ms ease), box-shadow var(--gm-trans, 160ms ease), transform var(--gm-trans, 160ms ease), opacity var(--gm-trans, 160ms ease);
+}
+
+.ag-num-grid-data-row.ag-num-row-selectable:hover{
+  background:rgba(196,139,59,.055);
+}
+
+.ag-num-grid-data-row.ag-num-row-selectable:focus-visible{
+  outline:2px solid color-mix(in srgb, var(--gm-action, #C48B3B) 72%, #fff);
+  outline-offset:-2px;
+  background:rgba(196,139,59,.06);
+}
+
+.ag-num-grid-data-row.ag-num-row-selected,
+.ag-num-grid-data-row.ag-num-row-selected:hover,
+.ag-num-grid-data-row.ag-num-row-selected:nth-child(even){
+  background:rgba(196,139,59,.08);
+  box-shadow:inset 3px 0 0 var(--gm-action, #C48B3B);
+}
+
+.ag-num-radio{
+  width:24px;
+  height:24px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:2px solid #94a3b8;
+  border-radius:50%;
+  background:#fff;
+  color:#fff;
+  cursor:pointer;
+  transition:background var(--gm-trans, 160ms ease), border-color var(--gm-trans, 160ms ease), box-shadow var(--gm-trans, 160ms ease), transform var(--gm-trans, 160ms ease), opacity var(--gm-trans, 160ms ease);
+}
+
+.ag-num-radio.activo{
+  border-color:var(--gm-action, #C48B3B);
+  background:var(--gm-action, #C48B3B);
+  box-shadow:0 0 0 4px rgba(196,139,59,.12);
+}
+
+.ag-num-grid-data-row.ag-num-row-selectable:hover .ag-num-radio:not(.activo){
+  border-color:color-mix(in srgb, var(--gm-action, #C48B3B) 58%, #94a3b8);
+  box-shadow:0 0 0 4px rgba(196,139,59,.08);
+}
+
+.ag-num-radio:disabled{
+  cursor:not-allowed;
+  opacity:.58;
+}
+
+@media (max-width:720px){
+  .ag-num-footer{
+    flex-direction:column-reverse;
+    align-items:stretch;
+  }
+
+  .ag-num-footer .ag-num-confirm-btn,
+  .ag-num-footer .mesa-submodal-footer-close{
+    width:100%;
+  }
+}

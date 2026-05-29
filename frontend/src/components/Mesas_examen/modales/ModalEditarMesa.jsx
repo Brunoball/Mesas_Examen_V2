@@ -406,6 +406,7 @@ const SlotNumero = ({
         <span className={`editar-mesa-numero-chip ${tieneCambioDocente ? "editar-mesa-numero-chip--docenteCambio" : ""}`}>
           N° {texto(numero?.numero_mesa)}
         </span>
+        <div className="buttons-accions">
         <button type="button" title="Ver previas / alumnos" onClick={() => onVerPrevias && onVerPrevias(numero)}>
           <FontAwesomeIcon icon={faUser} />
         </button>
@@ -418,6 +419,7 @@ const SlotNumero = ({
         <button type="button" title="Quitar número del grupo" onClick={() => onEliminarNumero && onEliminarNumero(numero)}>
           <FontAwesomeIcon icon={faTrash} />
         </button>
+        </div>
       </div>
 
       {tieneCambioDocente && (
@@ -439,8 +441,10 @@ const SlotNumero = ({
         </div>
       )}
 
-      <h3>{texto(numero?.materia, "Sin materia")}</h3>
-      <p>Docentes: {texto(numero?.docente, "Sin docente")}</p>
+      <div className="editar-mesa-slot-info">
+        <h3>{texto(numero?.materia, "Sin materia")}</h3>
+        <p>Docentes: {texto(numero?.docente, "Sin docente")}</p>
+      </div>
     </article>
   );
 };

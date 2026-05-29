@@ -12,8 +12,8 @@ const texto = (valor, fallback = "-") => {
   return salida || fallback;
 };
 
-const MOVER_GRID_COLS = "0.75fr 0.8fr 1fr 0.85fr 1.4fr 1.2fr 0.95fr";
-const COLUMNAS_CENTRADAS = new Set(["seleccionar", "mesa", "fecha", "turno", "estado"]);
+const MOVER_GRID_COLS = "0.75fr 0.5fr .7fr 0.6fr 1.7fr 1.5fr";
+const COLUMNAS_CENTRADAS = new Set(["seleccionar", "mesa", "fecha", "turno"]);
 
 const isTopMesaModal = (node) => {
   if (typeof document === "undefined" || !node) return true;
@@ -88,7 +88,6 @@ const ModalMoverPreviaMesa = ({ abierto, previa, destinosData, cargando, moviend
     { key: "turno", label: "Turno" },
     { key: "materia", label: "Materia" },
     { key: "docente", label: "Docente" },
-    { key: "estado", label: "Estado" },
   ];
 
   return createPortal((
@@ -158,7 +157,7 @@ const ModalMoverPreviaMesa = ({ abierto, previa, destinosData, cargando, moviend
                     const seleccionado = String(numeroSeleccionado) === String(destino.numero_mesa);
                     const seleccionarDestino = () => {
                       if (!destino.valido || moviendo) return;
-                      setNumeroSeleccionado(String(destino.numero_mesa));
+                      setNumeroSeleccionado((actual) => (String(actual) === String(destino.numero_mesa) ? "" : String(destino.numero_mesa)));
                     };
 
                     return (
@@ -169,6 +168,7 @@ const ModalMoverPreviaMesa = ({ abierto, previa, destinosData, cargando, moviend
                         role="row"
                         tabIndex={destino.valido && !moviendo ? 0 : -1}
                         aria-selected={seleccionado}
+                        title={!destino.valido && errores.length ? errores.join(" | ") : undefined}
                         onClick={seleccionarDestino}
                         onKeyDown={(event) => {
                           if (event.key === "Enter" || event.key === " ") {
@@ -178,14 +178,20 @@ const ModalMoverPreviaMesa = ({ abierto, previa, destinosData, cargando, moviend
                         }}
                       >
                         <div className="persona-grid-cell persona-grid-cell-actions" role="cell" data-label="Seleccionar">
-                          <input
-                            type="radio"
-                            name="numero-destino-previa"
-                            value={destino.numero_mesa}
-                            checked={seleccionado}
+                          <button
+                            type="button"
+                            className={`persona-radio ${seleccionado ? "activo" : ""}`}
                             disabled={!destino.valido || moviendo}
-                            onChange={(e) => setNumeroSeleccionado(e.target.value)}
-                          />
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              seleccionarDestino();
+                            }}
+                            title={seleccionado ? "Deseleccionar destino" : "Seleccionar destino"}
+                            aria-label={`${seleccionado ? "Deseleccionar" : "Seleccionar"} mesa N° ${texto(destino.numero_mesa)}`}
+                            aria-pressed={seleccionado}
+                          >
+                            {seleccionado && <FontAwesomeIcon icon={faCheck} />}
+                          </button>
                         </div>
                         <div className="persona-grid-cell is-center" role="cell" data-label="N° Mesa">{texto(destino.numero_mesa)}</div>
                         <div className="persona-grid-cell is-center" role="cell" data-label="Fecha">{texto(destino.fecha)}</div>
@@ -195,13 +201,6 @@ const ModalMoverPreviaMesa = ({ abierto, previa, destinosData, cargando, moviend
                         </div>
                         <div className="persona-grid-cell" role="cell" data-label="Docente">
                           <TextoExpandibleGlobal value={destino.docente} title="Docente destino" subtitle={`Mesa N° ${texto(destino.numero_mesa)}`} />
-                        </div>
-                        <div className="persona-grid-cell persona-grid-cell-actions is-center" role="cell" data-label="Estado">
-                          {destino.valido ? (
-                            <span className="persona-status-ok">Disponible</span>
-                          ) : (
-                            <span className="persona-status-bad" title={errores.join(" | ")}>Bloqueada</span>
-                          )}
                         </div>
                       </div>
                     );

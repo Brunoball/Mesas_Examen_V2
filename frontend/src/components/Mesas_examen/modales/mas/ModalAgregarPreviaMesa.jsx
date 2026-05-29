@@ -178,19 +178,37 @@ const ModalAgregarPreviaMesa = ({
                 <div className="mas-grid-body" role="rowgroup">
                   {previas.map((previa) => {
                     const activa = String(previaSeleccionada?.id_previa) === String(previa.id_previa);
+                    const seleccionarPrevia = () => {
+                      setPreviaSeleccionada((actual) => (String(actual?.id_previa) === String(previa.id_previa) ? null : previa));
+                    };
+
                     return (
                       <div
                         key={previa.id_previa}
-                        className={`mas-grid-row mas-grid-data-row ${activa ? "seleccionada" : ""}`}
+                        className={`mas-grid-row mas-grid-data-row mas-row-selectable ${activa ? "seleccionada" : ""}`}
                         style={{ gridTemplateColumns: MAS_GRID_COLS }}
                         role="row"
+                        tabIndex={0}
+                        aria-selected={activa}
+                        onClick={seleccionarPrevia}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            seleccionarPrevia();
+                          }
+                        }}
                       >
                         <div className="mas-grid-cell mas-grid-cell-actions" role="cell" data-label="Seleccionar">
                           <button
                             type="button"
                             className={`mas-radio ${activa ? "activo" : ""}`}
-                            onClick={() => setPreviaSeleccionada(previa)}
-                            title="Seleccionar previa"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              seleccionarPrevia();
+                            }}
+                            title={activa ? "Deseleccionar previa" : "Seleccionar previa"}
+                            aria-label={activa ? "Deseleccionar previa" : "Seleccionar previa"}
+                            aria-pressed={activa}
                           >
                             {activa && <FontAwesomeIcon icon={faCheck} />}
                           </button>

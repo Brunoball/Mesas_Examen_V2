@@ -12,7 +12,7 @@ const texto = (valor, fallback = "-") => {
   return salida || fallback;
 };
 
-const PREVIAS_GRID_COLS = "0.85fr 1.35fr 0.85fr 1.45fr 1.25fr 0.72fr";
+const PREVIAS_GRID_COLS = "0.55fr 1.5fr 0.4fr 1.45fr 1.25fr 0.52fr";
 const COLUMNAS_CENTRADAS = new Set(["dni", "alumno", "curso", "accion"]);
 
 const isTopMesaModal = (node) => {

@@ -554,3 +554,37 @@
   box-shadow:inset 3px 0 0 var(--gm-action, #C48B3B);
 }
 
+
+/* =========================================================
+   Agregar alumno a mesa — seleccionar desde toda la fila
+========================================================= */
+.mas-grid-data-row.mas-row-selectable{
+  cursor:pointer;
+  transition:background var(--gm-trans, 160ms ease), box-shadow var(--gm-trans, 160ms ease), transform var(--gm-trans, 160ms ease);
+}
+
+.mas-grid-data-row.mas-row-selectable:hover{
+  background:rgba(196,139,59,.055);
+}
+
+.mas-grid-data-row.mas-row-selectable:focus-visible{
+  outline:2px solid color-mix(in srgb, var(--gm-action, #C48B3B) 72%, #fff);
+  outline-offset:-2px;
+  background:rgba(196,139,59,.06);
+}
+
+.mas-radio{
+  transition:background var(--gm-trans, 160ms ease), border-color var(--gm-trans, 160ms ease), box-shadow var(--gm-trans, 160ms ease), transform var(--gm-trans, 160ms ease);
+}
+
+.mas-grid-data-row.mas-row-selectable:hover .mas-radio:not(.activo){
+  border-color:color-mix(in srgb, var(--gm-action, #C48B3B) 58%, #94a3b8);
+  box-shadow:0 0 0 4px rgba(196,139,59,.08);
+}
+
+.mas-grid-data-row.mas-row-selectable.seleccionada,
+.mas-grid-data-row.mas-row-selectable.seleccionada:hover,
+.mas-grid-data-row.mas-row-selectable.seleccionada:focus-visible{
+  background:rgba(196,139,59,.08);
+  box-shadow:inset 3px 0 0 var(--gm-action, #C48B3B);
+}
