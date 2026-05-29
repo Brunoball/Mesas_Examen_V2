@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
+  faCheck,
   faCheckCircle,
   faClock,
   faEnvelope,
@@ -259,7 +260,15 @@ export default function ModalNotificacionesEmailMesas({ abierto = false, onClose
               <CardResumen icon={faTriangleExclamation} label="Sin mesa / inválidos" value={(resumen?.sin_mesa || 0) + (resumen?.email_invalido || 0)} tone="danger" hint="No entran al lote" />
             </div>
 
-            <div className={`mesasMail-workRow ${lote?.id_lote ? "has-lote" : "no-lote"}`}>
+            {error ? (
+              <div className="gm-alert gm-alert--error gm-alert--banner mesasMail-error">
+                <FontAwesomeIcon icon={faTriangleExclamation} />
+                <span>{error}</span>
+              </div>
+            ) : null}
+
+            <div className="mesasMail-mainGrid">
+              <div className={`mesasMail-workRow ${lote?.id_lote ? "has-lote" : "no-lote"}`}>
               {lote?.id_lote ? (
                 <section className="gm-panel mesasMail-progressBox" aria-label="Estado del lote de envío">
                   <div className="gm-panel__body mesasMail-progressBody">
@@ -273,12 +282,7 @@ export default function ModalNotificacionesEmailMesas({ abierto = false, onClose
                     <div className="mesasMail-progressBar" aria-label="Progreso de envío">
                       <span style={{ width: `${statsLote.porcentaje}%` }} />
                     </div>
-                    <div className="mesasMail-progressStats">
-                      <span><FontAwesomeIcon icon={faCheckCircle} /> Enviados: <b>{statsLote.enviados}</b></span>
-                      <span><FontAwesomeIcon icon={faClock} /> Pendientes: <b>{statsLote.pendientes}</b></span>
-                      <span><FontAwesomeIcon icon={faTriangleExclamation} /> Errores: <b>{statsLote.errores}</b></span>
-                      <span>Total: <b>{statsLote.total}</b></span>
-                    </div>
+
                     {mensajeEnvio ? <p className="mesasMail-progressMsg">{mensajeEnvio}</p> : null}
                   </div>
                 </section>
@@ -312,20 +316,16 @@ export default function ModalNotificacionesEmailMesas({ abierto = false, onClose
                       onChange={(e) => setReenviar(e.target.checked)}
                       disabled={enviando}
                     />
-                    <span>Reenviar también a alumnos ya notificados</span>
+                    <span className="mesasMail-checkVisual" aria-hidden="true">
+                      <FontAwesomeIcon icon={faCheck} />
+                    </span>
+                    <span className="mesasMail-checkText">Reenviar también a alumnos ya notificados</span>
                   </label>
                 </div>
               </section>
-            </div>
-
-            {error ? (
-              <div className="gm-alert gm-alert--error gm-alert--banner mesasMail-error">
-                <FontAwesomeIcon icon={faTriangleExclamation} />
-                <span>{error}</span>
               </div>
-            ) : null}
 
-            <section className="gm-panel mesasMail-listPanel">
+              <section className="gm-panel mesasMail-listPanel">
               <div className="gm-panel__head gm-panel__head--split mesasMail-listHead">
                 <div>
                   <span className="gm-panel__eyebrow">Destinatarios</span>
@@ -364,7 +364,8 @@ export default function ModalNotificacionesEmailMesas({ abierto = false, onClose
                   </article>
                 ))}
               </div>
-            </section>
+              </section>
+            </div>
           </div>
 
           <div className="gm-modal__actions mesasMail-foot">
