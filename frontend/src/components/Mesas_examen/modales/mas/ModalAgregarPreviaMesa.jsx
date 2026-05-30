@@ -83,6 +83,31 @@ const GridHead = ({ columns, gridCols }) => (
   </div>
 );
 
+
+const MasTableSkeleton = ({ columns, gridCols, rows = 4 }) => (
+  <div className="mas-tabla-wrap mas-tabla-wrap-skeleton" aria-hidden="true">
+    <div className="mas-tabla mas-div-table mas-tabla-skeleton" role="presentation">
+      <GridHead columns={columns} gridCols={gridCols} />
+      <div className="mas-grid-body" role="presentation">
+        {Array.from({ length: rows }).map((_, rowIndex) => (
+          <div
+            key={`mas-skeleton-row-${rowIndex}`}
+            className="mas-grid-row mas-grid-data-row mas-grid-skeleton-row"
+            style={{ gridTemplateColumns: gridCols }}
+            role="presentation"
+          >
+            {columns.map((column, colIndex) => (
+              <div key={`${column.key}-${colIndex}`} className={`mas-grid-cell ${COLUMNAS_CENTRADAS.has(column.key) ? "is-center" : ""}`} role="presentation">
+                <span className={`mas-skeleton-line mas-skeleton-line--${column.key}`} />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
 const ModalAgregarPreviaMesa = ({
   abierto,
   numero,
@@ -128,7 +153,7 @@ const ModalAgregarPreviaMesa = ({
 
   return createPortal((
     <div ref={overlayRef} className="mas-modal-overlay" role="dialog" aria-modal="true" data-mesa-modal-root="true">
-      <div className="mas-modal-panel">
+      <div className={`mas-modal-panel ${cargando ? "is-loading" : ""}`}>
         <header className="mas-modal-header">
           <div className="mas-header-title">
             <span className="mas-header-icon" aria-hidden="true">
@@ -163,11 +188,8 @@ const ModalAgregarPreviaMesa = ({
 
 
           {cargando ? (
-            <div className="mas-empty">
-              <FontAwesomeIcon icon={faSpinner} spin />
-              Analizando previas disponibles...
-            </div>
-          ) : previas.length === 0 ? (
+            <MasTableSkeleton columns={columns} gridCols={MAS_GRID_COLS} rows={4} />
+          ) : (previas.length === 0 ? (
             <div className="mas-empty">
               {data?.mensaje_restriccion || "No hay previas sin mesa disponibles para este mismo docente, área, fecha y turno."}
             </div>
@@ -230,7 +252,7 @@ const ModalAgregarPreviaMesa = ({
                 </div>
               </div>
             </div>
-          )}
+          ))}
         </section>
 
         <footer className="mas-modal-footer">

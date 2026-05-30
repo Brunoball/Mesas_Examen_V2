@@ -76,6 +76,29 @@ const destinoCoincide = (destino, busqueda) => {
   ].some((valor) => normalizar(valor).includes(busqueda)));
 };
 
+
+const FlechasListaSkeleton = ({ rows = 4 }) => (
+  <div className="flechas-lista flechas-lista-skeleton" aria-hidden="true">
+    {Array.from({ length: rows }).map((_, index) => (
+      <div key={`flechas-skeleton-${index}`} className="flechas-destino flechas-destino-skeleton">
+        <div className="flechas-skeleton-top">
+          <div>
+            <span className="flechas-skeleton-line flechas-skeleton-title" />
+            <span className="flechas-skeleton-line flechas-skeleton-subtitle" />
+          </div>
+          <div className="flechas-skeleton-right">
+            <span className="flechas-skeleton-line flechas-skeleton-small" />
+            <span className="flechas-skeleton-line flechas-skeleton-medium" />
+          </div>
+        </div>
+        <span className="flechas-skeleton-line flechas-skeleton-label" />
+        <span className="flechas-skeleton-line flechas-skeleton-text" />
+        <span className="flechas-skeleton-line flechas-skeleton-text flechas-skeleton-text-short" />
+      </div>
+    ))}
+  </div>
+);
+
 const ModalMoverNumeroMesa = ({
   abierto,
   numero,
@@ -127,7 +150,7 @@ const ModalMoverNumeroMesa = ({
 
   return createPortal((
     <div ref={overlayRef} className="flechas-overlay" role="dialog" aria-modal="true" data-mesa-modal-root="true">
-      <div className="flechas-modal">
+      <div className={`flechas-modal ${cargando ? "is-loading" : ""}`}>
         <header className="flechas-header flechas-header-compact">
           <div className="flechas-header-title">
             <span className="flechas-header-icon" aria-hidden="true">
@@ -198,10 +221,8 @@ const ModalMoverNumeroMesa = ({
             ) : null}
 
             {cargando ? (
-              <div className="flechas-loading">
-                <FontAwesomeIcon icon={faSpinner} spin /> Analizando grupos compatibles...
-              </div>
-            ) : destinos.length === 0 ? (
+              <FlechasListaSkeleton rows={4} />
+            ) : (destinos.length === 0 ? (
               <div className="flechas-empty">
                 No hay grupos disponibles para mover este número de mesa sin generar conflictos.
               </div>
@@ -267,7 +288,7 @@ const ModalMoverNumeroMesa = ({
                   );
                 })}
               </div>
-            )}
+            ))}
           </div>
         </section>
 

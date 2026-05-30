@@ -471,6 +471,62 @@ const SlotVacio = ({ onClick, esExtraLibre = false, eliminando = false, onElimin
   </div>
 );
 
+
+const EditarMesaSkeleton = () => (
+  <>
+    <div className="editar-mesa-programacion editar-mesa-skeleton-card" aria-hidden="true">
+      <span className="editar-mesa-skeleton-line editar-mesa-skeleton-title" />
+      <span className="editar-mesa-skeleton-line editar-mesa-skeleton-accent" />
+
+      <div className="editar-mesa-skeleton-fields">
+        <span className="editar-mesa-skeleton-line editar-mesa-skeleton-input" />
+        <span className="editar-mesa-skeleton-line editar-mesa-skeleton-input" />
+      </div>
+
+      <div className="editar-mesa-skeleton-calendar">
+        <div className="editar-mesa-skeleton-calendar-head">
+          <span className="editar-mesa-skeleton-line editar-mesa-skeleton-circle" />
+          <span className="editar-mesa-skeleton-line editar-mesa-skeleton-month" />
+          <span className="editar-mesa-skeleton-line editar-mesa-skeleton-circle" />
+        </div>
+        <div className="editar-mesa-skeleton-calendar-grid">
+          {Array.from({ length: 42 }).map((_, index) => (
+            <span key={`editar-cal-skeleton-${index}`} className="editar-mesa-skeleton-line editar-mesa-skeleton-day" />
+          ))}
+        </div>
+      </div>
+    </div>
+
+    <div className="editar-mesa-slots-wrap editar-mesa-skeleton-slots-wrap" aria-hidden="true">
+      <div className="editar-mesa-slots-card editar-mesa-skeleton-card">
+        <div className="editar-mesa-skeleton-slots-head">
+          <div>
+            <span className="editar-mesa-skeleton-line editar-mesa-skeleton-title editar-mesa-skeleton-title-wide" />
+            <span className="editar-mesa-skeleton-line editar-mesa-skeleton-subtitle" />
+          </div>
+          <span className="editar-mesa-skeleton-line editar-mesa-skeleton-pill" />
+        </div>
+        <span className="editar-mesa-skeleton-line editar-mesa-skeleton-accent" />
+        <div className="editar-mesa-skeleton-slots-grid">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={`editar-slot-skeleton-${index}`} className="editar-mesa-skeleton-slot">
+              <span className="editar-mesa-skeleton-line editar-mesa-skeleton-chip" />
+              <span className="editar-mesa-skeleton-line editar-mesa-skeleton-card-title" />
+              <span className="editar-mesa-skeleton-line editar-mesa-skeleton-card-text" />
+              <span className="editar-mesa-skeleton-line editar-mesa-skeleton-card-text editar-mesa-skeleton-card-text-short" />
+              <div className="editar-mesa-skeleton-actions">
+                <span className="editar-mesa-skeleton-line editar-mesa-skeleton-action" />
+                <span className="editar-mesa-skeleton-line editar-mesa-skeleton-action" />
+                <span className="editar-mesa-skeleton-line editar-mesa-skeleton-action" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </>
+);
+
 const ModalEditarMesa = ({
   abierto,
   grupo,
@@ -700,7 +756,7 @@ const ModalEditarMesa = ({
 
   return createPortal((
     <div ref={overlayRef} className="editar-mesa-overlay" role="dialog" aria-modal="true" data-mesa-modal-root="true">
-      <div className="editar-mesa-panel">
+      <div className={`editar-mesa-panel ${cargando ? "is-loading" : ""}`}>
         <header className="editar-mesa-header">
           <div className="editar-mesa-title">
             <FontAwesomeIcon icon={faEdit} />
@@ -717,9 +773,7 @@ const ModalEditarMesa = ({
 
         <section className="editar-mesa-body">
           {cargando ? (
-            <div className="editar-mesa-loading">
-              <FontAwesomeIcon icon={faSpinner} spin /> Cargando mesa para edición...
-            </div>
+            <EditarMesaSkeleton />
           ) : (
             <>
               <div className="editar-mesa-programacion">
@@ -784,12 +838,6 @@ const ModalEditarMesa = ({
                   onChange={handleFechaChange}
                   onMesChange={cargarSlotsMes}
                 />
-
-                {cargandoSlots && (
-                  <div className="editar-mesa-disponibilidad-info">
-                    <FontAwesomeIcon icon={faSpinner} spin /> Analizando docentes, alumnos y correlativas...
-                  </div>
-                )}
 
                 {!cargandoSlots && slotsDisponibles && slotsValidos.length === 0 && (
                   <div className="editar-mesa-disponibilidad-error">
@@ -926,7 +974,12 @@ const ModalEditarMesa = ({
           )}
         </section>
 
-        {!cargando && (
+        {cargando ? (
+          <footer className="editar-mesa-footer editar-mesa-footer-skeleton" aria-hidden="true">
+            <span className="editar-mesa-skeleton-line editar-mesa-skeleton-footer-btn" />
+            <span className="editar-mesa-skeleton-line editar-mesa-skeleton-footer-btn editar-mesa-skeleton-footer-btn-primary" />
+          </footer>
+        ) : (
           <footer className="editar-mesa-footer">
             <button type="button" className="editar-mesa-btn eliminar" onClick={handleDelete} disabled={guardando}>
               <FontAwesomeIcon icon={guardando ? faSpinner : faTrash} spin={guardando} />

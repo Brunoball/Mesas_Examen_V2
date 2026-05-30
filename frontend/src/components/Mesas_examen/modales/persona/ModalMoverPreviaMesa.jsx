@@ -57,6 +57,31 @@ const GridHead = ({ columns, gridCols }) => (
   </div>
 );
 
+
+const PersonaTableSkeleton = ({ columns, gridCols, rows = 4 }) => (
+  <div className="persona-table-wrap persona-table-wrap-skeleton" aria-hidden="true">
+    <div className="persona-table persona-div-table persona-table-skeleton" role="presentation">
+      <GridHead columns={columns} gridCols={gridCols} />
+      <div className="persona-grid-body" role="presentation">
+        {Array.from({ length: rows }).map((_, rowIndex) => (
+          <div
+            key={`persona-skeleton-row-${rowIndex}`}
+            className="persona-grid-row persona-grid-data-row persona-grid-skeleton-row"
+            style={{ gridTemplateColumns: gridCols }}
+            role="presentation"
+          >
+            {columns.map((column, colIndex) => (
+              <div key={`${column.key}-${colIndex}`} className="persona-grid-cell" role="presentation">
+                <span className={`persona-skeleton-line persona-skeleton-line--${column.key}`} />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
 const ModalMoverPreviaMesa = ({ abierto, previa, destinosData, cargando, moviendo, onClose, onConfirm }) => {
   const [numeroSeleccionado, setNumeroSeleccionado] = useState("");
   const overlayRef = useEscapeClose(abierto, onClose, moviendo);
@@ -92,7 +117,7 @@ const ModalMoverPreviaMesa = ({ abierto, previa, destinosData, cargando, moviend
 
   return createPortal((
     <div ref={overlayRef} className="persona-modal-overlay persona-modal-overlay-top" role="dialog" aria-modal="true" data-mesa-modal-root="true">
-      <div className="persona-modal persona-modal-mover">
+      <div className={`persona-modal persona-modal-mover ${cargando ? "is-loading" : ""}`}>
         <header className="persona-modal-header persona-modal-header-compact">
           <div className="persona-header-title">
             <span className="persona-header-icon" aria-hidden="true">
@@ -142,10 +167,8 @@ const ModalMoverPreviaMesa = ({ abierto, previa, destinosData, cargando, moviend
           </div>
 
           {cargando ? (
-            <div className="persona-loading">
-              <FontAwesomeIcon icon={faSpinner} spin /> Buscando números compatibles del área...
-            </div>
-          ) : destinos.length === 0 ? (
+            <PersonaTableSkeleton columns={columns} gridCols={MOVER_GRID_COLS} rows={4} />
+          ) : (destinos.length === 0 ? (
             <div className="persona-empty">No hay otros números de mesa disponibles dentro del área de esta materia.</div>
           ) : (
             <div className="persona-table-wrap">
@@ -208,7 +231,7 @@ const ModalMoverPreviaMesa = ({ abierto, previa, destinosData, cargando, moviend
                 </div>
               </div>
             </div>
-          )}
+          ))}
 
         </section>
 

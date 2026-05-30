@@ -588,3 +588,55 @@
   background:rgba(196,139,59,.08);
   box-shadow:inset 3px 0 0 var(--gm-action, #C48B3B);
 }
+
+
+/* =========================================================
+   Skeleton de carga para agregar alumno a mesa
+========================================================= */
+.mas-tabla-wrap-skeleton{
+  min-height:246px;
+  margin-top:18px;
+  background:#fff;
+}
+
+.mas-grid-skeleton-row{
+  pointer-events:none;
+}
+
+.mas-skeleton-line{
+  display:block;
+  width:100%;
+  height:12px;
+  border-radius:999px;
+  background:linear-gradient(90deg, rgba(58,46,43,.06) 0%, rgba(196,139,59,.16) 46%, rgba(58,46,43,.06) 100%);
+  background-size:220% 100%;
+  animation:masSkeleton 1.15s ease-in-out infinite;
+}
+
+@keyframes masSkeleton{
+  0%{ background-position:120% 0; }
+  100%{ background-position:-120% 0; }
+}
+
+.mas-skeleton-line--seleccionar{
+  width:26px;
+  height:26px;
+  margin:0 auto;
+  border-radius:999px;
+}
+
+.mas-skeleton-line--dni,
+.mas-skeleton-line--curso{
+  width:62%;
+  margin:0 auto;
+}
+
+.mas-skeleton-line--alumno,
+.mas-skeleton-line--materia,
+.mas-skeleton-line--docente{
+  width:88%;
+}
+
+.mas-modal-panel.is-loading{
+  min-height:620px;
+}

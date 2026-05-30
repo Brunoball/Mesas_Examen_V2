@@ -661,3 +661,57 @@
     width:100%;
   }
 }
+
+
+/* =========================================================
+   Skeleton de carga para agregar número al grupo
+========================================================= */
+.ag-num-table-wrap-skeleton{
+  min-height:246px;
+  background:#fff;
+}
+
+.ag-num-grid-skeleton-row{
+  pointer-events:none;
+}
+
+.ag-num-skeleton-line{
+  display:block;
+  width:100%;
+  height:12px;
+  border-radius:999px;
+  background:linear-gradient(90deg, rgba(58,46,43,.06) 0%, rgba(196,139,59,.16) 46%, rgba(58,46,43,.06) 100%);
+  background-size:220% 100%;
+  animation:agNumSkeleton 1.15s ease-in-out infinite;
+}
+
+@keyframes agNumSkeleton{
+  0%{ background-position:120% 0; }
+  100%{ background-position:-120% 0; }
+}
+
+.ag-num-skeleton-line--seleccionar{
+  width:26px;
+  height:26px;
+  margin:0 auto;
+  border-radius:999px;
+}
+
+.ag-num-skeleton-line--numero,
+.ag-num-skeleton-line--dni,
+.ag-num-skeleton-line--curso,
+.ag-num-skeleton-line--alumnos{
+  width:64%;
+  margin:0 auto;
+}
+
+.ag-num-skeleton-line--alumno,
+.ag-num-skeleton-line--materia,
+.ag-num-skeleton-line--docente,
+.ag-num-skeleton-line--area{
+  width:88%;
+}
+
+.ag-num-panel.is-loading{
+  min-height:620px;
+}

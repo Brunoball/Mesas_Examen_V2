@@ -80,6 +80,31 @@ const GridHead = ({ columns, gridCols }) => (
   </div>
 );
 
+
+const AgNumTableSkeleton = ({ columns, gridCols, rows = 4 }) => (
+  <div className="ag-num-table-wrap ag-num-table-wrap-skeleton" aria-hidden="true">
+    <div className="ag-num-table ag-num-div-table ag-num-table-skeleton" role="presentation">
+      <GridHead columns={columns} gridCols={gridCols} />
+      <div className="ag-num-grid-body" role="presentation">
+        {Array.from({ length: rows }).map((_, rowIndex) => (
+          <div
+            key={`ag-num-skeleton-row-${rowIndex}`}
+            className="ag-num-grid-row ag-num-grid-data-row ag-num-grid-skeleton-row"
+            style={{ gridTemplateColumns: gridCols }}
+            role="presentation"
+          >
+            {columns.map((column, colIndex) => (
+              <div key={`${column.key}-${colIndex}`} className={`ag-num-grid-cell ${COLUMNAS_CENTRADAS.has(column.key) ? "ag-num-center" : ""}`} role="presentation">
+                <span className={`ag-num-skeleton-line ag-num-skeleton-line--${column.key}`} />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
 const SelectorFila = ({ activo, disabled, title, ariaLabel, onSelect }) => (
   <button
     type="button"
@@ -284,7 +309,7 @@ const ModalAgregarNumeroGrupo = ({ abierto, data, cargando, agregando, error, on
 
   return createPortal((
     <div ref={overlayRef} className="ag-num-overlay" role="dialog" aria-modal="true" data-mesa-modal-root="true">
-      <div className="ag-num-panel">
+      <div className={`ag-num-panel ${cargando ? "is-loading" : ""}`}>
         <header className="ag-num-header">
           <div className="ag-num-header-title">
             <span className="ag-num-header-icon" aria-hidden="true">
@@ -338,10 +363,12 @@ const ModalAgregarNumeroGrupo = ({ abierto, data, cargando, agregando, error, on
           ) : null}
 
           {cargando ? (
-            <div className="ag-num-empty">
-              <FontAwesomeIcon icon={faSpinner} spin /> Buscando números no agrupados...
-            </div>
-          ) : tab === "no_agrupadas" ? (
+            <AgNumTableSkeleton
+              columns={tab === "no_agrupadas" ? columnsNoAgrupadas : columnsPrevias}
+              gridCols={tab === "no_agrupadas" ? NO_AGRUPADAS_GRID_COLS : PREVIAS_GRID_COLS}
+              rows={4}
+            />
+          ) : (tab === "no_agrupadas" ? (
             noAgrupadas.length === 0 ? (
               <div className="ag-num-empty">No hay mesas no agrupadas disponibles.</div>
             ) : (
@@ -387,7 +414,7 @@ const ModalAgregarNumeroGrupo = ({ abierto, data, cargando, agregando, error, on
                 </div>
               </div>
             </div>
-          )}
+          ))}
         </section>
 
         <footer className="ag-num-footer">

@@ -2,7 +2,7 @@
 import React, { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faExchangeAlt, faSpinner, faTimes, faTrash, faUser } from "@fortawesome/free-solid-svg-icons";
+import { faExchangeAlt, faTimes, faTrash, faUser } from "@fortawesome/free-solid-svg-icons";
 
 import "./persona.css";
 import TextoExpandibleGlobal from "../../../Global/Modales/TextoExpandibleGlobal";
@@ -12,7 +12,7 @@ const texto = (valor, fallback = "-") => {
   return salida || fallback;
 };
 
-const PREVIAS_GRID_COLS = "0.55fr 1.5fr 0.4fr 1.45fr 1.25fr 0.52fr";
+const PREVIAS_GRID_COLS = "0.45fr 1.5fr 0.5fr 1.45fr 1.25fr 0.52fr";
 const COLUMNAS_CENTRADAS = new Set(["dni", "alumno", "curso", "accion"]);
 
 const isTopMesaModal = (node) => {
@@ -57,6 +57,31 @@ const GridHead = ({ columns, gridCols }) => (
   </div>
 );
 
+
+const PersonaTableSkeleton = ({ columns, gridCols, rows = 4 }) => (
+  <div className="persona-table-wrap persona-table-wrap-skeleton" aria-hidden="true">
+    <div className="persona-table persona-div-table persona-table-skeleton" role="presentation">
+      <GridHead columns={columns} gridCols={gridCols} />
+      <div className="persona-grid-body" role="presentation">
+        {Array.from({ length: rows }).map((_, rowIndex) => (
+          <div
+            key={`persona-skeleton-row-${rowIndex}`}
+            className="persona-grid-row persona-grid-data-row persona-grid-skeleton-row"
+            style={{ gridTemplateColumns: gridCols }}
+            role="presentation"
+          >
+            {columns.map((column, colIndex) => (
+              <div key={`${column.key}-${colIndex}`} className="persona-grid-cell" role="presentation">
+                <span className={`persona-skeleton-line persona-skeleton-line--${column.key}`} />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
 const ModalPreviasMesa = ({ abierto, numero, data, cargando, onClose, onMover, onEliminar }) => {
   const overlayRef = useEscapeClose(abierto, onClose);
 
@@ -79,7 +104,7 @@ const ModalPreviasMesa = ({ abierto, numero, data, cargando, onClose, onMover, o
 
   return createPortal((
     <div ref={overlayRef} className="persona-modal-overlay" role="dialog" aria-modal="true" data-mesa-modal-root="true">
-      <div className="persona-modal persona-modal-previas">
+      <div className={`persona-modal persona-modal-previas ${cargando ? "is-loading" : ""}`}>
         <header className="persona-modal-header">
           <div className="persona-header-title">
             <span className="persona-header-icon" aria-hidden="true">
@@ -101,10 +126,8 @@ const ModalPreviasMesa = ({ abierto, numero, data, cargando, onClose, onMover, o
 
         <section className="persona-modal-body">
           {cargando ? (
-            <div className="persona-loading">
-              <FontAwesomeIcon icon={faSpinner} spin /> Cargando previas...
-            </div>
-          ) : previas.length === 0 ? (
+            <PersonaTableSkeleton columns={columns} gridCols={PREVIAS_GRID_COLS} rows={4} />
+          ) : (previas.length === 0 ? (
             <div className="persona-empty">Este número de mesa no tiene previas vinculadas.</div>
           ) : (
             <div className="persona-table-wrap">
@@ -154,7 +177,7 @@ const ModalPreviasMesa = ({ abierto, numero, data, cargando, onClose, onMover, o
                 </div>
               </div>
             </div>
-          )}
+          ))}
         </section>
 
         <footer className="persona-modal-footer">

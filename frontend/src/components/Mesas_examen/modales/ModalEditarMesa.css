@@ -1302,3 +1302,190 @@ gap: 6px;
     grid-auto-rows:minmax(138px, auto) !important;
   }
 }
+
+
+/* =========================================================
+   Estado de carga sin texto: skeleton estable para evitar saltos
+========================================================= */
+.editar-mesa-panel.is-loading{
+  height:min(760px, 94dvh);
+}
+
+.editar-mesa-skeleton-line{
+  display:block;
+  border-radius:999px;
+  background:linear-gradient(90deg, rgba(58,46,43,.06) 0%, rgba(196,139,59,.16) 46%, rgba(58,46,43,.06) 100%);
+  background-size:220% 100%;
+  animation:editarMesaSkeleton 1.15s ease-in-out infinite;
+}
+
+@keyframes editarMesaSkeleton{
+  0%{ background-position:120% 0; }
+  100%{ background-position:-120% 0; }
+}
+
+.editar-mesa-skeleton-card{
+  min-height:100%;
+}
+
+.editar-mesa-skeleton-title{
+  width:132px;
+  height:17px;
+}
+
+.editar-mesa-skeleton-title-wide{
+  width:210px;
+}
+
+.editar-mesa-skeleton-subtitle{
+  width:250px;
+  height:11px;
+  margin-top:8px;
+}
+
+.editar-mesa-skeleton-accent{
+  width:76px;
+  height:3px;
+  margin:9px 0 14px;
+  opacity:.8;
+}
+
+.editar-mesa-skeleton-fields{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-bottom:12px;
+}
+
+.editar-mesa-skeleton-input{
+  height:45px;
+  border-radius:12px;
+}
+
+.editar-mesa-skeleton-calendar{
+  padding:12px;
+  border:1px solid rgba(58,46,43,.09);
+  border-radius:14px;
+  background:linear-gradient(180deg, #fff, color-mix(in srgb, var(--gm-bg, #FDFBF7) 68%, #fff));
+  box-shadow:0 10px 22px -21px rgba(58,46,43,.32);
+}
+
+.editar-mesa-skeleton-calendar-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:14px;
+}
+
+.editar-mesa-skeleton-circle{
+  width:32px;
+  height:32px;
+  border-radius:10px;
+}
+
+.editar-mesa-skeleton-month{
+  width:150px;
+  height:16px;
+}
+
+.editar-mesa-skeleton-calendar-grid{
+  display:grid;
+  grid-template-columns:repeat(7, minmax(0, 1fr));
+  justify-items:center;
+  gap:7px 0;
+}
+
+.editar-mesa-skeleton-day{
+  width:35px;
+  height:35px;
+  border-radius:10px;
+}
+
+.editar-mesa-skeleton-slots-head{
+  min-height:38px;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+}
+
+.editar-mesa-skeleton-pill{
+  width:105px;
+  height:31px;
+}
+
+.editar-mesa-skeleton-slots-grid{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:10px;
+}
+
+.editar-mesa-skeleton-slot{
+  min-height:158px;
+  padding:12px;
+  border:1px solid rgba(58,46,43,.09);
+  border-radius:14px;
+  background:#fff;
+  box-shadow:0 10px 22px -21px rgba(58,46,43,.32), 0 1px 0 rgba(58,46,43,.03);
+}
+
+.editar-mesa-skeleton-chip{
+  width:58px;
+  height:24px;
+  margin-bottom:14px;
+}
+
+.editar-mesa-skeleton-card-title{
+  width:72%;
+  height:16px;
+  margin-bottom:10px;
+}
+
+.editar-mesa-skeleton-card-text{
+  width:92%;
+  height:12px;
+  margin-bottom:8px;
+}
+
+.editar-mesa-skeleton-card-text-short{
+  width:64%;
+}
+
+.editar-mesa-skeleton-actions{
+  display:flex;
+  gap:8px;
+  margin-top:18px;
+}
+
+.editar-mesa-skeleton-action{
+  width:30px;
+  height:28px;
+  border-radius:9px;
+}
+
+.editar-mesa-footer-skeleton{
+  pointer-events:none;
+}
+
+.editar-mesa-skeleton-footer-btn{
+  width:104px;
+  height:40px;
+  border-radius:12px;
+}
+
+.editar-mesa-skeleton-footer-btn-primary{
+  width:142px;
+}
+
+@media (max-width:780px){
+  .editar-mesa-panel.is-loading{
+    height:calc(100dvh - 24px);
+  }
+
+  .editar-mesa-skeleton-slots-grid,
+  .editar-mesa-skeleton-fields{
+    grid-template-columns:1fr;
+  }
+}
