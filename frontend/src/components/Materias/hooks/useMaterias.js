@@ -9,57 +9,7 @@ function normalizar(texto) {
 }
 
 function formatearNombreTaller(value) {
-  const text = String(value ?? '').trim();
-  if (!text) return '';
-
-  const normalizado = text
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/\./g, '')
-    .replace(/-/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  if (/^utp\s+(primer|segundo|tercer|cuarto|quinto|sexto|septimo)\s+(ano|anio)$/.test(normalizado)) {
-    return text;
-  }
-
-  const clave = normalizado
-    .replace(/^utp\s+/, '')
-    .replace(/\b(curso|ano|anio)\b/g, '')
-    .replace(/[°º]/g, '')
-    .replace(/\s+/g, '');
-
-  const anios = {
-    '1': 'Primer',
-    '1ero': 'Primer',
-    '1ro': 'Primer',
-    primero: 'Primer',
-    primer: 'Primer',
-    '2': 'Segundo',
-    '2do': 'Segundo',
-    segundo: 'Segundo',
-    '3': 'Tercer',
-    '3ero': 'Tercer',
-    '3ro': 'Tercer',
-    tercero: 'Tercer',
-    tercer: 'Tercer',
-    '4': 'Cuarto',
-    '4to': 'Cuarto',
-    cuarto: 'Cuarto',
-    '5': 'Quinto',
-    '5to': 'Quinto',
-    quinto: 'Quinto',
-    '6': 'Sexto',
-    '6to': 'Sexto',
-    sexto: 'Sexto',
-    '7': 'Séptimo',
-    '7mo': 'Séptimo',
-    septimo: 'Séptimo',
-  };
-
-  return anios[clave] ? `UTP ${anios[clave]} año` : text;
+  return String(value ?? '').trim();
 }
 
 function obtenerArrayMateriasPorCurso(respuesta) {
@@ -139,8 +89,14 @@ export function useMaterias() {
   }, []);
 
   const mostrarMensaje = useCallback((tipo, texto) => {
-    const tipoNormalizado = tipo === 'success' || tipo === 'ok' ? 'exito' : tipo;
-    const esPersistente = ['error', 'advertencia', 'alerta', 'warning'].includes(tipoNormalizado);
+    const tipoOriginal = String(tipo || '').toLowerCase();
+
+    // En este módulo no se muestran toasts amarillos de advertencia.
+    // Las confirmaciones se resuelven en modal y solo se informa carga, éxito o error real.
+    if (['advertencia', 'warning', 'alerta'].includes(tipoOriginal)) return;
+
+    const tipoNormalizado = tipoOriginal === 'success' || tipoOriginal === 'ok' ? 'exito' : tipoOriginal || 'info';
+    const esPersistente = ['error', 'cargando'].includes(tipoNormalizado);
 
     if (mensajeTimerRef.current) {
       window.clearTimeout(mensajeTimerRef.current);
@@ -381,26 +337,30 @@ export function useMaterias() {
   }, [areas, busqueda, soloActivas]);
 
   const guardarMateria = async (payload) => {
+    const esEdicion = Number(payload?.id_materia || 0) > 0;
+    setModalMateria({ abierto: false, item: null });
+    mostrarMensaje('cargando', esEdicion ? 'Actualizando materia...' : 'Guardando materia...');
+
     try {
       const res = await materiasApi.guardar(payload);
-      mostrarMensaje(res.exito ? 'ok' : 'error', res.mensaje || 'Operación realizada.');
+      const ok = Boolean(res?.exito ?? res?.ok);
 
-      if (res.exito) {
-        setModalMateria({ abierto: false, item: null });
+      if (ok) {
         await cargarTodo();
+        mostrarMensaje('ok', res?.mensaje || (esEdicion ? 'Materia actualizada correctamente.' : 'Materia guardada correctamente.'));
+      } else {
+        mostrarMensaje('error', res?.mensaje || 'No se pudo guardar la materia.');
       }
+
+      return res;
     } catch (error) {
       console.error(error);
       mostrarMensaje('error', 'No se pudo guardar la materia.');
+      return { exito: false, mensaje: 'No se pudo guardar la materia.' };
     }
   };
 
   const eliminarMateria = (item) => {
-    mostrarMensaje(
-      'advertencia',
-      'Si la materia está relacionada con cátedras, talleres o correlatividades, revisá el impacto antes de continuar.'
-    );
-
     abrirConfirmacion({
       tipo: 'eliminar_materia',
       operacion: 'eliminar',
@@ -420,6 +380,18 @@ export function useMaterias() {
   };
 
   const guardarCorrelativa = async (payload) => {
+    const esEdicion = Number(payload?.id_materia_correlativa || 0) > 0;
+    const mensajeCarga = payload?.modo === 'auto_por_materia'
+      ? 'Generando correlatividades...'
+      : payload?.modo === 'masivo'
+      ? 'Guardando correlatividades...'
+      : esEdicion
+      ? 'Actualizando correlatividad...'
+      : 'Guardando correlatividad...';
+
+    setModalCorrelativa({ abierto: false, item: null });
+    mostrarMensaje('cargando', mensajeCarga);
+
     try {
       const res = payload?.modo === 'auto_por_materia'
         ? await materiasApi.correlativaAutoPorMateria(payload)
@@ -427,24 +399,24 @@ export function useMaterias() {
         ? await materiasApi.correlativaGuardarMasivo(payload)
         : await materiasApi.correlativaGuardar(payload);
 
-      mostrarMensaje(res.exito ? 'ok' : 'error', res.mensaje || 'Operación realizada.');
+      const ok = Boolean(res?.exito ?? res?.ok);
 
-      if (res.exito) {
-        setModalCorrelativa({ abierto: false, item: null });
+      if (ok) {
         await cargarTodo();
+        mostrarMensaje('ok', res?.mensaje || (esEdicion ? 'Correlatividad actualizada correctamente.' : 'Correlatividad guardada correctamente.'));
+      } else {
+        mostrarMensaje('error', res?.mensaje || 'No se pudo guardar la correlatividad.');
       }
+
+      return res;
     } catch (error) {
       console.error(error);
       mostrarMensaje('error', 'No se pudo guardar la correlatividad.');
+      return { exito: false, mensaje: 'No se pudo guardar la correlatividad.' };
     }
   };
 
   const eliminarCorrelativa = (item) => {
-    mostrarMensaje(
-      'advertencia',
-      'Esta acción puede afectar inscripciones o armado de mesas si esa relación estaba en uso.'
-    );
-
     abrirConfirmacion({
       tipo: 'eliminar_correlativa',
       operacion: 'eliminar',
@@ -453,13 +425,19 @@ export function useMaterias() {
   };
 
   const guardarTaller = async (payload) => {
+    const esEdicion = Number(payload?.id_taller || 0) > 0;
+    setModalTaller({ abierto: false, item: null });
+    mostrarMensaje('cargando', esEdicion ? 'Actualizando taller...' : 'Guardando taller...');
+
     try {
       const res = await materiasApi.tallerGuardar(payload);
-      mostrarMensaje(res.exito ? 'ok' : 'error', res.mensaje || 'Operación realizada.');
+      const ok = Boolean(res?.exito ?? res?.ok);
 
-      if (res.exito) {
-        setModalTaller({ abierto: false, item: null });
+      if (ok) {
         await cargarTodo();
+        mostrarMensaje('ok', res?.mensaje || (esEdicion ? 'Taller actualizado correctamente.' : 'Taller guardado correctamente.'));
+      } else {
+        mostrarMensaje('error', res?.mensaje || 'No se pudo guardar el taller.');
       }
 
       return res;
@@ -471,11 +449,6 @@ export function useMaterias() {
   };
 
   const eliminarTaller = (item) => {
-    mostrarMensaje(
-      'advertencia',
-      'Revisá que no tenga materias asignadas que todavía necesites conservar.'
-    );
-
     abrirConfirmacion({
       tipo: 'eliminar_taller',
       operacion: 'eliminar',
@@ -484,10 +457,19 @@ export function useMaterias() {
   };
 
   const agregarMateriaTaller = async (payload) => {
+    mostrarMensaje('cargando', 'Agregando cátedra al taller...');
+
     try {
       const res = await materiasApi.tallerMateriaAgregar(payload);
-      mostrarMensaje(res.exito ? 'ok' : 'error', res.mensaje || 'Operación realizada.');
-      if (res.exito) await cargarTodo();
+      const ok = Boolean(res?.exito ?? res?.ok);
+
+      if (ok) {
+        await cargarTodo();
+        mostrarMensaje('ok', res?.mensaje || 'Cátedra agregada al taller correctamente.');
+      } else {
+        mostrarMensaje('error', res?.mensaje || 'No se pudo agregar la materia al taller.');
+      }
+
       return res;
     } catch (error) {
       console.error(error);
@@ -497,10 +479,19 @@ export function useMaterias() {
   };
 
   const quitarMateriaTaller = async (payload) => {
+    mostrarMensaje('cargando', 'Quitando cátedra del taller...');
+
     try {
       const res = await materiasApi.tallerMateriaEliminar(payload);
-      mostrarMensaje(res.exito ? 'ok' : 'error', res.mensaje || 'Operación realizada.');
-      if (res.exito) await cargarTodo();
+      const ok = Boolean(res?.exito ?? res?.ok);
+
+      if (ok) {
+        await cargarTodo();
+        mostrarMensaje('ok', res?.mensaje || 'Cátedra quitada del taller correctamente.');
+      } else {
+        mostrarMensaje('error', res?.mensaje || 'No se pudo quitar la materia del taller.');
+      }
+
       return res;
     } catch (error) {
       console.error(error);
@@ -510,13 +501,19 @@ export function useMaterias() {
   };
 
   const guardarArea = async (payload) => {
+    const esEdicion = Number(payload?.id_area || 0) > 0;
+    setModalArea({ abierto: false, item: null });
+    mostrarMensaje('cargando', esEdicion ? 'Actualizando área...' : 'Guardando área...');
+
     try {
       const res = await materiasApi.areaGuardar(payload);
-      mostrarMensaje(res.exito ? 'ok' : 'error', res.mensaje || 'Operación realizada.');
+      const ok = Boolean(res?.exito ?? res?.ok);
 
-      if (res.exito) {
-        setModalArea({ abierto: false, item: null });
+      if (ok) {
         await cargarTodo();
+        mostrarMensaje('ok', res?.mensaje || (esEdicion ? 'Área actualizada correctamente.' : 'Área guardada correctamente.'));
+      } else {
+        mostrarMensaje('error', res?.mensaje || 'No se pudo guardar el área.');
       }
 
       return res;
@@ -528,11 +525,6 @@ export function useMaterias() {
   };
 
   const eliminarArea = (item) => {
-    mostrarMensaje(
-      'advertencia',
-      'Las materias asociadas pueden quedar sin esta agrupación.'
-    );
-
     abrirConfirmacion({
       tipo: 'eliminar_area',
       operacion: 'eliminar',
@@ -567,9 +559,7 @@ export function useMaterias() {
       }
 
       const ok = Boolean(res?.exito ?? res?.ok);
-      const mensajeAccion = res?.mensaje || (ok ? 'Operación realizada.' : 'No se pudo completar la operación.');
-
-      mostrarMensaje(ok ? 'ok' : 'error', mensajeAccion);
+      const mensajeAccion = res?.mensaje || (ok ? 'Operación realizada correctamente.' : 'No se pudo completar la operación.');
 
       if (ok) {
         cerrarConfirmacion();
@@ -579,9 +569,7 @@ export function useMaterias() {
       return { ok, mensaje: mensajeAccion };
     } catch (error) {
       console.error(error);
-      const mensajeError = 'No se pudo completar la operación.';
-      mostrarMensaje('error', mensajeError);
-      return { ok: false, mensaje: mensajeError };
+      return { ok: false, mensaje: 'No se pudo completar la operación.' };
     }
   };
 

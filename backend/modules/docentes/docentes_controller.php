@@ -10,11 +10,6 @@ function docentes_int($value): int
     return is_numeric($value) ? (int)$value : 0;
 }
 
-function docentes_string($value): string
-{
-    return trim((string)$value);
-}
-
 function docentes_body(): array
 {
     if (function_exists('get_json_body')) {
@@ -45,35 +40,32 @@ function docentes_mayuscula(string $texto): string
 
 function docentes_normalizar_nombre(string $texto): string
 {
-    $texto = mb_strtoupper(trim($texto), 'UTF-8');
-
+    $texto = docentes_mayuscula($texto);
     $texto = strtr($texto, [
-        'Á' => 'A',
-        'É' => 'E',
-        'Í' => 'I',
-        'Ó' => 'O',
-        'Ú' => 'U',
-        'À' => 'A',
-        'È' => 'E',
-        'Ì' => 'I',
-        'Ò' => 'O',
-        'Ù' => 'U',
-        'Ä' => 'A',
-        'Ë' => 'E',
-        'Ï' => 'I',
-        'Ö' => 'O',
-        'Ü' => 'U',
-        'Â' => 'A',
-        'Ê' => 'E',
-        'Î' => 'I',
-        'Ô' => 'O',
-        'Û' => 'U',
+        'Á' => 'A', 'É' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ú' => 'U',
+        'À' => 'A', 'È' => 'E', 'Ì' => 'I', 'Ò' => 'O', 'Ù' => 'U',
+        'Ä' => 'A', 'Ë' => 'E', 'Ï' => 'I', 'Ö' => 'O', 'Ü' => 'U',
+        'Â' => 'A', 'Ê' => 'E', 'Î' => 'I', 'Ô' => 'O', 'Û' => 'U',
         'Ñ' => 'N',
     ]);
 
-    $texto = preg_replace('/\s+/', ' ', $texto) ?? $texto;
+    return preg_replace('/\s+/', ' ', $texto) ?? $texto;
+}
 
-    return $texto;
+
+function docentes_normalizar_dni($valor): ?string
+{
+    $dni = preg_replace('/[^0-9]/', '', (string)$valor) ?? '';
+    $dni = trim($dni);
+
+    return $dni !== '' ? substr($dni, 0, 20) : null;
+}
+
+function docentes_normalizar_email($valor): ?string
+{
+    $email = mb_strtolower(trim((string)$valor), 'UTF-8');
+
+    return $email !== '' ? $email : null;
 }
 
 function docentes_paginacion(): array
@@ -107,10 +99,7 @@ function docentes_ids_desde_body(array $body): array
         return $id > 0 ? $id : null;
     }, $ids);
 
-    $ids = array_filter($ids);
-    $ids = array_values(array_unique($ids));
-
-    return $ids;
+    return array_values(array_unique(array_filter($ids)));
 }
 
 function docentes_validar_fecha($fecha): ?string
@@ -136,19 +125,6 @@ function docentes_validar_dia_semana($dia): int
     return ($dia >= 1 && $dia <= 5) ? $dia : 0;
 }
 
-function docentes_nombre_dia(int $dia): string
-{
-    $dias = [
-        1 => 'LUNES',
-        2 => 'MARTES',
-        3 => 'MIÉRCOLES',
-        4 => 'JUEVES',
-        5 => 'VIERNES',
-    ];
-
-    return $dias[$dia] ?? '';
-}
-
 function docentes_catalogo_dias_semana(): array
 {
     return [
@@ -165,23 +141,9 @@ function docentes_catalogos(): void
     $pdo = db();
 
     try {
-        $cargos = $pdo->query("
-            SELECT 
-                id_cargo, 
-                cargo
-            FROM cargos
-            WHERE activo = 1
-            ORDER BY cargo ASC
-        ")->fetchAll(PDO::FETCH_ASSOC);
+        $cargos = $pdo->query("\n            SELECT id_cargo, cargo\n            FROM cargos\n            WHERE activo = 1\n            ORDER BY cargo ASC\n        ")->fetchAll(PDO::FETCH_ASSOC);
 
-        $turnos = $pdo->query("
-            SELECT 
-                id_turno, 
-                turno
-            FROM turnos
-            WHERE activo = 1
-            ORDER BY id_turno ASC
-        ")->fetchAll(PDO::FETCH_ASSOC);
+        $turnos = $pdo->query("\n            SELECT id_turno, turno\n            FROM turnos\n            WHERE activo = 1\n            ORDER BY id_turno ASC\n        ")->fetchAll(PDO::FETCH_ASSOC);
 
         json_response([
             'exito' => true,
@@ -201,94 +163,6 @@ function docentes_catalogos(): void
     }
 }
 
-function docentes_armar_grupos(array $filas): array
-{
-    $grupos = [];
-
-    foreach ($filas as $fila) {
-        $clave = docentes_normalizar_nombre((string)($fila['docente'] ?? ''));
-
-        if ($clave === '') {
-            $clave = 'DOCENTE_' . (string)($fila['id_docente'] ?? '');
-        }
-
-        if (!isset($grupos[$clave])) {
-            $grupos[$clave] = [
-                'id_docente' => (int)($fila['id_docente'] ?? 0),
-                'ids_docentes' => [],
-                'ids_docentes_texto' => '',
-                'docente' => (string)($fila['docente'] ?? ''),
-                'docente_normalizado' => $clave,
-                'id_cargo' => (int)($fila['id_cargo'] ?? 0),
-                'cargo' => (string)($fila['cargo'] ?? ''),
-                'cargos' => [],
-                'activo' => (int)($fila['activo'] ?? 1),
-                'observacion' => (string)($fila['observacion'] ?? ''),
-                'observaciones' => [],
-                'fecha_registro' => (string)($fila['fecha_registro'] ?? ''),
-                'cantidad_registros' => 0,
-                'total_catedras' => 0,
-                'total_disponibilidades' => 0,
-                'total_indisponibilidades' => 0,
-                'disponibilidad_resumen' => '',
-            ];
-        }
-
-        $idDocente = (int)($fila['id_docente'] ?? 0);
-
-        if ($idDocente > 0) {
-            $grupos[$clave]['ids_docentes'][] = $idDocente;
-
-            if ((int)$grupos[$clave]['id_docente'] <= 0) {
-                $grupos[$clave]['id_docente'] = $idDocente;
-            } else {
-                $grupos[$clave]['id_docente'] = min((int)$grupos[$clave]['id_docente'], $idDocente);
-            }
-        }
-
-        $grupos[$clave]['cantidad_registros']++;
-        $grupos[$clave]['total_catedras'] += (int)($fila['total_catedras'] ?? 0);
-        $totalDisponibilidadesFila = (int)($fila['total_disponibilidades'] ?? $fila['total_indisponibilidades'] ?? 0);
-        $grupos[$clave]['total_disponibilidades'] = max((int)$grupos[$clave]['total_disponibilidades'], $totalDisponibilidadesFila);
-        $grupos[$clave]['total_indisponibilidades'] = (int)$grupos[$clave]['total_disponibilidades'];
-
-        if (!empty($fila['cargo'])) {
-            $grupos[$clave]['cargos'][(string)$fila['cargo']] = true;
-        }
-
-        if (!empty($fila['observacion'])) {
-            $grupos[$clave]['observaciones'][(string)$fila['observacion']] = true;
-        }
-
-        if (
-            mb_strlen((string)($fila['docente'] ?? ''), 'UTF-8') >
-            mb_strlen((string)$grupos[$clave]['docente'], 'UTF-8')
-        ) {
-            $grupos[$clave]['docente'] = (string)$fila['docente'];
-        }
-    }
-
-    $resultado = [];
-
-    foreach ($grupos as $grupo) {
-        sort($grupo['ids_docentes'], SORT_NUMERIC);
-
-        $grupo['ids_docentes_texto'] = implode(',', $grupo['ids_docentes']);
-        $grupo['cargo'] = implode(', ', array_keys($grupo['cargos']));
-        $grupo['observacion'] = implode(' | ', array_keys($grupo['observaciones']));
-
-        unset($grupo['cargos'], $grupo['observaciones']);
-
-        $resultado[] = $grupo;
-    }
-
-    usort($resultado, static function ($a, $b) {
-        return strnatcasecmp((string)$a['docente'], (string)$b['docente']);
-    });
-
-    return $resultado;
-}
-
 function docentes_listar(): void
 {
     $pdo = db();
@@ -299,50 +173,16 @@ function docentes_listar(): void
 
     try {
         $where = ['d.activo = :activo'];
-
-        $params = [
-            ':activo' => $activo,
-        ];
+        $params = [':activo' => $activo];
 
         if ($busqueda !== '') {
-            $where[] = '(d.docente LIKE :busqueda OR cargo.cargo LIKE :busqueda OR d.motivo LIKE :busqueda)';
+            $where[] = '(d.docente LIKE :busqueda OR d.dni LIKE :busqueda OR d.email LIKE :busqueda OR cargo.cargo LIKE :busqueda OR d.motivo LIKE :busqueda OR m.materia LIKE :busqueda)';
             $params[':busqueda'] = '%' . $busqueda . '%';
         }
 
         $whereSql = implode(' AND ', $where);
 
-        $sql = "
-            SELECT
-                d.id_docente,
-                d.docente,
-                d.id_cargo,
-                COALESCE(cargo.cargo, '') AS cargo,
-                d.activo,
-                COALESCE(d.motivo, '') AS observacion,
-                d.fecha_carga AS fecha_registro,
-                COUNT(DISTINCT cat.id_catedra) AS total_catedras,
-                COUNT(DISTINCT disp.id_disponibilidad) AS total_disponibilidades
-            FROM docentes d
-            LEFT JOIN cargos cargo 
-                ON cargo.id_cargo = d.id_cargo
-            LEFT JOIN catedras cat 
-                ON cat.id_docente = d.id_docente
-               AND cat.activo = 1
-            LEFT JOIN docentes_disponibilidad disp
-                ON disp.id_docente = d.id_docente
-            WHERE {$whereSql}
-            GROUP BY
-                d.id_docente,
-                d.docente,
-                d.id_cargo,
-                cargo.cargo,
-                d.activo,
-                d.motivo,
-                d.fecha_carga
-            ORDER BY 
-                d.docente ASC,
-                d.id_docente ASC
-        ";
+        $sql = "\n            SELECT\n                d.id_docente,\n                d.id_docente AS ids_docentes_texto,\n                d.docente,\n                d.dni,\n                d.email,\n                d.activo,\n                COALESCE(d.motivo, '') AS observacion,\n                d.fecha_carga AS fecha_registro,\n                COALESCE(\n                    GROUP_CONCAT(DISTINCT cargo.cargo ORDER BY cargo.cargo SEPARATOR ', '),\n                    ''\n                ) AS cargo,\n                COUNT(DISTINCT cat.id_catedra) AS total_catedras,\n                COUNT(DISTINCT disp.id_disponibilidad) AS total_disponibilidades\n            FROM docentes d\n            LEFT JOIN catedras_docentes cd\n                ON cd.id_docente = d.id_docente\n               AND cd.activo = 1\n            LEFT JOIN catedras cat\n                ON cat.id_catedra = cd.id_catedra\n               AND cat.activo = 1\n            LEFT JOIN materias m\n                ON m.id_materia = cat.id_materia\n            LEFT JOIN cargos cargo\n                ON cargo.id_cargo = cd.id_cargo\n            LEFT JOIN docentes_disponibilidad disp\n                ON disp.id_docente = d.id_docente\n            WHERE {$whereSql}\n            GROUP BY\n                d.id_docente,\n                d.docente,\n                d.dni,\n                d.email,\n                d.activo,\n                d.motivo,\n                d.fecha_carga\n            ORDER BY d.docente ASC, d.id_docente ASC\n        ";
 
         $stmt = $pdo->prepare($sql);
 
@@ -351,11 +191,25 @@ function docentes_listar(): void
         }
 
         $stmt->execute();
+        $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $grupos = docentes_armar_grupos($stmt->fetchAll(PDO::FETCH_ASSOC));
+        foreach ($filas as &$fila) {
+            $fila['id_docente'] = (int)$fila['id_docente'];
+            $fila['ids_docentes'] = [(int)$fila['id_docente']];
+            $fila['cantidad_registros'] = 1;
+            $fila['docente_normalizado'] = docentes_normalizar_nombre((string)$fila['docente']);
+            $fila['dni'] = trim((string)($fila['dni'] ?? ''));
+            $fila['email'] = trim((string)($fila['email'] ?? ''));
+            $fila['gmail'] = $fila['email'];
+            $fila['cargo'] = trim((string)($fila['cargo'] ?? '')) ?: 'Sin cátedras asignadas';
+            $fila['total_catedras'] = (int)($fila['total_catedras'] ?? 0);
+            $fila['total_disponibilidades'] = (int)($fila['total_disponibilidades'] ?? 0);
+            $fila['total_indisponibilidades'] = 0;
+        }
+        unset($fila);
 
-        $total = count($grupos);
-        $pagina = array_slice($grupos, $pag['offset'], $pag['por_pagina']);
+        $total = count($filas);
+        $pagina = array_slice($filas, $pag['offset'], $pag['por_pagina']);
 
         json_response([
             'exito' => true,
@@ -377,66 +231,27 @@ function docentes_listar(): void
     }
 }
 
-function docentes_obtener_grupo_por_id(PDO $pdo, int $idDocente): array
+function docentes_obtener_base(PDO $pdo, int $idDocente): array
 {
-    $stmt = $pdo->prepare("
-        SELECT 
-            id_docente, 
-            docente, 
-            activo
-        FROM docentes
-        WHERE id_docente = :id_docente
-        LIMIT 1
-    ");
+    $stmt = $pdo->prepare("\n        SELECT\n            d.id_docente,\n            d.id_docente AS ids_docentes_texto,\n            d.docente,\n            d.dni,\n            d.email,\n            d.activo,\n            COALESCE(d.motivo, '') AS observacion,\n            d.fecha_carga AS fecha_registro,\n            COALESCE(\n                GROUP_CONCAT(DISTINCT cargo.cargo ORDER BY cargo.cargo SEPARATOR ', '),\n                ''\n            ) AS cargo,\n            COUNT(DISTINCT cat.id_catedra) AS total_catedras\n        FROM docentes d\n        LEFT JOIN catedras_docentes cd\n            ON cd.id_docente = d.id_docente\n           AND cd.activo = 1\n        LEFT JOIN catedras cat\n            ON cat.id_catedra = cd.id_catedra\n           AND cat.activo = 1\n        LEFT JOIN cargos cargo\n            ON cargo.id_cargo = cd.id_cargo\n        WHERE d.id_docente = :id_docente\n        GROUP BY\n            d.id_docente,\n            d.docente,\n            d.dni,\n            d.email,\n            d.activo,\n            d.motivo,\n            d.fecha_carga\n        LIMIT 1\n    ");
 
-    $stmt->execute([
-        ':id_docente' => $idDocente,
-    ]);
+    $stmt->execute([':id_docente' => $idDocente]);
+    $docente = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    $base = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$base) {
+    if (!$docente) {
         return [];
     }
 
-    $clave = docentes_normalizar_nombre((string)$base['docente']);
-    $activo = (int)$base['activo'];
+    $docente['id_docente'] = (int)$docente['id_docente'];
+    $docente['ids_docentes'] = [(int)$docente['id_docente']];
+    $docente['cantidad_registros'] = 1;
+    $docente['docente_normalizado'] = docentes_normalizar_nombre((string)$docente['docente']);
+    $docente['dni'] = trim((string)($docente['dni'] ?? ''));
+    $docente['email'] = trim((string)($docente['email'] ?? ''));
+    $docente['gmail'] = $docente['email'];
+    $docente['cargo'] = trim((string)($docente['cargo'] ?? '')) ?: 'Sin cátedras asignadas';
 
-    $stmtTodos = $pdo->prepare("
-        SELECT
-            d.id_docente,
-            d.docente,
-            d.id_cargo,
-            COALESCE(cargo.cargo, '') AS cargo,
-            d.activo,
-            COALESCE(d.motivo, '') AS observacion,
-            d.fecha_carga AS fecha_registro,
-            0 AS total_catedras,
-            0 AS total_disponibilidades
-        FROM docentes d
-        LEFT JOIN cargos cargo 
-            ON cargo.id_cargo = d.id_cargo
-        WHERE d.activo = :activo
-        ORDER BY 
-            d.docente ASC,
-            d.id_docente ASC
-    ");
-
-    $stmtTodos->execute([
-        ':activo' => $activo,
-    ]);
-
-    $coincidentes = [];
-
-    foreach ($stmtTodos->fetchAll(PDO::FETCH_ASSOC) as $fila) {
-        if (docentes_normalizar_nombre((string)$fila['docente']) === $clave) {
-            $coincidentes[] = $fila;
-        }
-    }
-
-    $grupos = docentes_armar_grupos($coincidentes);
-
-    return $grupos[0] ?? [];
+    return $docente;
 }
 
 function docentes_obtener(): void
@@ -452,7 +267,7 @@ function docentes_obtener(): void
     }
 
     try {
-        $docente = docentes_obtener_grupo_por_id($pdo, $idDocente);
+        $docente = docentes_obtener_base($pdo, $idDocente);
 
         if (!$docente) {
             json_response([
@@ -461,76 +276,14 @@ function docentes_obtener(): void
             ], 404);
         }
 
-        $ids = $docente['ids_docentes'];
+        $stmtCatedras = $pdo->prepare("\n            SELECT\n                cd.id_catedra_docente,\n                cd.id_catedra,\n                cd.id_docente,\n                cd.id_cargo AS id_cargo_docente,\n                COALESCE(cargo.cargo, 'SIN CARGO') AS cargo_docente,\n                cat.id_curso,\n                cu.nombre_curso,\n                cat.id_division,\n                divi.nombre_division,\n                cat.id_materia,\n                m.materia\n            FROM catedras_docentes cd\n            INNER JOIN catedras cat\n                ON cat.id_catedra = cd.id_catedra\n               AND cat.activo = 1\n            INNER JOIN curso cu\n                ON cu.id_curso = cat.id_curso\n            INNER JOIN division divi\n                ON divi.id_division = cat.id_division\n            INNER JOIN materias m\n                ON m.id_materia = cat.id_materia\n            LEFT JOIN cargos cargo\n                ON cargo.id_cargo = cd.id_cargo\n            WHERE cd.id_docente = :id_docente\n              AND cd.activo = 1\n            ORDER BY\n                cu.id_curso ASC,\n                divi.nombre_division ASC,\n                cargo.cargo ASC,\n                m.materia ASC\n        ");
 
-        if (empty($ids)) {
-            json_response([
-                'exito' => false,
-                'mensaje' => 'No se pudieron resolver los registros del docente.',
-            ], 422);
-        }
-
-        $placeholders = implode(',', array_fill(0, count($ids), '?'));
-
-        $stmtCatedras = $pdo->prepare("
-            SELECT
-                cat.id_catedra,
-                cat.id_curso,
-                cu.nombre_curso,
-                cat.id_division,
-                divi.nombre_division,
-                cat.id_materia,
-                m.materia,
-                cat.id_docente
-            FROM catedras cat
-            INNER JOIN curso cu 
-                ON cu.id_curso = cat.id_curso
-            INNER JOIN division divi 
-                ON divi.id_division = cat.id_division
-            INNER JOIN materias m 
-                ON m.id_materia = cat.id_materia
-            WHERE cat.activo = 1
-              AND cat.id_docente IN ({$placeholders})
-            ORDER BY 
-                cu.id_curso ASC,
-                divi.nombre_division ASC,
-                m.materia ASC
-        ");
-
-        $stmtCatedras->execute($ids);
+        $stmtCatedras->execute([':id_docente' => $idDocente]);
         $catedras = $stmtCatedras->fetchAll(PDO::FETCH_ASSOC);
 
-        $stmtDisponibilidades = $pdo->prepare("
-            SELECT
-                MIN(disp.id_disponibilidad) AS id_disponibilidad,
-                disp.dia_semana AS id_dia_semana,
-                CASE disp.dia_semana
-                    WHEN 1 THEN 'LUNES'
-                    WHEN 2 THEN 'MARTES'
-                    WHEN 3 THEN 'MIÉRCOLES'
-                    WHEN 4 THEN 'JUEVES'
-                    WHEN 5 THEN 'VIERNES'
-                    ELSE ''
-                END AS dia_semana,
-                disp.id_turno,
-                COALESCE(t.turno, '') AS turno,
-                disp.fecha
-            FROM docentes_disponibilidad disp
-            INNER JOIN turnos t
-                ON t.id_turno = disp.id_turno
-            WHERE disp.id_docente IN ({$placeholders})
-            GROUP BY 
-                disp.dia_semana,
-                disp.id_turno,
-                t.turno,
-                disp.fecha
-            ORDER BY 
-                disp.dia_semana ASC,
-                t.id_turno ASC,
-                disp.fecha ASC
-        ");
+        $stmtDisponibilidades = $pdo->prepare("\n            SELECT\n                disp.id_disponibilidad,\n                disp.dia_semana AS id_dia_semana,\n                CASE disp.dia_semana\n                    WHEN 1 THEN 'LUNES'\n                    WHEN 2 THEN 'MARTES'\n                    WHEN 3 THEN 'MIÉRCOLES'\n                    WHEN 4 THEN 'JUEVES'\n                    WHEN 5 THEN 'VIERNES'\n                    ELSE ''\n                END AS dia_semana,\n                disp.id_turno,\n                COALESCE(t.turno, '') AS turno,\n                disp.fecha\n            FROM docentes_disponibilidad disp\n            INNER JOIN turnos t\n                ON t.id_turno = disp.id_turno\n            WHERE disp.id_docente = :id_docente\n            ORDER BY\n                disp.dia_semana ASC,\n                t.id_turno ASC,\n                disp.fecha ASC\n        ");
 
-        $stmtDisponibilidades->execute($ids);
+        $stmtDisponibilidades->execute([':id_docente' => $idDocente]);
         $disponibilidades = $stmtDisponibilidades->fetchAll(PDO::FETCH_ASSOC);
 
         $docente['catedras'] = $catedras;
@@ -553,25 +306,71 @@ function docentes_obtener(): void
     }
 }
 
+function docentes_guardar_disponibilidades(PDO $pdo, int $idDocente, array $disponibilidades): void
+{
+    $stmtDeleteDisponibilidades = $pdo->prepare("\n        DELETE FROM docentes_disponibilidad\n        WHERE id_docente = :id_docente\n    ");
+
+    $stmtDeleteDisponibilidades->execute([':id_docente' => $idDocente]);
+
+    $stmtTurno = $pdo->prepare("\n        SELECT id_turno\n        FROM turnos\n        WHERE id_turno = :id_turno\n          AND activo = 1\n        LIMIT 1\n    ");
+
+    $stmtInsertDisponibilidad = $pdo->prepare("\n        INSERT IGNORE INTO docentes_disponibilidad\n            (id_docente, dia_semana, id_turno, fecha)\n        VALUES\n            (:id_docente, :dia_semana, :id_turno, :fecha)\n    ");
+
+    $disponibilidadesUnicas = [];
+
+    foreach ($disponibilidades as $bloque) {
+        if (!is_array($bloque)) {
+            continue;
+        }
+
+        $diaSemana = docentes_validar_dia_semana($bloque['id_dia_semana'] ?? $bloque['dia_semana'] ?? null);
+        $idTurno = docentes_int($bloque['id_turno'] ?? 0);
+        $fecha = docentes_validar_fecha($bloque['fecha'] ?? null);
+
+        if ($diaSemana <= 0 || $idTurno <= 0) {
+            continue;
+        }
+
+        $claveBloque = $diaSemana . '|' . $idTurno . '|' . ($fecha ?? '');
+
+        if (isset($disponibilidadesUnicas[$claveBloque])) {
+            continue;
+        }
+
+        $disponibilidadesUnicas[$claveBloque] = true;
+
+        $stmtTurno->execute([':id_turno' => $idTurno]);
+
+        if (!$stmtTurno->fetch(PDO::FETCH_ASSOC)) {
+            continue;
+        }
+
+        $stmtInsertDisponibilidad->bindValue(':id_docente', $idDocente, PDO::PARAM_INT);
+        $stmtInsertDisponibilidad->bindValue(':dia_semana', $diaSemana, PDO::PARAM_INT);
+        $stmtInsertDisponibilidad->bindValue(':id_turno', $idTurno, PDO::PARAM_INT);
+
+        if ($fecha !== null) {
+            $stmtInsertDisponibilidad->bindValue(':fecha', $fecha, PDO::PARAM_STR);
+        } else {
+            $stmtInsertDisponibilidad->bindValue(':fecha', null, PDO::PARAM_NULL);
+        }
+
+        $stmtInsertDisponibilidad->execute();
+    }
+}
+
 function docentes_guardar(): void
 {
     $pdo = db();
     $body = docentes_body();
 
     $idDocente = docentes_int($body['id_docente'] ?? $body['id'] ?? 0);
-    $idsDocentes = docentes_ids_desde_body($body);
-
     $docente = docentes_mayuscula((string)($body['docente'] ?? ''));
-
-    $idCargo = docentes_int($body['id_cargo'] ?? 0);
-
-    $observacion = trim((string)($body['observacion'] ?? $body['motivo'] ?? ''));
-
+    $dni = docentes_normalizar_dni($body['dni'] ?? '');
+    $email = docentes_normalizar_email($body['email'] ?? $body['gmail'] ?? '');
+    $observacion = trim((string)($body['observacion'] ?? $body['comentarios'] ?? $body['comentario'] ?? $body['motivo'] ?? ''));
     $activo = docentes_int($body['activo'] ?? 1) === 0 ? 0 : 1;
-
-    $disponibilidades = is_array($body['disponibilidades'] ?? null)
-        ? $body['disponibilidades']
-        : [];
+    $disponibilidades = is_array($body['disponibilidades'] ?? null) ? $body['disponibilidades'] : [];
 
     if ($docente === '') {
         json_response([
@@ -580,153 +379,68 @@ function docentes_guardar(): void
         ], 422);
     }
 
-    if ($idCargo <= 0) {
+    if ($email !== null && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         json_response([
             'exito' => false,
-            'mensaje' => 'Debe seleccionar un cargo válido.',
+            'mensaje' => 'El email/Gmail ingresado no tiene un formato válido.',
         ], 422);
     }
 
     try {
-        $stmtCargo = $pdo->prepare("
-            SELECT id_cargo
-            FROM cargos
-            WHERE id_cargo = :id_cargo
-              AND activo = 1
-            LIMIT 1
-        ");
+        $stmtDuplicado = $pdo->prepare("\n            SELECT id_docente\n            FROM docentes\n            WHERE UPPER(TRIM(docente)) = UPPER(TRIM(:docente))\n              AND id_docente <> :id_docente\n            LIMIT 1\n        ");
 
-        $stmtCargo->execute([
-            ':id_cargo' => $idCargo,
+        $stmtDuplicado->execute([
+            ':docente' => $docente,
+            ':id_docente' => $idDocente,
         ]);
 
-        if (!$stmtCargo->fetch(PDO::FETCH_ASSOC)) {
+        if ($stmtDuplicado->fetch(PDO::FETCH_ASSOC)) {
             json_response([
                 'exito' => false,
-                'mensaje' => 'El cargo seleccionado no existe o está inactivo.',
-            ], 422);
+                'mensaje' => 'Ya existe un docente cargado con ese nombre. Usá la ficha existente para editarlo.',
+            ], 409);
         }
 
         $pdo->beginTransaction();
 
-        if ($idDocente <= 0 && empty($idsDocentes)) {
-            $stmt = $pdo->prepare("
-                INSERT INTO docentes 
-                    (docente, id_cargo, activo, motivo, fecha_carga)
-                VALUES 
-                    (:docente, :id_cargo, :activo, :motivo, CURDATE())
-            ");
+        if ($idDocente <= 0) {
+            $stmt = $pdo->prepare("\n                INSERT INTO docentes\n                    (docente, dni, email, activo, motivo, fecha_carga)\n                VALUES\n                    (:docente, :dni, :email, :activo, :motivo, CURDATE())\n            ");
 
             $stmt->execute([
                 ':docente' => $docente,
-                ':id_cargo' => $idCargo,
+                ':dni' => $dni,
+                ':email' => $email,
                 ':activo' => $activo,
                 ':motivo' => $observacion !== '' ? $observacion : null,
             ]);
 
-            $idsDocentes = [(int)$pdo->lastInsertId()];
-            $idDocente = $idsDocentes[0];
+            $idDocente = (int)$pdo->lastInsertId();
         } else {
-            if (empty($idsDocentes)) {
-                $idsDocentes = [$idDocente];
+            $stmtExiste = $pdo->prepare("\n                SELECT id_docente\n                FROM docentes\n                WHERE id_docente = :id_docente\n                LIMIT 1\n            ");
+
+            $stmtExiste->execute([':id_docente' => $idDocente]);
+
+            if (!$stmtExiste->fetch(PDO::FETCH_ASSOC)) {
+                $pdo->rollBack();
+                json_response([
+                    'exito' => false,
+                    'mensaje' => 'El docente seleccionado no existe.',
+                ], 404);
             }
 
-            $placeholders = implode(',', array_fill(0, count($idsDocentes), '?'));
+            $stmt = $pdo->prepare("\n                UPDATE docentes\n                SET\n                    docente = :docente,\n                    dni = :dni,\n                    email = :email,\n                    activo = :activo,\n                    motivo = :motivo\n                WHERE id_docente = :id_docente\n            ");
 
-            $params = array_merge(
-                [
-                    $docente,
-                    $idCargo,
-                    $activo,
-                    $observacion !== '' ? $observacion : null,
-                ],
-                $idsDocentes
-            );
-
-            $stmt = $pdo->prepare("
-                UPDATE docentes
-                SET 
-                    docente = ?,
-                    id_cargo = ?,
-                    activo = ?,
-                    motivo = ?
-                WHERE id_docente IN ({$placeholders})
-            ");
-
-            $stmt->execute($params);
-
-            $idDocente = min($idsDocentes);
-        }
-
-        $placeholders = implode(',', array_fill(0, count($idsDocentes), '?'));
-
-        $stmtDeleteDisponibilidades = $pdo->prepare("
-            DELETE FROM docentes_disponibilidad
-            WHERE id_docente IN ({$placeholders})
-        ");
-
-        $stmtDeleteDisponibilidades->execute($idsDocentes);
-
-        $stmtTurno = $pdo->prepare("
-            SELECT id_turno
-            FROM turnos
-            WHERE id_turno = :id_turno
-              AND activo = 1
-            LIMIT 1
-        ");
-
-        $stmtInsertDisponibilidad = $pdo->prepare("
-            INSERT IGNORE INTO docentes_disponibilidad 
-                (id_docente, dia_semana, id_turno, fecha)
-            VALUES 
-                (:id_docente, :dia_semana, :id_turno, :fecha)
-        ");
-
-        $disponibilidadesUnicas = [];
-
-        foreach ($disponibilidades as $bloque) {
-            if (!is_array($bloque)) {
-                continue;
-            }
-
-            $diaSemana = docentes_validar_dia_semana($bloque['id_dia_semana'] ?? $bloque['dia_semana'] ?? null);
-            $idTurno = docentes_int($bloque['id_turno'] ?? 0);
-            $fecha = docentes_validar_fecha($bloque['fecha'] ?? null);
-
-            if ($diaSemana <= 0 || $idTurno <= 0) {
-                continue;
-            }
-
-            $claveBloque = $diaSemana . '|' . $idTurno . '|' . ($fecha ?? '');
-
-            if (isset($disponibilidadesUnicas[$claveBloque])) {
-                continue;
-            }
-
-            $disponibilidadesUnicas[$claveBloque] = true;
-
-            $stmtTurno->execute([
-                ':id_turno' => $idTurno,
+            $stmt->execute([
+                ':docente' => $docente,
+                ':dni' => $dni,
+                ':email' => $email,
+                ':activo' => $activo,
+                ':motivo' => $observacion !== '' ? $observacion : null,
+                ':id_docente' => $idDocente,
             ]);
-
-            if (!$stmtTurno->fetch(PDO::FETCH_ASSOC)) {
-                continue;
-            }
-
-            foreach ($idsDocentes as $idDocenteDisponibilidad) {
-                $stmtInsertDisponibilidad->bindValue(':id_docente', $idDocenteDisponibilidad, PDO::PARAM_INT);
-                $stmtInsertDisponibilidad->bindValue(':dia_semana', $diaSemana, PDO::PARAM_INT);
-                $stmtInsertDisponibilidad->bindValue(':id_turno', $idTurno, PDO::PARAM_INT);
-
-                if ($fecha !== null) {
-                    $stmtInsertDisponibilidad->bindValue(':fecha', $fecha, PDO::PARAM_STR);
-                } else {
-                    $stmtInsertDisponibilidad->bindValue(':fecha', null, PDO::PARAM_NULL);
-                }
-
-                $stmtInsertDisponibilidad->execute();
-            }
         }
+
+        docentes_guardar_disponibilidades($pdo, $idDocente, $disponibilidades);
 
         $pdo->commit();
 
@@ -771,31 +485,13 @@ function docentes_cambiar_estado(): void
         if ($activo === 1) {
             $params = array_merge([$activo], $idsDocentes);
 
-            $stmt = $pdo->prepare("
-                UPDATE docentes
-                SET 
-                    activo = ?,
-                    motivo = NULL
-                WHERE id_docente IN ({$placeholders})
-            ");
+            $stmt = $pdo->prepare("\n                UPDATE docentes\n                SET activo = ?, motivo = NULL\n                WHERE id_docente IN ({$placeholders})\n            ");
 
             $stmt->execute($params);
         } else {
-            $params = array_merge(
-                [
-                    $activo,
-                    $motivo !== '' ? $motivo : null,
-                ],
-                $idsDocentes
-            );
+            $params = array_merge([$activo, $motivo !== '' ? $motivo : null], $idsDocentes);
 
-            $stmt = $pdo->prepare("
-                UPDATE docentes
-                SET 
-                    activo = ?,
-                    motivo = ?
-                WHERE id_docente IN ({$placeholders})
-            ");
+            $stmt = $pdo->prepare("\n                UPDATE docentes\n                SET activo = ?, motivo = ?\n                WHERE id_docente IN ({$placeholders})\n            ");
 
             $stmt->execute($params);
         }
@@ -816,11 +512,23 @@ function docentes_cambiar_estado(): void
     }
 }
 
+function docentes_contar_relaciones(PDO $pdo, string $tabla, string $columna, array $idsDocentes): int
+{
+    if (empty($idsDocentes)) {
+        return 0;
+    }
+
+    $placeholders = implode(',', array_fill(0, count($idsDocentes), '?'));
+    $stmt = $pdo->prepare("SELECT COUNT(*) AS total FROM {$tabla} WHERE {$columna} IN ({$placeholders})");
+    $stmt->execute($idsDocentes);
+
+    return (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
+}
+
 function docentes_eliminar(): void
 {
     $pdo = db();
     $body = docentes_body();
-
     $idsDocentes = docentes_ids_desde_body($body);
 
     if (empty($idsDocentes)) {
@@ -831,46 +539,28 @@ function docentes_eliminar(): void
     }
 
     try {
-        $placeholders = implode(',', array_fill(0, count($idsDocentes), '?'));
+        $totalMesas = docentes_contar_relaciones($pdo, 'mesas', 'id_docente', $idsDocentes);
+        $totalCatedrasNueva = docentes_contar_relaciones($pdo, 'catedras_docentes', 'id_docente', $idsDocentes);
+        $totalCatedrasLegacy = docentes_contar_relaciones($pdo, 'catedras', 'id_docente', $idsDocentes);
 
-        $stmtMesas = $pdo->prepare("
-            SELECT COUNT(*) AS total
-            FROM mesas
-            WHERE id_docente IN ({$placeholders})
-        ");
-
-        $stmtMesas->execute($idsDocentes);
-
-        $totalMesas = (int)($stmtMesas->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
-
-        if ($totalMesas > 0) {
+        if ($totalMesas > 0 || $totalCatedrasNueva > 0 || $totalCatedrasLegacy > 0) {
             json_response([
                 'exito' => false,
-                'mensaje' => 'No se puede eliminar el docente porque tiene mesas asociadas. Podés darlo de baja para conservar el historial.',
+                'mensaje' => 'No se puede eliminar el docente porque tiene cátedras o mesas asociadas. Podés darlo de baja para conservar la información.',
             ], 409);
         }
 
+        $placeholders = implode(',', array_fill(0, count($idsDocentes), '?'));
+
         $pdo->beginTransaction();
 
-        $stmtDisponibilidad = $pdo->prepare("
-            DELETE FROM docentes_disponibilidad
-            WHERE id_docente IN ({$placeholders})
-        ");
-
+        $stmtDisponibilidad = $pdo->prepare("\n            DELETE FROM docentes_disponibilidad\n            WHERE id_docente IN ({$placeholders})\n        ");
         $stmtDisponibilidad->execute($idsDocentes);
 
-        $stmtBloques = $pdo->prepare("
-            DELETE FROM docentes_bloques_no
-            WHERE id_docente IN ({$placeholders})
-        ");
-
+        $stmtBloques = $pdo->prepare("\n            DELETE FROM docentes_bloques_no\n            WHERE id_docente IN ({$placeholders})\n        ");
         $stmtBloques->execute($idsDocentes);
 
-        $stmtDocentes = $pdo->prepare("
-            DELETE FROM docentes
-            WHERE id_docente IN ({$placeholders})
-        ");
-
+        $stmtDocentes = $pdo->prepare("\n            DELETE FROM docentes\n            WHERE id_docente IN ({$placeholders})\n        ");
         $stmtDocentes->execute($idsDocentes);
 
         $pdo->commit();

@@ -23,57 +23,7 @@ function safeText(value) {
 }
 
 function formatearNombreTaller(value) {
-  const text = safeText(value);
-  if (text === "—") return text;
-
-  const normalizado = text
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/\./g, "")
-    .replace(/-/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (/^utp\s+(primer|segundo|tercer|cuarto|quinto|sexto|septimo)\s+(ano|anio)$/.test(normalizado)) {
-    return text;
-  }
-
-  const clave = normalizado
-    .replace(/^utp\s+/, "")
-    .replace(/\b(curso|ano|anio)\b/g, "")
-    .replace(/[°º]/g, "")
-    .replace(/\s+/g, "");
-
-  const anios = {
-    "1": "Primer",
-    "1ero": "Primer",
-    "1ro": "Primer",
-    primero: "Primer",
-    primer: "Primer",
-    "2": "Segundo",
-    "2do": "Segundo",
-    segundo: "Segundo",
-    "3": "Tercer",
-    "3ero": "Tercer",
-    "3ro": "Tercer",
-    tercero: "Tercer",
-    tercer: "Tercer",
-    "4": "Cuarto",
-    "4to": "Cuarto",
-    cuarto: "Cuarto",
-    "5": "Quinto",
-    "5to": "Quinto",
-    quinto: "Quinto",
-    "6": "Sexto",
-    "6to": "Sexto",
-    sexto: "Sexto",
-    "7": "Séptimo",
-    "7mo": "Séptimo",
-    septimo: "Séptimo",
-  };
-
-  return anios[clave] ? `UTP ${anios[clave]} año` : text;
+  return safeText(value);
 }
 
 function alignClass(align) {

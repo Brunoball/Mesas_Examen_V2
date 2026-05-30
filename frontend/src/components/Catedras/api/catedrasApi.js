@@ -62,9 +62,10 @@ export const catedrasApi = {
     };
   },
 
-  asignarDocente: (idCatedra, idDocente) =>
+  asignarDocente: (idCatedra, idDocente, idCargo) =>
     apiPost('catedras_asignar_docente', {
       id_catedra: idCatedra,
       id_docente: idDocente,
+      id_cargo: idCargo,
     }),
 };

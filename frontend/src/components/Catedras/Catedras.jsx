@@ -10,8 +10,8 @@ import {
   faTimes,
   faUserPen,
 } from '@fortawesome/free-solid-svg-icons';
-import { useCatedras } from './hooks/useCatedras';
-import ModalAsignarDocente from './modales/ModalAsignarDocente';
+import { useCatedras } from "./hooks/useCatedras.js";
+import ModalAsignarDocente from "./modales/ModalAsignarDocente.jsx";
 import ModalExportarGlobal from '../Global/Modales/ModalExportarGlobal.jsx';
 import BotonExportarHistorialGlobal from '../Global/Botones/BotonExportarHistorialGlobal.jsx';
 import Toast from '../Global/Toast.jsx';
@@ -41,7 +41,7 @@ const CATEDRAS_EXPORT_COLUMNS = [
   { label: 'División', value: (item) => safeText(item.nombre_division) },
   { label: 'Materia', value: (item) => safeText(item.materia) },
   { label: 'Docente', value: (item) => safeText(item.docente) },
-  { label: 'Cargo', value: (item) => safeText(item.cargo) },
+  { label: 'Cargo', value: (item) => safeText(item.cargo_docente || item.cargo) },
 ];
 
 function safeText(value) {
@@ -124,10 +124,9 @@ export default function Catedras() {
     setModalAsignar({ abierto: false, item: null });
   }
 
-  async function handleAsignarDocente(idCatedra, idDocente) {
-    const res = await asignarDocente(idCatedra, idDocente);
-    if (res.ok) cerrarModalAsignar();
-    return res;
+  async function handleAsignarDocente(idCatedra, idDocente, idCargo) {
+    cerrarModalAsignar();
+    return asignarDocente(idCatedra, idDocente, idCargo);
   }
 
   const listaCatedras = Array.isArray(catedras) ? catedras : [];
@@ -382,6 +381,7 @@ export default function Catedras() {
         <ModalAsignarDocente
           item={modalAsignar.item}
           docentes={catalogos.docentes}
+          cargos={catalogos.cargos}
           onGuardar={handleAsignarDocente}
           onCerrar={cerrarModalAsignar}
         />
@@ -391,7 +391,7 @@ export default function Catedras() {
         <Toast
           tipo={mensaje.tipo}
           mensaje={mensaje.texto}
-          duracion={mensaje.tipo === 'error' ? 4200 : 2800}
+          duracion={mensaje.tipo === 'cargando' ? 600000 : (mensaje.tipo === 'error' ? 4200 : 2800)}
           onClose={cerrarMensaje}
         />
       )}

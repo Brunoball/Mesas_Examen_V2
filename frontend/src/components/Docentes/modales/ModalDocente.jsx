@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faCalendarDays,
+  faEnvelope,
+  faIdCard,
   faInfoCircle,
   faPlus,
   faSave,
@@ -69,7 +71,8 @@ function obtenerEstadoInicial(modo, item) {
     return {
       pestaniaActiva: TAB_FICHA,
       docente: '',
-      idCargo: '',
+      dni: '',
+      email: '',
       activo: 1,
       comentarios: '',
       disponibilidades: [],
@@ -80,7 +83,8 @@ function obtenerEstadoInicial(modo, item) {
   return {
     pestaniaActiva: TAB_FICHA,
     docente: item?.docente || '',
-    idCargo: item?.id_cargo ? String(item.id_cargo) : '',
+    dni: item?.dni || '',
+    email: item?.email || item?.gmail || '',
     activo: Number(item?.activo ?? 1),
     comentarios: item?.comentarios || item?.comentario || item?.observacion || '',
     disponibilidades: Array.isArray(item?.disponibilidades)
@@ -103,7 +107,8 @@ export default function ModalDocente({
 
   const [pestaniaActiva, setPestaniaActiva] = useState(() => estadoInicial.pestaniaActiva);
   const [docente, setDocente] = useState(() => estadoInicial.docente);
-  const [idCargo, setIdCargo] = useState(() => estadoInicial.idCargo);
+  const [dni, setDni] = useState(() => estadoInicial.dni);
+  const [email, setEmail] = useState(() => estadoInicial.email);
   const [activo, setActivo] = useState(() => estadoInicial.activo);
   const [comentarios, setComentarios] = useState(() => estadoInicial.comentarios);
   const [disponibilidades, setDisponibilidades] = useState(() => estadoInicial.disponibilidades);
@@ -118,7 +123,8 @@ export default function ModalDocente({
     const nuevoEstado = obtenerEstadoInicial(modo, item);
     setPestaniaActiva(nuevoEstado.pestaniaActiva);
     setDocente(nuevoEstado.docente);
-    setIdCargo(nuevoEstado.idCargo);
+    setDni(nuevoEstado.dni);
+    setEmail(nuevoEstado.email);
     setActivo(nuevoEstado.activo);
     setComentarios(nuevoEstado.comentarios);
     setDisponibilidades(nuevoEstado.disponibilidades);
@@ -166,7 +172,7 @@ export default function ModalDocente({
   const resumenRegistros = useMemo(() => {
     const ids = idsDesdeItem(item);
     if (!editando || ids.length <= 1) return '';
-    return `Este docente tiene ${ids.length} registros internos unificados. Se actualizarán juntos para no repetirlo.`;
+    return `Este docente tiene ${ids.length} registros internos heredados. Se actualizarán juntos para no repetirlo.`;
   }, [editando, item]);
 
   const puedeAgregarDisponibilidad = disponibilidades.length < MAX_REGLAS_DISPONIBILIDAD;
@@ -200,9 +206,13 @@ export default function ModalDocente({
       mostrarToastError('El nombre del docente es obligatorio.');
       return;
     }
-    if (!idCargo) {
+
+    const dniLimpio = String(dni || '').replace(/\D/g, '').slice(0, 20);
+    const emailLimpio = String(email || '').trim().toLowerCase();
+
+    if (emailLimpio && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLimpio)) {
       setPestaniaActiva(TAB_FICHA);
-      mostrarToastError('Debe seleccionar un cargo.');
+      mostrarToastError('El Gmail/email ingresado no tiene un formato válido.');
       return;
     }
 
@@ -230,26 +240,32 @@ export default function ModalDocente({
     }));
 
     const comentariosLimpios = comentarios.trim();
+    const payload = {
+      id_docente: item?.id_docente || 0,
+      ids_docentes: idsDesdeItem(item),
+      docente: docente.trim(),
+      dni: dniLimpio,
+      email: emailLimpio,
+      gmail: emailLimpio,
+      activo,
+      comentarios: comentariosLimpios,
+      comentario: comentariosLimpios,
+      observacion: comentariosLimpios,
+      disponibilidades: disponibilidadesValidas,
+    };
+
     setGuardando(true);
 
+    let modalCerrado = false;
+
     try {
-      const res = await onGuardar({
-        id_docente: item?.id_docente || 0,
-        ids_docentes: idsDesdeItem(item),
-        docente: docente.trim(),
-        id_cargo: Number(idCargo),
-        activo,
-        comentarios: comentariosLimpios,
-        comentario: comentariosLimpios,
-        observacion: comentariosLimpios,
-        disponibilidades: disponibilidadesValidas,
-      });
-      if (res?.ok) { onCerrar(); }
-      else if (!res?.mensaje) { mostrarToastError('No se pudo guardar el docente.'); }
+      const promesaGuardado = onGuardar(payload, { modo: editando ? 'editar' : 'crear' });
+      modalCerrado = true;
+      onCerrar();
+      await promesaGuardado;
     } catch (err) {
       mostrarToastError(err?.message || 'No se pudo guardar el docente.');
-    } finally {
-      setGuardando(false);
+      if (!modalCerrado) setGuardando(false);
     }
   }
 
@@ -355,26 +371,40 @@ export default function ModalDocente({
                     </label>
                   </div>
 
-                  {/* Cargo + Estado — fila partida */}
-                  <div className="gm-formRow gm-formRow--split">
+                  <div className="gm-formRow gm-formRow--two docentes-formRow-contacto">
                     <label className="gm-field">
-                      <select
-                        className="gm-input gm-select"
-                        value={idCargo}
-                        onChange={(e) => setIdCargo(e.target.value)}
+                      <input
+                        className="gm-input"
+                        type="text"
+                        inputMode="numeric"
+                        value={dni}
+                        onChange={(e) => setDni(e.target.value.replace(/\D/g, '').slice(0, 20))}
+                        placeholder=" "
                         disabled={guardando}
-                      >
-                        <option value="">Seleccionar cargo</option>
-                        {(catalogos?.cargos || []).map((cargo) => (
-                          <option key={cargo.id_cargo} value={cargo.id_cargo}>
-                            {cargo.cargo}
-                          </option>
-                        ))}
-                      </select>
-                      <span className={`gm-label${idCargo ? ' is-up' : ''}`}>Cargo *</span>
+                      />
+                      <span className={`gm-label${dni ? ' is-up' : ''}`}>
+                        <FontAwesomeIcon icon={faIdCard} /> DNI
+                      </span>
                     </label>
 
-                    <div className="gm-field gm-field--status">
+                    <label className="gm-field">
+                      <input
+                        className="gm-input"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value.toLowerCase())}
+                        placeholder=" "
+                        disabled={guardando}
+                      />
+                      <span className={`gm-label${email ? ' is-up' : ''}`}>
+                        <FontAwesomeIcon icon={faEnvelope} /> Gmail / email
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* Estado — el cargo ya no pertenece al docente, se define por cátedra */}
+                  <div className="gm-formRow gm-formRow--full">
+                    <div className="gm-field gm-field--status gm-field--statusFull">
                       <div className="gm-statusToggle" role="group" aria-label="Estado del docente">
                         <button
                           type="button"
@@ -395,6 +425,11 @@ export default function ModalDocente({
                       </div>
                       <span className="gm-label is-up">Estado</span>
                     </div>
+                  </div>
+
+                  <div className="gm-alert gm-alert--info gm-alert--banner docentes-cargoInfoBox">
+                    <FontAwesomeIcon icon={faInfoCircle} />
+                    <span>El cargo ya no se carga en la ficha del docente. Ahora corresponde a cada cátedra/materia y se verá en el detalle del docente.</span>
                   </div>
 
                   {/* Comentarios — fila completa */}

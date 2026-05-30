@@ -15,6 +15,7 @@ import "./ModalMaterias.css";
 
 const TAB_FICHA = "ficha";
 const TAB_MATERIAS = "materias";
+const aMayusculas = (valor) => String(valor ?? "").toUpperCase();
 
 const parseIds = (valor) => {
   if (!valor) return [];
@@ -28,7 +29,7 @@ const ModalArea = ({ item, materias = [], onClose, onSave, onToast }) => {
   const idsIniciales = useMemo(() => parseIds(item?.ids_materias), [item]);
 
   const [pestaniaActiva, setPestaniaActiva] = useState(TAB_FICHA);
-  const [area, setArea] = useState(item?.area || "");
+  const [area, setArea] = useState(aMayusculas(item?.area || ""));
   const [activo, setActivo] = useState(item ? Number(item.activo) === 1 : true);
   const [idsMaterias, setIdsMaterias] = useState(idsIniciales);
   const [idMateriaSeleccionada, setIdMateriaSeleccionada] = useState("");
@@ -91,7 +92,7 @@ const ModalArea = ({ item, materias = [], onClose, onSave, onToast }) => {
     }
     onSave({
       id_area: item?.id_area || null,
-      area: area.trim(),
+      area: aMayusculas(area).trim(),
       activo,
       materias: idsMaterias,
     });
@@ -194,7 +195,7 @@ const ModalArea = ({ item, materias = [], onClose, onSave, onToast }) => {
                     <input
                       className="gm-input"
                       value={area}
-                      onChange={(e) => setArea(e.target.value.toUpperCase())}
+                      onChange={(e) => setArea(aMayusculas(e.target.value))}
                       placeholder=" "
                       autoFocus
                     />
@@ -250,7 +251,7 @@ const ModalArea = ({ item, materias = [], onClose, onSave, onToast }) => {
                       <option value="">Seleccionar materia</option>
                       {materiasDisponibles.map((m) => (
                         <option key={m.id_materia} value={m.id_materia}>
-                          {m.materia}
+                          {aMayusculas(m.materia)}
                         </option>
                       ))}
                     </select>
@@ -272,7 +273,7 @@ const ModalArea = ({ item, materias = [], onClose, onSave, onToast }) => {
                   <div className="chip-list area-chip-list materias-modalChipList materias-editor-chipList">
                     {materiasSeleccionadas.map((m) => (
                       <span className="chip materias-modalChip" key={m.id_materia}>
-                        {m.materia}
+                        {aMayusculas(m.materia)}
                         <button type="button" onClick={() => quitarMateria(m.id_materia)} title="Quitar materia">
                           <FontAwesomeIcon icon={faTimes} />
                         </button>

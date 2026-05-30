@@ -33,7 +33,7 @@ const SKELETON_ROWS = 8;
 
 const DOCENTES_COLUMNS = [
   { key: 'docente', label: 'Docente', strong: true },
-  { key: 'cargo', label: 'Cargo' },
+  { key: 'cargo', label: 'Cargos por materia' },
   { key: 'catedras', label: 'Cátedras', align: 'center' },
   { key: 'disponibilidad', label: 'Disponibilidad', align: 'center' },
   { key: 'observacion', label: 'Observación' },
@@ -44,12 +44,13 @@ const SKELETON_WIDTHS = ['72%', '54%', '38%', '46%', '64%', '44%'];
 
 const DOCENTES_EXPORT_COLUMNS = [
   { label: 'Docente', value: (item) => safeText(item.docente) },
-  { label: 'Cargo', value: (item) => safeText(item.cargo) },
+  { label: 'DNI', value: (item) => safeText(item.dni) },
+  { label: 'Gmail', value: (item) => safeText(item.email || item.gmail) },
+  { label: 'Cargos por materia', value: (item) => safeText(item.cargo) },
   { label: 'Cátedras', value: (item) => item.total_catedras || 0 },
   { label: 'Disponibilidad', value: (item) => item.total_disponibilidades || 0 },
   { label: 'Observación', value: (item) => safeText(item.observacion) },
-  { label: 'Registros unificados', value: (item) => item.cantidad_registros || 1 },
-  { label: 'IDs docente', value: (item) => safeText(item.ids_docentes_texto || item.id_docente) },
+  { label: 'ID docente', value: (item) => safeText(item.id_docente) },
 ];
 
 function safeText(value) {
@@ -168,26 +169,74 @@ export default function Docentes() {
     setModalConfirmar({ abierto: true, tipo, item });
   }
 
-  async function confirmarOperacion({ motivo = '' } = {}) {
-    if (modalConfirmar.tipo === 'baja') return darBaja(modalConfirmar.item, motivo, { silent: true });
-    if (modalConfirmar.tipo === 'alta') return darAlta(modalConfirmar.item, { silent: true });
-    if (modalConfirmar.tipo === 'eliminar') return eliminar(modalConfirmar.item, { silent: true });
+  function mostrarToastCarga(texto) {
+    mostrarMensaje('cargando', texto, 60000);
+  }
+
+  async function guardarDocenteDesdeModal(payload, opciones = {}) {
+    const editando = opciones?.modo === 'editar' || Number(payload?.id_docente || 0) > 0;
+
+    mostrarToastCarga(editando ? 'Guardando cambios del docente...' : 'Guardando docente...');
+
+    const res = await guardar(payload, { silent: true });
+
+    if (res?.ok) {
+      mostrarMensaje('exito', editando ? 'Docente actualizado correctamente.' : 'Docente agregado correctamente.');
+    } else {
+      mostrarMensaje('error', res?.mensaje || 'No se pudo guardar el docente.');
+    }
+
+    return res;
+  }
+
+  function normalizarMotivoConfirmacion(valor) {
+    if (typeof valor === 'string') return valor;
+    if (valor && typeof valor === 'object') return valor.motivo || valor.reason || '';
+    return '';
+  }
+
+  async function confirmarOperacion(datos = {}) {
+    const tipo = modalConfirmar.tipo;
+    const item = modalConfirmar.item;
+    const motivo = normalizarMotivoConfirmacion(datos).trim();
+
+    setModalConfirmar({ abierto: false, tipo: '', item: null });
+
+    if (tipo === 'baja') {
+      mostrarToastCarga('Dando de baja el docente...');
+      const res = await darBaja(item, motivo, { silent: true });
+      mostrarMensaje(res?.ok ? 'exito' : 'error', res?.ok ? 'Docente dado de baja correctamente.' : (res?.mensaje || 'No se pudo dar de baja el docente.'));
+      return res;
+    }
+
+    if (tipo === 'alta') {
+      mostrarToastCarga('Dando de alta el docente...');
+      const res = await darAlta(item, { silent: true });
+      mostrarMensaje(res?.ok ? 'exito' : 'error', res?.ok ? 'Docente dado de alta correctamente.' : (res?.mensaje || 'No se pudo dar de alta el docente.'));
+      return res;
+    }
+
+    if (tipo === 'eliminar') {
+      mostrarToastCarga('Eliminando docente...');
+      const res = await eliminar(item, { silent: true });
+      mostrarMensaje(res?.ok ? 'exito' : 'error', res?.ok ? 'Docente eliminado correctamente.' : (res?.mensaje || 'No se pudo eliminar el docente.'));
+      return res;
+    }
+
+    mostrarMensaje('error', 'Operación inválida.');
     return { ok: false, mensaje: 'Operación inválida.' };
   }
 
 
   function obtenerConfigModalConfirmar() {
     const item = modalConfirmar.item || {};
-    const cantidadRegistros = Number(item.cantidad_registros || 0);
     const idsTexto = safeText(item.ids_docentes_texto || item.id_docente);
 
     const details = [
       { label: 'Docente', value: item.docente },
-      { label: 'Cargo', value: item.cargo || 'Sin cargo' },
-      {
-        label: cantidadRegistros > 1 ? 'Registros unificados' : 'ID docente',
-        value: cantidadRegistros > 1 ? `${cantidadRegistros} registros (${idsTexto})` : idsTexto,
-      },
+      { label: 'DNI', value: item.dni || '—' },
+      { label: 'Cargos por materia', value: item.cargo || 'Sin cátedras asignadas' },
+      { label: 'ID docente', value: idsTexto },
     ];
 
     if (modalConfirmar.tipo === 'baja') {
@@ -371,13 +420,10 @@ export default function Docentes() {
                       <div className="mov-gridCell is-strong" role="cell" data-label="Docente">
                         <div className="docentes-name-cell" title={safeText(item.docente)}>
                           <strong>{safeText(item.docente)}</strong>
-                          {Number(item.cantidad_registros) > 1 && (
-                            <small>{item.cantidad_registros} registros unificados</small>
-                          )}
                         </div>
                       </div>
 
-                      <div className="mov-gridCell" role="cell" data-label="Cargo" title={safeText(item.cargo)}>
+                      <div className="mov-gridCell" role="cell" data-label="Cargos por materia" title={safeText(item.cargo)}>
                         <span className="mov-ellipsissss">{safeText(item.cargo)}</span>
                       </div>
 
@@ -500,7 +546,7 @@ export default function Docentes() {
           modo={modalDocente.modo}
           item={modalDocente.item}
           catalogos={catalogos}
-          onGuardar={guardar}
+          onGuardar={guardarDocenteDesdeModal}
           onToast={mostrarMensaje}
           onCerrar={() => setModalDocente({ abierto: false, modo: 'crear', item: null })}
         />
@@ -521,7 +567,6 @@ export default function Docentes() {
           row={modalConfirmar.item}
           onConfirm={confirmarOperacion}
           onClose={() => setModalConfirmar({ abierto: false, tipo: '', item: null })}
-          onToast={mostrarMensaje}
           {...obtenerConfigModalConfirmar()}
         />
       )}

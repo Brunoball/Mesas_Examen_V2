@@ -31,6 +31,167 @@ function mesas_editar_parametro_texto($valor): string
     return mesas_editar_parametro_presente($valor) ? trim((string)$valor) : '';
 }
 
+
+
+function mesas_editar_normalizar_tipo_armado(?string $tipo): string
+{
+    $tipoLower = mb_strtolower(trim((string)$tipo), 'UTF-8');
+    if ($tipoLower === '') {
+        return '';
+    }
+
+    if (str_contains($tipoLower, 'docente') || str_contains($tipoLower, 'dispon')) {
+        return 'docentes';
+    }
+
+    if (str_contains($tipoLower, 'area') || str_contains($tipoLower, 'área')) {
+        return 'area';
+    }
+
+    return '';
+}
+
+function mesas_editar_timestamp_seguro(?string $fechaHora): int
+{
+    $fechaHora = trim((string)$fechaHora);
+    if ($fechaHora === '') {
+        return 0;
+    }
+
+    $ts = strtotime($fechaHora);
+    return $ts === false ? 0 : (int)$ts;
+}
+
+function mesas_editar_payload_a_array(?string $json): array
+{
+    $json = trim((string)$json);
+    if ($json === '') {
+        return [];
+    }
+
+    $datos = json_decode($json, true);
+    if (!is_array($datos)) {
+        return [];
+    }
+
+    $body = is_array($datos['body'] ?? null) ? $datos['body'] : [];
+    $post = is_array($datos['post'] ?? null) ? $datos['post'] : [];
+    $get = is_array($datos['get'] ?? null) ? $datos['get'] : [];
+
+    return array_merge($get, $post, $body);
+}
+
+function mesas_editar_tipo_armado_desde_auditoria(PDO $pdo, ?array $rangoActual = null): array
+{
+    try {
+        $stmt = $pdo->query("
+            SELECT accion, datos_request, fecha_hora
+            FROM auditoria
+            WHERE modulo = 'mesas'
+              AND resultado = 1
+              AND accion IN (
+                  'mesas_armado_crear',
+                  'mesas_armado_crear_numerado',
+                  'mesas_armado_crear_docentes',
+                  'mesas_armado_docentes_crear',
+                  'mesas_armado_crear_por_disponibilidad_docente'
+              )
+            ORDER BY fecha_hora DESC, id_auditoria DESC
+            LIMIT 50
+        ");
+
+        if (!$stmt) {
+            return ['tipo' => '', 'fecha_hora' => '', 'origen' => ''];
+        }
+
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $accion = trim((string)($row['accion'] ?? ''));
+            $tipo = mesas_editar_normalizar_tipo_armado($accion);
+
+            // Las acciones históricas del armado por área no tienen la palabra "area" en el nombre.
+            if ($tipo === '' && in_array($accion, ['mesas_armado_crear', 'mesas_armado_crear_numerado'], true)) {
+                $tipo = 'area';
+            }
+
+            if ($tipo === '') {
+                continue;
+            }
+
+            return [
+                'tipo' => $tipo,
+                'fecha_hora' => trim((string)($row['fecha_hora'] ?? '')),
+                'origen' => 'auditoria',
+            ];
+        }
+    } catch (Throwable $e) {
+        return ['tipo' => '', 'fecha_hora' => '', 'origen' => ''];
+    }
+
+    return ['tipo' => '', 'fecha_hora' => '', 'origen' => ''];
+}
+
+function mesas_editar_tipo_armado_actual(PDO $pdo): string
+{
+    static $cache = [];
+    $key = spl_object_id($pdo);
+    if (isset($cache[$key])) {
+        return $cache[$key];
+    }
+
+    $rango = null;
+    $tipoTabla = '';
+    $tsTabla = 0;
+
+    try {
+        $rango = function_exists('mesas_armado_rango_obtener_actual')
+            ? mesas_armado_rango_obtener_actual($pdo)
+            : null;
+
+        if (is_array($rango)) {
+            $tipoTabla = mesas_editar_normalizar_tipo_armado((string)($rango['tipo_armado'] ?? ''));
+            $tsTabla = mesas_editar_timestamp_seguro((string)($rango['actualizado_en'] ?? ''));
+        }
+    } catch (Throwable $e) {
+        $rango = null;
+        $tipoTabla = '';
+        $tsTabla = 0;
+    }
+
+    $auditoria = mesas_editar_tipo_armado_desde_auditoria($pdo, is_array($rango) ? $rango : null);
+    $tipoAuditoria = (string)($auditoria['tipo'] ?? '');
+    $tsAuditoria = mesas_editar_timestamp_seguro((string)($auditoria['fecha_hora'] ?? ''));
+
+    // Si la tabla quedó vieja por una versión anterior, la auditoría más nueva recupera
+    // el modo real del último armado y evita que la edición por docentes se comporte como área.
+    if ($tipoAuditoria !== '' && ($tipoTabla === '' || $tsTabla === 0 || $tsAuditoria >= $tsTabla)) {
+        $cache[$key] = $tipoAuditoria;
+        return $cache[$key];
+    }
+
+    if ($tipoTabla !== '') {
+        $cache[$key] = $tipoTabla;
+        return $cache[$key];
+    }
+
+    if ($tipoAuditoria !== '') {
+        $cache[$key] = $tipoAuditoria;
+        return $cache[$key];
+    }
+
+    $cache[$key] = 'area';
+    return $cache[$key];
+}
+
+function mesas_editar_es_armado_por_docentes(PDO $pdo): bool
+{
+    return mesas_editar_tipo_armado_actual($pdo) === 'docentes';
+}
+
+function mesas_editar_debe_respetar_area(PDO $pdo): bool
+{
+    return !mesas_editar_es_armado_por_docentes($pdo);
+}
+
 function mesas_editar_normalizar_fecha(?string $fecha): string
 {
     $fecha = trim((string)$fecha);
@@ -365,6 +526,13 @@ function mesas_editar_area_canonica_grupo(PDO $pdo, int $numeroGrupo): ?array
 
 function mesas_editar_normalizar_area_grupo(PDO $pdo, int $numeroGrupo): ?array
 {
+    // En el armado por disponibilidad docente el área NO define el grupo.
+    // No normalizamos todas las filas al mismo área porque el grupo puede mezclar
+    // Matemática, Sociales, Lengua, etc. siempre que coincida fecha/turno y disponibilidad.
+    if (mesas_editar_es_armado_por_docentes($pdo)) {
+        return null;
+    }
+
     $area = mesas_editar_area_canonica_grupo($pdo, $numeroGrupo);
     if (!$area) {
         return null;
@@ -384,6 +552,10 @@ function mesas_editar_normalizar_area_grupo(PDO $pdo, int $numeroGrupo): ?array
 
 function mesas_editar_normalizar_areas_grupos_finales(PDO $pdo, ?array $numerosGrupo = null): void
 {
+    if (mesas_editar_es_armado_por_docentes($pdo)) {
+        return;
+    }
+
     $params = [];
     $where = '';
 
@@ -406,6 +578,10 @@ function mesas_editar_normalizar_areas_grupos_finales(PDO $pdo, ?array $numerosG
 
 function mesas_editar_aplicar_area_canonica_a_fila_grupo(PDO $pdo, array $grupo): array
 {
+    if (mesas_editar_es_armado_por_docentes($pdo)) {
+        return $grupo;
+    }
+
     $numeroGrupo = (int)($grupo['numero_grupo'] ?? $grupo['id_grupo'] ?? 0);
     if ($numeroGrupo <= 0) {
         return $grupo;

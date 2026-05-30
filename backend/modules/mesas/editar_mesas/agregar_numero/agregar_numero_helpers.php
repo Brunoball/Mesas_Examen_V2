@@ -236,10 +236,11 @@ function mesas_editar_agregar_numero_validar_numero_en_grupo(PDO $pdo, int $nume
     $errores = [];
     $advertencias = [];
 
-    // Modo usado por el botón + de edición: permite mezclar áreas y solo bloquea
-    // si realmente hay choque de alumnos/docentes en la fecha y turno del grupo destino.
+    // En el armado por disponibilidad docente el área es secundaria: no bloquea.
+    // En el armado por área sí se respeta como restricción dura.
     $validarSoloChoquesSlot = !empty($opciones['solo_choques_slot']);
-    $ignorarArea = !empty($opciones['ignorar_area']) || $validarSoloChoquesSlot;
+    $esArmadoDocentes = mesas_editar_es_armado_por_docentes($pdo);
+    $ignorarArea = $esArmadoDocentes || !empty($opciones['ignorar_area']);
 
     $numeroGrupo = (int)($grupoDestino['numero_grupo'] ?? 0);
     $fechaDestino = substr((string)($grupoDestino['fecha_mesa'] ?? ''), 0, 10);
@@ -282,11 +283,7 @@ function mesas_editar_agregar_numero_validar_numero_en_grupo(PDO $pdo, int $nume
     } else {
         $tipo = trim((string)($resumen['tipo_mesa'] ?? 'simple'));
         if ($tipo === 'taller') {
-            if ($validarSoloChoquesSlot) {
-                $advertencias[] = 'La mesa es de taller, pero en esta edición manual solo se validan choques de alumnos y docentes.';
-            } else {
-                $errores[] = 'Las mesas de taller son exclusivas y no se pueden agregar a otro grupo.';
-            }
+            $errores[] = 'Las mesas de taller son exclusivas y no se pueden agregar a otro grupo.';
         }
 
         $idAreaGrupo = (int)($grupoDestino['id_area'] ?? 0);
@@ -304,21 +301,12 @@ function mesas_editar_agregar_numero_validar_numero_en_grupo(PDO $pdo, int $nume
         $numerosFinales = array_values(array_unique(array_merge($numerosGrupo, [$numeroMesa])));
         $detalleFinal = mesas_editar_obtener_detalle_numeros($pdo, $numerosFinales);
 
-        if ($validarSoloChoquesSlot) {
-            // Modo manual del + de no agrupadas:
-            // - NO valida área.
-            // - NO valida disponibilidad/bloqueos generales del docente.
-            // - NO usa la fecha/turno vieja de la mesa no agrupada.
-            // - Solo bloquea choques reales contra mesas YA agrupadas en la fecha/turno destino.
-            $errores = array_merge(
-                $errores,
-                mesas_editar_agregar_numero_validar_choques_reales_slot($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino)
-            );
-        } else {
-            $errores = array_merge($errores, mesas_editar_validar_docentes($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
-            $errores = array_merge($errores, mesas_editar_validar_alumnos($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
-            $errores = array_merge($errores, mesas_editar_validar_correlativas($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
-        }
+        // Siempre se validan reglas duras: disponibilidad/bloqueos/choques de docentes,
+        // choque de alumnos por DNI y correlatividades. Lo único variable es el área:
+        // por disponibilidad docente se ignora; por área se respeta arriba.
+        $errores = array_merge($errores, mesas_editar_validar_docentes($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
+        $errores = array_merge($errores, mesas_editar_validar_alumnos($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
+        $errores = array_merge($errores, mesas_editar_validar_correlativas($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
     }
 
     return [
@@ -363,8 +351,7 @@ function mesas_editar_agregar_numero_obtener_no_agrupadas_disponibles(PDO $pdo, 
         }
 
         $validacion = mesas_editar_agregar_numero_validar_numero_en_grupo($pdo, $numeroMesa, $grupoDestino, [
-            'ignorar_area' => true,
-            'solo_choques_slot' => true,
+            'ignorar_area' => mesas_editar_es_armado_por_docentes($pdo),
         ]);
 
         if (empty($validacion['valido'])) {
@@ -514,7 +501,11 @@ function mesas_editar_agregar_numero_validar_previa_para_slot(PDO $pdo, array $p
     $idAreaGrupo = (int)($grupoDestino['id_area'] ?? 0);
     $idAreaPrevia = (int)($previa['id_area'] ?? 0);
     if ($idAreaGrupo > 0 && $idAreaPrevia > 0 && $idAreaGrupo !== $idAreaPrevia) {
-        $errores[] = 'La previa no pertenece al área del grupo seleccionado.';
+        if (mesas_editar_debe_respetar_area($pdo)) {
+            $errores[] = 'La previa no pertenece al área del grupo seleccionado.';
+        } else {
+            $advertencias[] = 'La previa pertenece a otra área, pero se permite porque el armado actual es por disponibilidad docente.';
+        }
     }
 
     if ((int)($previa['id_taller'] ?? 0) > 0) {
@@ -663,8 +654,7 @@ function mesas_editar_agregar_numero_a_grupo(PDO $pdo, int $numeroGrupo, int $nu
     }
 
     $validacion = mesas_editar_agregar_numero_validar_numero_en_grupo($pdo, $numeroMesa, $grupo, [
-        'ignorar_area' => true,
-        'solo_choques_slot' => true,
+        'ignorar_area' => mesas_editar_es_armado_por_docentes($pdo),
     ]);
     if (!$validacion['valido']) {
         return [
@@ -705,13 +695,17 @@ function mesas_editar_agregar_numero_a_grupo(PDO $pdo, int $numeroGrupo, int $nu
         . 'VALUES '
         . '    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "borrador", NULL)'
     );
+    $idAreaInsert = mesas_editar_es_armado_por_docentes($pdo)
+        ? ($resumen['id_area'] !== null ? (int)$resumen['id_area'] : null)
+        : ($grupo['id_area'] !== null ? (int)$grupo['id_area'] : null);
+
     $stmtInsert->execute([
         $numeroGrupo,
         $numeroMesa,
         $fecha,
         $idTurno,
         $hora,
-        $grupo['id_area'],
+        $idAreaInsert,
         $orden,
         $resumen['tipo_mesa'],
         $resumen['prioridad'],
@@ -783,13 +777,17 @@ function mesas_editar_agregar_numero_crear_grupo_desde_previa(PDO $pdo, int $num
         . 'VALUES '
         . '    (?, ?, ?, ?, ?, ?, ?, "simple", 0, 1, "borrador", "Número creado manualmente desde previa sin número de mesa y agregado al grupo.")'
     );
+    $idAreaInsert = mesas_editar_es_armado_por_docentes($pdo)
+        ? ($previa['id_area'] !== null ? (int)$previa['id_area'] : null)
+        : ($grupoReferencia['id_area'] !== null ? (int)$grupoReferencia['id_area'] : null);
+
     $stmtGrupo->execute([
         $numeroGrupoReferencia,
         $numeroMesa,
         $fecha,
         $idTurno,
         $hora,
-        $grupoReferencia['id_area'] !== null ? (int)$grupoReferencia['id_area'] : null,
+        $idAreaInsert,
         $orden,
     ]);
 

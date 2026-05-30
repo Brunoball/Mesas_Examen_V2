@@ -775,3 +775,137 @@ background:rgba(196,139,59,.07);
     padding:14px;
   }
 }
+
+/* =========================
+   Modal info docente — cargos por materia
+========================= */
+
+.docentes-info-cargosResumen{
+  margin:14px 20px 0;
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));
+  gap:10px;
+}
+
+.docentes-info-cargoResumenCard{
+  min-width:0;
+  padding:12px 14px;
+  border:1px solid rgba(196,139,59,.18);
+  border-radius:14px;
+  background:linear-gradient(180deg, #fff, rgba(196,139,59,.055));
+  box-shadow:0 8px 18px rgba(58,46,43,.055);
+}
+
+.docentes-info-cargoResumenCard strong{
+  display:block;
+  color:var(--balto-ink);
+  font-size:13px;
+  font-weight:720;
+  text-transform:uppercase;
+  letter-spacing:.02em;
+}
+
+.docentes-info-cargoResumenCard span{
+  display:block;
+  margin-top:4px;
+  color:var(--balto-action);
+  font-size:12px;
+  font-weight:700;
+}
+
+.docentes-info-cargoResumenCard small{
+  display:block;
+  margin-top:5px;
+  color:var(--mov-muted);
+  font-size:11.5px;
+  font-weight:520;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.docentes-info-divtable-head--cargos,
+.docentes-info-divtable-row--cargos{
+  display:grid !important;
+  grid-template-columns:.75fr .75fr 1.1fr minmax(0, 2.4fr) !important;
+  align-items:center;
+}
+
+.docentes-info-cargoChip{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  max-width:100%;
+  min-height:30px;
+  padding:5px 10px;
+  border-radius:999px;
+  border:1px solid rgba(196,139,59,.24);
+  background:rgba(196,139,59,.08);
+  color:var(--balto-action);
+  font-size:11.5px;
+  font-weight:760;
+  text-transform:uppercase;
+  letter-spacing:.015em;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.docentes-info-divtable-cell--materia{
+  min-width:0;
+}
+
+@media (max-width:720px){
+  .docentes-info-divtable-head--cargos,
+  .docentes-info-divtable-row--cargos{
+    grid-template-columns:.7fr .7fr 1fr minmax(170px, 2fr) !important;
+    min-width:720px;
+  }
+}
+
+/* Cargo separado de la ficha del docente: ahora se define por cátedra/materia */
+.docentes-cargoInfoBox{
+  margin-top:4px;
+}
+
+.gm-field--statusFull{
+  width:100%;
+}
+
+/* Datos personales extra del docente */
+.docentes-formRow-contacto{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+
+.docentes-info-contacto{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:8px;
+}
+
+.docentes-info-contactoChip{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  max-width:100%;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid rgba(196,139,59,.22);
+  background:rgba(196,139,59,.075);
+  color:var(--balto-action);
+  font-size:12px;
+  font-weight:700;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+@media (max-width:720px){
+  .docentes-formRow-contacto{
+    grid-template-columns:1fr;
+  }
+}

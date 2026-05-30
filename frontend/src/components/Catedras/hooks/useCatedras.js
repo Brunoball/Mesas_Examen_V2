@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { catedrasApi } from '../api/catedrasApi';
 import { usePaginacion } from '../../_shared/hooks/usePaginacion';
 
@@ -16,10 +16,11 @@ function limpiarFiltros(filtros) {
 
 export function useCatedras() {
   const [catedras, setCatedras] = useState([]);
-  const [catalogos, setCatalogos] = useState({ docentes: [], cursos: [], divisiones: [] });
+  const [catalogos, setCatalogos] = useState({ docentes: [], cargos: [], cursos: [], divisiones: [] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState(null);
+  const mensajeTimerRef = useRef(null);
   const [busqueda, setBusquedaState] = useState('');
   const [busquedaDebounced, setBusquedaDebounced] = useState('');
   const [filtros, setFiltros] = useState({
@@ -37,20 +38,40 @@ export function useCatedras() {
   }, []);
 
   const cerrarMensaje = useCallback(() => {
-    window.clearTimeout(window.__catedrasMsgTimer);
+    if (mensajeTimerRef.current) {
+      window.clearTimeout(mensajeTimerRef.current);
+      mensajeTimerRef.current = null;
+    }
     setMensaje(null);
   }, []);
 
   const mostrarMensaje = useCallback((tipo, texto) => {
-    setMensaje({ tipo, texto });
-    window.clearTimeout(window.__catedrasMsgTimer);
-    window.__catedrasMsgTimer = window.setTimeout(() => setMensaje(null), 3600);
+    const tipoOriginal = String(tipo || '').toLowerCase();
+    const tipoNormalizado = tipoOriginal === 'success' || tipoOriginal === 'ok' ? 'exito' : tipoOriginal || 'info';
+    const esPersistente = ['error', 'cargando'].includes(tipoNormalizado);
+
+    if (mensajeTimerRef.current) {
+      window.clearTimeout(mensajeTimerRef.current);
+      mensajeTimerRef.current = null;
+    }
+
+    setMensaje({ tipo: tipoNormalizado, texto, id: Date.now() });
+
+    if (!esPersistente) {
+      mensajeTimerRef.current = window.setTimeout(() => setMensaje(null), 3600);
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (mensajeTimerRef.current) window.clearTimeout(mensajeTimerRef.current);
+    };
   }, []);
 
   const cargarCatalogos = useCallback(async () => {
     try {
       const res = await catedrasApi.catalogos();
-      setCatalogos(res.data || { docentes: [], cursos: [], divisiones: [] });
+      setCatalogos(res.data || { docentes: [], cargos: [], cursos: [], divisiones: [] });
     } catch (e) {
       console.error('Error cargando catálogos de cátedras:', e);
     }
@@ -124,14 +145,23 @@ export function useCatedras() {
     setFiltros({ id_curso: '', id_division: '', id_docente: '', sin_docente: '' });
   }
 
-  async function asignarDocente(idCatedra, idDocente) {
+  async function asignarDocente(idCatedra, idDocente, idCargo) {
+    const hayDocente = Number(idDocente || 0) > 0;
+
+    if (hayDocente && Number(idCargo || 0) <= 0) {
+      const msg = 'Seleccioná el cargo de esa cátedra.';
+      mostrarMensaje('error', msg);
+      return { ok: false, mensaje: msg };
+    }
+
     try {
-      await catedrasApi.asignarDocente(idCatedra, idDocente || 0);
+      mostrarMensaje('cargando', hayDocente ? 'Guardando docente y cargo...' : 'Quitando docente...');
+      const res = await catedrasApi.asignarDocente(idCatedra, idDocente || 0, idCargo || 0);
       await cargar();
-      mostrarMensaje('success', 'Docente asignado correctamente.');
+      mostrarMensaje('ok', res?.mensaje || (hayDocente ? 'Docente y cargo asignados correctamente.' : 'Docente quitado correctamente.'));
       return { ok: true };
     } catch (e) {
-      const msg = e.message || 'No se pudo asignar el docente.';
+      const msg = e.message || 'No se pudo asignar el docente y cargo.';
       mostrarMensaje('error', msg);
       return { ok: false, mensaje: msg };
     }

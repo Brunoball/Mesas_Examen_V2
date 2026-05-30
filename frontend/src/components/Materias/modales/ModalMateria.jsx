@@ -14,6 +14,7 @@ import "./ModalMaterias.css";
 
 const TAB_FICHA = "ficha";
 const TAB_AREAS = "areas";
+const aMayusculas = (valor) => String(valor ?? "").toUpperCase();
 
 const ModalMateria = ({ item, areas = [], onClose, onSave, onToast }) => {
   const idsIniciales = useMemo(() => {
@@ -22,7 +23,7 @@ const ModalMateria = ({ item, areas = [], onClose, onSave, onToast }) => {
   }, [item]);
 
   const [pestaniaActiva, setPestaniaActiva] = useState(TAB_FICHA);
-  const [materia, setMateria] = useState(item?.materia || "");
+  const [materia, setMateria] = useState(aMayusculas(item?.materia || ""));
   const [activo, setActivo] = useState(item ? Number(item.activo) === 1 : true);
   const [idsAreas, setIdsAreas] = useState(idsIniciales);
 
@@ -62,7 +63,7 @@ const ModalMateria = ({ item, areas = [], onClose, onSave, onToast }) => {
     }
     onSave({
       id_materia: item?.id_materia || null,
-      materia: materia.trim(),
+      materia: aMayusculas(materia).trim(),
       activo,
       ids_areas: idsAreas,
     });
@@ -163,7 +164,7 @@ const ModalMateria = ({ item, areas = [], onClose, onSave, onToast }) => {
                     <input
                       className="gm-input"
                       value={materia}
-                      onChange={(e) => setMateria(e.target.value.toUpperCase())}
+                      onChange={(e) => setMateria(aMayusculas(e.target.value))}
                       placeholder=" "
                       autoFocus
                     />
@@ -223,7 +224,7 @@ const ModalMateria = ({ item, areas = [], onClose, onSave, onToast }) => {
                           checked={idsAreas.includes(Number(a.id_area))}
                           onChange={() => toggleArea(Number(a.id_area))}
                         />
-                        <span>{a.area}</span>
+                        <span>{aMayusculas(a.area)}</span>
                       </label>
                     ))
                   )}

@@ -237,23 +237,47 @@ function mesas_editar_mas_obtener_previa_base(PDO $pdo, int $idPrevia): ?array
             ON cat.id_catedra = (
                 SELECT c2.id_catedra
                 FROM catedras c2
-                LEFT JOIN docentes d2 ON d2.id_docente = c2.id_docente
-                LEFT JOIN cargos cargo2 ON cargo2.id_cargo = d2.id_cargo
+                LEFT JOIN catedras_docentes cd2
+                    ON cd2.id_catedra = c2.id_catedra
+                   AND cd2.activo = 1
+                LEFT JOIN docentes d2
+                    ON d2.id_docente = COALESCE(cd2.id_docente, c2.id_docente)
+                LEFT JOIN cargos cargo2
+                    ON cargo2.id_cargo = COALESCE(cd2.id_cargo, d2.id_cargo)
                 WHERE c2.id_materia = p.id_materia
                   AND c2.id_curso = p.materia_id_curso
                   AND c2.id_division = p.materia_id_division
                   AND c2.activo = 1
                 ORDER BY
                     CASE
-                        WHEN d2.activo = 1 AND (d2.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo2.cargo, ''))) = 'SUPLENTE') THEN 0
+                        WHEN d2.activo = 1 AND (COALESCE(cd2.id_cargo, d2.id_cargo) = 2 OR UPPER(TRIM(COALESCE(cargo2.cargo, ''))) = 'SUPLENTE') THEN 0
                         WHEN d2.activo = 1 AND d2.id_docente IS NOT NULL THEN 1
-                        WHEN c2.id_docente IS NULL THEN 2
+                        WHEN COALESCE(cd2.id_docente, c2.id_docente) IS NULL THEN 2
                         ELSE 3
                     END ASC,
                     c2.id_catedra ASC
                 LIMIT 1
             )
-        LEFT JOIN docentes doc ON doc.id_docente = cat.id_docente AND doc.activo = 1
+        LEFT JOIN catedras_docentes cd
+            ON cd.id_catedra = cat.id_catedra
+           AND cd.activo = 1
+           AND cd.id_catedra_docente = (
+                SELECT cd3.id_catedra_docente
+                FROM catedras_docentes cd3
+                LEFT JOIN docentes d3 ON d3.id_docente = cd3.id_docente
+                LEFT JOIN cargos cargo3 ON cargo3.id_cargo = cd3.id_cargo
+                WHERE cd3.id_catedra = cat.id_catedra
+                  AND cd3.activo = 1
+                ORDER BY
+                    CASE
+                        WHEN d3.activo = 1 AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 1
+                        ELSE 2
+                    END ASC,
+                    cd3.id_catedra_docente ASC
+                LIMIT 1
+           )
+        LEFT JOIN docentes doc ON doc.id_docente = COALESCE(cd.id_docente, cat.id_docente) AND doc.activo = 1
         LEFT JOIN (
             SELECT tm.id_catedra, MIN(tm.id_taller) AS id_taller
             FROM talleres_materias tm
@@ -275,6 +299,14 @@ function mesas_editar_mas_obtener_previa_base(PDO $pdo, int $idPrevia): ?array
 
 function mesas_editar_mas_obtener_previas_base_por_area(PDO $pdo, int $idArea, ?int $idDocente = null, int $limite = 250): array
 {
+    // En armado por área, el listado respeta el área del número destino.
+    // En armado por disponibilidad docente, el área deja de ser restricción dura:
+    // se listan por docente y después se validan disponibilidad/choques/correlativas.
+    $filtrarArea = mesas_editar_debe_respetar_area($pdo) && $idArea > 0;
+    $joinArea = $filtrarArea
+        ? 'INNER JOIN areas_materias am ON am.id_materia = p.id_materia AND am.activo = 1 AND am.id_area = ?'
+        : 'LEFT JOIN areas_materias am ON am.id_materia = p.id_materia AND am.activo = 1';
+
     $sql = "
         SELECT
             p.id_previa,
@@ -338,29 +370,53 @@ function mesas_editar_mas_obtener_previas_base_por_area(PDO $pdo, int $idArea, ?
         LEFT JOIN division da ON da.id_division = p.cursando_id_division
         LEFT JOIN curso cm ON cm.id_curso = p.materia_id_curso
         LEFT JOIN division dm ON dm.id_division = p.materia_id_division
-        INNER JOIN areas_materias am ON am.id_materia = p.id_materia AND am.activo = 1 AND am.id_area = ?
+        {$joinArea}
         LEFT JOIN areas ar ON ar.id_area = am.id_area
         LEFT JOIN catedras cat
             ON cat.id_catedra = (
                 SELECT c2.id_catedra
                 FROM catedras c2
-                LEFT JOIN docentes d2 ON d2.id_docente = c2.id_docente
-                LEFT JOIN cargos cargo2 ON cargo2.id_cargo = d2.id_cargo
+                LEFT JOIN catedras_docentes cd2
+                    ON cd2.id_catedra = c2.id_catedra
+                   AND cd2.activo = 1
+                LEFT JOIN docentes d2
+                    ON d2.id_docente = COALESCE(cd2.id_docente, c2.id_docente)
+                LEFT JOIN cargos cargo2
+                    ON cargo2.id_cargo = COALESCE(cd2.id_cargo, d2.id_cargo)
                 WHERE c2.id_materia = p.id_materia
                   AND c2.id_curso = p.materia_id_curso
                   AND c2.id_division = p.materia_id_division
                   AND c2.activo = 1
                 ORDER BY
                     CASE
-                        WHEN d2.activo = 1 AND (d2.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo2.cargo, ''))) = 'SUPLENTE') THEN 0
+                        WHEN d2.activo = 1 AND (COALESCE(cd2.id_cargo, d2.id_cargo) = 2 OR UPPER(TRIM(COALESCE(cargo2.cargo, ''))) = 'SUPLENTE') THEN 0
                         WHEN d2.activo = 1 AND d2.id_docente IS NOT NULL THEN 1
-                        WHEN c2.id_docente IS NULL THEN 2
+                        WHEN COALESCE(cd2.id_docente, c2.id_docente) IS NULL THEN 2
                         ELSE 3
                     END ASC,
                     c2.id_catedra ASC
                 LIMIT 1
             )
-        LEFT JOIN docentes doc ON doc.id_docente = cat.id_docente AND doc.activo = 1
+        LEFT JOIN catedras_docentes cd
+            ON cd.id_catedra = cat.id_catedra
+           AND cd.activo = 1
+           AND cd.id_catedra_docente = (
+                SELECT cd3.id_catedra_docente
+                FROM catedras_docentes cd3
+                LEFT JOIN docentes d3 ON d3.id_docente = cd3.id_docente
+                LEFT JOIN cargos cargo3 ON cargo3.id_cargo = cd3.id_cargo
+                WHERE cd3.id_catedra = cat.id_catedra
+                  AND cd3.activo = 1
+                ORDER BY
+                    CASE
+                        WHEN d3.activo = 1 AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 1
+                        ELSE 2
+                    END ASC,
+                    cd3.id_catedra_docente ASC
+                LIMIT 1
+           )
+        LEFT JOIN docentes doc ON doc.id_docente = COALESCE(cd.id_docente, cat.id_docente) AND doc.activo = 1
         LEFT JOIN (
             SELECT tm.id_catedra, MIN(tm.id_taller) AS id_taller
             FROM talleres_materias tm
@@ -375,7 +431,7 @@ function mesas_editar_mas_obtener_previas_base_por_area(PDO $pdo, int $idArea, ?
           AND NOT EXISTS (SELECT 1 FROM mesas me_exist WHERE me_exist.id_previa = p.id_previa)
     ";
 
-    $params = [$idArea];
+    $params = $filtrarArea ? [$idArea] : [];
     if ($idDocente !== null && $idDocente > 0) {
         $sql .= "\n          AND doc.id_docente = ?";
         $params[] = $idDocente;
@@ -543,7 +599,10 @@ function mesas_editar_mas_obtener_previas_disponibles(PDO $pdo, int $numeroMesa)
         throw new RuntimeException('No se encontró el número de mesa destino.');
     }
 
-    $idArea = mesas_editar_mas_target_area($pdo, $numeroMesa, $meta);
+    $debeRespetarArea = mesas_editar_debe_respetar_area($pdo);
+    $idArea = $debeRespetarArea
+        ? mesas_editar_mas_target_area($pdo, $numeroMesa, $meta)
+        : ((int)($meta['id_area'] ?? 0) > 0 ? (int)$meta['id_area'] : 0);
     $docentesDestino = mesas_editar_mas_obtener_docentes_numero($pdo, $numeroMesa);
     $docenteDestino = count($docentesDestino) === 1 ? $docentesDestino[0] : null;
 
@@ -637,13 +696,16 @@ function mesas_editar_mas_agregar_previa(PDO $pdo, int $numeroMesa, int $idPrevi
         throw new RuntimeException('No se encontró el número de mesa destino.');
     }
 
-    $idAreaDestino = mesas_editar_mas_target_area($pdo, $numeroMesa, $meta);
+    $debeRespetarArea = mesas_editar_debe_respetar_area($pdo);
+    $idAreaDestino = $debeRespetarArea
+        ? mesas_editar_mas_target_area($pdo, $numeroMesa, $meta)
+        : ((int)($meta['id_area'] ?? 0) > 0 ? (int)$meta['id_area'] : 0);
     $previa = mesas_editar_mas_obtener_previa_base($pdo, $idPrevia);
     if (!$previa) {
         throw new RuntimeException('No se encontró la previa solicitada.');
     }
 
-    if ((int)($previa['id_area'] ?? 0) !== $idAreaDestino) {
+    if ($debeRespetarArea && (int)($previa['id_area'] ?? 0) !== $idAreaDestino) {
         throw new InvalidArgumentException('La previa no pertenece al área de este número de mesa.');
     }
 

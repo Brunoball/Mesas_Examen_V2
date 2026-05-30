@@ -20,6 +20,7 @@ function mesas_armado_docentes_crear(): void
 
     $fechaInicio = mesas_armado_docentes_leer_fecha_parametro($body, ['fecha_inicio', 'fechaInicio', 'inicio', 'desde']);
     $fechaFin = mesas_armado_docentes_leer_fecha_parametro($body, ['fecha_fin', 'fechaFin', 'fin', 'hasta']);
+    $modoTurnos = mesas_armado_docentes_normalizar_modo_turnos($body['modo_turnos'] ?? $body['modoTurnos'] ?? $body['turno_modo'] ?? $body['turnoModo'] ?? 'combinado');
     $debeCalendarizar = $fechaInicio !== null && $fechaFin !== null;
     // Por defecto, si se calendariza correctamente, también se genera la mesa final agrupada.
     // Se puede desactivar enviando generar_grupos=false.
@@ -41,6 +42,10 @@ function mesas_armado_docentes_crear(): void
         // IMPORTANTE: mesas_armado_docentes_grupos_asegurar_tablas ejecuta CREATE TABLE IF NOT EXISTS,
         // que en MySQL/MariaDB dispara un commit implícito y rompe cualquier transacción activa.
         // Por eso se llama ANTES de beginTransaction().
+        if (function_exists('mesas_armado_rango_asegurar_tabla')) {
+            mesas_armado_rango_asegurar_tabla($pdo);
+        }
+
         if ($limpiarBorrador && function_exists('mesas_armado_docentes_grupos_asegurar_tablas')) {
             mesas_armado_docentes_grupos_asegurar_tablas($pdo);
         }
@@ -250,8 +255,13 @@ function mesas_armado_docentes_crear(): void
                     'marcar_armada' => false,
                     // La acción principal calendariza las mesas válidas y deja observadas las problemáticas.
                     'permitir_observadas' => true,
+                    'modo_turnos' => $modoTurnos,
                 ]
             );
+        }
+
+        if ($debeCalendarizar && function_exists('mesas_armado_rango_guardar_actual')) {
+            mesas_armado_rango_guardar_actual($pdo, (string)$fechaInicio, (string)$fechaFin, 'docentes');
         }
 
         $pdo->commit();
@@ -266,6 +276,9 @@ function mesas_armado_docentes_crear(): void
                     'min_numeros' => 2,
                     'max_numeros' => 4,
                     'confirmar_grupos' => false,
+                    'fecha_inicio' => $fechaInicio,
+                    'fecha_fin' => $fechaFin,
+                    'modo_turnos' => $modoTurnos,
                 ]);
             } catch (Throwable $eGrupos) {
                 log_error($eGrupos, 'mesas_armado_docentes_crear_grupos_finales');
@@ -307,6 +320,7 @@ function mesas_armado_docentes_crear(): void
                 'calendarizacion_completa' => $calendarizacionCompleta,
                 'fecha_inicio' => $fechaInicio,
                 'fecha_fin' => $fechaFin,
+                'modo_turnos' => $modoTurnos,
                 'criterio_numero_mesa' => 'taller_exclusivo_por_previa_y_docente_materia_para_el_resto',
                 'numeracion' => $resultadoNumeracion,
                 'fase_3_calendarizacion' => $resultadoCalendarizacion['data'] ?? null,

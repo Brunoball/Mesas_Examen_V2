@@ -113,18 +113,61 @@ function dashbord_resumen(): void
         $tieneGrupos = dashbord_tabla_existe($pdo, 'mesas_grupos');
         $tieneNoAgrupadas = dashbord_tabla_existe($pdo, 'mesas_no_agrupadas');
         $tieneDisponibilidad = dashbord_tabla_existe($pdo, 'docentes_disponibilidad');
+        $tieneCatedrasDocentes = dashbord_tabla_existe($pdo, 'catedras_docentes');
 
         $previasActivas = dashbord_count($pdo, "SELECT COUNT(*) FROM previas WHERE activo = 1");
         $previasInscriptas = dashbord_count($pdo, "SELECT COUNT(*) FROM previas WHERE activo = 1 AND inscripcion = 1");
         $alumnosInscriptos = dashbord_count($pdo, "SELECT COUNT(DISTINCT dni) FROM previas WHERE activo = 1 AND inscripcion = 1");
-        $docentesActivos = dashbord_count($pdo, "SELECT COUNT(*) FROM docentes WHERE activo = 1");
+
+        // Docentes ya se manejan como persona única. El DISTINCT por nombre evita inflar el panel si
+        // quedó algún registro histórico duplicado mientras terminamos de migrar todos los módulos.
+        $docentesActivos = dashbord_count($pdo, "
+            SELECT COUNT(*)
+            FROM (
+                SELECT UPPER(TRIM(docente)) AS docente_clave
+                FROM docentes
+                WHERE activo = 1
+                GROUP BY UPPER(TRIM(docente))
+            ) x
+        " );
+
         $materiasActivas = dashbord_count($pdo, "SELECT COUNT(*) FROM materias WHERE activo = 1");
         $catedrasActivas = dashbord_count($pdo, "SELECT COUNT(*) FROM catedras WHERE activo = 1");
-        $catedrasSinDocente = dashbord_count($pdo, "SELECT COUNT(*) FROM catedras WHERE activo = 1 AND (id_docente IS NULL OR id_docente = 0)");
+
+        // La asignación real del cargo/docente ahora está en catedras_docentes.
+        // catedras.id_docente queda solo como compatibilidad para módulos pendientes de migración.
+        $catedrasSinDocente = $tieneCatedrasDocentes
+            ? dashbord_count($pdo, "
+                SELECT COUNT(*)
+                FROM catedras cat
+                WHERE cat.activo = 1
+                  AND NOT EXISTS (
+                    SELECT 1
+                    FROM catedras_docentes cd
+                    INNER JOIN docentes d
+                        ON d.id_docente = cd.id_docente
+                       AND d.activo = 1
+                    WHERE cd.id_catedra = cat.id_catedra
+                      AND cd.activo = 1
+                    LIMIT 1
+                  )
+            " )
+            : dashbord_count($pdo, "SELECT COUNT(*) FROM catedras WHERE activo = 1 AND (id_docente IS NULL OR id_docente = 0)");
+
         $areasActivas = dashbord_count($pdo, "SELECT COUNT(*) FROM areas WHERE activo = 1");
         $turnosActivos = dashbord_count($pdo, "SELECT COUNT(*) FROM turnos WHERE activo = 1");
         $docentesConDisponibilidad = $tieneDisponibilidad
-            ? dashbord_count($pdo, "SELECT COUNT(DISTINCT id_docente) FROM docentes_disponibilidad")
+            ? dashbord_count($pdo, "
+                SELECT COUNT(*)
+                FROM (
+                    SELECT UPPER(TRIM(d.docente)) AS docente_clave
+                    FROM docentes_disponibilidad dd
+                    INNER JOIN docentes d
+                        ON d.id_docente = dd.id_docente
+                       AND d.activo = 1
+                    GROUP BY UPPER(TRIM(d.docente))
+                ) x
+            " )
             : 0;
 
         $mesasRegistros = $tieneMesas ? dashbord_count($pdo, "SELECT COUNT(*) FROM mesas") : 0;

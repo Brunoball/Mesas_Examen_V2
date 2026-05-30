@@ -20,17 +20,21 @@ function normalizar(texto) {
     .trim();
 }
 
-function valorDocente(docente, claves = []) {
-  if (!docente || typeof docente !== 'object') return '';
+function valorObjeto(objeto, claves = []) {
+  if (!objeto || typeof objeto !== 'object') return '';
 
   for (const clave of claves) {
-    const valor = docente[clave];
+    const valor = objeto[clave];
     if (valor !== null && valor !== undefined && String(valor).trim() !== '') {
       return String(valor).trim();
     }
   }
 
   return '';
+}
+
+function valorDocente(docente, claves = []) {
+  return valorObjeto(docente, claves);
 }
 
 function obtenerIdDocente(docente) {
@@ -57,12 +61,16 @@ function obtenerNombreDocente(docente) {
   return compuesto || 'Docente sin nombre';
 }
 
-function obtenerCargoDocente(docente) {
-  return valorDocente(docente, ['cargo', 'cargo_docente', 'nombre_cargo', 'nombreCargo', 'rol']);
-}
-
 function obtenerDocumentoDocente(docente) {
   return valorDocente(docente, ['dni', 'documento', 'cuil', 'cuit', 'legajo']);
+}
+
+function obtenerIdCargo(cargo) {
+  return valorObjeto(cargo, ['id_cargo', 'idCargo', 'id', 'value']);
+}
+
+function obtenerNombreCargo(cargo) {
+  return valorObjeto(cargo, ['cargo', 'nombre_cargo', 'nombreCargo', 'text', 'label']) || 'Cargo sin nombre';
 }
 
 function docenteEstaActivo(docente) {
@@ -98,14 +106,14 @@ function docenteEstaActivo(docente) {
 function textoBusquedaDocente(docente) {
   return normalizar([
     obtenerNombreDocente(docente),
-    obtenerCargoDocente(docente),
     obtenerDocumentoDocente(docente),
     valorDocente(docente, ['email', 'correo', 'telefono', 'teléfono']),
   ].filter(Boolean).join(' '));
 }
 
-export default function ModalAsignarDocente({ item, docentes = [], onGuardar, onCerrar }) {
+export default function ModalAsignarDocente({ item, docentes = [], cargos = [], onGuardar, onCerrar }) {
   const [idDocente, setIdDocente] = useState(item?.id_docente ? String(item.id_docente) : '');
+  const [idCargo, setIdCargo] = useState(item?.id_cargo ? String(item.id_cargo) : '');
   const [busqueda, setBusqueda] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
@@ -131,10 +139,15 @@ export default function ModalAsignarDocente({ item, docentes = [], onGuardar, on
   }, [onCerrar]);
 
   const listaDocentes = useMemo(() => (Array.isArray(docentes) ? docentes : []), [docentes]);
+  const listaCargos = useMemo(() => (Array.isArray(cargos) ? cargos : []), [cargos]);
 
   const docentesActivos = useMemo(() => (
     listaDocentes.filter((docente) => docenteEstaActivo(docente))
   ), [listaDocentes]);
+
+  const cargosActivos = useMemo(() => (
+    listaCargos.filter((cargo) => docenteEstaActivo(cargo))
+  ), [listaCargos]);
 
   const docentesFiltrados = useMemo(() => {
     const q = normalizar(busqueda);
@@ -153,10 +166,24 @@ export default function ModalAsignarDocente({ item, docentes = [], onGuardar, on
     setIdDocente((actual) => (actual === primerId ? actual : primerId));
   }, [busqueda, docentesFiltrados]);
 
+  useEffect(() => {
+    if (!idDocente) return;
+    if (idCargo) return;
+
+    const primerCargo = cargosActivos[0];
+    const primerIdCargo = primerCargo ? String(obtenerIdCargo(primerCargo)) : '';
+    if (primerIdCargo) setIdCargo(primerIdCargo);
+  }, [idDocente, idCargo, cargosActivos]);
+
   const docenteSeleccionado = useMemo(() => {
     if (!idDocente) return null;
     return listaDocentes.find((docente) => String(obtenerIdDocente(docente)) === String(idDocente)) || null;
   }, [listaDocentes, idDocente]);
+
+  const cargoSeleccionado = useMemo(() => {
+    if (!idCargo) return null;
+    return listaCargos.find((cargo) => String(obtenerIdCargo(cargo)) === String(idCargo)) || null;
+  }, [listaCargos, idCargo]);
 
   const docentesParaSelect = useMemo(() => {
     if (!docenteSeleccionado) return docentesFiltrados;
@@ -168,25 +195,35 @@ export default function ModalAsignarDocente({ item, docentes = [], onGuardar, on
     return seleccionadoEstaEnFiltro ? docentesFiltrados : [docenteSeleccionado, ...docentesFiltrados];
   }, [docenteSeleccionado, docentesFiltrados, idDocente]);
 
-  async function handleSubmit(e) {
+  function handleSubmit(e) {
     e.preventDefault();
-    setGuardando(true);
     setError('');
 
-    const res = await onGuardar(item.id_catedra, idDocente ? Number(idDocente) : 0);
+    const idDocenteNumero = idDocente ? Number(idDocente) : 0;
+    const idCargoNumero = idCargo ? Number(idCargo) : 0;
 
-    if (!res.ok) {
-      setError(res.mensaje || 'No se pudo asignar el docente.');
-      setGuardando(false);
+    if (idDocenteNumero > 0 && idCargoNumero <= 0) {
+      setError('Seleccioná el cargo que tiene este docente en la cátedra.');
       return;
     }
 
-    setGuardando(false);
+    setGuardando(true);
+    onGuardar(item.id_catedra, idDocenteNumero, idDocenteNumero > 0 ? idCargoNumero : 0);
+  }
+
+  function quitarDocente() {
+    setIdDocente('');
+    setIdCargo('');
+    setError('');
   }
 
   const docenteActual = item?.docente || 'Sin docente asignado';
+  const cargoActual = item?.cargo_docente || item?.cargo || 'Sin cargo asignado';
   const cantidadFiltrada = Array.isArray(docentesFiltrados) ? docentesFiltrados.length : 0;
   const cursoDivision = `${item?.nombre_curso || 'Curso'} ${item?.nombre_division || ''}`.trim();
+  const textoSeleccion = docenteSeleccionado
+    ? `${obtenerNombreDocente(docenteSeleccionado)}${cargoSeleccionado ? ` · ${obtenerNombreCargo(cargoSeleccionado)}` : ''}`
+    : 'La cátedra quedará sin docente asignado.';
 
   return createPortal(
     <div
@@ -213,7 +250,7 @@ export default function ModalAsignarDocente({ item, docentes = [], onGuardar, on
           </div>
 
           <div className="gm-modal__headText catedras-modal-headText">
-            <h2 id="catedras-docente-modal-title">Asignar docente</h2>
+            <h2 id="catedras-docente-modal-title">Asignar docente y cargo</h2>
             <p>{cursoDivision} — {item?.materia || 'Materia sin nombre'}</p>
           </div>
 
@@ -245,6 +282,11 @@ export default function ModalAsignarDocente({ item, docentes = [], onGuardar, on
               <span>Docente actual</span>
               <strong title={docenteActual}>{docenteActual}</strong>
             </div>
+
+            <div className="catedras-modal-summaryItem">
+              <span>Cargo actual</span>
+              <strong title={cargoActual}>{cargoActual}</strong>
+            </div>
           </div>
 
           <section className="gm-panel catedras-modal-panel">
@@ -253,7 +295,7 @@ export default function ModalAsignarDocente({ item, docentes = [], onGuardar, on
                 <span className="gm-panel__eyebrow">Asignación</span>
                 <h3>
                   <FontAwesomeIcon icon={faUserCheck} />
-                  Seleccionar docente
+                  Seleccionar docente y cargo
                 </h3>
               </div>
               <span className="gm-panel__tag">{cantidadFiltrada} disponible{cantidadFiltrada === 1 ? '' : 's'}</span>
@@ -300,11 +342,10 @@ export default function ModalAsignarDocente({ item, docentes = [], onGuardar, on
                   {docentesParaSelect.map((docente) => {
                     const docenteId = obtenerIdDocente(docente);
                     const nombreDocente = obtenerNombreDocente(docente);
-                    const cargoDocente = obtenerCargoDocente(docente);
 
                     return (
                       <option key={docenteId || nombreDocente} value={docenteId}>
-                        {nombreDocente}{cargoDocente ? ` — ${cargoDocente}` : ''}
+                        {nombreDocente}
                       </option>
                     );
                   })}
@@ -312,17 +353,35 @@ export default function ModalAsignarDocente({ item, docentes = [], onGuardar, on
                 <span className="gm-label">Docente</span>
               </label>
 
+              <label className="gm-field catedras-modal-selectField">
+                <select
+                  className="gm-input catedras-modal-select"
+                  value={idCargo}
+                  onChange={(e) => setIdCargo(e.target.value)}
+                  disabled={guardando || !idDocente}
+                >
+                  <option value="">Seleccionar cargo</option>
+                  {cargosActivos.map((cargo) => {
+                    const cargoId = obtenerIdCargo(cargo);
+                    const nombreCargo = obtenerNombreCargo(cargo);
+
+                    return (
+                      <option key={cargoId || nombreCargo} value={cargoId}>
+                        {nombreCargo}
+                      </option>
+                    );
+                  })}
+                </select>
+                <span className="gm-label">Cargo en esta cátedra</span>
+              </label>
+
               <div className={`catedras-modal-selection ${docenteSeleccionado ? 'has-docente' : 'is-empty'}`}>
                 <div className="catedras-modal-selectionIcon" aria-hidden="true">
                   <FontAwesomeIcon icon={docenteSeleccionado ? faUserCheck : faUserSlash} />
                 </div>
                 <div>
-                  <span>{docenteSeleccionado ? 'Nuevo docente seleccionado' : 'Asignación vacía'}</span>
-                  <strong>
-                    {docenteSeleccionado
-                      ? `${obtenerNombreDocente(docenteSeleccionado)}${obtenerCargoDocente(docenteSeleccionado) ? ` · ${obtenerCargoDocente(docenteSeleccionado)}` : ''}`
-                      : 'La cátedra quedará sin docente asignado.'}
-                  </strong>
+                  <span>{docenteSeleccionado ? 'Nueva asignación seleccionada' : 'Asignación vacía'}</span>
+                  <strong title={textoSeleccion}>{textoSeleccion}</strong>
                 </div>
               </div>
             </div>
@@ -333,7 +392,7 @@ export default function ModalAsignarDocente({ item, docentes = [], onGuardar, on
           <button
             type="button"
             className="gm-btn gm-btn--ghost catedras-modal-removeBtn"
-            onClick={() => setIdDocente('')}
+            onClick={quitarDocente}
             disabled={guardando || !idDocente}
           >
             <FontAwesomeIcon icon={faUserSlash} />

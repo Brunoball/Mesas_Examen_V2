@@ -264,7 +264,7 @@ function talleres_catedras_por_curso_divisiones(): void
         talleres_asegurar_esquema($pdo);
 
         $in = implode(',', array_fill(0, count($idsDivisiones), '?'));
-        $stmt = $pdo->prepare("\n            SELECT\n                ca.id_catedra,\n                ca.id_curso,\n                cu.nombre_curso AS curso,\n                ca.id_division,\n                d.nombre_division AS division,\n                ca.id_materia,\n                m.materia,\n                m.activo,\n                ca.id_docente,\n                doc.docente,\n                COALESCE(GROUP_CONCAT(DISTINCT am.id_area ORDER BY am.id_area ASC SEPARATOR ','), '') AS ids_areas,\n                COALESCE(GROUP_CONCAT(DISTINCT a.area ORDER BY a.area ASC SEPARATOR ', '), '') AS areas\n            FROM catedras ca\n            INNER JOIN materias m\n                ON m.id_materia = ca.id_materia\n               AND m.activo = 1\n            INNER JOIN curso cu\n                ON cu.id_curso = ca.id_curso\n               AND cu.activo = 1\n            INNER JOIN division d\n                ON d.id_division = ca.id_division\n               AND d.activo = 1\n            LEFT JOIN docentes doc\n                ON doc.id_docente = ca.id_docente\n               AND doc.activo = 1\n            LEFT JOIN areas_materias am\n                ON am.id_materia = m.id_materia\n               AND am.activo = 1\n            LEFT JOIN areas a\n                ON a.id_area = am.id_area\n               AND a.activo = 1\n            WHERE ca.activo = 1\n              AND ca.id_curso = ?\n              AND ca.id_division IN ($in)\n            GROUP BY ca.id_catedra, ca.id_curso, cu.nombre_curso, ca.id_division, d.nombre_division, ca.id_materia, m.materia, m.activo, ca.id_docente, doc.docente\n            ORDER BY ca.id_division ASC, m.materia ASC, ca.id_catedra ASC\n        ");
+        $stmt = $pdo->prepare("\n            SELECT\n                ca.id_catedra,\n                ca.id_curso,\n                cu.nombre_curso AS curso,\n                ca.id_division,\n                d.nombre_division AS division,\n                ca.id_materia,\n                m.materia,\n                m.activo,\n                COALESCE(cd.id_docente, ca.id_docente) AS id_docente,\n                doc.docente,\n                cd.id_cargo,\n                cargo.cargo AS cargo_docente,\n                COALESCE(GROUP_CONCAT(DISTINCT am.id_area ORDER BY am.id_area ASC SEPARATOR ','), '') AS ids_areas,\n                COALESCE(GROUP_CONCAT(DISTINCT a.area ORDER BY a.area ASC SEPARATOR ', '), '') AS areas\n            FROM catedras ca\n            INNER JOIN materias m\n                ON m.id_materia = ca.id_materia\n               AND m.activo = 1\n            INNER JOIN curso cu\n                ON cu.id_curso = ca.id_curso\n               AND cu.activo = 1\n            INNER JOIN division d\n                ON d.id_division = ca.id_division\n               AND d.activo = 1\n            LEFT JOIN (\n                SELECT cd1.id_catedra_docente, cd1.id_catedra, cd1.id_docente, cd1.id_cargo\n                FROM catedras_docentes cd1\n                INNER JOIN (\n                    SELECT id_catedra, MIN(id_catedra_docente) AS id_catedra_docente\n                    FROM catedras_docentes\n                    WHERE activo = 1\n                    GROUP BY id_catedra\n                ) cd_min\n                    ON cd_min.id_catedra_docente = cd1.id_catedra_docente\n            ) cd\n                ON cd.id_catedra = ca.id_catedra\n            LEFT JOIN docentes doc\n                ON doc.id_docente = COALESCE(cd.id_docente, ca.id_docente)\n               AND doc.activo = 1\n            LEFT JOIN cargos cargo\n                ON cargo.id_cargo = cd.id_cargo\n            LEFT JOIN areas_materias am\n                ON am.id_materia = m.id_materia\n               AND am.activo = 1\n            LEFT JOIN areas a\n                ON a.id_area = am.id_area\n               AND a.activo = 1\n            WHERE ca.activo = 1\n              AND ca.id_curso = ?\n              AND ca.id_division IN ($in)\n            GROUP BY\n                ca.id_catedra, ca.id_curso, cu.nombre_curso, ca.id_division, d.nombre_division,\n                ca.id_materia, m.materia, m.activo, ca.id_docente, cd.id_docente, cd.id_cargo,\n                doc.docente, cargo.cargo\n            ORDER BY ca.id_division ASC, m.materia ASC, ca.id_catedra ASC\n        ");
         $stmt->execute(array_merge([$idCurso], $idsDivisiones));
 
         json_response(['exito' => true, 'catedras' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
@@ -518,14 +518,32 @@ function talleres_eliminar(): void
         }
 
         if ($enUso > 0) {
-            $pdo->prepare("UPDATE talleres SET activo = 0 WHERE id_taller = :id_taller")
-                ->execute([':id_taller' => $idTaller]);
+            $stmtDesactivar = $pdo->prepare("UPDATE talleres SET activo = 0 WHERE id_taller = :id_taller");
+            $stmtDesactivar->execute([':id_taller' => $idTaller]);
+
+            if ($stmtDesactivar->rowCount() <= 0) {
+                json_response([
+                    'exito' => false,
+                    'mensaje' => 'No se eliminó ni desactivó ningún taller porque el registro no existe o ya fue procesado.',
+                ]);
+            }
+
             json_response(['exito' => true, 'mensaje' => 'El taller tiene mesas relacionadas. Se desactivó correctamente.']);
         }
 
         $pdo->beginTransaction();
         $pdo->prepare("DELETE FROM talleres_materias WHERE id_taller = :id_taller")->execute([':id_taller' => $idTaller]);
-        $pdo->prepare("DELETE FROM talleres WHERE id_taller = :id_taller")->execute([':id_taller' => $idTaller]);
+        $stmtDelete = $pdo->prepare("DELETE FROM talleres WHERE id_taller = :id_taller");
+        $stmtDelete->execute([':id_taller' => $idTaller]);
+
+        if ($stmtDelete->rowCount() <= 0) {
+            $pdo->rollBack();
+            json_response([
+                'exito' => false,
+                'mensaje' => 'No se eliminó ningún taller porque el registro no existe o ya fue eliminado.',
+            ]);
+        }
+
         $pdo->commit();
 
         json_response(['exito' => true, 'mensaje' => 'Taller eliminado correctamente.']);
@@ -599,11 +617,25 @@ function talleres_materia_eliminar(): void
         talleres_asegurar_esquema($pdo);
 
         if ($idCatedra > 0) {
-            $stmt = $pdo->prepare("UPDATE talleres_materias SET activo = 0 WHERE id_taller = :id_taller AND id_catedra = :id_catedra");
+            $stmt = $pdo->prepare("UPDATE talleres_materias SET activo = 0 WHERE id_taller = :id_taller AND id_catedra = :id_catedra AND activo <> 0");
             $stmt->execute([':id_taller' => $idTaller, ':id_catedra' => $idCatedra]);
         } else {
-            $stmt = $pdo->prepare("\n                UPDATE talleres_materias tm\n                INNER JOIN catedras ca ON ca.id_catedra = tm.id_catedra\n                SET tm.activo = 0\n                WHERE tm.id_taller = :id_taller\n                  AND ca.id_materia = :id_materia\n            ");
+            $stmt = $pdo->prepare("
+                UPDATE talleres_materias tm
+                INNER JOIN catedras ca ON ca.id_catedra = tm.id_catedra
+                SET tm.activo = 0
+                WHERE tm.id_taller = :id_taller
+                  AND ca.id_materia = :id_materia
+                  AND tm.activo <> 0
+            ");
             $stmt->execute([':id_taller' => $idTaller, ':id_materia' => $idMateria]);
+        }
+
+        if ($stmt->rowCount() <= 0) {
+            json_response([
+                'exito' => false,
+                'mensaje' => 'No se quitó ninguna cátedra porque el registro no existe o ya fue quitado.',
+            ]);
         }
 
         json_response(['exito' => true, 'mensaje' => 'Cátedra quitada del taller correctamente.']);

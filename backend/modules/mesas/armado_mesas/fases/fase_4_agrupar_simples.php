@@ -115,7 +115,7 @@ function mesas_armado_numerar_por_docente_materia_core(
             me.prioridad,
             me.id_catedra,
             me.id_docente AS mesa_id_docente,
-            cat.id_docente AS catedra_id_docente,
+            COALESCE(cd.id_docente, cat.id_docente) AS catedra_id_docente,
             cat.id_materia,
             mat.materia,
             doc.docente,
@@ -125,15 +125,34 @@ function mesas_armado_numerar_por_docente_materia_core(
         INNER JOIN catedras cat
             ON cat.id_catedra = me.id_catedra
            AND cat.activo = 1
+        LEFT JOIN catedras_docentes cd
+            ON cd.id_catedra = cat.id_catedra
+           AND cd.activo = 1
+           AND cd.id_catedra_docente = (
+                SELECT cd3.id_catedra_docente
+                FROM catedras_docentes cd3
+                LEFT JOIN docentes d3 ON d3.id_docente = cd3.id_docente
+                LEFT JOIN cargos cargo3 ON cargo3.id_cargo = cd3.id_cargo
+                WHERE cd3.id_catedra = cat.id_catedra
+                  AND cd3.activo = 1
+                ORDER BY
+                    CASE
+                        WHEN d3.activo = 1 AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 1
+                        ELSE 2
+                    END ASC,
+                    cd3.id_catedra_docente ASC
+                LIMIT 1
+           )
         INNER JOIN materias mat
             ON mat.id_materia = cat.id_materia
         LEFT JOIN docentes doc
-            ON doc.id_docente = COALESCE(me.id_docente, cat.id_docente)
+            ON doc.id_docente = COALESCE(me.id_docente, cd.id_docente, cat.id_docente)
         LEFT JOIN previas p
             ON p.id_previa = me.id_previa
         WHERE me.id_previa IS NOT NULL
           AND me.id_catedra IS NOT NULL
-          AND COALESCE(me.id_docente, cat.id_docente) IS NOT NULL
+          AND COALESCE(me.id_docente, cd.id_docente, cat.id_docente) IS NOT NULL
           AND cat.id_materia IS NOT NULL
           AND me.estado IN {$estadosValidos}
         ORDER BY
@@ -146,7 +165,7 @@ function mesas_armado_numerar_por_docente_materia_core(
             me.id_taller ASC,
             me.id_previa ASC,
             cat.id_materia ASC,
-            COALESCE(me.id_docente, cat.id_docente) ASC,
+            COALESCE(me.id_docente, cd.id_docente, cat.id_docente) ASC,
             me.id_mesa ASC
     ");
 
@@ -251,12 +270,37 @@ function mesas_armado_numerar_por_docente_materia_core(
         SELECT COUNT(*)
         FROM mesas me
         LEFT JOIN catedras cat ON cat.id_catedra = me.id_catedra
+        LEFT JOIN catedras_docentes cd
+            ON cd.id_catedra = cat.id_catedra
+           AND cd.activo = 1
+           AND cd.id_catedra_docente = (
+                SELECT cd_obs.id_catedra_docente
+                FROM catedras_docentes cd_obs
+                LEFT JOIN docentes d_obs
+                    ON d_obs.id_docente = cd_obs.id_docente
+                LEFT JOIN cargos cargo_obs
+                    ON cargo_obs.id_cargo = cd_obs.id_cargo
+                WHERE cd_obs.id_catedra = cat.id_catedra
+                  AND cd_obs.activo = 1
+                ORDER BY
+                    CASE
+                        WHEN d_obs.activo = 1
+                         AND (
+                                cd_obs.id_cargo = 2
+                                OR UPPER(TRIM(COALESCE(cargo_obs.cargo, ''))) = 'SUPLENTE'
+                             ) THEN 0
+                        WHEN d_obs.activo = 1 AND d_obs.id_docente IS NOT NULL THEN 1
+                        ELSE 2
+                    END ASC,
+                    cd_obs.id_catedra_docente ASC
+                LIMIT 1
+           )
         WHERE me.estado IN ('borrador', 'armada', 'observada')
           AND (
                 me.id_previa IS NULL
                 OR me.id_catedra IS NULL
                 OR cat.id_materia IS NULL
-                OR COALESCE(me.id_docente, cat.id_docente) IS NULL
+                OR COALESCE(me.id_docente, cd.id_docente, cat.id_docente) IS NULL
           )
     ");
     $sinDatosParaNumerar = (int)$stmtObservadas->fetchColumn();

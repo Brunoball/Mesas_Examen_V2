@@ -437,6 +437,8 @@ function mesas_editar_persona_validar_movimiento(PDO $pdo, int $numeroOrigen, in
 
     $fechaDestino = trim((string)($metaDestino['fecha_mesa'] ?? ''));
     $idTurnoDestino = (int)($metaDestino['id_turno'] ?? 0);
+    $idAreaOrigen = mesas_editar_persona_area_previa($pdo, $filas);
+    $idAreaDestino = $metaDestino['id_area'] !== null ? (int)$metaDestino['id_area'] : 0;
     if ($fechaDestino === '' || $idTurnoDestino <= 0) {
         return [
             'valido' => false,
@@ -447,6 +449,16 @@ function mesas_editar_persona_validar_movimiento(PDO $pdo, int $numeroOrigen, in
 
     $errores = [];
     $advertencias = [];
+
+    if (mesas_editar_debe_respetar_area($pdo)
+        && $idAreaOrigen !== null
+        && $idAreaOrigen > 0
+        && $idAreaDestino > 0
+        && $idAreaOrigen !== $idAreaDestino
+    ) {
+        $errores[] = 'La mesa destino no pertenece al área de esta previa.';
+    }
+
     $modeloDestino = mesas_editar_persona_obtener_modelo_destino($pdo, $numeroDestino, $filas);
     $detalle = mesas_editar_persona_armar_detalle_movimiento_destino($filas, $numeroOrigen, $numeroDestino, $modeloDestino);
 
@@ -512,13 +524,21 @@ function mesas_editar_persona_obtener_destinos(PDO $pdo, int $numeroOrigen, int 
     $filas = mesas_editar_persona_obtener_filas_previa_en_numero($pdo, $numeroOrigen, $idPrevia);
     $idArea = mesas_editar_persona_area_previa($pdo, $filas);
 
-    if ($idArea === null || $idArea <= 0) {
+    $debeRespetarArea = mesas_editar_debe_respetar_area($pdo);
+    if ($debeRespetarArea && ($idArea === null || $idArea <= 0)) {
         throw new RuntimeException('No se pudo resolver el área de la materia de esta previa.');
     }
 
-    $stmtArea = $pdo->prepare('SELECT area FROM areas WHERE id_area = ? LIMIT 1');
-    $stmtArea->execute([$idArea]);
-    $area = (string)($stmtArea->fetchColumn() ?: '');
+    $area = '';
+    if ($idArea !== null && $idArea > 0) {
+        $stmtArea = $pdo->prepare('SELECT area FROM areas WHERE id_area = ? LIMIT 1');
+        $stmtArea->execute([$idArea]);
+        $area = (string)($stmtArea->fetchColumn() ?: '');
+    }
+
+    $whereGrupo = $debeRespetarArea ? 'g.id_area = ? AND g.numero_mesa <> ?' : 'g.numero_mesa <> ?';
+    $whereNoAgrupada = $debeRespetarArea ? 'n.id_area = ? AND n.numero_mesa <> ?' : 'n.numero_mesa <> ?';
+    $params = $debeRespetarArea ? [$idArea, $numeroOrigen, $idArea, $numeroOrigen] : [$numeroOrigen, $numeroOrigen];
 
     $stmt = $pdo->prepare(''
         . 'SELECT * FROM ( '
@@ -526,17 +546,17 @@ function mesas_editar_persona_obtener_destinos(PDO $pdo, int $numeroOrigen, int 
         . '    FROM mesas_grupos g '
         . '    LEFT JOIN turnos t ON t.id_turno = g.id_turno '
         . '    LEFT JOIN areas a ON a.id_area = g.id_area '
-        . '    WHERE g.id_area = ? AND g.numero_mesa <> ? '
+        . '    WHERE ' . $whereGrupo . ' '
         . '    UNION ALL '
         . '    SELECT n.numero_mesa, NULL AS numero_grupo, n.id AS id_no_agrupada, n.fecha_mesa, DATE_FORMAT(n.fecha_mesa, "%d/%m/%Y") AS fecha, n.id_turno, n.hora, t.turno, n.id_area, a.area, "no_agrupada" AS ubicacion '
         . '    FROM mesas_no_agrupadas n '
         . '    LEFT JOIN turnos t ON t.id_turno = n.id_turno '
         . '    LEFT JOIN areas a ON a.id_area = n.id_area '
-        . '    WHERE n.id_area = ? AND n.numero_mesa <> ? '
+        . '    WHERE ' . $whereNoAgrupada . ' '
         . ') destinos '
         . 'ORDER BY fecha_mesa ASC, id_turno ASC, numero_mesa ASC'
     );
-    $stmt->execute([$idArea, $numeroOrigen, $idArea, $numeroOrigen]);
+    $stmt->execute($params);
     $destinosBase = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $numeros = array_map(static fn($row) => (int)$row['numero_mesa'], $destinosBase);

@@ -161,12 +161,15 @@ function mesas_editar_flechas_reordenar_grupo(PDO $pdo, int $numeroGrupo): void
 
 function mesas_editar_flechas_obtener_grupos_candidatos(PDO $pdo, int $numeroMesa, array $metaOrigen): array
 {
+    $esArmadoDocentes = mesas_editar_es_armado_por_docentes($pdo);
     $idArea = (int)($metaOrigen['id_area'] ?? 0);
-    if ($idArea <= 0) {
+    if (!$esArmadoDocentes && $idArea <= 0) {
         throw new RuntimeException('No se pudo resolver el área del número de mesa origen.');
     }
 
     $numeroGrupoOrigen = (int)($metaOrigen['numero_grupo'] ?? 0);
+
+    $whereArea = $esArmadoDocentes ? '' : 'g.id_area = ? AND ';
 
     $sql = ''
         . 'SELECT '
@@ -186,13 +189,12 @@ function mesas_editar_flechas_obtener_grupos_candidatos(PDO $pdo, int $numeroMes
         . 'LEFT JOIN turnos t ON t.id_turno = g.id_turno '
         . 'LEFT JOIN areas a ON a.id_area = g.id_area '
         . 'LEFT JOIN mesas_grupos_slots_extra se ON se.numero_grupo = g.numero_grupo '
-        . 'WHERE g.id_area = ? '
-        . '  AND g.numero_mesa <> ? '
+        . 'WHERE ' . $whereArea . 'g.numero_mesa <> ? '
         . ($numeroGrupoOrigen > 0 ? '  AND g.numero_grupo <> ? ' : '')
         . 'GROUP BY g.numero_grupo '
         . 'ORDER BY MIN(g.fecha_mesa) ASC, MIN(g.id_turno) ASC, g.numero_grupo ASC';
 
-    $params = [$idArea, $numeroMesa];
+    $params = $esArmadoDocentes ? [$numeroMesa] : [$idArea, $numeroMesa];
     if ($numeroGrupoOrigen > 0) {
         $params[] = $numeroGrupoOrigen;
     }
@@ -231,7 +233,7 @@ function mesas_editar_flechas_validar_destino(PDO $pdo, int $numeroMesa, array $
         $errores[] = 'El grupo destino no tiene slots libres. Habilitá un nuevo slot desde edición para poder mover otro número.';
     }
 
-    if ((int)($grupoDestino['id_area'] ?? 0) !== (int)($metaOrigen['id_area'] ?? 0)) {
+    if (mesas_editar_debe_respetar_area($pdo) && (int)($grupoDestino['id_area'] ?? 0) !== (int)($metaOrigen['id_area'] ?? 0)) {
         $errores[] = 'El grupo destino no pertenece al área de este número de mesa.';
     }
 
@@ -410,12 +412,17 @@ function mesas_editar_flechas_consolidar_numero_en_destino(PDO $pdo, int $numero
             $numeroMesa,
         ]);
 
+        $metaNumero = mesas_editar_flechas_obtener_numero_meta($pdo, $numeroMesa);
+        $idAreaNumero = mesas_editar_es_armado_por_docentes($pdo)
+            ? (($metaNumero['id_area'] ?? null) !== null ? (int)$metaNumero['id_area'] : null)
+            : ($destino['id_area'] !== null ? (int)$destino['id_area'] : null);
+
         $stmtUpdateGrupo = $pdo->prepare('UPDATE mesas_grupos SET fecha_mesa = ?, id_turno = ?, hora = ?, id_area = ? WHERE numero_mesa = ? AND numero_grupo = ?');
         $stmtUpdateGrupo->execute([
             substr((string)($destino['fecha_mesa'] ?? ''), 0, 10),
             (int)($destino['id_turno'] ?? 0),
             $destino['hora'] ?? null,
-            $destino['id_area'] !== null ? (int)$destino['id_area'] : null,
+            $idAreaNumero,
             $numeroMesa,
             $numeroGrupoDestino,
         ]);
@@ -577,7 +584,9 @@ function mesas_editar_flechas_mover_numero(PDO $pdo, int $numeroMesa, int $numer
     $fechaDestino = substr((string)$grupoDestino['fecha_mesa'], 0, 10);
     $idTurnoDestino = (int)$grupoDestino['id_turno'];
     $horaDestino = $grupoDestino['hora'] ?? null;
-    $idAreaDestino = $grupoDestino['id_area'] !== null ? (int)$grupoDestino['id_area'] : null;
+    $idAreaDestino = mesas_editar_es_armado_por_docentes($pdo)
+        ? ($resumen['id_area'] !== null ? (int)$resumen['id_area'] : null)
+        : ($grupoDestino['id_area'] !== null ? (int)$grupoDestino['id_area'] : null);
 
     $stmtDelGrupo = $pdo->prepare('DELETE FROM mesas_grupos WHERE numero_mesa = ?');
     $stmtDelGrupo->execute([$numeroMesa]);

@@ -200,7 +200,25 @@ function disponibilidad_docentes_catalogos(): void
         $stmtTurnos = $pdo->query("\n            SELECT id_turno, turno\n            FROM turnos\n            WHERE activo = 1\n            ORDER BY id_turno ASC\n        ");
         $turnos = $stmtTurnos->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-        $stmtDocentes = $pdo->query("\n            SELECT\n                d.id_docente,\n                d.docente,\n                d.id_cargo,\n                COALESCE(c.cargo, '-') AS cargo,\n                COUNT(dd.id_disponibilidad) AS total_disponibilidades\n            FROM docentes d\n            LEFT JOIN cargos c ON c.id_cargo = d.id_cargo\n            LEFT JOIN docentes_disponibilidad dd ON dd.id_docente = d.id_docente\n            WHERE d.activo = 1\n            GROUP BY d.id_docente, d.docente, d.id_cargo, c.cargo\n            ORDER BY d.docente ASC, c.cargo ASC, d.id_docente ASC\n        ");
+        $stmtDocentes = $pdo->query("
+            SELECT
+                d.id_docente,
+                d.docente,
+                MIN(cd.id_cargo) AS id_cargo,
+                COALESCE(GROUP_CONCAT(DISTINCT c.cargo ORDER BY c.cargo SEPARATOR ', '), '-') AS cargo,
+                COUNT(DISTINCT dd.id_disponibilidad) AS total_disponibilidades
+            FROM docentes d
+            LEFT JOIN catedras_docentes cd
+                ON cd.id_docente = d.id_docente
+               AND cd.activo = 1
+            LEFT JOIN cargos c
+                ON c.id_cargo = cd.id_cargo
+            LEFT JOIN docentes_disponibilidad dd
+                ON dd.id_docente = d.id_docente
+            WHERE d.activo = 1
+            GROUP BY d.id_docente, d.docente
+            ORDER BY d.docente ASC, d.id_docente ASC
+        ");
         $docentes = $stmtDocentes->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         $stmtStats = $pdo->query("\n            SELECT\n                (SELECT COUNT(*) FROM docentes WHERE activo = 1) AS docentes_activos,\n                COUNT(DISTINCT dd.id_docente) AS docentes_con_disponibilidad,\n                COUNT(dd.id_disponibilidad) AS bloques_cargados\n            FROM docentes_disponibilidad dd\n            INNER JOIN docentes d ON d.id_docente = dd.id_docente AND d.activo = 1\n        ");
@@ -252,7 +270,17 @@ function disponibilidad_docentes_listar(): void
         }
 
         if ($busqueda !== '') {
-            $where[] = '(d.docente LIKE ? OR c.cargo LIKE ?)';
+            $where[] = "(
+                d.docente LIKE ?
+                OR EXISTS (
+                    SELECT 1
+                    FROM catedras_docentes cdb
+                    INNER JOIN cargos cb ON cb.id_cargo = cdb.id_cargo
+                    WHERE cdb.id_docente = d.id_docente
+                      AND cdb.activo = 1
+                      AND cb.cargo LIKE ?
+                )
+            )";
             $like = '%' . $busqueda . '%';
             $params[] = $like;
             $params[] = $like;
@@ -264,11 +292,35 @@ function disponibilidad_docentes_listar(): void
 
         $whereSql = implode(' AND ', $where);
 
-        $stmtTotal = $pdo->prepare("\n            SELECT COUNT(*)\n            FROM docentes d\n            LEFT JOIN cargos c ON c.id_cargo = d.id_cargo\n            WHERE {$whereSql}\n        ");
+        $stmtTotal = $pdo->prepare("
+            SELECT COUNT(*)
+            FROM docentes d
+            WHERE {$whereSql}
+        ");
         $stmtTotal->execute($params);
         $total = (int)$stmtTotal->fetchColumn();
 
-        $sql = "\n            SELECT\n                d.id_docente,\n                d.docente,\n                d.id_cargo,\n                COALESCE(c.cargo, '-') AS cargo,\n                d.activo,\n                COUNT(dd.id_disponibilidad) AS total_disponibilidades\n            FROM docentes d\n            LEFT JOIN cargos c ON c.id_cargo = d.id_cargo\n            LEFT JOIN docentes_disponibilidad dd ON dd.id_docente = d.id_docente\n            WHERE {$whereSql}\n            GROUP BY d.id_docente, d.docente, d.id_cargo, c.cargo, d.activo\n            ORDER BY d.docente ASC, c.cargo ASC, d.id_docente ASC\n            LIMIT {$porPagina} OFFSET {$offset}\n        ";
+        $sql = "
+            SELECT
+                d.id_docente,
+                d.docente,
+                MIN(cd.id_cargo) AS id_cargo,
+                COALESCE(GROUP_CONCAT(DISTINCT c.cargo ORDER BY c.cargo SEPARATOR ', '), '-') AS cargo,
+                d.activo,
+                COUNT(DISTINCT dd.id_disponibilidad) AS total_disponibilidades
+            FROM docentes d
+            LEFT JOIN catedras_docentes cd
+                ON cd.id_docente = d.id_docente
+               AND cd.activo = 1
+            LEFT JOIN cargos c
+                ON c.id_cargo = cd.id_cargo
+            LEFT JOIN docentes_disponibilidad dd
+                ON dd.id_docente = d.id_docente
+            WHERE {$whereSql}
+            GROUP BY d.id_docente, d.docente, d.activo
+            ORDER BY d.docente ASC, d.id_docente ASC
+            LIMIT {$porPagina} OFFSET {$offset}
+        ";
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
@@ -279,7 +331,29 @@ function disponibilidad_docentes_listar(): void
 
         if ($ids) {
             $placeholders = implode(',', array_fill(0, count($ids), '?'));
-            $stmtDisp = $pdo->prepare("\n                SELECT\n                    dd.*,\n                    d.docente,\n                    d.id_cargo,\n                    COALESCE(c.cargo, '-') AS cargo,\n                    t.turno\n                FROM docentes_disponibilidad dd\n                INNER JOIN docentes d ON d.id_docente = dd.id_docente\n                LEFT JOIN cargos c ON c.id_cargo = d.id_cargo\n                INNER JOIN turnos t ON t.id_turno = dd.id_turno\n                WHERE dd.id_docente IN ({$placeholders})\n                ORDER BY dd.id_docente ASC, dd.fecha IS NOT NULL ASC, dd.fecha ASC, dd.dia_semana ASC, dd.id_turno ASC\n            ");
+            $stmtDisp = $pdo->prepare("
+                SELECT
+                    dd.*,
+                    d.docente,
+                    dc.id_cargo,
+                    COALESCE(dc.cargo, '-') AS cargo,
+                    t.turno
+                FROM docentes_disponibilidad dd
+                INNER JOIN docentes d ON d.id_docente = dd.id_docente
+                LEFT JOIN (
+                    SELECT
+                        cd.id_docente,
+                        MIN(cd.id_cargo) AS id_cargo,
+                        GROUP_CONCAT(DISTINCT c.cargo ORDER BY c.cargo SEPARATOR ', ') AS cargo
+                    FROM catedras_docentes cd
+                    LEFT JOIN cargos c ON c.id_cargo = cd.id_cargo
+                    WHERE cd.activo = 1
+                    GROUP BY cd.id_docente
+                ) dc ON dc.id_docente = d.id_docente
+                INNER JOIN turnos t ON t.id_turno = dd.id_turno
+                WHERE dd.id_docente IN ({$placeholders})
+                ORDER BY dd.id_docente ASC, dd.fecha IS NOT NULL ASC, dd.fecha ASC, dd.dia_semana ASC, dd.id_turno ASC
+            ");
             $stmtDisp->execute($ids);
             $rowsDisp = $stmtDisp->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
@@ -330,15 +404,67 @@ function disponibilidad_docentes_obtener_docente(): void
         $idDocente = disponibilidad_docentes_int($_GET['id_docente'] ?? 0);
         disponibilidad_docentes_validar_docente($pdo, $idDocente);
 
-        $stmtDocente = $pdo->prepare("\n            SELECT\n                d.id_docente,\n                d.docente,\n                d.id_cargo,\n                COALESCE(c.cargo, '-') AS cargo,\n                d.activo,\n                d.motivo,\n                d.fecha_carga\n            FROM docentes d\n            LEFT JOIN cargos c ON c.id_cargo = d.id_cargo\n            WHERE d.id_docente = ?\n            LIMIT 1\n        ");
+        $stmtDocente = $pdo->prepare("
+            SELECT
+                d.id_docente,
+                d.docente,
+                dc.id_cargo,
+                COALESCE(dc.cargo, '-') AS cargo,
+                d.activo,
+                d.motivo,
+                d.fecha_carga
+            FROM docentes d
+            LEFT JOIN (
+                SELECT
+                    cd.id_docente,
+                    MIN(cd.id_cargo) AS id_cargo,
+                    GROUP_CONCAT(DISTINCT c.cargo ORDER BY c.cargo SEPARATOR ', ') AS cargo
+                FROM catedras_docentes cd
+                LEFT JOIN cargos c ON c.id_cargo = cd.id_cargo
+                WHERE cd.activo = 1
+                GROUP BY cd.id_docente
+            ) dc ON dc.id_docente = d.id_docente
+            WHERE d.id_docente = ?
+            LIMIT 1
+        ");
         $stmtDocente->execute([$idDocente]);
         $docente = $stmtDocente->fetch(PDO::FETCH_ASSOC);
 
-        $stmtDisp = $pdo->prepare("\n            SELECT\n                dd.*,\n                d.docente,\n                d.id_cargo,\n                COALESCE(c.cargo, '-') AS cargo,\n                t.turno\n            FROM docentes_disponibilidad dd\n            INNER JOIN docentes d ON d.id_docente = dd.id_docente\n            LEFT JOIN cargos c ON c.id_cargo = d.id_cargo\n            INNER JOIN turnos t ON t.id_turno = dd.id_turno\n            WHERE dd.id_docente = ?\n            ORDER BY dd.fecha IS NOT NULL ASC, dd.fecha ASC, dd.dia_semana ASC, dd.id_turno ASC\n        ");
+        $stmtDisp = $pdo->prepare("
+            SELECT
+                dd.*,
+                d.docente,
+                dc.id_cargo,
+                COALESCE(dc.cargo, '-') AS cargo,
+                t.turno
+            FROM docentes_disponibilidad dd
+            INNER JOIN docentes d ON d.id_docente = dd.id_docente
+            LEFT JOIN (
+                SELECT
+                    cd.id_docente,
+                    MIN(cd.id_cargo) AS id_cargo,
+                    GROUP_CONCAT(DISTINCT c.cargo ORDER BY c.cargo SEPARATOR ', ') AS cargo
+                FROM catedras_docentes cd
+                LEFT JOIN cargos c ON c.id_cargo = cd.id_cargo
+                WHERE cd.activo = 1
+                GROUP BY cd.id_docente
+            ) dc ON dc.id_docente = d.id_docente
+            INNER JOIN turnos t ON t.id_turno = dd.id_turno
+            WHERE dd.id_docente = ?
+            ORDER BY dd.fecha IS NOT NULL ASC, dd.fecha ASC, dd.dia_semana ASC, dd.id_turno ASC
+        ");
         $stmtDisp->execute([$idDocente]);
         $disponibilidades = array_map('disponibilidad_docentes_mapear_registro', $stmtDisp->fetchAll(PDO::FETCH_ASSOC) ?: []);
 
-        $stmtCatedras = $pdo->prepare("\n            SELECT COUNT(*)\n            FROM catedras\n            WHERE id_docente = ?\n              AND activo = 1\n        ");
+        $stmtCatedras = $pdo->prepare("
+            SELECT COUNT(DISTINCT cat.id_catedra)
+            FROM catedras_docentes cd
+            INNER JOIN catedras cat
+                ON cat.id_catedra = cd.id_catedra
+               AND cat.activo = 1
+            WHERE cd.id_docente = ?
+              AND cd.activo = 1
+        ");
         $stmtCatedras->execute([$idDocente]);
 
         $data = [

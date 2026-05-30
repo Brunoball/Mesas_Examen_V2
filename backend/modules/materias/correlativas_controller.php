@@ -310,6 +310,14 @@ function materias_correlativas_eliminar(): void
     try {
         $stmt = $pdo->prepare("DELETE FROM materias_correlativas WHERE id_materia_correlativa = :id");
         $stmt->execute([':id' => $id]);
+
+        if ($stmt->rowCount() <= 0) {
+            json_response([
+                'exito'   => false,
+                'mensaje' => 'No se eliminó ninguna correlatividad porque el registro no existe o ya fue eliminado.',
+            ]);
+        }
+
         json_response(['exito' => true, 'mensaje' => 'Correlatividad eliminada correctamente.']);
     } catch (Throwable $e) {
         log_error($e, __FUNCTION__);

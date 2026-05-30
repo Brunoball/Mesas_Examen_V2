@@ -15,6 +15,8 @@ import "../../Global/Global_css/Global_Modals.css";
 import "./ModalMaterias.css";
 import "./ModalCorrelativa.css";
 
+const aMayusculas = (valor) => String(valor ?? "").toUpperCase();
+
 const nuevaRelacionVacia = () => ({
   id_curso_posterior: "",
   id_materia_posterior: "",
@@ -777,12 +779,12 @@ const ModalCorrelativa = ({
 
             <div className="modal-corr-summary-item modal-corr-summary-item--wide">
               <span>Base</span>
-              <strong title={resumenBase}>{resumenBase}</strong>
+              <strong title={aMayusculas(resumenBase)}>{aMayusculas(resumenBase)}</strong>
             </div>
 
             <div className="modal-corr-summary-item">
               <span>Salida</span>
-              <strong title={resumenSalida}>{resumenSalida}</strong>
+              <strong title={aMayusculas(resumenSalida)}>{aMayusculas(resumenSalida)}</strong>
             </div>
           </div>
 
@@ -804,7 +806,7 @@ const ModalCorrelativa = ({
                       <option value="">Seleccionar curso</option>
                       {cursosActivos.map((c) => (
                         <option key={c.id_curso} value={c.id_curso}>
-                          {c.nombre_curso}
+                          {aMayusculas(c.nombre_curso)}
                         </option>
                       ))}
                     </select>
@@ -834,7 +836,7 @@ const ModalCorrelativa = ({
                           key={`${m.id_curso || idCursoAnterior}-${m.id_materia}`}
                           value={m.id_materia}
                         >
-                          {m.materia}
+                          {aMayusculas(m.materia)}
                         </option>
                       ))}
                     </select>
@@ -891,7 +893,7 @@ const ModalCorrelativa = ({
                               <option value="">Seleccionar curso</option>
                               {cursosActivos.map((c) => (
                                 <option key={c.id_curso} value={c.id_curso}>
-                                  {c.nombre_curso}
+                                  {aMayusculas(c.nombre_curso)}
                                 </option>
                               ))}
                             </select>
@@ -923,7 +925,7 @@ const ModalCorrelativa = ({
                                   key={`${m.id_curso}-${m.id_materia}`}
                                   value={m.id_materia}
                                 >
-                                  {m.materia}
+                                  {aMayusculas(m.materia)}
                                 </option>
                               ))}
                             </select>
@@ -1010,7 +1012,7 @@ const ModalCorrelativa = ({
 
                     {materiasAuto.map((m) => (
                       <option key={m.id_materia} value={m.id_materia}>
-                        {m.materia} ({m.cursos.length} cursos)
+                        {aMayusculas(m.materia)} ({m.cursos.length} cursos)
                       </option>
                     ))}
                   </select>
@@ -1066,7 +1068,7 @@ const ModalCorrelativa = ({
                     <div className="auto-course-chain">
                       {cursosAutoSeleccionados.map((c, index) => (
                         <React.Fragment key={c.id_curso}>
-                          <span>{c.nombre_curso}</span>
+                          <span>{aMayusculas(c.nombre_curso)}</span>
                           {index < cursosAutoSeleccionados.length - 1 && (
                             <b>→</b>
                           )}

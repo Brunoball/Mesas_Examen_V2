@@ -91,6 +91,8 @@ export function useDocentes() {
 
     return docentesBase.filter((item) => (
       normalizar(item.docente).includes(q) ||
+      normalizar(item.dni).includes(q) ||
+      normalizar(item.email || item.gmail).includes(q) ||
       normalizar(item.cargo).includes(q) ||
       normalizar(item.observacion).includes(q) ||
       normalizar(item.disponibilidad_resumen).includes(q) ||

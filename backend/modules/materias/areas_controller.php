@@ -175,7 +175,17 @@ function areas_eliminar(): void
     try {
         $pdo->beginTransaction();
         $pdo->prepare('DELETE FROM areas_materias WHERE id_area = :id_area')->execute([':id_area' => $idArea]);
-        $pdo->prepare('DELETE FROM areas WHERE id_area = :id_area')->execute([':id_area' => $idArea]);
+        $stmtDelete = $pdo->prepare('DELETE FROM areas WHERE id_area = :id_area');
+        $stmtDelete->execute([':id_area' => $idArea]);
+
+        if ($stmtDelete->rowCount() <= 0) {
+            $pdo->rollBack();
+            json_response([
+                'exito' => false,
+                'mensaje' => 'No se eliminó ninguna área porque el registro no existe o ya fue eliminado.',
+            ]);
+        }
+
         $pdo->commit();
 
         json_response(['exito' => true, 'mensaje' => 'Área eliminada correctamente.']);
@@ -185,6 +195,14 @@ function areas_eliminar(): void
         try {
             $stmt = $pdo->prepare('UPDATE areas SET activo = 0 WHERE id_area = :id_area');
             $stmt->execute([':id_area' => $idArea]);
+
+            if ($stmt->rowCount() <= 0) {
+                json_response([
+                    'exito' => false,
+                    'mensaje' => 'No se eliminó ni desactivó ninguna área porque el registro no existe o ya fue procesado.',
+                ]);
+            }
+
             json_response(['exito' => true, 'mensaje' => 'No se pudo borrar físicamente. El área fue desactivada.']);
         } catch (Throwable $inner) {
             log_error($inner, __FUNCTION__ . '_desactivar');

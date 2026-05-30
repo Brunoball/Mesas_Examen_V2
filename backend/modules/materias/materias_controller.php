@@ -247,6 +247,14 @@ function materias_eliminar(): void
         if ($enUso > 0) {
             $stmt = $pdo->prepare("UPDATE materias SET activo = 0 WHERE id_materia = :id_materia");
             $stmt->execute([':id_materia' => $idMateria]);
+
+            if ($stmt->rowCount() <= 0) {
+                json_response([
+                    'exito' => false,
+                    'mensaje' => 'No se eliminó ni desactivó ninguna materia porque el registro no existe o ya fue procesado.',
+                ]);
+            }
+
             json_response(['exito' => true, 'mensaje' => 'La materia está en uso. Se desactivó correctamente.']);
         }
 
@@ -261,7 +269,17 @@ function materias_eliminar(): void
         $stmtDeleteTalleres->execute([':id_materia' => $idMateria]);
         $pdo->prepare("DELETE FROM materias_correlativas WHERE id_materia = :id_materia OR id_materia_relacionada = :id_materia_rel")
             ->execute([':id_materia' => $idMateria, ':id_materia_rel' => $idMateria]);
-        $pdo->prepare("DELETE FROM materias WHERE id_materia = :id_materia")->execute([':id_materia' => $idMateria]);
+        $stmtDelete = $pdo->prepare("DELETE FROM materias WHERE id_materia = :id_materia");
+        $stmtDelete->execute([':id_materia' => $idMateria]);
+
+        if ($stmtDelete->rowCount() <= 0) {
+            $pdo->rollBack();
+            json_response([
+                'exito' => false,
+                'mensaje' => 'No se eliminó ninguna materia porque el registro no existe o ya fue eliminado.',
+            ]);
+        }
+
         $pdo->commit();
 
         json_response(['exito' => true, 'mensaje' => 'Materia eliminada correctamente.']);
@@ -290,6 +308,14 @@ function materias_cambiar_estado(): void
     try {
         $stmt = $pdo->prepare("UPDATE materias SET activo = :activo WHERE id_materia = :id_materia");
         $stmt->execute([':activo' => $activo, ':id_materia' => $idMateria]);
+
+        if ($stmt->rowCount() <= 0) {
+            json_response([
+                'exito' => false,
+                'mensaje' => 'No se cambió el estado porque la materia no existe o ya tenía ese estado.',
+            ]);
+        }
+
         json_response([
             'exito' => true,
             'mensaje' => $activo ? 'Materia activada correctamente.' : 'Materia desactivada correctamente.',

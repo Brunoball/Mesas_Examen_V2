@@ -36,7 +36,79 @@ function mesas_armado_docentes_ajustar_a_dia_habil(string $fecha, string $direcc
     return $d->format('Y-m-d');
 }
 
-function mesas_armado_docentes_obtener_slots(PDO $pdo, string $fechaInicio, string $fechaFin, bool $excluirFinesSemana = true): array
+
+function mesas_armado_docentes_normalizar_texto_turno(mixed $valor): string
+{
+    $texto = mb_strtolower(trim((string)$valor), 'UTF-8');
+
+    return strtr($texto, [
+        'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
+        'ä' => 'a', 'ë' => 'e', 'ï' => 'i', 'ö' => 'o', 'ü' => 'u',
+        'ñ' => 'n',
+    ]);
+}
+
+function mesas_armado_docentes_normalizar_modo_turnos(mixed $modo): string
+{
+    $texto = mesas_armado_docentes_normalizar_texto_turno($modo);
+    $texto = str_replace([' ', '-'], '_', $texto);
+
+    if ($texto === '' || $texto === 'combinado' || $texto === 'ambos' || $texto === 'todos' || $texto === 'manana_y_tarde') {
+        return 'combinado';
+    }
+
+    if ($texto === 'manana' || $texto === 'solo_manana' || $texto === 'turno_manana') {
+        return 'manana';
+    }
+
+    if ($texto === 'tarde' || $texto === 'solo_tarde' || $texto === 'turno_tarde') {
+        return 'tarde';
+    }
+
+    return 'combinado';
+}
+
+function mesas_armado_docentes_turno_coincide_modo(array $turno, string $modoTurnos): bool
+{
+    $modo = mesas_armado_docentes_normalizar_modo_turnos($modoTurnos);
+
+    if ($modo === 'combinado') {
+        return true;
+    }
+
+    $idTurno = (int)($turno['id_turno'] ?? 0);
+    $nombre = mesas_armado_docentes_normalizar_texto_turno($turno['turno'] ?? $turno['nombre'] ?? $turno['descripcion'] ?? '');
+
+    if ($modo === 'manana') {
+        return $idTurno === 1
+            || str_contains($nombre, 'manana')
+            || str_contains($nombre, 'matut');
+    }
+
+    if ($modo === 'tarde') {
+        return $idTurno === 2
+            || str_contains($nombre, 'tarde')
+            || str_contains($nombre, 'vesp');
+    }
+
+    return true;
+}
+
+function mesas_armado_docentes_filtrar_turnos_por_modo(array $turnos, mixed $modoTurnos): array
+{
+    $modo = mesas_armado_docentes_normalizar_modo_turnos($modoTurnos);
+
+    if ($modo === 'combinado') {
+        return array_values($turnos);
+    }
+
+    return array_values(array_filter(
+        $turnos,
+        static fn (array $turno): bool => mesas_armado_docentes_turno_coincide_modo($turno, $modo)
+    ));
+}
+
+function mesas_armado_docentes_obtener_slots(PDO $pdo, string $fechaInicio, string $fechaFin, bool $excluirFinesSemana = true, mixed $modoTurnos = 'combinado'): array
 {
     // Regla obligatoria del armado: nunca se generan mesas sábado ni domingo.
     // Aunque el frontend envíe otro valor, el backend siempre descarta fines de semana.
@@ -49,7 +121,10 @@ function mesas_armado_docentes_obtener_slots(PDO $pdo, string $fechaInicio, stri
         ORDER BY id_turno ASC
     ");
 
-    $turnos = $stmtTurnos->fetchAll(PDO::FETCH_ASSOC);
+    $turnos = mesas_armado_docentes_filtrar_turnos_por_modo(
+        $stmtTurnos->fetchAll(PDO::FETCH_ASSOC),
+        $modoTurnos
+    );
 
     if (count($turnos) === 0) {
         return [];
@@ -116,11 +191,11 @@ function mesas_armado_docentes_obtener_previas_para_armar(PDO $pdo): array
             mat.materia,
 
             cat.id_catedra,
-            cat.id_docente AS id_docente_catedra,
+            COALESCE(cd.id_docente, cat.id_docente) AS id_docente_catedra,
             doc.id_docente AS id_docente,
 
             doc.docente,
-            doc.id_cargo,
+            COALESCE(cd.id_cargo, doc.id_cargo) AS id_cargo,
             cargo_doc.cargo AS cargo_docente,
 
             taller_map.id_taller,
@@ -170,11 +245,15 @@ function mesas_armado_docentes_obtener_previas_para_armar(PDO $pdo): array
                 SELECT c2.id_catedra
                 FROM catedras c2
 
+                LEFT JOIN catedras_docentes cd2
+                    ON cd2.id_catedra = c2.id_catedra
+                   AND cd2.activo = 1
+
                 LEFT JOIN docentes d2
-                    ON d2.id_docente = c2.id_docente
+                    ON d2.id_docente = COALESCE(cd2.id_docente, c2.id_docente)
 
                 LEFT JOIN cargos cargo2
-                    ON cargo2.id_cargo = d2.id_cargo
+                    ON cargo2.id_cargo = COALESCE(cd2.id_cargo, d2.id_cargo)
 
                 WHERE c2.id_materia = p.id_materia
                   AND c2.id_curso = p.materia_id_curso
@@ -185,7 +264,7 @@ function mesas_armado_docentes_obtener_previas_para_armar(PDO $pdo): array
                     CASE
                         WHEN d2.activo = 1
                          AND (
-                                d2.id_cargo = 2
+                                COALESCE(cd2.id_cargo, d2.id_cargo) = 2
                                 OR UPPER(TRIM(COALESCE(cargo2.cargo, ''))) = 'SUPLENTE'
                              )
                         THEN 0
@@ -194,7 +273,7 @@ function mesas_armado_docentes_obtener_previas_para_armar(PDO $pdo): array
                          AND d2.id_docente IS NOT NULL
                         THEN 1
 
-                        WHEN c2.id_docente IS NULL
+                        WHEN COALESCE(cd2.id_docente, c2.id_docente) IS NULL
                         THEN 2
 
                         ELSE 3
@@ -204,12 +283,41 @@ function mesas_armado_docentes_obtener_previas_para_armar(PDO $pdo): array
                 LIMIT 1
             )
 
+        LEFT JOIN catedras_docentes cd
+            ON cd.id_catedra = cat.id_catedra
+           AND cd.activo = 1
+           AND cd.id_catedra_docente = (
+                SELECT cd3.id_catedra_docente
+                FROM catedras_docentes cd3
+                LEFT JOIN docentes d3
+                    ON d3.id_docente = cd3.id_docente
+                LEFT JOIN cargos cargo3
+                    ON cargo3.id_cargo = cd3.id_cargo
+                WHERE cd3.id_catedra = cat.id_catedra
+                  AND cd3.activo = 1
+                ORDER BY
+                    CASE
+                        WHEN d3.activo = 1
+                         AND (
+                                cd3.id_cargo = 2
+                                OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE'
+                             )
+                        THEN 0
+                        WHEN d3.activo = 1
+                         AND d3.id_docente IS NOT NULL
+                        THEN 1
+                        ELSE 2
+                    END ASC,
+                    cd3.id_catedra_docente ASC
+                LIMIT 1
+           )
+
         LEFT JOIN docentes doc
-            ON doc.id_docente = cat.id_docente
+            ON doc.id_docente = COALESCE(cd.id_docente, cat.id_docente)
            AND doc.activo = 1
 
         LEFT JOIN cargos cargo_doc
-            ON cargo_doc.id_cargo = doc.id_cargo
+            ON cargo_doc.id_cargo = COALESCE(cd.id_cargo, doc.id_cargo)
 
         LEFT JOIN (
             SELECT
@@ -436,10 +544,10 @@ function mesas_armado_docentes_obtener_materias_de_taller(PDO $pdo, int $idTalle
             ca.id_division,
             ca.id_materia,
             mat.materia,
-            ca.id_docente AS id_docente_catedra,
+            COALESCE(cd.id_docente, ca.id_docente) AS id_docente_catedra,
             doc.id_docente,
             doc.docente,
-            doc.id_cargo,
+            COALESCE(cd.id_cargo, doc.id_cargo) AS id_cargo,
             cargo.cargo AS cargo_docente,
             tm.orden
         FROM talleres_materias tm
@@ -452,11 +560,39 @@ function mesas_armado_docentes_obtener_materias_de_taller(PDO $pdo, int $idTalle
         INNER JOIN materias mat
             ON mat.id_materia = ca.id_materia
            AND mat.activo = 1
+        LEFT JOIN catedras_docentes cd
+            ON cd.id_catedra = ca.id_catedra
+           AND cd.activo = 1
+           AND cd.id_catedra_docente = (
+                SELECT cd3.id_catedra_docente
+                FROM catedras_docentes cd3
+                LEFT JOIN docentes d3
+                    ON d3.id_docente = cd3.id_docente
+                LEFT JOIN cargos cargo3
+                    ON cargo3.id_cargo = cd3.id_cargo
+                WHERE cd3.id_catedra = ca.id_catedra
+                  AND cd3.activo = 1
+                ORDER BY
+                    CASE
+                        WHEN d3.activo = 1
+                         AND (
+                                cd3.id_cargo = 2
+                                OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE'
+                             )
+                        THEN 0
+                        WHEN d3.activo = 1
+                         AND d3.id_docente IS NOT NULL
+                        THEN 1
+                        ELSE 2
+                    END ASC,
+                    cd3.id_catedra_docente ASC
+                LIMIT 1
+           )
         LEFT JOIN docentes doc
-            ON doc.id_docente = ca.id_docente
+            ON doc.id_docente = COALESCE(cd.id_docente, ca.id_docente)
            AND doc.activo = 1
         LEFT JOIN cargos cargo
-            ON cargo.id_cargo = doc.id_cargo
+            ON cargo.id_cargo = COALESCE(cd.id_cargo, doc.id_cargo)
         WHERE tm.id_taller = ?
           AND ca.id_curso = ?
           AND ca.id_division = ?
@@ -488,16 +624,44 @@ function mesas_armado_docentes_obtener_catedra_para_materia_curso_division(
             c.id_materia,
             c.id_curso,
             c.id_division,
-            c.id_docente AS id_docente_catedra,
+            COALESCE(cd.id_docente, c.id_docente) AS id_docente_catedra,
             d.id_docente,
             d.docente,
-            d.id_cargo,
+            COALESCE(cd.id_cargo, d.id_cargo) AS id_cargo,
             cargo.cargo AS cargo_docente
         FROM catedras c
+        LEFT JOIN catedras_docentes cd
+            ON cd.id_catedra = c.id_catedra
+           AND cd.activo = 1
+           AND cd.id_catedra_docente = (
+                SELECT cd3.id_catedra_docente
+                FROM catedras_docentes cd3
+                LEFT JOIN docentes d3
+                    ON d3.id_docente = cd3.id_docente
+                LEFT JOIN cargos cargo3
+                    ON cargo3.id_cargo = cd3.id_cargo
+                WHERE cd3.id_catedra = c.id_catedra
+                  AND cd3.activo = 1
+                ORDER BY
+                    CASE
+                        WHEN d3.activo = 1
+                         AND (
+                                cd3.id_cargo = 2
+                                OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE'
+                             )
+                        THEN 0
+                        WHEN d3.activo = 1
+                         AND d3.id_docente IS NOT NULL
+                        THEN 1
+                        ELSE 2
+                    END ASC,
+                    cd3.id_catedra_docente ASC
+                LIMIT 1
+           )
         LEFT JOIN docentes d
-            ON d.id_docente = c.id_docente
+            ON d.id_docente = COALESCE(cd.id_docente, c.id_docente)
         LEFT JOIN cargos cargo
-            ON cargo.id_cargo = d.id_cargo
+            ON cargo.id_cargo = COALESCE(cd.id_cargo, d.id_cargo)
         WHERE c.id_materia = ?
           AND c.id_curso = ?
           AND c.id_division = ?
@@ -506,7 +670,7 @@ function mesas_armado_docentes_obtener_catedra_para_materia_curso_division(
             CASE
                 WHEN d.activo = 1
                  AND (
-                        d.id_cargo = 2
+                        COALESCE(cd.id_cargo, d.id_cargo) = 2
                         OR UPPER(TRIM(COALESCE(cargo.cargo, ''))) = 'SUPLENTE'
                      )
                 THEN 0
@@ -515,7 +679,7 @@ function mesas_armado_docentes_obtener_catedra_para_materia_curso_division(
                  AND d.id_docente IS NOT NULL
                 THEN 1
 
-                WHEN c.id_docente IS NULL
+                WHEN COALESCE(cd.id_docente, c.id_docente) IS NULL
                 THEN 2
 
                 ELSE 3

@@ -91,57 +91,7 @@ function safeText(value) {
 }
 
 function formatearNombreTaller(value) {
-  const text = safeText(value);
-  if (text === "—") return text;
-
-  const normalizado = text
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/\./g, "")
-    .replace(/-/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (/^utp\s+(primer|segundo|tercer|cuarto|quinto|sexto|septimo)\s+(ano|anio)$/.test(normalizado)) {
-    return text;
-  }
-
-  const clave = normalizado
-    .replace(/^utp\s+/, "")
-    .replace(/\b(curso|ano|anio)\b/g, "")
-    .replace(/[°º]/g, "")
-    .replace(/\s+/g, "");
-
-  const anios = {
-    "1": "Primer",
-    "1ero": "Primer",
-    "1ro": "Primer",
-    primero: "Primer",
-    primer: "Primer",
-    "2": "Segundo",
-    "2do": "Segundo",
-    segundo: "Segundo",
-    "3": "Tercer",
-    "3ero": "Tercer",
-    "3ro": "Tercer",
-    tercero: "Tercer",
-    tercer: "Tercer",
-    "4": "Cuarto",
-    "4to": "Cuarto",
-    cuarto: "Cuarto",
-    "5": "Quinto",
-    "5to": "Quinto",
-    quinto: "Quinto",
-    "6": "Sexto",
-    "6to": "Sexto",
-    sexto: "Sexto",
-    "7": "Séptimo",
-    "7mo": "Séptimo",
-    septimo: "Séptimo",
-  };
-
-  return anios[clave] ? `UTP ${anios[clave]} año` : text;
+  return safeText(value);
 }
 
 function alignClass(align) {
@@ -161,7 +111,7 @@ function normalizarTipoToast(tipo) {
 
 function obtenerDuracionToast(tipo) {
   const tipoToast = normalizarTipoToast(tipo);
-  return ["error", "advertencia", "alerta"].includes(tipoToast) ? undefined : 3800;
+  return ["error", "advertencia", "alerta", "cargando"].includes(tipoToast) ? undefined : 3800;
 }
 
 
@@ -467,7 +417,7 @@ const Materias = () => {
         title: 'Eliminar correlatividad',
         message: 'Se eliminará esta relación de correlatividad.',
         confirmLabel: 'Eliminar',
-        loadingLabel: 'Eliminando...',
+        loadingLabel: 'Eliminando correlatividad...',
         successMessage: 'Correlatividad eliminada correctamente.',
         errorMessage: 'No se pudo eliminar la correlatividad.',
         details: [
@@ -485,7 +435,7 @@ const Materias = () => {
         title: 'Eliminar taller',
         message: 'Se eliminará o desactivará el taller según las reglas del backend.',
         confirmLabel: 'Eliminar',
-        loadingLabel: 'Eliminando...',
+        loadingLabel: 'Eliminando taller...',
         successMessage: 'Taller eliminado correctamente.',
         errorMessage: 'No se pudo eliminar el taller.',
         details: [
@@ -503,7 +453,7 @@ const Materias = () => {
         title: 'Eliminar área',
         message: 'Se eliminará o desactivará el área según las reglas del backend.',
         confirmLabel: 'Eliminar',
-        loadingLabel: 'Eliminando...',
+        loadingLabel: 'Eliminando área...',
         successMessage: 'Área eliminada correctamente.',
         errorMessage: 'No se pudo eliminar el área.',
         details: [
@@ -520,7 +470,7 @@ const Materias = () => {
       title: 'Eliminar materia',
       message: 'Se eliminará o desactivará la materia según las reglas del backend.',
       confirmLabel: 'Eliminar',
-      loadingLabel: 'Eliminando...',
+      loadingLabel: 'Eliminando materia...',
       successMessage: 'Materia eliminada correctamente.',
       errorMessage: 'No se pudo eliminar la materia.',
       details: [

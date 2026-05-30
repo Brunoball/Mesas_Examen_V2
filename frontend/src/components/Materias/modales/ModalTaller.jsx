@@ -17,6 +17,7 @@ import "./ModalTaller.css";
 
 const TAB_DIVISIONES = "divisiones";
 const TAB_CATEDRAS = "catedras";
+const aMayusculas = (valor) => String(valor ?? "").toUpperCase();
 
 const normalizar = (texto) =>
   String(texto || "")
@@ -58,7 +59,7 @@ const ModalTaller = ({
   onSave,
   onToast,
 }) => {
-  const [taller, setTaller] = useState(item?.taller || "");
+  const [taller, setTaller] = useState(aMayusculas(item?.taller || ""));
   const [idCurso, setIdCurso] = useState(item?.id_curso || "");
   const [idsDivisiones, setIdsDivisiones] = useState(() =>
     extraerDivisionesIniciales(item)
@@ -97,7 +98,7 @@ const ModalTaller = ({
   }, [guardando, onClose]);
 
   useEffect(() => {
-    setTaller(item?.taller || "");
+    setTaller(aMayusculas(item?.taller || ""));
     setIdCurso(item?.id_curso || "");
     setIdsDivisiones(extraerDivisionesIniciales(item));
     setActivo(item ? Number(item.activo) === 1 : true);
@@ -204,7 +205,8 @@ const ModalTaller = ({
         normalizar(m.materia).includes(q) ||
         normalizar(m.areas).includes(q) ||
         normalizar(m.division).includes(q) ||
-        normalizar(m.docente).includes(q)
+        normalizar(m.docente).includes(q) ||
+        normalizar(m.cargo_docente || m.cargo).includes(q)
       );
     });
   }, [catedrasNormalizadas, idArea, busqueda]);
@@ -341,7 +343,7 @@ const ModalTaller = ({
   const guardar = async (e) => {
     e.preventDefault();
 
-    const nombre = taller.trim().toUpperCase();
+    const nombre = aMayusculas(taller).trim();
 
     if (!nombre) {
       onToast?.("error", "El nombre del taller es obligatorio.");
@@ -367,20 +369,16 @@ const ModalTaller = ({
 
     setGuardando(true);
 
-    try {
-      await onSave({
-        id_taller: item?.id_taller || null,
-        id_curso: Number(idCurso),
-        divisiones: idsDivisiones.map(Number),
-        id_division:
-          idsDivisiones.length === 1 ? Number(idsDivisiones[0]) : undefined,
-        taller: nombre,
-        activo: activo ? 1 : 0,
-        catedras: seleccionadas.map(Number),
-      });
-    } finally {
-      setGuardando(false);
-    }
+    onSave({
+      id_taller: item?.id_taller || null,
+      id_curso: Number(idCurso),
+      divisiones: idsDivisiones.map(Number),
+      id_division:
+        idsDivisiones.length === 1 ? Number(idsDivisiones[0]) : undefined,
+      taller: nombre,
+      activo: activo ? 1 : 0,
+      catedras: seleccionadas.map(Number),
+    });
   };
 
   return createPortal(
@@ -431,7 +429,7 @@ const ModalTaller = ({
                 Nombre del taller
                 <input
                   value={taller}
-                  onChange={(e) => setTaller(e.target.value.toUpperCase())}
+                  onChange={(e) => setTaller(aMayusculas(e.target.value))}
                   placeholder="EJ: TALLER DIBUJO TÉCNICO"
                   autoFocus
                 />
@@ -443,7 +441,7 @@ const ModalTaller = ({
                   <option value="">Seleccionar curso</option>
                   {cursosActivos.map((c) => (
                     <option key={c.id_curso} value={c.id_curso}>
-                      {c.nombre_curso}
+                      {aMayusculas(c.nombre_curso)}
                     </option>
                   ))}
                 </select>
@@ -582,7 +580,7 @@ const ModalTaller = ({
                             onChange={() => toggleDivision(id)}
                           />
                           <span>
-                            <strong>{d.nombre_division}</strong>
+                            <strong>{aMayusculas(d.nombre_division)}</strong>
                           </span>
                         </label>
                       );
@@ -618,7 +616,7 @@ const ModalTaller = ({
                       <option value="">Todas las áreas</option>
                       {areas.map((a) => (
                         <option key={a.id_area} value={a.id_area}>
-                          {a.area}
+                          {aMayusculas(a.area)}
                         </option>
                       ))}
                     </select>
@@ -629,7 +627,7 @@ const ModalTaller = ({
                     <span className="taller-search-wrap">
                       <input
                         value={busqueda}
-                        onChange={(e) => setBusqueda(e.target.value)}
+                        onChange={(e) => setBusqueda(aMayusculas(e.target.value))}
                         placeholder={
                           idCurso && idsDivisiones.length > 0
                             ? "Buscar por materia, área, división o docente"
@@ -707,7 +705,7 @@ const ModalTaller = ({
                         className="taller-catedras-group"
                       >
                         <div className="taller-group-title">
-                          División {grupo.division}
+                          División {aMayusculas(grupo.division)}
                         </div>
 
                         <div className="materias-check-grid">
@@ -727,9 +725,16 @@ const ModalTaller = ({
                                 />
 
                                 <span>
-                                  <strong>{m.materia}</strong>
-                                  {m.areas ? <small>{m.areas}</small> : null}
-                                  {m.docente ? <small>Docente: {m.docente}</small> : null}
+                                  <strong>{aMayusculas(m.materia)}</strong>
+                                  {m.areas ? <small>{aMayusculas(m.areas)}</small> : null}
+                                  {m.docente ? (
+                                    <small>
+                                      Docente: {aMayusculas(m.docente)}
+                                      {m.cargo_docente || m.cargo
+                                        ? ` · Cargo: ${aMayusculas(m.cargo_docente || m.cargo)}`
+                                        : ''}
+                                    </small>
+                                  ) : null}
                                 </span>
                               </label>
                             );

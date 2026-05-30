@@ -191,11 +191,11 @@ function mesas_armado_obtener_previas_para_armar(PDO $pdo): array
             mat.materia,
 
             cat.id_catedra,
-            cat.id_docente AS id_docente_catedra,
+            COALESCE(cd.id_docente, cat.id_docente) AS id_docente_catedra,
             doc.id_docente AS id_docente,
 
             doc.docente,
-            doc.id_cargo,
+            COALESCE(cd.id_cargo, doc.id_cargo) AS id_cargo,
             cargo_doc.cargo AS cargo_docente,
 
             taller_map.id_taller,
@@ -245,11 +245,15 @@ function mesas_armado_obtener_previas_para_armar(PDO $pdo): array
                 SELECT c2.id_catedra
                 FROM catedras c2
 
+                LEFT JOIN catedras_docentes cd2
+                    ON cd2.id_catedra = c2.id_catedra
+                   AND cd2.activo = 1
+
                 LEFT JOIN docentes d2
-                    ON d2.id_docente = c2.id_docente
+                    ON d2.id_docente = COALESCE(cd2.id_docente, c2.id_docente)
 
                 LEFT JOIN cargos cargo2
-                    ON cargo2.id_cargo = d2.id_cargo
+                    ON cargo2.id_cargo = COALESCE(cd2.id_cargo, d2.id_cargo)
 
                 WHERE c2.id_materia = p.id_materia
                   AND c2.id_curso = p.materia_id_curso
@@ -260,7 +264,7 @@ function mesas_armado_obtener_previas_para_armar(PDO $pdo): array
                     CASE
                         WHEN d2.activo = 1
                          AND (
-                                d2.id_cargo = 2
+                                COALESCE(cd2.id_cargo, d2.id_cargo) = 2
                                 OR UPPER(TRIM(COALESCE(cargo2.cargo, ''))) = 'SUPLENTE'
                              )
                         THEN 0
@@ -269,7 +273,7 @@ function mesas_armado_obtener_previas_para_armar(PDO $pdo): array
                          AND d2.id_docente IS NOT NULL
                         THEN 1
 
-                        WHEN c2.id_docente IS NULL
+                        WHEN COALESCE(cd2.id_docente, c2.id_docente) IS NULL
                         THEN 2
 
                         ELSE 3
@@ -279,12 +283,41 @@ function mesas_armado_obtener_previas_para_armar(PDO $pdo): array
                 LIMIT 1
             )
 
+        LEFT JOIN catedras_docentes cd
+            ON cd.id_catedra = cat.id_catedra
+           AND cd.activo = 1
+           AND cd.id_catedra_docente = (
+                SELECT cd3.id_catedra_docente
+                FROM catedras_docentes cd3
+                LEFT JOIN docentes d3
+                    ON d3.id_docente = cd3.id_docente
+                LEFT JOIN cargos cargo3
+                    ON cargo3.id_cargo = cd3.id_cargo
+                WHERE cd3.id_catedra = cat.id_catedra
+                  AND cd3.activo = 1
+                ORDER BY
+                    CASE
+                        WHEN d3.activo = 1
+                         AND (
+                                cd3.id_cargo = 2
+                                OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE'
+                             )
+                        THEN 0
+                        WHEN d3.activo = 1
+                         AND d3.id_docente IS NOT NULL
+                        THEN 1
+                        ELSE 2
+                    END ASC,
+                    cd3.id_catedra_docente ASC
+                LIMIT 1
+           )
+
         LEFT JOIN docentes doc
-            ON doc.id_docente = cat.id_docente
+            ON doc.id_docente = COALESCE(cd.id_docente, cat.id_docente)
            AND doc.activo = 1
 
         LEFT JOIN cargos cargo_doc
-            ON cargo_doc.id_cargo = doc.id_cargo
+            ON cargo_doc.id_cargo = COALESCE(cd.id_cargo, doc.id_cargo)
 
         LEFT JOIN (
             SELECT
@@ -511,10 +544,10 @@ function mesas_armado_obtener_materias_de_taller(PDO $pdo, int $idTaller, int $i
             ca.id_division,
             ca.id_materia,
             mat.materia,
-            ca.id_docente AS id_docente_catedra,
+            COALESCE(cd.id_docente, ca.id_docente) AS id_docente_catedra,
             doc.id_docente,
             doc.docente,
-            doc.id_cargo,
+            COALESCE(cd.id_cargo, doc.id_cargo) AS id_cargo,
             cargo.cargo AS cargo_docente,
             tm.orden
         FROM talleres_materias tm
@@ -527,11 +560,39 @@ function mesas_armado_obtener_materias_de_taller(PDO $pdo, int $idTaller, int $i
         INNER JOIN materias mat
             ON mat.id_materia = ca.id_materia
            AND mat.activo = 1
+        LEFT JOIN catedras_docentes cd
+            ON cd.id_catedra = ca.id_catedra
+           AND cd.activo = 1
+           AND cd.id_catedra_docente = (
+                SELECT cd3.id_catedra_docente
+                FROM catedras_docentes cd3
+                LEFT JOIN docentes d3
+                    ON d3.id_docente = cd3.id_docente
+                LEFT JOIN cargos cargo3
+                    ON cargo3.id_cargo = cd3.id_cargo
+                WHERE cd3.id_catedra = ca.id_catedra
+                  AND cd3.activo = 1
+                ORDER BY
+                    CASE
+                        WHEN d3.activo = 1
+                         AND (
+                                cd3.id_cargo = 2
+                                OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE'
+                             )
+                        THEN 0
+                        WHEN d3.activo = 1
+                         AND d3.id_docente IS NOT NULL
+                        THEN 1
+                        ELSE 2
+                    END ASC,
+                    cd3.id_catedra_docente ASC
+                LIMIT 1
+           )
         LEFT JOIN docentes doc
-            ON doc.id_docente = ca.id_docente
+            ON doc.id_docente = COALESCE(cd.id_docente, ca.id_docente)
            AND doc.activo = 1
         LEFT JOIN cargos cargo
-            ON cargo.id_cargo = doc.id_cargo
+            ON cargo.id_cargo = COALESCE(cd.id_cargo, doc.id_cargo)
         WHERE tm.id_taller = ?
           AND ca.id_curso = ?
           AND ca.id_division = ?
@@ -563,16 +624,44 @@ function mesas_armado_obtener_catedra_para_materia_curso_division(
             c.id_materia,
             c.id_curso,
             c.id_division,
-            c.id_docente AS id_docente_catedra,
+            COALESCE(cd.id_docente, c.id_docente) AS id_docente_catedra,
             d.id_docente,
             d.docente,
-            d.id_cargo,
+            COALESCE(cd.id_cargo, d.id_cargo) AS id_cargo,
             cargo.cargo AS cargo_docente
         FROM catedras c
+        LEFT JOIN catedras_docentes cd
+            ON cd.id_catedra = c.id_catedra
+           AND cd.activo = 1
+           AND cd.id_catedra_docente = (
+                SELECT cd3.id_catedra_docente
+                FROM catedras_docentes cd3
+                LEFT JOIN docentes d3
+                    ON d3.id_docente = cd3.id_docente
+                LEFT JOIN cargos cargo3
+                    ON cargo3.id_cargo = cd3.id_cargo
+                WHERE cd3.id_catedra = c.id_catedra
+                  AND cd3.activo = 1
+                ORDER BY
+                    CASE
+                        WHEN d3.activo = 1
+                         AND (
+                                cd3.id_cargo = 2
+                                OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE'
+                             )
+                        THEN 0
+                        WHEN d3.activo = 1
+                         AND d3.id_docente IS NOT NULL
+                        THEN 1
+                        ELSE 2
+                    END ASC,
+                    cd3.id_catedra_docente ASC
+                LIMIT 1
+           )
         LEFT JOIN docentes d
-            ON d.id_docente = c.id_docente
+            ON d.id_docente = COALESCE(cd.id_docente, c.id_docente)
         LEFT JOIN cargos cargo
-            ON cargo.id_cargo = d.id_cargo
+            ON cargo.id_cargo = COALESCE(cd.id_cargo, d.id_cargo)
         WHERE c.id_materia = ?
           AND c.id_curso = ?
           AND c.id_division = ?
@@ -581,7 +670,7 @@ function mesas_armado_obtener_catedra_para_materia_curso_division(
             CASE
                 WHEN d.activo = 1
                  AND (
-                        d.id_cargo = 2
+                        COALESCE(cd.id_cargo, d.id_cargo) = 2
                         OR UPPER(TRIM(COALESCE(cargo.cargo, ''))) = 'SUPLENTE'
                      )
                 THEN 0
@@ -590,7 +679,7 @@ function mesas_armado_obtener_catedra_para_materia_curso_division(
                  AND d.id_docente IS NOT NULL
                 THEN 1
 
-                WHEN c.id_docente IS NULL
+                WHEN COALESCE(cd.id_docente, c.id_docente) IS NULL
                 THEN 2
 
                 ELSE 3

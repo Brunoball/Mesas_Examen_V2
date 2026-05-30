@@ -5,10 +5,13 @@ import {
   faBookOpen,
   faCalendarDays,
   faChalkboardTeacher,
+  faEnvelope,
+  faIdCard,
   faTimes,
   faUserTie,
 } from '@fortawesome/free-solid-svg-icons';
 import '../../Global/Global_css/Global_InfoDocente.css';
+import '../Docentes.css';
 
 function formatearFecha(fecha) {
   if (!fecha) return '';
@@ -20,21 +23,57 @@ function formatearFecha(fecha) {
   return `${d}/${m}/${y}`;
 }
 
+function textoSeguro(valor, fallback = '—') {
+  const texto = String(valor ?? '').trim();
+  return texto || fallback;
+}
+
+function obtenerCargoCatedra(cat) {
+  return textoSeguro(cat?.cargo_docente || cat?.cargo || cat?.nombre_cargo, 'Sin cargo');
+}
+
 export default function ModalInfoDocente({ item, onCerrar }) {
   const closeRef = useRef(null);
   const catedras = Array.isArray(item?.catedras) ? item.catedras : [];
+
+  const cargosResumen = useMemo(() => {
+    const mapa = new Map();
+
+    catedras.forEach((cat) => {
+      const cargo = obtenerCargoCatedra(cat);
+      const materia = textoSeguro(cat?.materia, 'Materia sin nombre');
+
+      if (!mapa.has(cargo)) {
+        mapa.set(cargo, { cargo, total: 0, materias: [] });
+      }
+
+      const itemCargo = mapa.get(cargo);
+      itemCargo.total += 1;
+
+      if (!itemCargo.materias.includes(materia)) {
+        itemCargo.materias.push(materia);
+      }
+    });
+
+    return Array.from(mapa.values());
+  }, [catedras]);
 
   const disponibilidades = Array.isArray(item?.disponibilidades)
     ? item.disponibilidades
     : [];
 
   const estaActivo = Number(item?.activo) === 1;
-  const totalRegistros = item?.cantidad_registros || item?.ids_docentes?.length || 1;
+  const idDocente = item?.id_docente || item?.ids_docentes_texto || '—';
+  const dniDocente = textoSeguro(item?.dni, '');
+  const emailDocente = textoSeguro(item?.email || item?.gmail, '');
 
   const detalleDocente = useMemo(() => {
-    const cargo = item?.cargo || 'Sin cargo';
-    return `${cargo}`;
-  }, [item?.cargo]);
+    const cargos = cargosResumen.length > 0
+      ? cargosResumen.map((cargo) => cargo.cargo).join(', ')
+      : (item?.cargo || 'Sin cargo');
+
+    return `Cargos registrados: ${cargos}`;
+  }, [cargosResumen, item?.cargo]);
 
   useEffect(() => {
     const body = document.body;
@@ -85,7 +124,7 @@ export default function ModalInfoDocente({ item, onCerrar }) {
 
           <div className="docentes-info-modal-headText">
             <h2 id="docentes-info-title">Información del docente</h2>
-            <p>Datos, cátedras asignadas y disponibilidad cargada.</p>
+            <p>Datos únicos del docente, cargos por cátedra y disponibilidad cargada.</p>
           </div>
 
           <button
@@ -115,9 +154,37 @@ export default function ModalInfoDocente({ item, onCerrar }) {
 
               <p>{detalleDocente}</p>
 
+              {(dniDocente || emailDocente) && (
+                <div className="docentes-info-contacto">
+                  {dniDocente && (
+                    <span className="docentes-info-contactoChip">
+                      <FontAwesomeIcon icon={faIdCard} /> DNI {dniDocente}
+                    </span>
+                  )}
+
+                  {emailDocente && (
+                    <span className="docentes-info-contactoChip">
+                      <FontAwesomeIcon icon={faEnvelope} /> {emailDocente}
+                    </span>
+                  )}
+                </div>
+              )}
+
               {item?.observacion && <small>{item.observacion}</small>}
             </div>
           </div>
+
+          {cargosResumen.length > 0 && (
+            <div className="docentes-info-cargosResumen" aria-label="Resumen de cargos por materia">
+              {cargosResumen.map((cargo) => (
+                <div className="docentes-info-cargoResumenCard" key={cargo.cargo}>
+                  <strong>{cargo.cargo}</strong>
+                  <span>{cargo.total} {cargo.total === 1 ? 'materia' : 'materias'}</span>
+                  <small>{cargo.materias.slice(0, 3).join(' · ')}</small>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="docentes-info-grid">
             <div className="docentes-info-card docentes-info-card--blue">
@@ -126,9 +193,9 @@ export default function ModalInfoDocente({ item, onCerrar }) {
               </div>
 
               <div className="docentes-info-card__body">
-                <span>Registros internos</span>
-                <strong>{totalRegistros}</strong>
-                <small>Unificados en la ficha</small>
+                <span>ID docente</span>
+                <strong>{idDocente}</strong>
+                <small>Ficha única del docente</small>
               </div>
             </div>
 
@@ -165,9 +232,10 @@ export default function ModalInfoDocente({ item, onCerrar }) {
 
             <div className="docentes-info-catedras-wrap">
               <div className="docentes-info-divtable" role="list" aria-label="Materias, cursos y divisiones del docente">
-                <div className="docentes-info-divtable-head" aria-hidden="true">
+                <div className="docentes-info-divtable-head docentes-info-divtable-head--cargos" aria-hidden="true">
                   <div>Curso</div>
                   <div>División</div>
+                  <div>Cargo</div>
                   <div>Materia</div>
                 </div>
 
@@ -179,7 +247,7 @@ export default function ModalInfoDocente({ item, onCerrar }) {
                   )}
 
                   {catedras.map((cat) => (
-                    <div className="docentes-info-divtable-row" role="listitem" key={cat.id_catedra}>
+                    <div className="docentes-info-divtable-row docentes-info-divtable-row--cargos" role="listitem" key={cat.id_catedra}>
                       <div className="docentes-info-divtable-cell">
                         <span className="docentes-badge">
                           {cat.nombre_curso}
@@ -189,6 +257,12 @@ export default function ModalInfoDocente({ item, onCerrar }) {
                       <div className="docentes-info-divtable-cell">
                         <span className="docentes-badge docentes-badge-soft">
                           {cat.nombre_division}
+                        </span>
+                      </div>
+
+                      <div className="docentes-info-divtable-cell">
+                        <span className="docentes-info-cargoChip" title={`Cargo en ${textoSeguro(cat.materia, 'la materia')}`}>
+                          {obtenerCargoCatedra(cat)}
                         </span>
                       </div>
 

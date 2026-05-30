@@ -294,13 +294,32 @@ function mesas_armado_normalizar_docente_desde_catedra(PDO $pdo): int
         INNER JOIN catedras cat
             ON cat.id_catedra = me.id_catedra
            AND cat.activo = 1
+        LEFT JOIN catedras_docentes cd
+            ON cd.id_catedra = cat.id_catedra
+           AND cd.activo = 1
+           AND cd.id_catedra_docente = (
+                SELECT cd3.id_catedra_docente
+                FROM catedras_docentes cd3
+                LEFT JOIN docentes d3 ON d3.id_docente = cd3.id_docente
+                LEFT JOIN cargos cargo3 ON cargo3.id_cargo = cd3.id_cargo
+                WHERE cd3.id_catedra = cat.id_catedra
+                  AND cd3.activo = 1
+                ORDER BY
+                    CASE
+                        WHEN d3.activo = 1 AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 1
+                        ELSE 2
+                    END ASC,
+                    cd3.id_catedra_docente ASC
+                LIMIT 1
+           )
         INNER JOIN docentes doc
-            ON doc.id_docente = cat.id_docente
+            ON doc.id_docente = COALESCE(cd.id_docente, cat.id_docente)
            AND doc.activo = 1
-        SET me.id_docente = cat.id_docente
+        SET me.id_docente = COALESCE(cd.id_docente, cat.id_docente)
         WHERE me.estado IN ('borrador', 'armada', 'observada')
-          AND cat.id_docente IS NOT NULL
-          AND (me.id_docente IS NULL OR me.id_docente <> cat.id_docente)
+          AND COALESCE(cd.id_docente, cat.id_docente) IS NOT NULL
+          AND (me.id_docente IS NULL OR me.id_docente <> COALESCE(cd.id_docente, cat.id_docente))
     ");
     $stmt->execute();
 
@@ -338,7 +357,7 @@ function mesas_armado_obtener_filas_para_validar(PDO $pdo): array
             cat.id_materia AS cat_id_materia,
             cat.id_curso AS cat_id_curso,
             cat.id_division AS cat_id_division,
-            cat.id_docente AS cat_id_docente,
+            COALESCE(cd.id_docente, cat.id_docente) AS cat_id_docente,
             cat.activo AS cat_activa,
 
             mat.materia,
@@ -353,6 +372,25 @@ function mesas_armado_obtener_filas_para_validar(PDO $pdo): array
             ON p.id_previa = me.id_previa
         LEFT JOIN catedras cat
             ON cat.id_catedra = me.id_catedra
+        LEFT JOIN catedras_docentes cd
+            ON cd.id_catedra = cat.id_catedra
+           AND cd.activo = 1
+           AND cd.id_catedra_docente = (
+                SELECT cd3.id_catedra_docente
+                FROM catedras_docentes cd3
+                LEFT JOIN docentes d3 ON d3.id_docente = cd3.id_docente
+                LEFT JOIN cargos cargo3 ON cargo3.id_cargo = cd3.id_cargo
+                WHERE cd3.id_catedra = cat.id_catedra
+                  AND cd3.activo = 1
+                ORDER BY
+                    CASE
+                        WHEN d3.activo = 1 AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 1
+                        ELSE 2
+                    END ASC,
+                    cd3.id_catedra_docente ASC
+                LIMIT 1
+           )
         LEFT JOIN materias mat
             ON mat.id_materia = COALESCE(cat.id_materia, p.id_materia)
         LEFT JOIN docentes doc
