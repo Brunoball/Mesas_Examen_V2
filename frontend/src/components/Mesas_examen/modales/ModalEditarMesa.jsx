@@ -337,9 +337,9 @@ const CalendarMesa = ({ fechaSeleccionada, idTurno, slotsDisponibles = [], carga
           const activo = ymd === ymdSeleccionado;
           const slotsDelDia = slotsPorFecha.get(ymd) || [];
           const slotTurnoActual = slotsPorFechaTurno.get(claveSlot(ymd, idTurno));
-          const slotDisponible = slotsDelDia.find((slot) => !!slot?.valido) || null;
+          const slotDisponible = slotsDelDia.find((slot) => !!slot?.valido || !!slot?.es_actual) || null;
           const disponible = !!slotDisponible;
-          const turnoActualDisponible = !!slotTurnoActual?.valido;
+          const turnoActualDisponible = !!slotTurnoActual?.valido || !!slotTurnoActual?.es_actual;
           const bloqueado = weekend || cargandoSlots || !disponible;
           const erroresDia = slotsDelDia
             .flatMap((slot) => Array.isArray(slot?.errores) ? slot.errores : [])
@@ -449,11 +449,16 @@ const SlotNumero = ({
   );
 };
 
-const SlotVacio = ({ onClick, esExtraLibre = false, eliminando = false, onEliminarSlot }) => (
+const SlotVacio = ({ onClick, esExtraLibre = false, eliminando = false, onEliminarSlot, deshabilitado = false }) => (
   <div className={`editar-mesa-slot-empty ${esExtraLibre ? "editar-mesa-slot-empty-extra" : ""}`}>
-    <button type="button" className="editar-mesa-slot-empty-main" onClick={onClick}>
+    <button
+      type="button"
+      className="editar-mesa-slot-empty-main"
+      onClick={() => !deshabilitado && onClick?.()}
+      disabled={deshabilitado}
+    >
       <FontAwesomeIcon icon={faPlus} />
-      <span>Agregar número</span>
+      <span>{deshabilitado ? "Guardando slot..." : "Agregar número"}</span>
     </button>
 
     {esExtraLibre && typeof onEliminarSlot === "function" && (
@@ -586,7 +591,7 @@ const ModalEditarMesa = ({
 
   const slotsValidos = useMemo(() => {
     const lista = Array.isArray(slotsDisponibles?.slots) ? slotsDisponibles.slots : [];
-    return lista.filter((slot) => slot?.valido);
+    return lista.filter((slot) => slot?.valido || slot?.es_actual);
   }, [slotsDisponibles]);
 
   const turnosValidosPorFecha = useMemo(() => {
@@ -616,10 +621,21 @@ const ModalEditarMesa = ({
   const opcionesHoras = useMemo(() => generarOpcionesHoras(rangoHorario), [rangoHorario]);
   const opcionesMinutos = useMemo(() => generarOpcionesMinutos(rangoHorario, partesHora.hora), [rangoHorario, partesHora.hora]);
 
+  const slotSeleccionadoBackend = useMemo(() => {
+    const lista = Array.isArray(slotsDisponibles?.slots) ? slotsDisponibles.slots : [];
+    if (!fechaMesa || !idTurno) return null;
+    return lista.find((slot) => normalizarFechaInput(slot.fecha_mesa) === fechaMesa && String(slot.id_turno) === String(idTurno)) || null;
+  }, [slotsDisponibles, fechaMesa, idTurno]);
+
   const slotSeleccionadoValido = useMemo(() => {
     if (!fechaMesa || !idTurno) return false;
-    return slotsValidos.some((slot) => normalizarFechaInput(slot.fecha_mesa) === fechaMesa && String(slot.id_turno) === String(idTurno));
-  }, [slotsValidos, fechaMesa, idTurno]);
+    return !!slotSeleccionadoBackend?.valido || !!slotSeleccionadoBackend?.es_actual;
+  }, [slotSeleccionadoBackend, fechaMesa, idTurno]);
+
+  const erroresSlotSeleccionado = useMemo(() => {
+    const errores = Array.isArray(slotSeleccionadoBackend?.errores) ? slotSeleccionadoBackend.errores : [];
+    return errores.filter(Boolean);
+  }, [slotSeleccionadoBackend]);
 
   const cargarSlotsMes = useCallback(({ anio, mes }) => {
     if (!grupo || typeof onLoadSlots !== "function") return;
@@ -841,13 +857,17 @@ const ModalEditarMesa = ({
 
                 {!cargandoSlots && slotsDisponibles && slotsValidos.length === 0 && (
                   <div className="editar-mesa-disponibilidad-error">
-                    No hay fechas/turnos válidos en este mes para esta mesa.
+                    {erroresSlotSeleccionado.length > 0
+                      ? `El horario actual no está habilitado: ${erroresSlotSeleccionado.join(" | ")}`
+                      : "No hay fechas/turnos válidos en este mes para esta mesa."}
                   </div>
                 )}
 
                 {!cargandoSlots && fechaMesa && idTurno && !slotSeleccionadoValido && slotsValidos.length > 0 && (
                   <div className="editar-mesa-disponibilidad-error">
-                    Esa fecha y turno no está disponible para esta mesa.
+                    {erroresSlotSeleccionado.length > 0
+                      ? `Esa fecha y turno no está disponible: ${erroresSlotSeleccionado.join(" | ")}`
+                      : "Esa fecha y turno no está disponible para esta mesa."}
                   </div>
                 )}
               </div>
@@ -910,8 +930,8 @@ const ModalEditarMesa = ({
                     </button>
 
                     <div className="editar-mesa-no-agrupada-nota">
-                      El sistema valida antes de crear: disponibilidad docente, bloqueos, choque de alumnos,
-                      choque docente y correlativas.
+                      El sistema valida antes de crear: disponibilidad docente, bloqueos, choques de alumnos,
+                      conflictos docentes reales y correlativas.
                     </div>
                   </div>
                 ) : (
@@ -960,6 +980,7 @@ const ModalEditarMesa = ({
                             key={`vacio-${index}`}
                             esExtraLibre={slotsExtraLibres > 0 && index >= capacidadSlots - slotsExtraLibres}
                             eliminando={!!agregarNumero.eliminandoSlotExtra}
+                            deshabilitado={!!agregarNumero.habilitandoSlotExtra}
                             onEliminarSlot={handleEliminarSlotExtra}
                             onClick={() => agregarNumero.abrirAgregarNumeroGrupo && agregarNumero.abrirAgregarNumeroGrupo(grupo)}
                           />

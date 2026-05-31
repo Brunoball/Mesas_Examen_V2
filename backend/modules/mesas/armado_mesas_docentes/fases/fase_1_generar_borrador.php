@@ -53,6 +53,10 @@ function mesas_armado_docentes_crear(): void
         $pdo->beginTransaction();
 
         if ($limpiarBorrador) {
+            if (function_exists('mesas_notificaciones_cleanup_todo')) {
+                mesas_notificaciones_cleanup_todo($pdo);
+            }
+
             if (function_exists('mesas_armado_docentes_grupos_asegurar_tablas')) {
                 $pdo->exec('DELETE FROM mesas_no_agrupadas');
                 $pdo->exec('DELETE FROM mesas_grupos');

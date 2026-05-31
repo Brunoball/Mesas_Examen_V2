@@ -184,6 +184,22 @@
   opacity: 0.55;
 }
 
+.mas-footer-count{
+  margin-right:auto;
+  align-self:center;
+  color:rgba(58,46,43,.68);
+  font-size:13px;
+  font-weight:650;
+}
+
+@media (max-width:720px){
+  .mas-footer-count{
+    width:100%;
+    margin-right:0;
+    text-align:center;
+  }
+}
+
 @media (max-width: 720px) {
   .mas-modal-overlay {
     padding: 10px;

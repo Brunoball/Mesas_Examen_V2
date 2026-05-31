@@ -142,6 +142,8 @@ function mesas_historial_listar(): void
                 "COALESCE(d.estado, '')",
                 "COALESCE(d.observacion, '')",
                 "COALESCE(t_det.turno, '')",
+                "CAST(d.nota AS CHAR)",
+                "DATE_FORMAT(d.fecha_nota, '%d/%m/%Y')",
                 "CAST(d.numero_mesa AS CHAR)",
                 "CAST(d.numero_grupo AS CHAR)",
                 "DATE_FORMAT(d.fecha_mesa, '%d/%m/%Y')",
@@ -183,10 +185,12 @@ function mesas_historial_listar(): void
         $stmtArmados->execute($paramsArmados);
         $armados = $stmtArmados->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
+        // El resumen visible del historial se calcula desde la foto de los armados guardados.
+        // Así las notas solo cuentan cuando pertenecen a un armado histórico real.
         $resumen = [
-            'total_resultados' => (int)$pdo->query('SELECT COUNT(*) FROM historial_previas_resultados')->fetchColumn(),
-            'total_aprobadas' => (int)$pdo->query('SELECT COUNT(*) FROM historial_previas_resultados WHERE aprobado = 1')->fetchColumn(),
-            'total_desaprobadas' => (int)$pdo->query('SELECT COUNT(*) FROM historial_previas_resultados WHERE aprobado = 0')->fetchColumn(),
+            'total_resultados' => (int)$pdo->query('SELECT COUNT(*) FROM historial_mesas_detalle WHERE nota IS NOT NULL AND nota > 0')->fetchColumn(),
+            'total_aprobadas' => (int)$pdo->query('SELECT COUNT(*) FROM historial_mesas_detalle WHERE nota IS NOT NULL AND nota >= 7')->fetchColumn(),
+            'total_desaprobadas' => (int)$pdo->query('SELECT COUNT(*) FROM historial_mesas_detalle WHERE nota IS NOT NULL AND nota > 0 AND nota < 7')->fetchColumn(),
             'total_armados' => (int)$pdo->query('SELECT COUNT(*) FROM historial_mesas_armados')->fetchColumn(),
         ];
 

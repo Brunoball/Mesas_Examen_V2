@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../../config/env.php';
 require_once __DIR__ . '/../../../core/helpers.php';
 require_once __DIR__ . '/../../../core/auth.php';
 require_once __DIR__ . '/../../formulario/formulario_helpers.php';
+require_once __DIR__ . '/notificaciones_email_cleanup.php';
 
 function mesas_notificaciones_pdo(): PDO
 {
@@ -135,6 +136,23 @@ function mesas_notificaciones_hora_texto(?string $hora, ?string $turno = ''): st
 function mesas_notificaciones_sync_detalle(PDO $pdo): void
 {
     try {
+        // Si una mesa ya no existe (por eliminación/rearmado), su inscripción no debe seguir
+        // apareciendo como notificada. Limpiamos esas asignaciones huérfanas antes de sincronizar.
+        if (function_exists('mesas_notificaciones_cleanup_por_previas')) {
+            $idsHuerfanas = $pdo->query("
+                SELECT DISTINCT fid.id_previa
+                  FROM formulario_inscripciones_detalle fid
+                  LEFT JOIN mesas m ON m.id_previa = fid.id_previa
+                 WHERE fid.estado <> 'anulada'
+                   AND fid.numero_mesa IS NOT NULL
+                   AND m.id_mesa IS NULL
+            ")->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
+            if ($idsHuerfanas) {
+                mesas_notificaciones_cleanup_por_previas($pdo, array_map('intval', $idsHuerfanas), true);
+            }
+        }
+
         $pdo->exec("\n            UPDATE formulario_inscripciones_detalle fid\n            INNER JOIN mesas m ON m.id_previa = fid.id_previa\n            LEFT JOIN turnos t ON t.id_turno = m.id_turno\n            LEFT JOIN mesas_grupos mg ON mg.numero_mesa = m.numero_mesa\n            SET fid.fecha_mesa = m.fecha_mesa,\n                fid.id_turno = m.id_turno,\n                fid.turno_nombre = t.turno,\n                fid.numero_mesa = m.numero_mesa,\n                fid.numero_grupo = mg.numero_grupo,\n                fid.estado = CASE\n                    WHEN fid.email_mesa_enviado = 1 THEN 'notificada'\n                    WHEN m.fecha_mesa IS NOT NULL AND m.id_turno IS NOT NULL THEN 'mesa_asignada'\n                    ELSE fid.estado\n                END\n            WHERE fid.estado <> 'anulada'\n        ");
     } catch (Throwable $e) {
         if (function_exists('log_error')) log_error($e, 'mesas_notificaciones:sync_detalle');

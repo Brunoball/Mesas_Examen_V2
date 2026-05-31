@@ -6,6 +6,11 @@ require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/helpers.php';
 require_once __DIR__ . '/../formulario/formulario_helpers.php';
 
+$previasNotificacionesCleanup = __DIR__ . '/../mesas/notificaciones_email/notificaciones_email_cleanup.php';
+if (is_file($previasNotificacionesCleanup)) {
+    require_once $previasNotificacionesCleanup;
+}
+
 function previas_int($value): int
 {
     return is_numeric($value) ? (int)$value : 0;
@@ -1325,6 +1330,195 @@ function previas_obtener_vinculos_eliminacion(PDO $pdo, array $ids): array
     ];
 }
 
+
+function previas_obtener_numeros_grupos_actuales(PDO $pdo, array $ids): array
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn($id) => $id > 0)));
+    if (count($ids) === 0 || !previas_tabla_existe($pdo, 'mesas') || !previas_columna_existe($pdo, 'mesas', 'id_previa')) {
+        return [
+            'numeros_mesa' => [],
+            'numeros_grupo' => [],
+        ];
+    }
+
+    [$placeholders, $params] = previas_placeholders_ids($ids, ':previa_ctx');
+    $sql = "
+        SELECT DISTINCT
+            m.numero_mesa,
+            g.numero_grupo
+        FROM mesas m
+        LEFT JOIN mesas_grupos g ON g.numero_mesa = m.numero_mesa
+        WHERE m.id_previa IN (" . implode(',', $placeholders) . ")
+          AND m.numero_mesa IS NOT NULL
+    ";
+
+    $stmt = $pdo->prepare($sql);
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value, PDO::PARAM_INT);
+    }
+    $stmt->execute();
+
+    $numerosMesa = [];
+    $numerosGrupo = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+        $numeroMesa = (int)($row['numero_mesa'] ?? 0);
+        $numeroGrupo = (int)($row['numero_grupo'] ?? 0);
+        if ($numeroMesa > 0) {
+            $numerosMesa[$numeroMesa] = $numeroMesa;
+        }
+        if ($numeroGrupo > 0) {
+            $numerosGrupo[$numeroGrupo] = $numeroGrupo;
+        }
+    }
+
+    return [
+        'numeros_mesa' => array_values($numerosMesa),
+        'numeros_grupo' => array_values($numerosGrupo),
+    ];
+}
+
+function previas_eliminar_filas_mesas_actuales(PDO $pdo, array $ids): int
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn($id) => $id > 0)));
+    if (count($ids) === 0 || !previas_tabla_existe($pdo, 'mesas') || !previas_columna_existe($pdo, 'mesas', 'id_previa')) {
+        return 0;
+    }
+
+    [$placeholders, $params] = previas_placeholders_ids($ids, ':previa_del_mesa');
+    $stmt = $pdo->prepare('DELETE FROM mesas WHERE id_previa IN (' . implode(',', $placeholders) . ')');
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value, PDO::PARAM_INT);
+    }
+    $stmt->execute();
+
+    return $stmt->rowCount();
+}
+
+function previas_reordenar_grupo_mesas(PDO $pdo, int $numeroGrupo): void
+{
+    if ($numeroGrupo <= 0 || !previas_tabla_existe($pdo, 'mesas_grupos')) {
+        return;
+    }
+
+    $stmt = $pdo->prepare('
+        SELECT id_mesa_grupo
+        FROM mesas_grupos
+        WHERE numero_grupo = :numero_grupo
+        ORDER BY orden ASC, numero_mesa ASC, id_mesa_grupo ASC
+    ');
+    $stmt->execute([':numero_grupo' => $numeroGrupo]);
+    $ids = array_values(array_filter(array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [])));
+
+    if (!$ids) {
+        return;
+    }
+
+    $upd = $pdo->prepare('UPDATE mesas_grupos SET orden = :orden WHERE id_mesa_grupo = :id LIMIT 1');
+    $orden = 1;
+    foreach ($ids as $id) {
+        $upd->execute([
+            ':orden' => $orden,
+            ':id' => $id,
+        ]);
+        $orden++;
+    }
+}
+
+function previas_recalcular_numeros_mesa_actuales(PDO $pdo, array $numerosMesa, array $numerosGrupo = []): array
+{
+    $numerosMesa = array_values(array_unique(array_filter(array_map('intval', $numerosMesa), static fn($n) => $n > 0)));
+    $numerosGrupo = array_values(array_unique(array_filter(array_map('intval', $numerosGrupo), static fn($n) => $n > 0)));
+
+    $resultado = [
+        'numeros_revisados' => count($numerosMesa),
+        'numeros_eliminados' => 0,
+        'numeros_actualizados' => 0,
+        'filas_huerfanas_eliminadas' => 0,
+        'grupos_vacios_limpiados' => 0,
+    ];
+
+    if (!$numerosMesa || !previas_tabla_existe($pdo, 'mesas')) {
+        return $resultado;
+    }
+
+    $stmtCantidad = $pdo->prepare('SELECT COUNT(DISTINCT id_previa) FROM mesas WHERE numero_mesa = :numero_mesa AND id_previa IS NOT NULL');
+    $stmtDelHuerfanas = $pdo->prepare('DELETE FROM mesas WHERE numero_mesa = :numero_mesa AND id_previa IS NULL');
+    $stmtDelMesasNumero = $pdo->prepare('DELETE FROM mesas WHERE numero_mesa = :numero_mesa');
+    $stmtDelGrupo = previas_tabla_existe($pdo, 'mesas_grupos')
+        ? $pdo->prepare('DELETE FROM mesas_grupos WHERE numero_mesa = :numero_mesa')
+        : null;
+    $stmtUpdGrupo = previas_tabla_existe($pdo, 'mesas_grupos')
+        ? $pdo->prepare('UPDATE mesas_grupos SET cantidad_alumnos = :cantidad WHERE numero_mesa = :numero_mesa')
+        : null;
+    $stmtDelNoAgrupada = previas_tabla_existe($pdo, 'mesas_no_agrupadas')
+        ? $pdo->prepare('DELETE FROM mesas_no_agrupadas WHERE numero_mesa = :numero_mesa')
+        : null;
+    $stmtUpdNoAgrupada = previas_tabla_existe($pdo, 'mesas_no_agrupadas')
+        ? $pdo->prepare('UPDATE mesas_no_agrupadas SET cantidad_alumnos = :cantidad WHERE numero_mesa = :numero_mesa')
+        : null;
+
+    foreach ($numerosMesa as $numeroMesa) {
+        $stmtCantidad->execute([':numero_mesa' => $numeroMesa]);
+        $cantidad = (int)$stmtCantidad->fetchColumn();
+
+        if ($cantidad <= 0) {
+            $stmtDelMesasNumero->execute([':numero_mesa' => $numeroMesa]);
+            $resultado['filas_huerfanas_eliminadas'] += $stmtDelMesasNumero->rowCount();
+
+            if ($stmtDelGrupo) {
+                $stmtDelGrupo->execute([':numero_mesa' => $numeroMesa]);
+            }
+            if ($stmtDelNoAgrupada) {
+                $stmtDelNoAgrupada->execute([':numero_mesa' => $numeroMesa]);
+            }
+
+            $resultado['numeros_eliminados']++;
+            continue;
+        }
+
+        $stmtDelHuerfanas->execute([':numero_mesa' => $numeroMesa]);
+        $resultado['filas_huerfanas_eliminadas'] += $stmtDelHuerfanas->rowCount();
+
+        if ($stmtUpdGrupo) {
+            $stmtUpdGrupo->execute([
+                ':cantidad' => $cantidad,
+                ':numero_mesa' => $numeroMesa,
+            ]);
+        }
+        if ($stmtUpdNoAgrupada) {
+            $stmtUpdNoAgrupada->execute([
+                ':cantidad' => $cantidad,
+                ':numero_mesa' => $numeroMesa,
+            ]);
+        }
+
+        $resultado['numeros_actualizados']++;
+    }
+
+    if ($numerosGrupo && previas_tabla_existe($pdo, 'mesas_grupos')) {
+        $stmtGrupoTieneMesas = $pdo->prepare('SELECT COUNT(*) FROM mesas_grupos WHERE numero_grupo = :numero_grupo');
+        $stmtDelSlots = previas_tabla_existe($pdo, 'mesas_grupos_slots_extra')
+            ? $pdo->prepare('DELETE FROM mesas_grupos_slots_extra WHERE numero_grupo = :numero_grupo')
+            : null;
+
+        foreach ($numerosGrupo as $numeroGrupo) {
+            $stmtGrupoTieneMesas->execute([':numero_grupo' => $numeroGrupo]);
+            $cantidadGrupo = (int)$stmtGrupoTieneMesas->fetchColumn();
+
+            if ($cantidadGrupo <= 0) {
+                if ($stmtDelSlots) {
+                    $stmtDelSlots->execute([':numero_grupo' => $numeroGrupo]);
+                }
+                $resultado['grupos_vacios_limpiados']++;
+            } else {
+                previas_reordenar_grupo_mesas($pdo, $numeroGrupo);
+            }
+        }
+    }
+
+    return $resultado;
+}
+
 function previas_verificar_eliminacion(): void
 {
     $pdo = db();
@@ -1434,6 +1628,22 @@ function previas_eliminar(): void
             ], 409);
         }
 
+        $pdo->beginTransaction();
+
+        $contextoMesas = previas_obtener_numeros_grupos_actuales($pdo, $ids);
+        $numerosMesaAfectados = $contextoMesas['numeros_mesa'] ?? [];
+        $numerosGrupoAfectados = $contextoMesas['numeros_grupo'] ?? [];
+
+        $cleanupNotificaciones = function_exists('mesas_notificaciones_cleanup_por_previas')
+            ? mesas_notificaciones_cleanup_por_previas($pdo, $ids, true)
+            : null;
+
+        // Evita que el FK ON DELETE SET NULL deje filas de mesas sin alumno.
+        // Si el número de mesa tenía solamente esta previa, se elimina también el número/grupo.
+        // Si tenía más previas, solo se saca esta previa y se actualiza la cantidad de alumnos.
+        $filasMesasEliminadas = previas_eliminar_filas_mesas_actuales($pdo, $ids);
+        $cleanupMesas = previas_recalcular_numeros_mesa_actuales($pdo, $numerosMesaAfectados, $numerosGrupoAfectados);
+
         [$placeholders, $params] = previas_placeholders_ids($ids);
 
         $stmt = $pdo->prepare('DELETE FROM previas WHERE id_previa IN (' . implode(',', $placeholders) . ')');
@@ -1442,6 +1652,8 @@ function previas_eliminar(): void
         }
         $stmt->execute();
 
+        $pdo->commit();
+
         json_response([
             'exito' => true,
             'mensaje' => 'Previa eliminada correctamente.',
@@ -1449,15 +1661,26 @@ function previas_eliminar(): void
                 'eliminadas' => $stmt->rowCount(),
                 'eliminacion_forzada' => $forzar && $vinculos['vinculada'],
                 'vinculos_detectados' => $vinculos,
+                'mesas_actuales_limpiadas' => [
+                    'filas_mesas_eliminadas' => $filasMesasEliminadas,
+                    'numeros_mesa_afectados' => $numerosMesaAfectados,
+                    'numeros_grupo_afectados' => $numerosGrupoAfectados,
+                    'resultado' => $cleanupMesas,
+                ],
+                'notificaciones_limpiadas' => $cleanupNotificaciones,
             ],
         ]);
     } catch (PDOException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
         log_error($e, __FUNCTION__);
 
         if ($e->getCode() === '23000') {
             json_response([
                 'exito' => false,
-                'mensaje' => 'No se puede eliminar la previa porque ya está relacionada con una mesa de examen. Podés darla de baja.',
+                'mensaje' => 'No se puede eliminar la previa porque ya está relacionada con otra información sensible. Podés darla de baja.',
             ], 409);
         }
 
@@ -1466,6 +1689,10 @@ function previas_eliminar(): void
             'mensaje' => 'No se pudo eliminar la previa.',
         ], 500);
     } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
         log_error($e, __FUNCTION__);
         json_response([
             'exito' => false,

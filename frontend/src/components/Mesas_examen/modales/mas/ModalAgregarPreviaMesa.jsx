@@ -116,9 +116,10 @@ const ModalAgregarPreviaMesa = ({
   agregando = false,
   onClose,
   onConfirm,
+  error = "",
 }) => {
   const [busqueda, setBusqueda] = useState("");
-  const [previaSeleccionada, setPreviaSeleccionada] = useState(null);
+  const [previasSeleccionadas, setPreviasSeleccionadas] = useState([]);
   const overlayRef = useEscapeClose(abierto, onClose, agregando);
 
   const previas = useMemo(() => {
@@ -127,8 +128,12 @@ const ModalAgregarPreviaMesa = ({
   }, [data, busqueda]);
 
   useEffect(() => {
-    setPreviaSeleccionada(null);
+    setPreviasSeleccionadas([]);
   }, [data?.numero_mesa, data?.cantidad]);
+
+  const idsSeleccionados = useMemo(() => {
+    return new Set(previasSeleccionadas.map((previa) => String(previa?.id_previa)));
+  }, [previasSeleccionadas]);
 
   if (!abierto) return null;
 
@@ -138,8 +143,8 @@ const ModalAgregarPreviaMesa = ({
   const numeroMesa = obtenerNumero(numero || data?.meta || data);
 
   const confirmar = () => {
-    if (!previaSeleccionada || agregando || typeof onConfirm !== "function") return;
-    onConfirm(previaSeleccionada);
+    if (previasSeleccionadas.length === 0 || agregando || typeof onConfirm !== "function") return;
+    onConfirm(previasSeleccionadas);
   };
 
   const columns = [
@@ -187,11 +192,15 @@ const ModalAgregarPreviaMesa = ({
           </div>
 
 
+          {error && !cargando && (
+            <div className="mas-alerta-error" role="alert">{error}</div>
+          )}
+
           {cargando ? (
             <MasTableSkeleton columns={columns} gridCols={MAS_GRID_COLS} rows={4} />
           ) : (previas.length === 0 ? (
             <div className="mas-empty">
-              {data?.mensaje_restriccion || "No hay previas sin mesa disponibles para este mismo docente, área, fecha y turno."}
+              {data?.mensaje_restriccion || "No hay previas sin mesa disponibles para este mismo docente, fecha y turno según el criterio del armado actual."}
             </div>
           ) : (
             <div className="mas-tabla-wrap">
@@ -199,9 +208,14 @@ const ModalAgregarPreviaMesa = ({
                 <GridHead columns={columns} gridCols={MAS_GRID_COLS} />
                 <div className="mas-grid-body" role="rowgroup">
                   {previas.map((previa) => {
-                    const activa = String(previaSeleccionada?.id_previa) === String(previa.id_previa);
+                    const activa = idsSeleccionados.has(String(previa.id_previa));
                     const seleccionarPrevia = () => {
-                      setPreviaSeleccionada((actual) => (String(actual?.id_previa) === String(previa.id_previa) ? null : previa));
+                      setPreviasSeleccionadas((actuales) => {
+                        const yaSeleccionada = actuales.some((actual) => String(actual?.id_previa) === String(previa.id_previa));
+                        return yaSeleccionada
+                          ? actuales.filter((actual) => String(actual?.id_previa) !== String(previa.id_previa))
+                          : [...actuales, previa];
+                      });
                     };
 
                     return (
@@ -256,6 +270,13 @@ const ModalAgregarPreviaMesa = ({
         </section>
 
         <footer className="mas-modal-footer">
+          <span className="mas-footer-count">
+            {previasSeleccionadas.length === 0
+              ? "Ninguna previa seleccionada"
+              : previasSeleccionadas.length === 1
+                ? "1 previa seleccionada"
+                : `${previasSeleccionadas.length} previas seleccionadas`}
+          </span>
           <button type="button" className="mas-btn cancelar mesa-submodal-footer-close" onClick={onClose} disabled={agregando}>
             Cerrar
           </button>
@@ -263,10 +284,10 @@ const ModalAgregarPreviaMesa = ({
             type="button"
             className="mas-btn confirmar"
             onClick={confirmar}
-            disabled={agregando || cargando || !previaSeleccionada}
+            disabled={agregando || cargando || previasSeleccionadas.length === 0}
           >
             <FontAwesomeIcon icon={agregando ? faSpinner : faPlus} spin={agregando} />
-            Agregar previa
+            {previasSeleccionadas.length <= 1 ? "Agregar previa" : `Agregar ${previasSeleccionadas.length} previas`}
           </button>
         </footer>
       </div>

@@ -928,6 +928,10 @@ const HistorialMesasPanel = ({ historial, busqueda = "", terminosBusqueda = [] }
   const resumen = historial?.resumen || {};
   const detalle = historial?.detalleArmado || null;
   const detalleFilas = Array.isArray(detalle?.detalle) ? detalle.detalle : [];
+  const detalleNotas = detalleFilas.filter((item) => {
+    const nota = String(item?.nota ?? "").trim();
+    return nota !== "" && Number(item?.nota) > 0;
+  });
   const filasHistorialRefs = useRef({});
   const hayBusquedaHistorial = String(busqueda || "").trim() !== "";
 
@@ -944,13 +948,11 @@ const HistorialMesasPanel = ({ historial, busqueda = "", terminosBusqueda = [] }
   useEffect(() => {
     if (!hayBusquedaHistorial || historial?.cargando) return undefined;
 
-    const clavePrimerResultado = resultados[0]?.id_resultado
-      ? `resultado-${resultados[0].id_resultado}`
-      : armados[0]?.id_armado_historial
-        ? `armado-${armados[0].id_armado_historial}`
-        : detalleFilas[0]?.id_historial_detalle
-          ? `detalle-${detalleFilas[0].id_historial_detalle}`
-          : "";
+    const clavePrimerResultado = armados[0]?.id_armado_historial
+      ? `armado-${armados[0].id_armado_historial}`
+      : detalleFilas[0]?.id_historial_detalle
+        ? `detalle-${detalleFilas[0].id_historial_detalle}`
+        : "";
 
     if (!clavePrimerResultado) return undefined;
 
@@ -971,7 +973,7 @@ const HistorialMesasPanel = ({ historial, busqueda = "", terminosBusqueda = [] }
       key: "resultados",
       titulo: "Resultados",
       valor: resumen.total_resultados ?? resultados.length,
-      detalle: "notas registradas",
+      detalle: "notas en armados",
       icono: faChartLine,
       tono: "blue",
     },
@@ -1025,96 +1027,6 @@ const HistorialMesasPanel = ({ historial, busqueda = "", terminosBusqueda = [] }
         </div>
       ) : (
         <>
-          <section className="mesas-historial-section mov-card mov-card--table">
-            <div className="mesas-historial-sectionTitle mesas-historial-sectionTitle--withIndicators">
-              <h4>Historial de notas y previas</h4>
-
-              <div className="mesas-historial-indicadores" aria-label="Indicadores de resultado">
-                <span className="mesas-historial-indicador mesas-historial-indicador--approved">
-                  <span className="mesas-historial-indicador__dot" aria-hidden="true" />
-                  Aprobó
-                </span>
-                <span className="mesas-historial-indicador mesas-historial-indicador--pending">
-                  <span className="mesas-historial-indicador__dot" aria-hidden="true" />
-                  No aprobó
-                </span>
-              </div>
-            </div>
-
-            {resultados.length === 0 ? (
-              <div className="cc-emptyState mesas-empty mesas-historial-empty">
-                <div className="cc-emptyText">Todavía no hay notas cargadas en el historial.</div>
-              </div>
-            ) : (
-              <>
-                <div className="mesas-historial-divTable global-divTable" role="table" aria-label="Historial de notas y previas">
-                  <HistorialGridHead columns={HISTORIAL_RESULTADOS_COLUMNS} gridCols={HISTORIAL_RESULTADOS_GRID_COLS} />
-
-                  <div className="mesas-historial-tableWrap mov-tableWrap global-divTable__wrap" role="rowgroup">
-                    <div className="mov-gridBody global-divTable__body mesas-historial-gridBody">
-                      {resultados.map((item) => {
-                        const aprobado = Number(item.aprobado) === 1;
-                        const claveFila = `resultado-${item.id_resultado}`;
-                        return (
-                          <div
-                            key={claveFila}
-                            ref={(node) => registrarFilaHistorial(claveFila, node)}
-                            className={[
-                              "mov-gridTable",
-                              "mov-gridTable--row",
-                              "global-divTable__row",
-                              "mesas-historial-gridRow",
-                              "mesas-historial-gridRow--resultado",
-                              aprobado ? "is-approved" : "is-pending",
-                            ].join(" ")}
-                            style={{ gridTemplateColumns: HISTORIAL_RESULTADOS_GRID_COLS }}
-                            role="row"
-                            data-mesas-search-result={terminosBusqueda.length > 0 ? "true" : undefined}
-                          >
-                            <div className="mov-gridCell" role="cell" data-label="Fecha nota">
-                              <ResaltarBusqueda value={item.fecha_nota_texto || item.fecha_nota} terminos={terminosBusqueda} />
-                            </div>
-                            <div className="mov-gridCell is-strong" role="cell" data-label="Alumno" title={textoCorto(item.alumno)}>
-                              <ResaltarBusqueda value={item.alumno} terminos={terminosBusqueda} />
-                            </div>
-                            <div className="mov-gridCell is-center" role="cell" data-label="DNI"><ResaltarBusqueda value={item.dni} terminos={terminosBusqueda} /></div>
-                            <div className="mov-gridCell" role="cell" data-label="Materia" title={textoCorto(item.materia)}>
-                              <ResaltarBusqueda value={item.materia} terminos={terminosBusqueda} />
-                            </div>
-                            <div className="mov-gridCell" role="cell" data-label="Mesa">
-                              <div className="mesas-historial-stack">
-                                <span className="mesas-historial-chip">N° <ResaltarBusqueda value={item.numero_mesa} terminos={terminosBusqueda} /></span>
-                                {item.numero_grupo && <small>Grupo <ResaltarBusqueda value={item.numero_grupo} terminos={terminosBusqueda} /></small>}
-                                {item.fecha_mesa_texto && <small><ResaltarBusqueda value={item.fecha_mesa_texto} terminos={terminosBusqueda} /></small>}
-                              </div>
-                            </div>
-                            <div className="mov-gridCell" role="cell" data-label="Docente" title={textoCorto(item.docente)}>
-                              <ResaltarBusqueda value={item.docente} terminos={terminosBusqueda} />
-                            </div>
-                            <div className="mov-gridCell is-center" role="cell" data-label="Nota">
-                              <strong className="mesas-historial-nota">{item.nota}</strong>
-                            </div>
-                            <div className="mov-gridCell mesas-historial-descriptionCell" role="cell" data-label="Motivo">
-                              <HistorialDescripcionExpandible
-                                value={item.descripcion || item.motivo}
-                                title="Descripción completa"
-                                subtitle={`Historial de ${textoCorto(item.alumno, "alumno")}`}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mesas-recordsFoot mesas-historial-countFoot">
-                  <b>{resultados.length}</b> registros visibles
-                </div>
-              </>
-            )}
-          </section>
-
           <section className="mesas-historial-section mov-card mov-card--table">
             <div className="mesas-historial-sectionTitle">
               <h4>Historial de armados eliminados</h4>
@@ -1203,7 +1115,125 @@ const HistorialMesasPanel = ({ historial, busqueda = "", terminosBusqueda = [] }
                 </div>
               ) : (
                 <>
-                  <div className="mesas-historial-divTable global-divTable" role="table" aria-label="Detalle del armado eliminado">
+                  <div className="mesas-historial-armadoMeta" aria-label="Resumen del armado histórico">
+                    <div>
+                      <span>Código</span>
+                      <strong>{textoCorto(detalle.armado?.codigo_armado, "-")}</strong>
+                    </div>
+                    <div>
+                      <span>Guardado</span>
+                      <strong>{textoCorto(detalle.armado?.creado_en_texto || detalle.armado?.creado_en, "-")}</strong>
+                    </div>
+                    <div>
+                      <span>Mesas</span>
+                      <strong>{Number(detalle.armado?.total_mesas || 0).toLocaleString("es-AR")}</strong>
+                    </div>
+                    <div>
+                      <span>Notas</span>
+                      <strong>{Number(detalleNotas.length || 0).toLocaleString("es-AR")}</strong>
+                    </div>
+                  </div>
+
+                  <div className="mesas-historial-subsection">
+                    <div className="mesas-historial-subtitle mesas-historial-sectionTitle--withIndicators">
+                      <h5>Notas registradas en este armado</h5>
+                      <div className="mesas-historial-indicadores" aria-label="Indicadores de resultado">
+                        <span className="mesas-historial-indicador mesas-historial-indicador--approved">
+                          <span className="mesas-historial-indicador__dot" aria-hidden="true" />
+                          Aprobó
+                        </span>
+                        <span className="mesas-historial-indicador mesas-historial-indicador--pending">
+                          <span className="mesas-historial-indicador__dot" aria-hidden="true" />
+                          No aprobó
+                        </span>
+                      </div>
+                    </div>
+
+                    {detalleNotas.length === 0 ? (
+                      <div className="cc-emptyState mesas-empty mesas-historial-empty mesas-historial-empty--compact">
+                        <div className="cc-emptyText">Este armado no tiene notas cargadas.</div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="mesas-historial-divTable global-divTable" role="table" aria-label="Notas registradas en este armado">
+                          <HistorialGridHead columns={HISTORIAL_RESULTADOS_COLUMNS} gridCols={HISTORIAL_RESULTADOS_GRID_COLS} />
+
+                          <div className="mesas-historial-tableWrap mov-tableWrap global-divTable__wrap" role="rowgroup">
+                            <div className="mov-gridBody global-divTable__body mesas-historial-gridBody">
+                              {detalleNotas.map((item) => {
+                                const notaNumerica = Number(item.nota || 0);
+                                const aprobado = notaNumerica >= 7;
+                                const claveFila = `nota-${item.id_historial_detalle}`;
+                                const motivoNota = aprobado
+                                  ? "Aprobada en mesa de examen."
+                                  : "Se presentó a rendir, pero no aprobó la previa.";
+
+                                return (
+                                  <div
+                                    key={claveFila}
+                                    ref={(node) => registrarFilaHistorial(claveFila, node)}
+                                    className={[
+                                      "mov-gridTable",
+                                      "mov-gridTable--row",
+                                      "global-divTable__row",
+                                      "mesas-historial-gridRow",
+                                      "mesas-historial-gridRow--resultado",
+                                      aprobado ? "is-approved" : "is-pending",
+                                     ].join(" ")}
+                                    style={{ gridTemplateColumns: HISTORIAL_RESULTADOS_GRID_COLS }}
+                                    role="row"
+                                    data-mesas-search-result={terminosBusqueda.length > 0 ? "true" : undefined}
+                                  >
+                                    <div className="mov-gridCell" role="cell" data-label="Fecha nota">
+                                      <ResaltarBusqueda value={item.fecha_nota_texto || item.fecha_nota || item.fecha_mesa_texto || item.fecha_mesa} terminos={terminosBusqueda} />
+                                    </div>
+                                    <div className="mov-gridCell is-strong" role="cell" data-label="Alumno" title={textoCorto(item.alumno)}>
+                                      <ResaltarBusqueda value={item.alumno} terminos={terminosBusqueda} />
+                                    </div>
+                                    <div className="mov-gridCell is-center" role="cell" data-label="DNI"><ResaltarBusqueda value={item.dni} terminos={terminosBusqueda} /></div>
+                                    <div className="mov-gridCell" role="cell" data-label="Materia" title={textoCorto(item.materia)}>
+                                      <ResaltarBusqueda value={item.materia} terminos={terminosBusqueda} />
+                                    </div>
+                                    <div className="mov-gridCell" role="cell" data-label="Mesa">
+                                      <div className="mesas-historial-stack">
+                                        <span className="mesas-historial-chip">N° <ResaltarBusqueda value={item.numero_mesa} terminos={terminosBusqueda} /></span>
+                                        {item.numero_grupo && <small>Grupo <ResaltarBusqueda value={item.numero_grupo} terminos={terminosBusqueda} /></small>}
+                                        {item.fecha_mesa_texto && <small><ResaltarBusqueda value={item.fecha_mesa_texto} terminos={terminosBusqueda} /></small>}
+                                      </div>
+                                    </div>
+                                    <div className="mov-gridCell" role="cell" data-label="Docente" title={textoCorto(item.docente)}>
+                                      <ResaltarBusqueda value={item.docente} terminos={terminosBusqueda} />
+                                    </div>
+                                    <div className="mov-gridCell is-center" role="cell" data-label="Nota">
+                                      <strong className="mesas-historial-nota">{item.nota}</strong>
+                                    </div>
+                                    <div className="mov-gridCell mesas-historial-descriptionCell" role="cell" data-label="Motivo">
+                                      <HistorialDescripcionExpandible
+                                        value={motivoNota}
+                                        title="Descripción completa"
+                                        subtitle={`Nota de ${textoCorto(item.alumno, "alumno")}`}
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mesas-recordsFoot mesas-historial-countFoot">
+                          <b>{detalleNotas.length}</b> notas registradas en este armado
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="mesas-historial-subsection">
+                    <div className="mesas-historial-subtitle">
+                      <h5>Mesas y previas guardadas del armado</h5>
+                    </div>
+
+                    <div className="mesas-historial-divTable global-divTable" role="table" aria-label="Detalle del armado eliminado">
                     <HistorialGridHead columns={HISTORIAL_DETALLE_COLUMNS} gridCols={HISTORIAL_DETALLE_GRID_COLS} />
 
                     <div className="mesas-historial-tableWrap mov-tableWrap global-divTable__wrap" role="rowgroup">
@@ -1236,8 +1266,9 @@ const HistorialMesasPanel = ({ historial, busqueda = "", terminosBusqueda = [] }
                     </div>
                   </div>
 
-                  <div className="mesas-recordsFoot mesas-historial-countFoot">
-                    <b>{detalleFilas.length}</b> registros guardados del armado final
+                    <div className="mesas-recordsFoot mesas-historial-countFoot">
+                      <b>{detalleFilas.length}</b> registros guardados del armado final
+                    </div>
                   </div>
                 </>
               )}
@@ -1430,8 +1461,7 @@ const MesasExamen = () => {
     setFiltroTurnoMesa("");
   }, []);
 
-  const totalHistorialVisible = (Array.isArray(historial?.resultados) ? historial.resultados.length : 0)
-    + (Array.isArray(historial?.armados) ? historial.armados.length : 0);
+  const totalHistorialVisible = Array.isArray(historial?.armados) ? historial.armados.length : 0;
   const totalVisible = tab === "historial" ? totalHistorialVisible : (Array.isArray(mesasFiltradas) ? mesasFiltradas.length : 0);
   const totalReferencia = tab === "historial" ? totalHistorialVisible : tab === "no-agrupadas" ? totalNoAgrupadas : totalGrupos;
   const hayMesasCreadas = totalGrupos > 0 || totalNoAgrupadas > 0;
@@ -1639,7 +1669,7 @@ const MesasExamen = () => {
   const contenidoEliminarArmado = confirmarSinHistorialArmado ? (
     <div className="mesas-eliminar-historial mesas-eliminar-historial--danger">
       <strong>Vas a eliminar el armado sin guardar historial.</strong>
-      <span>Después no vas a poder recuperar el historial de estas mesas eliminadas desde el historial de armados.</span>
+      <span>No se guardará el armado ni las notas cargadas como historial. Las previas aprobadas seguirán dadas de baja.</span>
     </div>
   ) : (
     <div className="mesas-eliminar-historial">
@@ -1657,7 +1687,7 @@ const MesasExamen = () => {
         </span>
         <span className="mesas-option-check__text">
           <strong>Guardar historial del armado antes de eliminar</strong>
-          <small>Guarda un respaldo de las mesas, grupos, mesas no agrupadas y alumnos vinculados antes de eliminarlos.</small>
+          <small>Guarda un respaldo de las mesas, grupos, mesas no agrupadas, alumnos y notas cargadas antes de eliminarlos.</small>
         </span>
       </label>
     </div>
@@ -2214,8 +2244,8 @@ const MesasExamen = () => {
         }
         warning={
           confirmarSinHistorialArmado
-            ? "Esta acción es irreversible: se borrará el armado actual y no se guardará registro histórico de estas mesas."
-            : "Las notas cargadas se mantienen en el historial de resultados. Elegí abajo si también querés guardar el historial del armado."
+            ? "Esta acción es irreversible: se borrará el armado actual y también se limpiarán las notas históricas vinculadas a estas mesas."
+            : "Si guardás historial, las notas quedan dentro del detalle del armado. Si eliminás sin historial, no se guardarán notas sueltas; las previas aprobadas seguirán dadas de baja."
         }
         details={[
           { label: "Grupos finales", value: totalGrupos },

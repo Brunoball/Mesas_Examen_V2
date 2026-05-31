@@ -1,21 +1,21 @@
 <?php
-// backend/modules/mesas/editar_mesas/mas/mas_controller.php
+// backend/modules/mesas/edicion_por_docente/mas/mas_controller.php
 declare(strict_types=1);
 
 require_once __DIR__ . '/mas_helpers.php';
 
-function mesas_editar_mas_previas_disponibles(): void
+function mesas_editar_docentes_mas_previas_disponibles(): void
 {
     try {
         $pdo = db();
         mesas_armado_grupos_asegurar_tablas($pdo);
 
-        $data = array_merge($_GET, mesas_editar_input_json());
-        $numeroMesa = mesas_editar_mas_int($data['numero_mesa'] ?? null, 'Debe indicar el número de mesa destino.');
+        $data = array_merge($_GET, mesas_editar_docentes_input_json());
+        $numeroMesa = mesas_editar_docentes_mas_int($data['numero_mesa'] ?? null, 'Debe indicar el número de mesa destino.');
 
         json_response([
             'exito' => true,
-            'data' => mesas_editar_mas_obtener_previas_disponibles($pdo, $numeroMesa),
+            'data' => mesas_editar_docentes_mas_obtener_previas_disponibles($pdo, $numeroMesa),
         ]);
     } catch (InvalidArgumentException $e) {
         json_response([
@@ -23,7 +23,7 @@ function mesas_editar_mas_previas_disponibles(): void
             'mensaje' => $e->getMessage(),
         ], 422);
     } catch (Throwable $e) {
-        log_error($e, 'mesas_editar_mas_previas_disponibles');
+        log_error($e, 'mesas_editar_docentes_mas_previas_disponibles');
         json_response([
             'exito' => false,
             'mensaje' => 'Error interno al obtener previas disponibles para agregar.',
@@ -32,25 +32,25 @@ function mesas_editar_mas_previas_disponibles(): void
     }
 }
 
-function mesas_editar_mas_agregar(): void
+function mesas_editar_docentes_mas_agregar(): void
 {
     try {
         $pdo = db();
         mesas_armado_grupos_asegurar_tablas($pdo);
 
-        $data = mesas_editar_input_json();
-        $numeroMesa = mesas_editar_mas_int($data['numero_mesa'] ?? null, 'Debe indicar el número de mesa destino.');
-        $idsPrevias = mesas_editar_mas_normalizar_ids_previas($data);
+        $data = mesas_editar_docentes_input_json();
+        $numeroMesa = mesas_editar_docentes_mas_int($data['numero_mesa'] ?? null, 'Debe indicar el número de mesa destino.');
+        $idPrevia = mesas_editar_docentes_mas_int($data['id_previa'] ?? null, 'Debe indicar la previa a agregar.');
 
         $pdo->beginTransaction();
-        $resultado = mesas_editar_mas_agregar_previas($pdo, $numeroMesa, $idsPrevias);
+        $resultado = mesas_editar_docentes_mas_agregar_previa($pdo, $numeroMesa, $idPrevia);
 
-        if (!$resultado['agregadas']) {
+        if (!$resultado['agregada']) {
             $pdo->rollBack();
             json_response([
                 'exito' => false,
-                'mensaje' => 'No se pueden agregar las previas porque generan conflictos.',
-                'errores' => $resultado['errores'] ?? [],
+                'mensaje' => 'No se puede agregar la previa porque genera conflictos.',
+                'errores' => $resultado['validacion']['errores'] ?? [],
                 'data' => $resultado,
             ], 422);
             return;
@@ -58,12 +58,9 @@ function mesas_editar_mas_agregar(): void
 
         $pdo->commit();
 
-        $cantidad = (int)($resultado['cantidad_agregada'] ?? 0);
         json_response([
             'exito' => true,
-            'mensaje' => $cantidad === 1
-                ? 'Previa agregada correctamente al número de mesa.'
-                : $cantidad . ' previas agregadas correctamente al número de mesa.',
+            'mensaje' => 'Previa agregada correctamente al número de mesa.',
             'data' => $resultado,
         ]);
     } catch (InvalidArgumentException $e) {
@@ -78,7 +75,7 @@ function mesas_editar_mas_agregar(): void
         if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        log_error($e, 'mesas_editar_mas_agregar');
+        log_error($e, 'mesas_editar_docentes_mas_agregar');
         json_response([
             'exito' => false,
             'mensaje' => 'Error interno al agregar la previa al número de mesa.',

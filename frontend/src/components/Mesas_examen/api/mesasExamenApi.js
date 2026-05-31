@@ -232,11 +232,16 @@ export const obtenerPreviasDisponiblesMas = ({ numero_mesa } = {}) => {
   return apiGet("mesas_editar_mas_previas_disponibles", limpiarParams({ numero_mesa }));
 };
 
-export const agregarPreviaMas = ({ numero_mesa, id_previa } = {}) => {
-  return apiPost("mesas_editar_mas_agregar", {
-    numero_mesa,
-    id_previa,
-  });
+export const agregarPreviaMas = ({ numero_mesa, id_previa, id_previas } = {}) => {
+  const payload = { numero_mesa };
+
+  if (Array.isArray(id_previas) && id_previas.length > 0) {
+    payload.id_previas = id_previas;
+  } else {
+    payload.id_previa = id_previa;
+  }
+
+  return apiPost("mesas_editar_mas_agregar", payload);
 };
 
 export const obtenerDestinosMoverNumero = ({ numero_mesa } = {}) => {

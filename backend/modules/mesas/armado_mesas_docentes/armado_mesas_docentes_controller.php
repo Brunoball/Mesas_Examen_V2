@@ -26,6 +26,7 @@ require_once __DIR__ . '/fases/fase_5_validar_y_numerar.php';
 require_once __DIR__ . '/fases/fase_6_agrupar_grupos_finales.php';
 require_once __DIR__ . '/fases/fase_7_reoptimizar_no_agrupadas.php';
 require_once __DIR__ . '/../historial_mesas/historial_mesas_helpers.php';
+require_once __DIR__ . '/../notificaciones_email/notificaciones_email_cleanup.php';
 
 /**
  * Agrega un item único a una colección usando un índice interno.
@@ -587,15 +588,32 @@ function mesas_armado_docentes_eliminar_borrador(): void
 
         $idHistorialArmado = null;
         $notasDesaprobadasLimpiadas = 0;
+        $notasAprobadasSinHistorialLimpiadas = 0;
+        $notasHistorialEliminadas = 0;
+        $notificacionesLimpiadas = [];
         if ($guardarHistorialArmado && function_exists('mesas_historial_crear_armado_actual')) {
             $idHistorialArmado = mesas_historial_crear_armado_actual($pdo, 'eliminacion_armado');
         }
 
-        // Las notas se guardan al cargarlas en historial_previas_resultados.
-        // Esta limpieza se mantiene aunque el usuario decida no guardar la foto del armado,
-        // para que las desaprobadas vuelvan limpias en próximos armados.
+        // Si se guarda historial, la foto del armado conserva las notas dentro del detalle.
+        // Si NO se guarda historial, se eliminan las notas del historial técnico para que no
+        // queden resultados sueltos de mesas que ya no existen. La baja de previas aprobadas
+        // queda intacta porque esa información vive en `previas`.
+        if (!$guardarHistorialArmado && function_exists('mesas_historial_eliminar_resultados_armado_actual')) {
+            $notasHistorialEliminadas = mesas_historial_eliminar_resultados_armado_actual($pdo);
+        }
+
+        if (!$guardarHistorialArmado && function_exists('mesas_historial_limpiar_notas_aprobadas_sin_historial_armado_actual')) {
+            $notasAprobadasSinHistorialLimpiadas = mesas_historial_limpiar_notas_aprobadas_sin_historial_armado_actual($pdo);
+        }
+
+        // Las desaprobadas vuelven limpias para próximos armados. Las aprobadas no se reactivan.
         if (function_exists('mesas_historial_limpiar_notas_desaprobadas_armado_actual')) {
             $notasDesaprobadasLimpiadas = mesas_historial_limpiar_notas_desaprobadas_armado_actual($pdo);
+        }
+
+        if (function_exists('mesas_notificaciones_cleanup_todo')) {
+            $notificacionesLimpiadas = mesas_notificaciones_cleanup_todo($pdo);
         }
 
         if (function_exists('mesas_armado_docentes_grupos_asegurar_tablas')) {
@@ -619,6 +637,9 @@ function mesas_armado_docentes_eliminar_borrador(): void
                 'guardar_historial_armado' => $guardarHistorialArmado,
                 'id_historial_armado' => $idHistorialArmado,
                 'notas_desaprobadas_limpiadas' => $notasDesaprobadasLimpiadas,
+                'notas_aprobadas_sin_historial_limpiadas' => $notasAprobadasSinHistorialLimpiadas,
+                'notas_historial_eliminadas' => $notasHistorialEliminadas,
+                'notificaciones_limpiadas' => $notificacionesLimpiadas,
             ],
         ]);
     } catch (Throwable $e) {

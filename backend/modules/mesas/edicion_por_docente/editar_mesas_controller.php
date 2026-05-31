@@ -1,19 +1,18 @@
 <?php
-// backend/modules/mesas/editar_mesas/editar_mesas_controller.php
+// backend/modules/mesas/edicion_por_docente/editar_mesas_controller.php
 declare(strict_types=1);
 
 require_once __DIR__ . '/helpers_editar_mesas.php';
-require_once __DIR__ . '/../notificaciones_email/notificaciones_email_cleanup.php';
 
-function mesas_editar_obtener_grupo(): void
+function mesas_editar_docentes_obtener_grupo(): void
 {
     try {
         $pdo = db();
         mesas_armado_grupos_asegurar_tablas($pdo);
 
-        $data = array_merge($_GET, mesas_editar_input_json());
-        $tipo = mesas_editar_tipo_desde_payload($data);
-        $grupo = mesas_editar_resolver_item($pdo, $tipo, $data);
+        $data = array_merge($_GET, mesas_editar_docentes_input_json());
+        $tipo = mesas_editar_docentes_tipo_desde_payload($data);
+        $grupo = mesas_editar_docentes_resolver_item($pdo, $tipo, $data);
 
         if (!$grupo) {
             json_response([
@@ -31,7 +30,7 @@ function mesas_editar_obtener_grupo(): void
             ],
         ]);
     } catch (Throwable $e) {
-        log_error($e, 'mesas_editar_obtener_grupo');
+        log_error($e, 'mesas_editar_docentes_obtener_grupo');
         json_response([
             'exito' => false,
             'mensaje' => 'Error interno al obtener la mesa para edición.',
@@ -40,20 +39,20 @@ function mesas_editar_obtener_grupo(): void
     }
 }
 
-function mesas_editar_guardar_programacion(): void
+function mesas_editar_docentes_guardar_programacion(): void
 {
     try {
         $pdo = db();
         mesas_armado_grupos_asegurar_tablas($pdo);
 
-        $data = mesas_editar_input_json();
-        $tipo = mesas_editar_tipo_desde_payload($data);
-        $fechaMesa = mesas_editar_normalizar_fecha($data['fecha_mesa'] ?? null);
+        $data = mesas_editar_docentes_input_json();
+        $tipo = mesas_editar_docentes_tipo_desde_payload($data);
+        $fechaMesa = mesas_editar_docentes_normalizar_fecha($data['fecha_mesa'] ?? null);
         $idTurno = (int)($data['id_turno'] ?? 0);
-        $turno = mesas_editar_obtener_turno($pdo, $idTurno);
-        $hora = mesas_editar_normalizar_hora($data['hora'] ?? null, (string)$turno['turno']);
+        $turno = mesas_editar_docentes_obtener_turno($pdo, $idTurno);
+        $hora = mesas_editar_docentes_normalizar_hora($data['hora'] ?? null, (string)$turno['turno']);
 
-        $validacionProgramacion = mesas_editar_validar_programacion_completa($pdo, $tipo, $data, $fechaMesa, $idTurno, $hora, $turno);
+        $validacionProgramacion = mesas_editar_docentes_validar_programacion_completa($pdo, $tipo, $data, $fechaMesa, $idTurno, $hora, $turno);
         if (!$validacionProgramacion['valido']) {
             json_response([
                 'exito' => false,
@@ -73,7 +72,7 @@ function mesas_editar_guardar_programacion(): void
             $idNoAgrupada = isset($data['id_no_agrupada']) ? (int)$data['id_no_agrupada'] : 0;
             $numeroMesa = isset($data['numero_mesa']) ? (int)$data['numero_mesa'] : 0;
 
-            $actual = mesas_editar_obtener_no_agrupada_hidratada(
+            $actual = mesas_editar_docentes_obtener_no_agrupada_hidratada(
                 $pdo,
                 $idNoAgrupada > 0 ? $idNoAgrupada : null,
                 $numeroMesa > 0 ? $numeroMesa : null
@@ -113,7 +112,7 @@ function mesas_editar_guardar_programacion(): void
 
             $pdo->commit();
 
-            $grupoActualizado = mesas_editar_obtener_no_agrupada_hidratada(
+            $grupoActualizado = mesas_editar_docentes_obtener_no_agrupada_hidratada(
                 $pdo,
                 $idNoAgrupada > 0 ? $idNoAgrupada : null,
                 $numeroMesaReal
@@ -124,7 +123,7 @@ function mesas_editar_guardar_programacion(): void
                 throw new InvalidArgumentException('Debe indicar el grupo final que desea editar.');
             }
 
-            $numeros = mesas_editar_normalizar_lista_numeros($validacionProgramacion['numeros'] ?? []);
+            $numeros = mesas_editar_docentes_normalizar_lista_numeros($validacionProgramacion['numeros'] ?? []);
             if (count($numeros) === 0) {
                 throw new RuntimeException('No se encontraron números de mesa dentro del grupo final.');
             }
@@ -146,7 +145,7 @@ function mesas_editar_guardar_programacion(): void
 
             $pdo->commit();
 
-            $grupoActualizado = mesas_editar_obtener_grupo_hidratado($pdo, $numeroGrupo);
+            $grupoActualizado = mesas_editar_docentes_obtener_grupo_hidratado($pdo, $numeroGrupo);
         }
 
         json_response([
@@ -169,7 +168,7 @@ function mesas_editar_guardar_programacion(): void
         if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        log_error($e, 'mesas_editar_guardar_programacion');
+        log_error($e, 'mesas_editar_docentes_guardar_programacion');
         json_response([
             'exito' => false,
             'mensaje' => 'Error interno al guardar la programación de la mesa.',
@@ -179,21 +178,21 @@ function mesas_editar_guardar_programacion(): void
 }
 
 
-function mesas_editar_crear_grupo_unico_no_agrupada(): void
+function mesas_editar_docentes_crear_grupo_unico_no_agrupada(): void
 {
     try {
         $pdo = db();
         mesas_armado_grupos_asegurar_tablas($pdo);
 
-        $data = mesas_editar_input_json();
+        $data = mesas_editar_docentes_input_json();
         $data['tipo'] = 'no_agrupada';
 
-        $fechaMesa = mesas_editar_normalizar_fecha($data['fecha_mesa'] ?? null);
+        $fechaMesa = mesas_editar_docentes_normalizar_fecha($data['fecha_mesa'] ?? null);
         $idTurno = (int)($data['id_turno'] ?? 0);
-        $turno = mesas_editar_obtener_turno($pdo, $idTurno);
-        $hora = mesas_editar_normalizar_hora($data['hora'] ?? null, (string)$turno['turno']);
+        $turno = mesas_editar_docentes_obtener_turno($pdo, $idTurno);
+        $hora = mesas_editar_docentes_normalizar_hora($data['hora'] ?? null, (string)$turno['turno']);
 
-        $validacionProgramacion = mesas_editar_validar_programacion_completa($pdo, 'no_agrupada', $data, $fechaMesa, $idTurno, $hora, $turno);
+        $validacionProgramacion = mesas_editar_docentes_validar_programacion_completa($pdo, 'no_agrupada', $data, $fechaMesa, $idTurno, $hora, $turno);
         if (!$validacionProgramacion['valido']) {
             json_response([
                 'exito' => false,
@@ -210,7 +209,7 @@ function mesas_editar_crear_grupo_unico_no_agrupada(): void
         $idNoAgrupada = isset($data['id_no_agrupada']) ? (int)$data['id_no_agrupada'] : 0;
         $numeroMesa = isset($data['numero_mesa']) ? (int)$data['numero_mesa'] : 0;
 
-        $actual = mesas_editar_obtener_no_agrupada_hidratada(
+        $actual = mesas_editar_docentes_obtener_no_agrupada_hidratada(
             $pdo,
             $idNoAgrupada > 0 ? $idNoAgrupada : null,
             $numeroMesa > 0 ? $numeroMesa : null
@@ -225,12 +224,12 @@ function mesas_editar_crear_grupo_unico_no_agrupada(): void
             throw new RuntimeException('No se pudo resolver el número de mesa sin agrupar.');
         }
 
-        $resumen = mesas_editar_resumen_numero_para_grupo_unico($pdo, $numeroMesaReal);
+        $resumen = mesas_editar_docentes_resumen_numero_para_grupo_unico($pdo, $numeroMesaReal);
         if (!$resumen) {
             throw new RuntimeException('No se encontraron registros en mesas para crear el grupo único.');
         }
 
-        $numeroGrupoNuevo = mesas_editar_obtener_numero_siguiente_grupo($pdo);
+        $numeroGrupoNuevo = mesas_editar_docentes_obtener_numero_siguiente_grupo($pdo);
         $idArea = $resumen['id_area'] !== null
             ? (int)$resumen['id_area']
             : ($actual['id_area'] !== null ? (int)$actual['id_area'] : null);
@@ -277,7 +276,7 @@ function mesas_editar_crear_grupo_unico_no_agrupada(): void
 
         $pdo->commit();
 
-        $grupoActualizado = mesas_editar_obtener_grupo_hidratado($pdo, $numeroGrupoNuevo);
+        $grupoActualizado = mesas_editar_docentes_obtener_grupo_hidratado($pdo, $numeroGrupoNuevo);
 
         json_response([
             'exito' => true,
@@ -303,7 +302,7 @@ function mesas_editar_crear_grupo_unico_no_agrupada(): void
         if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        log_error($e, 'mesas_editar_crear_grupo_unico_no_agrupada');
+        log_error($e, 'mesas_editar_docentes_crear_grupo_unico_no_agrupada');
         json_response([
             'exito' => false,
             'mensaje' => 'Error interno al crear el grupo único desde la mesa no agrupada.',
@@ -312,20 +311,20 @@ function mesas_editar_crear_grupo_unico_no_agrupada(): void
     }
 }
 
-function mesas_editar_validar_programacion(): void
+function mesas_editar_docentes_validar_programacion(): void
 {
     try {
         $pdo = db();
         mesas_armado_grupos_asegurar_tablas($pdo);
 
-        $data = array_merge($_GET, mesas_editar_input_json());
-        $tipo = mesas_editar_tipo_desde_payload($data);
-        $fechaMesa = mesas_editar_normalizar_fecha($data['fecha_mesa'] ?? null);
+        $data = array_merge($_GET, mesas_editar_docentes_input_json());
+        $tipo = mesas_editar_docentes_tipo_desde_payload($data);
+        $fechaMesa = mesas_editar_docentes_normalizar_fecha($data['fecha_mesa'] ?? null);
         $idTurno = (int)($data['id_turno'] ?? 0);
-        $turno = mesas_editar_obtener_turno($pdo, $idTurno);
-        $hora = mesas_editar_normalizar_hora($data['hora'] ?? null, (string)$turno['turno']);
+        $turno = mesas_editar_docentes_obtener_turno($pdo, $idTurno);
+        $hora = mesas_editar_docentes_normalizar_hora($data['hora'] ?? null, (string)$turno['turno']);
 
-        $validacion = mesas_editar_validar_programacion_completa($pdo, $tipo, $data, $fechaMesa, $idTurno, $hora, $turno);
+        $validacion = mesas_editar_docentes_validar_programacion_completa($pdo, $tipo, $data, $fechaMesa, $idTurno, $hora, $turno);
 
         json_response([
             'exito' => true,
@@ -343,7 +342,7 @@ function mesas_editar_validar_programacion(): void
             'mensaje' => $e->getMessage(),
         ], 422);
     } catch (Throwable $e) {
-        log_error($e, 'mesas_editar_validar_programacion');
+        log_error($e, 'mesas_editar_docentes_validar_programacion');
         json_response([
             'exito' => false,
             'mensaje' => 'Error interno al validar la programación de la mesa.',
@@ -352,17 +351,17 @@ function mesas_editar_validar_programacion(): void
     }
 }
 
-function mesas_editar_slots_validos(): void
+function mesas_editar_docentes_slots_validos(): void
 {
     try {
         $pdo = db();
         mesas_armado_grupos_asegurar_tablas($pdo);
 
-        $data = array_merge($_GET, mesas_editar_input_json());
-        $tipo = mesas_editar_tipo_desde_payload($data);
-        $grupo = mesas_editar_resolver_item($pdo, $tipo, $data);
-        [$fechaInicio, $fechaFin] = mesas_editar_rango_fechas_para_slots($pdo, $data, $grupo);
-        $slots = mesas_editar_construir_slots_validos($pdo, $tipo, $data, $fechaInicio, $fechaFin, $grupo);
+        $data = array_merge($_GET, mesas_editar_docentes_input_json());
+        $tipo = mesas_editar_docentes_tipo_desde_payload($data);
+        $grupo = mesas_editar_docentes_resolver_item($pdo, $tipo, $data);
+        [$fechaInicio, $fechaFin] = mesas_editar_docentes_rango_fechas_para_slots($pdo, $data, $grupo);
+        $slots = mesas_editar_docentes_construir_slots_validos($pdo, $tipo, $data, $fechaInicio, $fechaFin, $grupo);
 
         json_response([
             'exito' => true,
@@ -374,7 +373,7 @@ function mesas_editar_slots_validos(): void
             'mensaje' => $e->getMessage(),
         ], 422);
     } catch (Throwable $e) {
-        log_error($e, 'mesas_editar_slots_validos');
+        log_error($e, 'mesas_editar_docentes_slots_validos');
         json_response([
             'exito' => false,
             'mensaje' => 'Error interno al obtener los turnos disponibles para edición.',
@@ -383,14 +382,14 @@ function mesas_editar_slots_validos(): void
     }
 }
 
-function mesas_editar_eliminar(): void
+function mesas_editar_docentes_eliminar(): void
 {
     try {
         $pdo = db();
         mesas_armado_grupos_asegurar_tablas($pdo);
 
-        $data = mesas_editar_input_json();
-        $tipo = mesas_editar_tipo_desde_payload($data);
+        $data = mesas_editar_docentes_input_json();
+        $tipo = mesas_editar_docentes_tipo_desde_payload($data);
 
         $pdo->beginTransaction();
 
@@ -463,7 +462,7 @@ function mesas_editar_eliminar(): void
             : [];
 
         foreach ($filas as $fila) {
-            mesas_editar_insertar_no_agrupada_desde_grupo($pdo, $fila);
+            mesas_editar_docentes_insertar_no_agrupada_desde_grupo($pdo, $fila);
         }
 
         $stmtDelete = $pdo->prepare('DELETE FROM mesas_grupos WHERE numero_grupo = ?');
@@ -494,7 +493,7 @@ function mesas_editar_eliminar(): void
         if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        log_error($e, 'mesas_editar_eliminar');
+        log_error($e, 'mesas_editar_docentes_eliminar');
         json_response([
             'exito' => false,
             'mensaje' => 'Error interno al eliminar la mesa.',

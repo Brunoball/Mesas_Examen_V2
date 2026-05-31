@@ -96,6 +96,10 @@ function mesas_armado_docentes_fase_7_reoptimizar_no_agrupadas_core(PDO $pdo, ar
             $statsSinPendientes
         );
 
+        $blindajeMaximoSinPendientes = function_exists('mesas_armado_docentes_grupos_blindar_maximo_numeros_por_grupo')
+            ? mesas_armado_docentes_grupos_blindar_maximo_numeros_por_grupo($pdo, $minNumeros, $maxNumeros, $horasTurnos)
+            : null;
+
         return [
             'fase' => 7,
             'reoptimizacion_ejecutada' => true,
@@ -103,6 +107,7 @@ function mesas_armado_docentes_fase_7_reoptimizar_no_agrupadas_core(PDO $pdo, ar
             'total_reubicadas_en_grupos_existentes' => 0,
             'total_grupos_nuevos_por_reoptimizacion' => 0,
             'total_numeros_reoptimizados' => 0,
+            'blindaje_maximo_numeros_por_grupo' => $blindajeMaximoSinPendientes,
             'blindaje_cobertura' => $blindajeCobertura,
             'total_orfanas_detectadas_por_blindaje' => is_array($blindajeCobertura) ? ($blindajeCobertura['total_orfanas_detectadas'] ?? 0) : 0,
             'total_grupos_sql_invalidos_por_un_solo_docente_blindados' => $statsSinPendientes['total_grupos_sql_invalidos_por_un_solo_docente_blindados'],
@@ -256,6 +261,10 @@ function mesas_armado_docentes_fase_7_reoptimizar_no_agrupadas_core(PDO $pdo, ar
         $slotsDisponibles,
         $stats
     );
+
+    if (function_exists('mesas_armado_docentes_grupos_blindar_maximo_numeros_por_grupo')) {
+        $stats['blindaje_maximo_numeros_por_grupo'] = mesas_armado_docentes_grupos_blindar_maximo_numeros_por_grupo($pdo, $minNumeros, $maxNumeros, $horasTurnos);
+    }
 
     // Limpieza final: si un numero fue rescatado y quedo en un grupo valido,
     // no debe seguir mostrando la observacion vieja de no agrupada.
@@ -2407,16 +2416,29 @@ function mesas_armado_docentes_reopt_intentar_unir_grupos_mismo_docente_slot(
     $numerosUnidos = array_values(array_merge($a['numeros'] ?? [], $b['numeros'] ?? []));
 
     /*
-     * Regla operativa dura:
-     * si un mismo docente queda en la misma fecha y turno, NO puede aparecer
-     * en dos grupos distintos. En ese caso el docente debe quedar en una sola
-     * salida física. Por eso este blindaje permite unir esos grupos aunque:
-     * - la suma supere el máximo ideal de 4 números;
-     * - el área SQL no coincida exactamente.
-     *
-     * Lo único que no se permite al unir es generar choque real de alumnos
-     * dentro de la misma salida, dejar un grupo simple con un solo docente
-     * distinto o mezclar talleres.
+     * Regla dura pedida para la salida final:
+     * un grupo nunca puede superar el máximo configurado de números de mesa
+     * (por defecto 4). Si unir dos grupos por docente repetido excede ese
+     * máximo, no se unen; el blindaje siguiente intentará mover una salida
+     * completa a otro slot o, si no hay opción válida, dejarla como no agrupada.
+     */
+    if (count($numerosUnidos) > $maxNumeros) {
+        $stats['blindaje_choques_docente_alumno']['grupos_no_unidos_por_superar_maximo'] =
+            (int)($stats['blindaje_choques_docente_alumno']['grupos_no_unidos_por_superar_maximo'] ?? 0) + 1;
+        $stats['blindaje_choques_docente_alumno']['detalles'][] = [
+            'tipo' => 'union_cancelada_por_superar_maximo_numeros',
+            'grupo_a' => $grupoA,
+            'grupo_b' => $grupoB,
+            'cantidad_resultante' => count($numerosUnidos),
+            'maximo_permitido' => $maxNumeros,
+            'numeros_mesa' => array_map(static fn (array $n): int => (int)$n['numero_mesa'], $numerosUnidos),
+        ];
+        return false;
+    }
+
+    /*
+     * Si entra dentro del máximo, recién ahí se permite unir para resolver
+     * un choque de docente/alumno en el mismo slot.
      */
     if (!mesas_armado_docentes_reopt_numeros_forman_grupo_valido_mismo_docente_slot($numerosUnidos)) {
         return false;

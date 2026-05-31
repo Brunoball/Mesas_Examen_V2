@@ -1,11 +1,10 @@
 <?php
-// backend/modules/mesas/editar_mesas/persona/persona_helpers.php
+// backend/modules/mesas/edicion_por_docente/persona/persona_helpers.php
 declare(strict_types=1);
 
 require_once __DIR__ . '/../helpers_editar_mesas.php';
-require_once __DIR__ . '/../../notificaciones_email/notificaciones_email_cleanup.php';
 
-function mesas_editar_persona_int($valor, string $mensaje): int
+function mesas_editar_docentes_persona_int($valor, string $mensaje): int
 {
     $numero = (int)($valor ?? 0);
     if ($numero <= 0) {
@@ -14,7 +13,7 @@ function mesas_editar_persona_int($valor, string $mensaje): int
     return $numero;
 }
 
-function mesas_editar_persona_fecha_formato(?string $fecha): ?string
+function mesas_editar_docentes_persona_fecha_formato(?string $fecha): ?string
 {
     $fecha = trim((string)$fecha);
     if ($fecha === '') {
@@ -25,7 +24,7 @@ function mesas_editar_persona_fecha_formato(?string $fecha): ?string
     return $dt ? $dt->format('d/m/Y') : $fecha;
 }
 
-function mesas_editar_persona_obtener_meta_numero(PDO $pdo, int $numeroMesa): ?array
+function mesas_editar_docentes_persona_obtener_meta_numero(PDO $pdo, int $numeroMesa): ?array
 {
     $stmtGrupo = $pdo->prepare(''
         . 'SELECT '
@@ -87,9 +86,9 @@ function mesas_editar_persona_obtener_meta_numero(PDO $pdo, int $numeroMesa): ?a
     return $meta ?: null;
 }
 
-function mesas_editar_persona_obtener_previas_numero(PDO $pdo, int $numeroMesa): array
+function mesas_editar_docentes_persona_obtener_previas_numero(PDO $pdo, int $numeroMesa): array
 {
-    $meta = mesas_editar_persona_obtener_meta_numero($pdo, $numeroMesa);
+    $meta = mesas_editar_docentes_persona_obtener_meta_numero($pdo, $numeroMesa);
     if (!$meta) {
         throw new RuntimeException('No se encontró el número de mesa solicitado.');
     }
@@ -149,7 +148,7 @@ function mesas_editar_persona_obtener_previas_numero(PDO $pdo, int $numeroMesa):
     ];
 }
 
-function mesas_editar_persona_obtener_filas_previa_en_numero(PDO $pdo, int $numeroMesa, int $idPrevia): array
+function mesas_editar_docentes_persona_obtener_filas_previa_en_numero(PDO $pdo, int $numeroMesa, int $idPrevia): array
 {
     $stmt = $pdo->prepare(''
         . 'SELECT '
@@ -175,7 +174,7 @@ function mesas_editar_persona_obtener_filas_previa_en_numero(PDO $pdo, int $nume
     return $filas;
 }
 
-function mesas_editar_persona_area_previa(PDO $pdo, array $filas): ?int
+function mesas_editar_docentes_persona_area_previa(PDO $pdo, array $filas): ?int
 {
     $idsMateria = [];
     foreach ($filas as $fila) {
@@ -197,9 +196,9 @@ function mesas_editar_persona_area_previa(PDO $pdo, array $filas): ?int
     return $idArea !== false && $idArea !== null ? (int)$idArea : null;
 }
 
-function mesas_editar_persona_detalle_numeros(PDO $pdo, array $numeros): array
+function mesas_editar_docentes_persona_detalle_numeros(PDO $pdo, array $numeros): array
 {
-    $numeros = mesas_editar_normalizar_lista_numeros($numeros);
+    $numeros = mesas_editar_docentes_normalizar_lista_numeros($numeros);
     if (count($numeros) === 0) {
         return [];
     }
@@ -229,7 +228,7 @@ function mesas_editar_persona_detalle_numeros(PDO $pdo, array $numeros): array
     return $mapa;
 }
 
-function mesas_editar_persona_armar_detalle_movimiento(array $filas, int $numeroOrigen): array
+function mesas_editar_docentes_persona_armar_detalle_movimiento(array $filas, int $numeroOrigen): array
 {
     $detalle = [
         'numeros' => [$numeroOrigen],
@@ -284,7 +283,7 @@ function mesas_editar_persona_armar_detalle_movimiento(array $filas, int $numero
 }
 
 
-function mesas_editar_persona_obtener_modelo_destino(PDO $pdo, int $numeroDestino, array $filasOrigen): array
+function mesas_editar_docentes_persona_obtener_modelo_destino(PDO $pdo, int $numeroDestino, array $filasOrigen): array
 {
     $idsMateriaOrigen = [];
     $idsCursoOrigen = [];
@@ -381,7 +380,7 @@ function mesas_editar_persona_obtener_modelo_destino(PDO $pdo, int $numeroDestin
     ];
 }
 
-function mesas_editar_persona_armar_detalle_movimiento_destino(array $filas, int $numeroOrigen, int $numeroDestino, array $modeloDestino): array
+function mesas_editar_docentes_persona_armar_detalle_movimiento_destino(array $filas, int $numeroOrigen, int $numeroDestino, array $modeloDestino): array
 {
     $filaBase = $filas[0] ?? [];
     $idPrevia = (int)($filaBase['id_previa'] ?? 0);
@@ -420,7 +419,7 @@ function mesas_editar_persona_armar_detalle_movimiento_destino(array $filas, int
     return $detalle;
 }
 
-function mesas_editar_persona_validar_movimiento(PDO $pdo, int $numeroOrigen, int $idPrevia, int $numeroDestino): array
+function mesas_editar_docentes_persona_validar_movimiento(PDO $pdo, int $numeroOrigen, int $idPrevia, int $numeroDestino): array
 {
     if ($numeroOrigen === $numeroDestino) {
         return [
@@ -430,8 +429,8 @@ function mesas_editar_persona_validar_movimiento(PDO $pdo, int $numeroOrigen, in
         ];
     }
 
-    $filas = mesas_editar_persona_obtener_filas_previa_en_numero($pdo, $numeroOrigen, $idPrevia);
-    $metaDestino = mesas_editar_persona_obtener_meta_numero($pdo, $numeroDestino);
+    $filas = mesas_editar_docentes_persona_obtener_filas_previa_en_numero($pdo, $numeroOrigen, $idPrevia);
+    $metaDestino = mesas_editar_docentes_persona_obtener_meta_numero($pdo, $numeroDestino);
     if (!$metaDestino) {
         return [
             'valido' => false,
@@ -442,7 +441,7 @@ function mesas_editar_persona_validar_movimiento(PDO $pdo, int $numeroOrigen, in
 
     $fechaDestino = trim((string)($metaDestino['fecha_mesa'] ?? ''));
     $idTurnoDestino = (int)($metaDestino['id_turno'] ?? 0);
-    $idAreaOrigen = mesas_editar_persona_area_previa($pdo, $filas);
+    $idAreaOrigen = mesas_editar_docentes_persona_area_previa($pdo, $filas);
     $idAreaDestino = $metaDestino['id_area'] !== null ? (int)$metaDestino['id_area'] : 0;
     if ($fechaDestino === '' || $idTurnoDestino <= 0) {
         return [
@@ -455,7 +454,7 @@ function mesas_editar_persona_validar_movimiento(PDO $pdo, int $numeroOrigen, in
     $errores = [];
     $advertencias = [];
 
-    if (mesas_editar_debe_respetar_area($pdo)
+    if (mesas_editar_docentes_debe_respetar_area($pdo)
         && $idAreaOrigen !== null
         && $idAreaOrigen > 0
         && $idAreaDestino > 0
@@ -465,7 +464,7 @@ function mesas_editar_persona_validar_movimiento(PDO $pdo, int $numeroOrigen, in
     }
 
     try {
-        $modeloDestino = mesas_editar_persona_obtener_modelo_destino($pdo, $numeroDestino, $filas);
+        $modeloDestino = mesas_editar_docentes_persona_obtener_modelo_destino($pdo, $numeroDestino, $filas);
     } catch (Throwable $e) {
         return [
             'valido' => false,
@@ -475,10 +474,10 @@ function mesas_editar_persona_validar_movimiento(PDO $pdo, int $numeroOrigen, in
         ];
     }
 
-    $detalle = mesas_editar_persona_armar_detalle_movimiento_destino($filas, $numeroOrigen, $numeroDestino, $modeloDestino);
+    $detalle = mesas_editar_docentes_persona_armar_detalle_movimiento_destino($filas, $numeroOrigen, $numeroDestino, $modeloDestino);
 
-    $errores = array_merge($errores, mesas_editar_validar_docentes($pdo, $detalle, $fechaDestino, $idTurnoDestino));
-    $errores = array_merge($errores, mesas_editar_validar_correlativas($pdo, $detalle, $fechaDestino, $idTurnoDestino));
+    $errores = array_merge($errores, mesas_editar_docentes_validar_docentes($pdo, $detalle, $fechaDestino, $idTurnoDestino));
+    $errores = array_merge($errores, mesas_editar_docentes_validar_correlativas($pdo, $detalle, $fechaDestino, $idTurnoDestino));
 
     $dni = trim((string)($filas[0]['dni'] ?? ''));
     if ($dni !== '') {
@@ -534,12 +533,12 @@ function mesas_editar_persona_validar_movimiento(PDO $pdo, int $numeroOrigen, in
     ];
 }
 
-function mesas_editar_persona_obtener_destinos(PDO $pdo, int $numeroOrigen, int $idPrevia): array
+function mesas_editar_docentes_persona_obtener_destinos(PDO $pdo, int $numeroOrigen, int $idPrevia): array
 {
-    $filas = mesas_editar_persona_obtener_filas_previa_en_numero($pdo, $numeroOrigen, $idPrevia);
-    $idArea = mesas_editar_persona_area_previa($pdo, $filas);
+    $filas = mesas_editar_docentes_persona_obtener_filas_previa_en_numero($pdo, $numeroOrigen, $idPrevia);
+    $idArea = mesas_editar_docentes_persona_area_previa($pdo, $filas);
 
-    $debeRespetarArea = mesas_editar_debe_respetar_area($pdo);
+    $debeRespetarArea = mesas_editar_docentes_debe_respetar_area($pdo);
     if ($debeRespetarArea && ($idArea === null || $idArea <= 0)) {
         throw new RuntimeException('No se pudo resolver el área de la materia de esta previa.');
     }
@@ -575,13 +574,13 @@ function mesas_editar_persona_obtener_destinos(PDO $pdo, int $numeroOrigen, int 
     $destinosBase = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $numeros = array_map(static fn($row) => (int)$row['numero_mesa'], $destinosBase);
-    $detalles = mesas_editar_persona_detalle_numeros($pdo, $numeros);
+    $detalles = mesas_editar_docentes_persona_detalle_numeros($pdo, $numeros);
 
     $destinos = [];
     foreach ($destinosBase as $row) {
         $numeroDestino = (int)$row['numero_mesa'];
         try {
-            $validacion = mesas_editar_persona_validar_movimiento($pdo, $numeroOrigen, $idPrevia, $numeroDestino);
+            $validacion = mesas_editar_docentes_persona_validar_movimiento($pdo, $numeroOrigen, $idPrevia, $numeroDestino);
         } catch (Throwable $e) {
             $validacion = [
                 'valido' => false,
@@ -626,7 +625,7 @@ function mesas_editar_persona_obtener_destinos(PDO $pdo, int $numeroOrigen, int 
     ];
 }
 
-function mesas_editar_persona_recalcular_numero(PDO $pdo, int $numeroMesa): void
+function mesas_editar_docentes_persona_recalcular_numero(PDO $pdo, int $numeroMesa): void
 {
     $stmt = $pdo->prepare('SELECT COUNT(DISTINCT id_previa) FROM mesas WHERE numero_mesa = ?');
     $stmt->execute([$numeroMesa]);
@@ -658,25 +657,21 @@ function mesas_editar_persona_recalcular_numero(PDO $pdo, int $numeroMesa): void
     $stmtN->execute([$cantidad, $meta['id_area'] ?? null, $meta['tipo_mesa'] ?? null, $meta['prioridad'] ?? null, $numeroMesa]);
 }
 
-function mesas_editar_persona_eliminar_previa(PDO $pdo, int $numeroMesa, int $idPrevia): int
+function mesas_editar_docentes_persona_eliminar_previa(PDO $pdo, int $numeroMesa, int $idPrevia): int
 {
-    mesas_editar_persona_obtener_filas_previa_en_numero($pdo, $numeroMesa, $idPrevia);
-
-    if (function_exists('mesas_notificaciones_cleanup_por_previas')) {
-        mesas_notificaciones_cleanup_por_previas($pdo, [$idPrevia], true);
-    }
+    mesas_editar_docentes_persona_obtener_filas_previa_en_numero($pdo, $numeroMesa, $idPrevia);
 
     $stmt = $pdo->prepare('DELETE FROM mesas WHERE numero_mesa = ? AND id_previa = ?');
     $stmt->execute([$numeroMesa, $idPrevia]);
     $eliminadas = $stmt->rowCount();
 
-    mesas_editar_persona_recalcular_numero($pdo, $numeroMesa);
+    mesas_editar_docentes_persona_recalcular_numero($pdo, $numeroMesa);
     return $eliminadas;
 }
 
-function mesas_editar_persona_mover_previa(PDO $pdo, int $numeroOrigen, int $idPrevia, int $numeroDestino): array
+function mesas_editar_docentes_persona_mover_previa(PDO $pdo, int $numeroOrigen, int $idPrevia, int $numeroDestino): array
 {
-    $validacion = mesas_editar_persona_validar_movimiento($pdo, $numeroOrigen, $idPrevia, $numeroDestino);
+    $validacion = mesas_editar_docentes_persona_validar_movimiento($pdo, $numeroOrigen, $idPrevia, $numeroDestino);
     if (!$validacion['valido']) {
         return [
             'movido' => false,
@@ -728,14 +723,8 @@ function mesas_editar_persona_mover_previa(PDO $pdo, int $numeroOrigen, int $idP
     }
 
     $insertadas = $stmtInsert->rowCount();
-
-    if (function_exists('mesas_notificaciones_cleanup_por_previas')) {
-        // Al mover una previa, no se borra su nueva mesa; solo se invalida el email anterior.
-        mesas_notificaciones_cleanup_por_previas($pdo, [$idPrevia], false);
-    }
-
-    mesas_editar_persona_recalcular_numero($pdo, $numeroOrigen);
-    mesas_editar_persona_recalcular_numero($pdo, $numeroDestino);
+    mesas_editar_docentes_persona_recalcular_numero($pdo, $numeroOrigen);
+    mesas_editar_docentes_persona_recalcular_numero($pdo, $numeroDestino);
 
     return [
         'movido' => true,

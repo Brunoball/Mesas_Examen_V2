@@ -87,7 +87,10 @@ const ModalMoverPreviaMesa = ({ abierto, previa, destinosData, cargando, moviend
   const overlayRef = useEscapeClose(abierto, onClose, moviendo);
 
   const destinos = useMemo(() => {
-    return Array.isArray(destinosData?.destinos) ? destinosData.destinos : [];
+    const lista = Array.isArray(destinosData?.destinos) ? destinosData.destinos : [];
+    // En este modal solo deben verse los destinos realmente movibles.
+    // Los destinos bloqueados se descartan para no confundir al usuario.
+    return lista.filter((destino) => destino?.valido !== false);
   }, [destinosData]);
 
   const destinoSeleccionado = useMemo(() => {
@@ -169,7 +172,7 @@ const ModalMoverPreviaMesa = ({ abierto, previa, destinosData, cargando, moviend
           {cargando ? (
             <PersonaTableSkeleton columns={columns} gridCols={MOVER_GRID_COLS} rows={4} />
           ) : (destinos.length === 0 ? (
-            <div className="persona-empty">No hay otros números de mesa disponibles dentro del área de esta materia.</div>
+            <div className="persona-empty">No hay otros números de mesa disponibles compatibles con esta previa.</div>
           ) : (
             <div className="persona-table-wrap">
               <div className="persona-table persona-div-table persona-table-mover" role="table" aria-label="Números de mesa destino">

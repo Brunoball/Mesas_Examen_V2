@@ -520,6 +520,10 @@ function mesas_armado_obtener_mesa_por_previa(PDO $pdo, int $idPrevia): int
 
 function mesas_armado_eliminar_mesas_por_previa(PDO $pdo, int $idPrevia): int
 {
+    if (function_exists('mesas_notificaciones_cleanup_por_previas')) {
+        mesas_notificaciones_cleanup_por_previas($pdo, [$idPrevia], true);
+    }
+
     $stmt = $pdo->prepare("
         DELETE FROM mesas
         WHERE id_previa = ?

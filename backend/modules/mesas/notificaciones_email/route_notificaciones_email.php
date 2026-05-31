@@ -8,24 +8,27 @@ function route_mesas_notificaciones_email(string $action): bool
 {
     switch ($action) {
         case 'mesas_notificaciones_email_listar':
-        case 'mesas_notificaciones_email_obtener':
+        case 'mesas_notificaciones_listar':
             mesas_notificaciones_listar();
             return true;
 
         case 'mesas_notificaciones_email_registrar_lote':
-        case 'mesas_notificaciones_email_crear_lote':
+        case 'mesas_notificaciones_registrar_lote':
             mesas_notificaciones_registrar_lote();
             return true;
 
         case 'mesas_notificaciones_email_registrar_envios':
-        case 'mesas_notificaciones_email_procesar_lote':
+        case 'mesas_notificaciones_registrar_envios':
+        case 'mesas_notificaciones_email_enviar_lote':
             mesas_notificaciones_registrar_envios();
             return true;
 
         case 'mesas_notificaciones_email_estado':
+        case 'mesas_notificaciones_estado':
             mesas_notificaciones_estado();
             return true;
-    }
 
-    return false;
+        default:
+            return false;
+    }
 }

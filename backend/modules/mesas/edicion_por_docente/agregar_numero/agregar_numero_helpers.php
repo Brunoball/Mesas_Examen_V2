@@ -1,11 +1,11 @@
 <?php
-// backend/modules/mesas/editar_mesas/agregar_numero/agregar_numero_helpers.php
+// backend/modules/mesas/edicion_por_docente/agregar_numero/agregar_numero_helpers.php
 declare(strict_types=1);
 
 require_once __DIR__ . '/../helpers_editar_mesas.php';
 require_once __DIR__ . '/../mas/mas_helpers.php';
 
-function mesas_editar_agregar_numero_int($valor, string $mensaje): int
+function mesas_editar_docentes_agregar_numero_int($valor, string $mensaje): int
 {
     $numero = (int)($valor ?? 0);
     if ($numero <= 0) {
@@ -14,7 +14,7 @@ function mesas_editar_agregar_numero_int($valor, string $mensaje): int
     return $numero;
 }
 
-function mesas_editar_agregar_numero_fecha_texto(?string $fecha): string
+function mesas_editar_docentes_agregar_numero_fecha_texto(?string $fecha): string
 {
     $texto = trim((string)$fecha);
     if ($texto === '') {
@@ -25,7 +25,7 @@ function mesas_editar_agregar_numero_fecha_texto(?string $fecha): string
     return $dt ? $dt->format('d/m/Y') : $texto;
 }
 
-function mesas_editar_agregar_numero_obtener_grupo_destino(PDO $pdo, int $numeroGrupo): ?array
+function mesas_editar_docentes_agregar_numero_obtener_grupo_destino(PDO $pdo, int $numeroGrupo): ?array
 {
     $stmt = $pdo->prepare(''
         . 'SELECT '
@@ -53,7 +53,7 @@ function mesas_editar_agregar_numero_obtener_grupo_destino(PDO $pdo, int $numero
         return null;
     }
 
-    $grupo = mesas_editar_aplicar_area_canonica_a_fila_grupo($pdo, $grupo);
+    $grupo = mesas_editar_docentes_aplicar_area_canonica_a_fila_grupo($pdo, $grupo);
 
     $grupo['numero_grupo'] = (int)$grupo['numero_grupo'];
     $grupo['id_grupo'] = (int)$grupo['numero_grupo'];
@@ -61,19 +61,19 @@ function mesas_editar_agregar_numero_obtener_grupo_destino(PDO $pdo, int $numero
     $grupo['id_area'] = $grupo['id_area'] !== null ? (int)$grupo['id_area'] : null;
     $grupo['cantidad_numeros'] = (int)$grupo['cantidad_numeros'];
     $grupo['cantidad_alumnos'] = (int)$grupo['cantidad_alumnos'];
-    $grupo['numeros'] = mesas_editar_agregar_numero_obtener_numeros_grupo($pdo, $numeroGrupo);
+    $grupo['numeros'] = mesas_editar_docentes_agregar_numero_obtener_numeros_grupo($pdo, $numeroGrupo);
 
-    $esTaller = mesas_editar_grupo_es_taller_por_numeros($grupo['numeros'], $grupo);
-    $capacidad = mesas_editar_capacidad_slots_calcular(
+    $esTaller = mesas_editar_docentes_grupo_es_taller_por_numeros($grupo['numeros'], $grupo);
+    $capacidad = mesas_editar_docentes_capacidad_slots_calcular(
         $grupo['cantidad_numeros'],
         $esTaller,
-        mesas_editar_slots_extra_obtener($pdo, $numeroGrupo)
+        mesas_editar_docentes_slots_extra_obtener($pdo, $numeroGrupo)
     );
 
     return array_merge($grupo, $capacidad);
 }
 
-function mesas_editar_agregar_numero_obtener_numeros_grupo(PDO $pdo, int $numeroGrupo): array
+function mesas_editar_docentes_agregar_numero_obtener_numeros_grupo(PDO $pdo, int $numeroGrupo): array
 {
     $stmt = $pdo->prepare(''
         . 'SELECT '
@@ -105,7 +105,7 @@ function mesas_editar_agregar_numero_obtener_numeros_grupo(PDO $pdo, int $numero
     }, $stmt->fetchAll(PDO::FETCH_ASSOC));
 }
 
-function mesas_editar_agregar_numero_siguiente_numero(PDO $pdo): int
+function mesas_editar_docentes_agregar_numero_siguiente_numero(PDO $pdo): int
 {
     $stmt = $pdo->query(''
         . 'SELECT COALESCE(MAX(max_numero), 0) + 1 AS siguiente '
@@ -119,7 +119,7 @@ function mesas_editar_agregar_numero_siguiente_numero(PDO $pdo): int
     return max(1, (int)$stmt->fetchColumn());
 }
 
-function mesas_editar_agregar_numero_resumen_numero(PDO $pdo, int $numeroMesa): ?array
+function mesas_editar_docentes_agregar_numero_resumen_numero(PDO $pdo, int $numeroMesa): ?array
 {
     $stmt = $pdo->prepare(''
         . 'SELECT '
@@ -162,7 +162,7 @@ function mesas_editar_agregar_numero_resumen_numero(PDO $pdo, int $numeroMesa): 
 }
 
 
-function mesas_editar_agregar_numero_validar_choques_reales_slot(PDO $pdo, array $detalle, string $fechaMesa, int $idTurno): array
+function mesas_editar_docentes_agregar_numero_validar_choques_reales_slot(PDO $pdo, array $detalle, string $fechaMesa, int $idTurno): array
 {
     $errores = [];
 
@@ -231,27 +231,16 @@ function mesas_editar_agregar_numero_validar_choques_reales_slot(PDO $pdo, array
     return $errores;
 }
 
-function mesas_editar_agregar_numero_validar_numero_en_grupo(PDO $pdo, int $numeroMesa, array $grupoDestino, array $opciones = []): array
+function mesas_editar_docentes_agregar_numero_validar_numero_en_grupo(PDO $pdo, int $numeroMesa, array $grupoDestino, array $opciones = []): array
 {
     $errores = [];
     $advertencias = [];
 
-    /**
-     * Caso normal de edición por área:
-     * - Respeta área.
-     * - Respeta talleres exclusivos.
-     * - Valida docentes, alumnos y correlativas.
-     *
-     * Excepción pedida para el modal "Agregar número al grupo" > pestaña "Mesas no agrupadas":
-     * - La mesa no agrupada puede ser de cualquier área.
-     * - La validación fuerte queda limitada a disponibilidad/bloqueo/choque de docentes
-     *   y choque de alumnos en el slot destino.
-     * - No se usa la fecha/turno vieja de mesas_no_agrupadas para bloquear.
-     */
-    $ignorarArea = !empty($opciones['ignorar_area']);
-    $soloDocenteAlumno = !empty($opciones['solo_docente_alumno']);
-    $permitirTaller = !empty($opciones['permitir_taller']);
-    $ignorarCorrelativas = !empty($opciones['ignorar_correlativas']) || $soloDocenteAlumno;
+    // En el armado por disponibilidad docente el área es secundaria: no bloquea.
+    // En el armado por área sí se respeta como restricción dura.
+    $validarSoloChoquesSlot = !empty($opciones['solo_choques_slot']);
+    $esArmadoDocentes = mesas_editar_docentes_es_armado_por_docentes($pdo);
+    $ignorarArea = $esArmadoDocentes || !empty($opciones['ignorar_area']);
 
     $numeroGrupo = (int)($grupoDestino['numero_grupo'] ?? 0);
     $fechaDestino = substr((string)($grupoDestino['fecha_mesa'] ?? ''), 0, 10);
@@ -269,7 +258,7 @@ function mesas_editar_agregar_numero_validar_numero_en_grupo(PDO $pdo, int $nume
 
     try {
         if ($fechaDestino !== '') {
-            mesas_editar_normalizar_fecha($fechaDestino);
+            mesas_editar_docentes_normalizar_fecha($fechaDestino);
         } else {
             $errores[] = 'El grupo destino no tiene fecha definida.';
         }
@@ -288,19 +277,21 @@ function mesas_editar_agregar_numero_validar_numero_en_grupo(PDO $pdo, int $nume
         $errores[] = 'El número de mesa ya pertenece a este grupo.';
     }
 
-    $resumen = mesas_editar_agregar_numero_resumen_numero($pdo, $numeroMesa);
+    $resumen = mesas_editar_docentes_agregar_numero_resumen_numero($pdo, $numeroMesa);
     if (!$resumen) {
         $errores[] = 'No se encontraron registros en mesas para el número seleccionado.';
     } else {
         $tipo = trim((string)($resumen['tipo_mesa'] ?? 'simple'));
-        if (!$permitirTaller && $tipo === 'taller') {
+        if ($tipo === 'taller') {
             $errores[] = 'Las mesas de taller son exclusivas y no se pueden agregar a otro grupo.';
         }
 
-        if (!$ignorarArea) {
-            $idAreaGrupo = (int)($grupoDestino['id_area'] ?? 0);
-            $idAreaNumero = (int)($resumen['id_area'] ?? 0);
-            if ($idAreaGrupo > 0 && $idAreaNumero > 0 && $idAreaGrupo !== $idAreaNumero) {
+        $idAreaGrupo = (int)($grupoDestino['id_area'] ?? 0);
+        $idAreaNumero = (int)($resumen['id_area'] ?? 0);
+        if ($idAreaGrupo > 0 && $idAreaNumero > 0 && $idAreaGrupo !== $idAreaNumero) {
+            if ($ignorarArea) {
+                $advertencias[] = 'El número pertenece a otra área, pero se permite agregarlo manualmente desde esta edición.';
+            } else {
                 $errores[] = 'El número de mesa no pertenece al área del grupo seleccionado.';
             }
         }
@@ -308,24 +299,14 @@ function mesas_editar_agregar_numero_validar_numero_en_grupo(PDO $pdo, int $nume
 
     if (count($errores) === 0) {
         $numerosFinales = array_values(array_unique(array_merge($numerosGrupo, [$numeroMesa])));
-        $detalleFinal = mesas_editar_obtener_detalle_numeros($pdo, $numerosFinales);
+        $detalleFinal = mesas_editar_docentes_obtener_detalle_numeros($pdo, $numerosFinales);
 
-        if ($soloDocenteAlumno) {
-            // Disponibilidad y bloqueos docentes sí se validan.
-            // El choque contra otras mesas se valida aparte usando solo mesas_grupos,
-            // para no bloquear por la fecha/turno viejo de una mesa no agrupada.
-            $slotKey = mesas_editar_slot_key($fechaDestino, $idTurnoDestino);
-            $errores = array_merge($errores, mesas_editar_validar_docentes($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino, [
-                'choques_docentes' => [$slotKey => []],
-            ]));
-            $errores = array_merge($errores, mesas_editar_agregar_numero_validar_choques_reales_slot($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
-        } else {
-            $errores = array_merge($errores, mesas_editar_validar_docentes($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
-            $errores = array_merge($errores, mesas_editar_validar_alumnos($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
-            if (!$ignorarCorrelativas) {
-                $errores = array_merge($errores, mesas_editar_validar_correlativas($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
-            }
-        }
+        // Siempre se validan reglas duras: disponibilidad/bloqueos/choques de docentes,
+        // choque de alumnos por DNI y correlatividades. Lo único variable es el área:
+        // por disponibilidad docente se ignora; por área se respeta arriba.
+        $errores = array_merge($errores, mesas_editar_docentes_validar_docentes($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
+        $errores = array_merge($errores, mesas_editar_docentes_validar_alumnos($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
+        $errores = array_merge($errores, mesas_editar_docentes_validar_correlativas($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
     }
 
     return [
@@ -335,13 +316,12 @@ function mesas_editar_agregar_numero_validar_numero_en_grupo(PDO $pdo, int $nume
     ];
 }
 
-function mesas_editar_agregar_numero_obtener_no_agrupadas_disponibles(PDO $pdo, array $grupoDestino): array
+function mesas_editar_docentes_agregar_numero_obtener_no_agrupadas_disponibles(PDO $pdo, array $grupoDestino): array
 {
-    // Para esta acción puntual, las mesas no agrupadas NO se filtran por área.
-    // Pero tampoco se muestran opciones bloqueadas: solo se devuelven las mesas
-    // que realmente pueden moverse al slot destino.
-    // Validaciones activas para listar: disponibilidad/bloqueo docente, choque docente
-    // y choque de alumnos contra el grupo/fecha/turno destino.
+    // En edición manual, el + debe listar todas las mesas no agrupadas reales,
+    // aunque pertenezcan a otra área. El área solo queda como dato visual.
+    // Se mantienen las validaciones fuertes de choques de alumnos/docentes/correlativas
+    // para evitar guardar combinaciones imposibles.
     $stmt = $pdo->query(''
         . 'SELECT '
         . '    n.id AS id_no_agrupada, n.numero_mesa, n.fecha_mesa, DATE_FORMAT(n.fecha_mesa, "%d/%m/%Y") AS fecha, '
@@ -364,20 +344,16 @@ function mesas_editar_agregar_numero_obtener_no_agrupadas_disponibles(PDO $pdo, 
     );
 
     $salida = [];
-    $opcionesValidacionNoAgrupada = [
-        'ignorar_area' => true,
-        'solo_docente_alumno' => true,
-        'permitir_taller' => true,
-        'ignorar_correlativas' => true,
-    ];
-
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
         $numeroMesa = (int)($row['numero_mesa'] ?? 0);
         if ($numeroMesa <= 0) {
             continue;
         }
 
-        $validacion = mesas_editar_agregar_numero_validar_numero_en_grupo($pdo, $numeroMesa, $grupoDestino, $opcionesValidacionNoAgrupada);
+        $validacion = mesas_editar_docentes_agregar_numero_validar_numero_en_grupo($pdo, $numeroMesa, $grupoDestino, [
+            'ignorar_area' => mesas_editar_docentes_es_armado_por_docentes($pdo),
+        ]);
+
         if (empty($validacion['valido'])) {
             continue;
         }
@@ -386,7 +362,7 @@ function mesas_editar_agregar_numero_obtener_no_agrupadas_disponibles(PDO $pdo, 
             'id_no_agrupada' => (int)$row['id_no_agrupada'],
             'numero_mesa' => $numeroMesa,
             'fecha_mesa' => $row['fecha_mesa'] ?? null,
-            'fecha' => $row['fecha'] ?? mesas_editar_agregar_numero_fecha_texto($row['fecha_mesa'] ?? null),
+            'fecha' => $row['fecha'] ?? mesas_editar_docentes_agregar_numero_fecha_texto($row['fecha_mesa'] ?? null),
             'id_turno' => $row['id_turno'] !== null ? (int)$row['id_turno'] : null,
             'hora' => $row['hora'] ?? null,
             'turno' => trim((string)($row['turno'] ?? '')),
@@ -399,6 +375,8 @@ function mesas_editar_agregar_numero_obtener_no_agrupadas_disponibles(PDO $pdo, 
             'docente' => trim((string)($row['docente'] ?? '')),
             'alumnos_texto' => trim((string)($row['alumnos_texto'] ?? '')),
             'motivo' => trim((string)($row['motivo'] ?? '')),
+            // Si llegó hasta acá, no tiene choques reales en el slot destino.
+            // Por eso el frontend debe dejar el + habilitado siempre.
             'agregable' => true,
             'validacion' => $validacion,
         ];
@@ -407,7 +385,7 @@ function mesas_editar_agregar_numero_obtener_no_agrupadas_disponibles(PDO $pdo, 
     return $salida;
 }
 
-function mesas_editar_agregar_numero_detalle_previa(array $previa, int $numeroMesa): array
+function mesas_editar_docentes_agregar_numero_detalle_previa(array $previa, int $numeroMesa): array
 {
     $idDocente = (int)($previa['id_docente'] ?? 0);
     $dni = trim((string)($previa['dni'] ?? ''));
@@ -450,7 +428,7 @@ function mesas_editar_agregar_numero_detalle_previa(array $previa, int $numeroMe
 }
 
 
-function mesas_editar_agregar_numero_combinar_detalles(array $detalleGrupo, array $detallePrevia): array
+function mesas_editar_docentes_agregar_numero_combinar_detalles(array $detalleGrupo, array $detallePrevia): array
 {
     $detalle = [
         'numeros' => array_values(array_unique(array_merge($detalleGrupo['numeros'] ?? [], $detallePrevia['numeros'] ?? []))),
@@ -484,9 +462,9 @@ function mesas_editar_agregar_numero_combinar_detalles(array $detalleGrupo, arra
     return $detalle;
 }
 
-function mesas_editar_agregar_numero_detalle_grupo_mas_previa(PDO $pdo, array $previa, array $grupoDestino, int $numeroMesa): array
+function mesas_editar_docentes_agregar_numero_detalle_grupo_mas_previa(PDO $pdo, array $previa, array $grupoDestino, int $numeroMesa): array
 {
-    $detallePrevia = mesas_editar_agregar_numero_detalle_previa($previa, $numeroMesa);
+    $detallePrevia = mesas_editar_docentes_agregar_numero_detalle_previa($previa, $numeroMesa);
 
     $numerosGrupo = array_map(static fn ($item) => (int)($item['numero_mesa'] ?? 0), $grupoDestino['numeros'] ?? []);
     $numerosGrupo = array_values(array_filter($numerosGrupo, static fn ($numero) => $numero > 0));
@@ -495,16 +473,16 @@ function mesas_editar_agregar_numero_detalle_grupo_mas_previa(PDO $pdo, array $p
         return $detallePrevia;
     }
 
-    $detalleGrupo = mesas_editar_obtener_detalle_numeros($pdo, $numerosGrupo);
-    return mesas_editar_agregar_numero_combinar_detalles($detalleGrupo, $detallePrevia);
+    $detalleGrupo = mesas_editar_docentes_obtener_detalle_numeros($pdo, $numerosGrupo);
+    return mesas_editar_docentes_agregar_numero_combinar_detalles($detalleGrupo, $detallePrevia);
 }
 
-function mesas_editar_agregar_numero_validar_previa_para_slot(PDO $pdo, array $previa, array $grupoDestino, ?int $numeroMesa = null): array
+function mesas_editar_docentes_agregar_numero_validar_previa_para_slot(PDO $pdo, array $previa, array $grupoDestino, ?int $numeroMesa = null): array
 {
     $errores = [];
     $advertencias = [];
 
-    $numeroValidacion = $numeroMesa ?: mesas_editar_agregar_numero_siguiente_numero($pdo);
+    $numeroValidacion = $numeroMesa ?: mesas_editar_docentes_agregar_numero_siguiente_numero($pdo);
     $fechaDestino = substr((string)($grupoDestino['fecha_mesa'] ?? ''), 0, 10);
     $idTurnoDestino = (int)($grupoDestino['id_turno'] ?? 0);
 
@@ -523,7 +501,11 @@ function mesas_editar_agregar_numero_validar_previa_para_slot(PDO $pdo, array $p
     $idAreaGrupo = (int)($grupoDestino['id_area'] ?? 0);
     $idAreaPrevia = (int)($previa['id_area'] ?? 0);
     if ($idAreaGrupo > 0 && $idAreaPrevia > 0 && $idAreaGrupo !== $idAreaPrevia) {
-        $errores[] = 'La previa no pertenece al área del grupo seleccionado.';
+        if (mesas_editar_docentes_debe_respetar_area($pdo)) {
+            $errores[] = 'La previa no pertenece al área del grupo seleccionado.';
+        } else {
+            $advertencias[] = 'La previa pertenece a otra área, pero se permite porque el armado actual es por disponibilidad docente.';
+        }
     }
 
     if ((int)($previa['id_taller'] ?? 0) > 0) {
@@ -536,7 +518,7 @@ function mesas_editar_agregar_numero_validar_previa_para_slot(PDO $pdo, array $p
 
     try {
         if ($fechaDestino !== '') {
-            mesas_editar_normalizar_fecha($fechaDestino);
+            mesas_editar_docentes_normalizar_fecha($fechaDestino);
         } else {
             $errores[] = 'El grupo de referencia no tiene fecha definida.';
         }
@@ -555,13 +537,18 @@ function mesas_editar_agregar_numero_validar_previa_para_slot(PDO $pdo, array $p
     }
 
     if (count($errores) === 0) {
-        // Se valida la previa nueva junto con los números que ya tiene el grupo destino.
-        // Así el comportamiento es el correcto cuando el usuario presiona + desde un slot vacío:
-        // se crea un nuevo número de mesa y se suma al grupo abierto, sin crear un grupo aparte.
-        $detalle = mesas_editar_agregar_numero_detalle_grupo_mas_previa($pdo, $previa, $grupoDestino, $numeroValidacion);
-        $errores = array_merge($errores, mesas_editar_validar_docentes($pdo, $detalle, $fechaDestino, $idTurnoDestino));
-        $errores = array_merge($errores, mesas_editar_validar_alumnos($pdo, $detalle, $fechaDestino, $idTurnoDestino));
-        $errores = array_merge($errores, mesas_editar_validar_correlativas($pdo, $detalle, $fechaDestino, $idTurnoDestino));
+        // Para crear un número nuevo desde una previa suelta se valida el CANDIDATO
+        // contra el slot real del grupo destino, no se revalida todo el grupo existente.
+        // Esto evita que una mesa ya armada con algún dato viejo o advertencia preexistente
+        // esconda previas válidas. Aun así, al validar solo el candidato contra tablas reales,
+        // se siguen detectando choques con cualquier número del grupo o de otros grupos:
+        // - si el docente ya está en ese día/turno, no aparece;
+        // - si el alumno ya rinde en ese día/turno, no aparece;
+        // - si el docente no tiene disponibilidad para ese día/turno, no aparece.
+        $detalle = mesas_editar_docentes_agregar_numero_detalle_previa($previa, $numeroValidacion);
+        $errores = array_merge($errores, mesas_editar_docentes_validar_docentes($pdo, $detalle, $fechaDestino, $idTurnoDestino));
+        $errores = array_merge($errores, mesas_editar_docentes_validar_alumnos($pdo, $detalle, $fechaDestino, $idTurnoDestino));
+        $errores = array_merge($errores, mesas_editar_docentes_validar_correlativas($pdo, $detalle, $fechaDestino, $idTurnoDestino));
     }
 
     return [
@@ -572,8 +559,14 @@ function mesas_editar_agregar_numero_validar_previa_para_slot(PDO $pdo, array $p
     ];
 }
 
-function mesas_editar_agregar_numero_obtener_previas_sin_mesa(PDO $pdo, array $grupoDestino, int $limite = 300): array
+function mesas_editar_docentes_agregar_numero_obtener_previas_sin_mesa(PDO $pdo, array $grupoDestino, int $limite = 1500): array
 {
+    // Antes se hacía LIMIT antes de validar. Eso podía dejar afuera previas nuevas
+    // aunque fueran válidas, simplemente porque quedaban después de las primeras 300
+    // filas ordenadas por alumno. En edición por disponibilidad docente se escanean
+    // todas las previas sueltas y recién después se corta la salida.
+    $limite = max(1, min(3000, $limite));
+
     $sql = "
         SELECT p.id_previa
         FROM previas p
@@ -582,32 +575,34 @@ function mesas_editar_agregar_numero_obtener_previas_sin_mesa(PDO $pdo, array $g
           AND p.id_condicion = 3
           AND NOT EXISTS (SELECT 1 FROM mesas me WHERE me.id_previa = p.id_previa)
         ORDER BY p.alumno ASC, p.id_previa ASC
-        LIMIT {$limite}
     ";
 
     $ids = $pdo->query($sql)->fetchAll(PDO::FETCH_COLUMN);
     $salida = [];
 
     foreach ($ids as $idPrevia) {
-        $previa = mesas_editar_mas_obtener_previa_base($pdo, (int)$idPrevia);
+        $previa = mesas_editar_docentes_mas_obtener_previa_base($pdo, (int)$idPrevia);
         if (!$previa) {
             continue;
         }
 
-        $validacion = mesas_editar_agregar_numero_validar_previa_para_slot($pdo, $previa, $grupoDestino);
+        $validacion = mesas_editar_docentes_agregar_numero_validar_previa_para_slot($pdo, $previa, $grupoDestino);
         if (!$validacion['valido']) {
             continue;
         }
 
-        $salida[] = mesas_editar_agregar_numero_normalizar_previa($previa, $validacion);
+        $salida[] = mesas_editar_docentes_agregar_numero_normalizar_previa($previa, $validacion);
+        if (count($salida) >= $limite) {
+            break;
+        }
     }
 
     return $salida;
 }
 
-function mesas_editar_agregar_numero_normalizar_previa(array $previa, array $validacion): array
+function mesas_editar_docentes_agregar_numero_normalizar_previa(array $previa, array $validacion): array
 {
-    $curso = trim((string)(($previa['curso_materia'] ?? '') . ' ' . ($previa['division_materia'] ?? '')));
+    $curso = trim((string)(($previa['curso_alumno'] ?? '') . ' ' . ($previa['division_alumno'] ?? '')));
     $cursoMateria = trim((string)(($previa['curso_materia'] ?? '') . ' ' . ($previa['division_materia'] ?? '')));
 
     return [
@@ -629,9 +624,9 @@ function mesas_editar_agregar_numero_normalizar_previa(array $previa, array $val
     ];
 }
 
-function mesas_editar_agregar_numero_opciones(PDO $pdo, int $numeroGrupo): array
+function mesas_editar_docentes_agregar_numero_opciones(PDO $pdo, int $numeroGrupo): array
 {
-    $grupo = mesas_editar_agregar_numero_obtener_grupo_destino($pdo, $numeroGrupo);
+    $grupo = mesas_editar_docentes_agregar_numero_obtener_grupo_destino($pdo, $numeroGrupo);
     if (!$grupo) {
         throw new RuntimeException('No se encontró el grupo al que querés agregar un número.');
     }
@@ -645,7 +640,7 @@ function mesas_editar_agregar_numero_opciones(PDO $pdo, int $numeroGrupo): array
             'numero_grupo' => (int)$grupo['numero_grupo'],
             'id_grupo' => (int)$grupo['numero_grupo'],
             'fecha_mesa' => $grupo['fecha_mesa'] ?? null,
-            'fecha' => $grupo['fecha'] ?? mesas_editar_agregar_numero_fecha_texto($grupo['fecha_mesa'] ?? null),
+            'fecha' => $grupo['fecha'] ?? mesas_editar_docentes_agregar_numero_fecha_texto($grupo['fecha_mesa'] ?? null),
             'id_turno' => (int)$grupo['id_turno'],
             'turno' => trim((string)($grupo['turno'] ?? '')),
             'hora' => $grupo['hora'] ?? null,
@@ -659,23 +654,20 @@ function mesas_editar_agregar_numero_opciones(PDO $pdo, int $numeroGrupo): array
             'area' => trim((string)($grupo['area'] ?? '')),
             'numeros' => $grupo['numeros'],
         ],
-        'no_agrupadas' => mesas_editar_agregar_numero_obtener_no_agrupadas_disponibles($pdo, $grupo),
-        'previas_sin_mesa' => mesas_editar_agregar_numero_obtener_previas_sin_mesa($pdo, $grupo),
+        'no_agrupadas' => mesas_editar_docentes_agregar_numero_obtener_no_agrupadas_disponibles($pdo, $grupo),
+        'previas_sin_mesa' => mesas_editar_docentes_agregar_numero_obtener_previas_sin_mesa($pdo, $grupo),
     ];
 }
 
-function mesas_editar_agregar_numero_a_grupo(PDO $pdo, int $numeroGrupo, int $numeroMesa): array
+function mesas_editar_docentes_agregar_numero_a_grupo(PDO $pdo, int $numeroGrupo, int $numeroMesa): array
 {
-    $grupo = mesas_editar_agregar_numero_obtener_grupo_destino($pdo, $numeroGrupo);
+    $grupo = mesas_editar_docentes_agregar_numero_obtener_grupo_destino($pdo, $numeroGrupo);
     if (!$grupo) {
         throw new RuntimeException('No se encontró el grupo destino.');
     }
 
-    $validacion = mesas_editar_agregar_numero_validar_numero_en_grupo($pdo, $numeroMesa, $grupo, [
-        'ignorar_area' => true,
-        'solo_docente_alumno' => true,
-        'permitir_taller' => true,
-        'ignorar_correlativas' => true,
+    $validacion = mesas_editar_docentes_agregar_numero_validar_numero_en_grupo($pdo, $numeroMesa, $grupo, [
+        'ignorar_area' => mesas_editar_docentes_es_armado_por_docentes($pdo),
     ]);
     if (!$validacion['valido']) {
         return [
@@ -684,7 +676,7 @@ function mesas_editar_agregar_numero_a_grupo(PDO $pdo, int $numeroGrupo, int $nu
         ];
     }
 
-    $resumen = mesas_editar_agregar_numero_resumen_numero($pdo, $numeroMesa);
+    $resumen = mesas_editar_docentes_agregar_numero_resumen_numero($pdo, $numeroMesa);
     if (!$resumen) {
         throw new RuntimeException('No se encontró el número de mesa seleccionado.');
     }
@@ -716,7 +708,9 @@ function mesas_editar_agregar_numero_a_grupo(PDO $pdo, int $numeroGrupo, int $nu
         . 'VALUES '
         . '    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "borrador", NULL)'
     );
-    $idAreaInsert = $grupo['id_area'] !== null ? (int)$grupo['id_area'] : null;
+    $idAreaInsert = mesas_editar_docentes_es_armado_por_docentes($pdo)
+        ? ($resumen['id_area'] !== null ? (int)$resumen['id_area'] : null)
+        : ($grupo['id_area'] !== null ? (int)$grupo['id_area'] : null);
 
     $stmtInsert->execute([
         $numeroGrupo,
@@ -731,8 +725,8 @@ function mesas_editar_agregar_numero_a_grupo(PDO $pdo, int $numeroGrupo, int $nu
         $resumen['cantidad_alumnos'],
     ]);
 
-    if (function_exists('mesas_editar_flechas_reordenar_grupo')) {
-        mesas_editar_flechas_reordenar_grupo($pdo, $numeroGrupo);
+    if (function_exists('mesas_editar_docentes_flechas_reordenar_grupo')) {
+        mesas_editar_docentes_flechas_reordenar_grupo($pdo, $numeroGrupo);
     }
 
     return [
@@ -746,20 +740,20 @@ function mesas_editar_agregar_numero_a_grupo(PDO $pdo, int $numeroGrupo, int $nu
     ];
 }
 
-function mesas_editar_agregar_numero_crear_grupo_desde_previa(PDO $pdo, int $numeroGrupoReferencia, int $idPrevia): array
+function mesas_editar_docentes_agregar_numero_crear_grupo_desde_previa(PDO $pdo, int $numeroGrupoReferencia, int $idPrevia): array
 {
-    $grupoReferencia = mesas_editar_agregar_numero_obtener_grupo_destino($pdo, $numeroGrupoReferencia);
+    $grupoReferencia = mesas_editar_docentes_agregar_numero_obtener_grupo_destino($pdo, $numeroGrupoReferencia);
     if (!$grupoReferencia) {
         throw new RuntimeException('No se encontró el grupo de referencia.');
     }
 
-    $previa = mesas_editar_mas_obtener_previa_base($pdo, $idPrevia);
+    $previa = mesas_editar_docentes_mas_obtener_previa_base($pdo, $idPrevia);
     if (!$previa) {
         throw new RuntimeException('No se encontró la previa seleccionada.');
     }
 
-    $numeroMesa = mesas_editar_agregar_numero_siguiente_numero($pdo);
-    $validacion = mesas_editar_agregar_numero_validar_previa_para_slot($pdo, $previa, $grupoReferencia, $numeroMesa);
+    $numeroMesa = mesas_editar_docentes_agregar_numero_siguiente_numero($pdo);
+    $validacion = mesas_editar_docentes_agregar_numero_validar_previa_para_slot($pdo, $previa, $grupoReferencia, $numeroMesa);
     if (!$validacion['valido']) {
         return [
             'agregado' => false,
@@ -796,7 +790,9 @@ function mesas_editar_agregar_numero_crear_grupo_desde_previa(PDO $pdo, int $num
         . 'VALUES '
         . '    (?, ?, ?, ?, ?, ?, ?, "simple", 0, 1, "borrador", "Número creado manualmente desde previa sin número de mesa y agregado al grupo.")'
     );
-    $idAreaInsert = $grupoReferencia['id_area'] !== null ? (int)$grupoReferencia['id_area'] : null;
+    $idAreaInsert = mesas_editar_docentes_es_armado_por_docentes($pdo)
+        ? ($previa['id_area'] !== null ? (int)$previa['id_area'] : null)
+        : ($grupoReferencia['id_area'] !== null ? (int)$grupoReferencia['id_area'] : null);
 
     $stmtGrupo->execute([
         $numeroGrupoReferencia,
@@ -808,8 +804,8 @@ function mesas_editar_agregar_numero_crear_grupo_desde_previa(PDO $pdo, int $num
         $orden,
     ]);
 
-    if (function_exists('mesas_editar_flechas_reordenar_grupo')) {
-        mesas_editar_flechas_reordenar_grupo($pdo, $numeroGrupoReferencia);
+    if (function_exists('mesas_editar_docentes_flechas_reordenar_grupo')) {
+        mesas_editar_docentes_flechas_reordenar_grupo($pdo, $numeroGrupoReferencia);
     }
 
     return [

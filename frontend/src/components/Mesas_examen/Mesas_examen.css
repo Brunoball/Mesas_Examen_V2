@@ -3000,6 +3000,77 @@
   background:color-mix(in srgb, var(--balto-danger) 8%, #fff);
 }
 
+
+.mesas-historial-armadoMeta{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0, 1fr));
+  gap:10px;
+  padding:14px;
+  border-bottom:1px solid color-mix(in srgb, var(--mov-border) 64%, #fff);
+  background:color-mix(in srgb, var(--balto-bg) 42%, #fff);
+}
+
+.mesas-historial-armadoMeta > div{
+  min-width:0;
+  padding:12px;
+  border:1px solid color-mix(in srgb, var(--mov-border) 68%, #fff);
+  border-radius:14px;
+  background:#fff;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.mesas-historial-armadoMeta span{
+  color:var(--mov-muted);
+  font-size:10px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.055em;
+}
+
+.mesas-historial-armadoMeta strong{
+  min-width:0;
+  color:var(--balto-ink);
+  font-size:13px;
+  font-weight:720;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.mesas-historial-subsection{
+  border-top:1px solid color-mix(in srgb, var(--mov-border) 64%, #fff);
+  background:#fff;
+}
+
+.mesas-historial-armadoMeta + .mesas-historial-subsection{
+  border-top:0;
+}
+
+.mesas-historial-subtitle{
+  min-height:46px;
+  padding:10px 14px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  background:linear-gradient(180deg, #fff 0%, color-mix(in srgb, var(--balto-bg) 25%, #fff) 100%);
+  border-bottom:1px solid color-mix(in srgb, var(--mov-border) 64%, #fff);
+}
+
+.mesas-historial-subtitle h5{
+  margin:0;
+  color:var(--balto-ink);
+  font-size:13px;
+  font-weight:720;
+  letter-spacing:-.01em;
+}
+
+.mesas-historial-empty--compact.cc-emptyState{
+  min-height:84px;
+}
+
 .mesas-historial-divTable{
   width:100%;
   min-height:0;
@@ -3212,7 +3283,8 @@
     width:100%;
   }
 
-  .mesas-historial-resumen{
+  .mesas-historial-resumen,
+  .mesas-historial-armadoMeta{
     grid-template-columns:repeat(2, minmax(0, 1fr));
   }
 }
@@ -3253,9 +3325,15 @@
     margin-inline:-10px;
   }
 
-  .mesas-historial-sectionTitle{
+  .mesas-historial-sectionTitle,
+  .mesas-historial-subtitle{
     flex-direction:column;
     align-items:flex-start;
+  }
+
+  .mesas-historial-armadoMeta{
+    grid-template-columns:1fr;
+    padding:10px 12px;
   }
 
   .mesas-historial-sectionTitle--withIndicators{

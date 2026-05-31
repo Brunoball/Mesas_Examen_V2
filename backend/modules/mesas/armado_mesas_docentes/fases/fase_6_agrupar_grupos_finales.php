@@ -207,6 +207,7 @@ function mesas_armado_docentes_grupos_finales_core(PDO $pdo, array $opciones = [
             );
         }
 
+        $blindajeMaximoNumeros = mesas_armado_docentes_grupos_blindar_maximo_numeros_por_grupo($pdo, $minNumeros, $maxNumeros, $horasTurnos);
         $blindajeCobertura = mesas_armado_docentes_grupos_blindar_cobertura_salida($pdo, $horasTurnos, $disponibilidadDocentes, $fechaInicioRango, $fechaFinRango);
 
         if ($confirmarGrupos) {
@@ -245,6 +246,7 @@ function mesas_armado_docentes_grupos_finales_core(PDO $pdo, array $opciones = [
             'total_grupos_generados_inicialmente' => $totalGrupos,
             'total_filas_insertadas_inicialmente_en_mesas_grupos' => $totalFilasGrupo,
             'total_no_agrupadas_iniciales' => $totalNoAgrupadas,
+            'blindaje_maximo_numeros_por_grupo' => $blindajeMaximoNumeros,
             'blindaje_cobertura' => $blindajeCobertura,
             'total_orfanas_detectadas_por_blindaje' => $blindajeCobertura['total_orfanas_detectadas'] ?? 0,
             'total_grupos_generados' => $totalesFinales['total_grupos'],
@@ -805,6 +807,185 @@ function mesas_armado_docentes_grupos_insertar_no_agrupada(PDOStatement $stmt, a
 }
 
 
+function mesas_armado_docentes_grupos_particionar_tamanios(int $total, int $minNumeros = 2, int $maxNumeros = 4): array
+{
+    $total = max(0, $total);
+    $minNumeros = max(2, $minNumeros);
+    $maxNumeros = max($minNumeros, min(4, $maxNumeros));
+
+    if ($total === 0) {
+        return [];
+    }
+
+    if ($total <= $maxNumeros) {
+        return $total >= $minNumeros ? [$total] : [];
+    }
+
+    $tamanios = [];
+    $restantes = $total;
+
+    while ($restantes > 0) {
+        if ($restantes <= $maxNumeros) {
+            if ($restantes >= $minNumeros) {
+                $tamanios[] = $restantes;
+                break;
+            }
+
+            for ($i = count($tamanios) - 1; $i >= 0; $i--) {
+                if ($tamanios[$i] > $minNumeros) {
+                    $tamanios[$i]--;
+                    $tamanios[] = $restantes + 1;
+                    return $tamanios;
+                }
+            }
+
+            return [];
+        }
+
+        $tamanio = $maxNumeros;
+        $remanente = $restantes - $tamanio;
+
+        // Evita que el último bloque quede de 1 número. Ej.: 5 => 3 + 2.
+        if ($remanente > 0 && $remanente < $minNumeros) {
+            $deficit = $minNumeros - $remanente;
+            if (($tamanio - $deficit) >= $minNumeros) {
+                $tamanio -= $deficit;
+            }
+        }
+
+        $tamanios[] = $tamanio;
+        $restantes -= $tamanio;
+    }
+
+    return $tamanios;
+}
+
+function mesas_armado_docentes_grupos_blindar_maximo_numeros_por_grupo(PDO $pdo, int $minNumeros = 2, int $maxNumeros = 4, array $horasTurnos = []): array
+{
+    $minNumeros = max(2, $minNumeros);
+    $maxNumeros = max($minNumeros, min(4, $maxNumeros));
+
+    $stmt = $pdo->prepare("
+        SELECT numero_grupo, COUNT(*) AS cantidad_numeros
+        FROM mesas_grupos
+        GROUP BY numero_grupo
+        HAVING cantidad_numeros > ?
+        ORDER BY numero_grupo ASC
+    ");
+    $stmt->execute([$maxNumeros]);
+    $gruposGrandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    if (!$gruposGrandes) {
+        return [
+            'ejecutado' => true,
+            'max_numeros_por_grupo' => $maxNumeros,
+            'total_grupos_corregidos' => 0,
+            'grupos_corregidos' => [],
+        ];
+    }
+
+    $stmtFilas = $pdo->prepare("
+        SELECT numero_mesa, fecha_mesa, id_turno, hora, id_area, tipo_mesa, prioridad, cantidad_alumnos, estado, observacion
+        FROM mesas_grupos
+        WHERE numero_grupo = ?
+        ORDER BY orden ASC, numero_mesa ASC
+    ");
+
+    $stmtDelete = $pdo->prepare('DELETE FROM mesas_grupos WHERE numero_grupo = ?');
+
+    $stmtInsert = $pdo->prepare("
+        INSERT INTO mesas_grupos (
+            numero_grupo,
+            numero_mesa,
+            fecha_mesa,
+            id_turno,
+            hora,
+            id_area,
+            orden,
+            tipo_mesa,
+            prioridad,
+            cantidad_alumnos,
+            estado,
+            observacion
+        ) VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        )
+    ");
+
+    $corregidos = [];
+
+    foreach ($gruposGrandes as $grupoGrande) {
+        $numeroGrupoOriginal = (int)$grupoGrande['numero_grupo'];
+        $stmtFilas->execute([$numeroGrupoOriginal]);
+        $filas = $stmtFilas->fetchAll(PDO::FETCH_ASSOC);
+
+        $tamanios = mesas_armado_docentes_grupos_particionar_tamanios(count($filas), $minNumeros, $maxNumeros);
+        if (count($filas) === 0 || count($tamanios) === 0) {
+            continue;
+        }
+
+        $proximoNumeroGrupo = (int)$pdo->query('SELECT COALESCE(MAX(numero_grupo), 0) + 1 FROM mesas_grupos')->fetchColumn();
+        $stmtDelete->execute([$numeroGrupoOriginal]);
+
+        $offset = 0;
+        $nuevosGrupos = [];
+
+        foreach ($tamanios as $indiceGrupo => $tamanio) {
+            $numeroGrupoNuevo = $indiceGrupo === 0 ? $numeroGrupoOriginal : $proximoNumeroGrupo++;
+            $chunk = array_slice($filas, $offset, $tamanio);
+            $offset += $tamanio;
+            $orden = 1;
+            $numerosChunk = [];
+
+            foreach ($chunk as $fila) {
+                $idTurno = $fila['id_turno'] !== null ? (int)$fila['id_turno'] : 0;
+                $hora = $fila['hora'] ?? null;
+                if (($hora === null || $hora === '') && $idTurno > 0) {
+                    $hora = $horasTurnos[$idTurno] ?? null;
+                }
+
+                $stmtInsert->execute([
+                    $numeroGrupoNuevo,
+                    (int)$fila['numero_mesa'],
+                    (string)$fila['fecha_mesa'],
+                    $idTurno,
+                    $hora,
+                    $fila['id_area'] !== null ? (int)$fila['id_area'] : null,
+                    $orden,
+                    (string)$fila['tipo_mesa'],
+                    (int)$fila['prioridad'],
+                    (int)$fila['cantidad_alumnos'],
+                    (string)$fila['estado'],
+                    $fila['observacion'] !== null && trim((string)$fila['observacion']) !== '' ? (string)$fila['observacion'] : null,
+                ]);
+
+                $numerosChunk[] = (int)$fila['numero_mesa'];
+                $orden++;
+            }
+
+            $nuevosGrupos[] = [
+                'numero_grupo' => $numeroGrupoNuevo,
+                'cantidad_numeros' => count($numerosChunk),
+                'numeros_mesa' => $numerosChunk,
+            ];
+        }
+
+        $corregidos[] = [
+            'numero_grupo_original' => $numeroGrupoOriginal,
+            'cantidad_original' => count($filas),
+            'nuevos_grupos' => $nuevosGrupos,
+        ];
+    }
+
+    return [
+        'ejecutado' => true,
+        'max_numeros_por_grupo' => $maxNumeros,
+        'total_grupos_corregidos' => count($corregidos),
+        'grupos_corregidos' => $corregidos,
+    ];
+}
+
+
 function mesas_armado_docentes_grupos_blindar_cobertura_salida(PDO $pdo, array $horasTurnos = [], ?array $disponibilidadDocentes = null, ?string $fechaInicioRango = null, ?string $fechaFinRango = null): array
 {
     $disponibilidadDocentes = $disponibilidadDocentes ?? mesas_armado_docentes_obtener_disponibilidad_docentes($pdo);
@@ -1196,6 +1377,7 @@ function mesas_docentes_grupos_listar(): void
     try {
         $pdo = db();
         mesas_armado_docentes_grupos_asegurar_tablas($pdo);
+        mesas_armado_docentes_grupos_blindar_maximo_numeros_por_grupo($pdo, 2, 4, mesas_armado_docentes_grupos_obtener_horas_turnos($pdo));
 
         $busqueda = trim((string)($_GET['busqueda'] ?? ''));
 

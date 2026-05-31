@@ -30,6 +30,12 @@ const obtenerFechaTexto = (fila, campoBase = "fecha_mesa") => {
   return valor;
 };
 
+const tieneNotaHistorial = (fila) => {
+  const nota = String(fila?.nota ?? "").trim();
+  return nota !== "" && Number(fila?.nota) > 0;
+};
+
+
 const ordenarFilasHistorial = (a, b) => {
   const armadoA = Number(a?.id_armado_historial || 0);
   const armadoB = Number(b?.id_armado_historial || 0);
@@ -145,12 +151,39 @@ export const construirMesasDesdeHistorial = (data = {}) => {
 export const contarMesasHistorial = (data = {}) => construirMesasDesdeHistorial(data).length;
 
 export const contarRegistrosHistorialExportacion = (data = {}) => {
-  const resultados = Array.isArray(data?.resultados) ? data.resultados.length : 0;
-  const detalle = Array.isArray(data?.detalle) ? data.detalle.length : 0;
-  return resultados + detalle;
+  const detalle = Array.isArray(data?.detalle) ? data.detalle : [];
+  const notasDetalle = detalle.filter(tieneNotaHistorial).length;
+  const resultados = notasDetalle > 0 ? notasDetalle : (Array.isArray(data?.resultados) ? data.resultados.length : 0);
+  return resultados + detalle.length;
 };
 
 const construirResultadosHistorial = (data = {}) => {
+  const detalleConNotas = Array.isArray(data?.detalle)
+    ? data.detalle.filter(tieneNotaHistorial)
+    : [];
+
+  if (detalleConNotas.length > 0) {
+    return detalleConNotas.map((fila) => {
+      const notaNumerica = Number(fila?.nota || 0);
+      return {
+        fecha_nota: obtenerFechaTexto(fila, "fecha_nota"),
+        fecha_mesa: obtenerFechaTexto(fila, "fecha_mesa"),
+        grupo: textoCorto(fila?.numero_grupo),
+        mesa: textoCorto(fila?.numero_mesa),
+        alumno: textoCorto(fila?.alumno),
+        dni: textoCorto(fila?.dni),
+        materia: textoCorto(fila?.materia),
+        docente: textoCorto(fila?.docente),
+        tipo: textoCorto(fila?.tipo_mesa_texto || fila?.tipo_mesa),
+        condicion: textoCorto(fila?.condicion),
+        nota: textoCorto(fila?.nota),
+        aprobado: notaNumerica >= 7 ? "Sí" : "No",
+        estado: notaNumerica >= 7 ? "Aprobada" : "No aprobada",
+        motivo: notaNumerica >= 7 ? "Aprobada en mesa de examen." : "Se presentó a rendir, pero no aprobó la previa.",
+      };
+    });
+  }
+
   const resultados = Array.isArray(data?.resultados) ? data.resultados : [];
   return resultados.map((fila) => ({
     fecha_nota: obtenerFechaTexto(fila, "fecha_nota"),

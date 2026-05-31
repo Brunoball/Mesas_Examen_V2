@@ -1,29 +1,29 @@
 <?php
-// backend/modules/mesas/editar_mesas/eliminar/eliminar_controller.php
+// backend/modules/mesas/edicion_por_docente/eliminar/eliminar_controller.php
 declare(strict_types=1);
 
 require_once __DIR__ . '/eliminar_helpers.php';
 
-function mesas_editar_eliminar_smart(): void
+function mesas_editar_docentes_eliminar_smart(): void
 {
     try {
         $pdo = db();
         mesas_armado_grupos_asegurar_tablas($pdo);
 
-        $data = mesas_editar_eliminar_input();
+        $data = mesas_editar_docentes_eliminar_input();
         $modo = trim((string)($data['modo'] ?? $data['tipo_eliminacion'] ?? ''));
 
         if ($modo === 'numero_grupo' || $modo === 'quitar_numero' || !empty($data['solo_numero_grupo'])) {
-            mesas_editar_eliminar_numero_grupo();
+            mesas_editar_docentes_eliminar_numero_grupo();
             return;
         }
 
-        $tipo = mesas_editar_tipo_desde_payload($data);
+        $tipo = mesas_editar_docentes_tipo_desde_payload($data);
 
         $pdo->beginTransaction();
 
         if ($tipo === 'no_agrupada') {
-            $resultado = mesas_editar_eliminar_no_agrupada($pdo, $data);
+            $resultado = mesas_editar_docentes_eliminar_no_agrupada($pdo, $data);
             $pdo->commit();
 
             json_response([
@@ -36,8 +36,8 @@ function mesas_editar_eliminar_smart(): void
             return;
         }
 
-        $numeroGrupo = mesas_editar_eliminar_resolver_grupo($data);
-        $filas = mesas_editar_eliminar_filas_grupo($pdo, $numeroGrupo);
+        $numeroGrupo = mesas_editar_docentes_eliminar_resolver_grupo($data);
+        $filas = mesas_editar_docentes_eliminar_filas_grupo($pdo, $numeroGrupo);
 
         if (count($filas) === 0) {
             throw new RuntimeException('No se encontró el grupo final solicitado.');
@@ -48,7 +48,7 @@ function mesas_editar_eliminar_smart(): void
             ? mesas_notificaciones_cleanup_por_numeros_mesa($pdo, $numerosGrupo)
             : [];
 
-        $numerosPasados = mesas_editar_eliminar_pasar_filas_a_no_agrupadas($pdo, $filas);
+        $numerosPasados = mesas_editar_docentes_eliminar_pasar_filas_a_no_agrupadas($pdo, $filas);
 
         $stmtDelete = $pdo->prepare('DELETE FROM mesas_grupos WHERE numero_grupo = ?');
         $stmtDelete->execute([$numeroGrupo]);
@@ -78,7 +78,7 @@ function mesas_editar_eliminar_smart(): void
         if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        log_error($e, 'mesas_editar_eliminar_smart');
+        log_error($e, 'mesas_editar_docentes_eliminar_smart');
         json_response([
             'exito' => false,
             'mensaje' => 'Error interno al eliminar la mesa.',
@@ -87,19 +87,19 @@ function mesas_editar_eliminar_smart(): void
     }
 }
 
-function mesas_editar_eliminar_numero_grupo(): void
+function mesas_editar_docentes_eliminar_numero_grupo(): void
 {
     try {
         $pdo = db();
         mesas_armado_grupos_asegurar_tablas($pdo);
 
-        $data = mesas_editar_eliminar_input();
-        $numeroGrupo = mesas_editar_eliminar_resolver_grupo($data);
-        $numeroMesa = mesas_editar_eliminar_resolver_numero($data);
+        $data = mesas_editar_docentes_eliminar_input();
+        $numeroGrupo = mesas_editar_docentes_eliminar_resolver_grupo($data);
+        $numeroMesa = mesas_editar_docentes_eliminar_resolver_numero($data);
 
         $pdo->beginTransaction();
 
-        $fila = mesas_editar_eliminar_fila_numero_grupo($pdo, $numeroGrupo, $numeroMesa);
+        $fila = mesas_editar_docentes_eliminar_fila_numero_grupo($pdo, $numeroGrupo, $numeroMesa);
         if (!$fila) {
             throw new RuntimeException('El número de mesa indicado no pertenece al grupo seleccionado.');
         }
@@ -108,7 +108,7 @@ function mesas_editar_eliminar_numero_grupo(): void
 
         // El registro de la tabla mesas queda intacto. Solo se quita del grupo final
         // y se registra como no agrupada para no perderlo de la vista del armado.
-        mesas_editar_insertar_no_agrupada_desde_grupo($pdo, $fila);
+        mesas_editar_docentes_insertar_no_agrupada_desde_grupo($pdo, $fila);
 
         $stmtDelete = $pdo->prepare('
             DELETE FROM mesas_grupos
@@ -117,7 +117,7 @@ function mesas_editar_eliminar_numero_grupo(): void
         ');
         $stmtDelete->execute([$numeroGrupo, $numeroMesa]);
 
-        $filasRestantes = mesas_editar_eliminar_filas_grupo($pdo, $numeroGrupo);
+        $filasRestantes = mesas_editar_docentes_eliminar_filas_grupo($pdo, $numeroGrupo);
         $grupoEliminado = false;
         $numerosRestantesPasados = 0;
 
@@ -125,7 +125,7 @@ function mesas_editar_eliminar_numero_grupo(): void
         // Para no dejar grupos rotos, el número restante también pasa a no agrupadas.
         if (count($filasRestantes) === 1 && ($filasRestantes[0]['tipo_mesa'] ?? 'simple') !== 'taller') {
             $numerosNotificacion[] = (int)($filasRestantes[0]['numero_mesa'] ?? 0);
-            $numerosRestantesPasados = mesas_editar_eliminar_pasar_filas_a_no_agrupadas($pdo, $filasRestantes);
+            $numerosRestantesPasados = mesas_editar_docentes_eliminar_pasar_filas_a_no_agrupadas($pdo, $filasRestantes);
             $stmtDeleteResto = $pdo->prepare('DELETE FROM mesas_grupos WHERE numero_grupo = ?');
             $stmtDeleteResto->execute([$numeroGrupo]);
             $grupoEliminado = true;
@@ -133,7 +133,7 @@ function mesas_editar_eliminar_numero_grupo(): void
         } elseif (count($filasRestantes) === 0) {
             $grupoEliminado = true;
         } else {
-            mesas_editar_eliminar_reordenar_grupo($pdo, $numeroGrupo);
+            mesas_editar_docentes_eliminar_reordenar_grupo($pdo, $numeroGrupo);
         }
 
         $numerosNotificacion = array_values(array_filter(array_unique(array_map('intval', $numerosNotificacion)), static fn(int $n): bool => $n > 0));
@@ -143,7 +143,7 @@ function mesas_editar_eliminar_numero_grupo(): void
 
         $pdo->commit();
 
-        $grupoActualizado = $grupoEliminado ? null : mesas_editar_obtener_grupo_hidratado($pdo, $numeroGrupo);
+        $grupoActualizado = $grupoEliminado ? null : mesas_editar_docentes_obtener_grupo_hidratado($pdo, $numeroGrupo);
 
         json_response([
             'exito' => true,
@@ -174,7 +174,7 @@ function mesas_editar_eliminar_numero_grupo(): void
         if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        log_error($e, 'mesas_editar_eliminar_numero_grupo');
+        log_error($e, 'mesas_editar_docentes_eliminar_numero_grupo');
         json_response([
             'exito' => false,
             'mensaje' => 'Error interno al quitar el número de mesa del grupo.',

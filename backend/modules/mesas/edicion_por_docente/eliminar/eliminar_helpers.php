@@ -1,20 +1,19 @@
 <?php
-// backend/modules/mesas/editar_mesas/eliminar/eliminar_helpers.php
+// backend/modules/mesas/edicion_por_docente/eliminar/eliminar_helpers.php
 declare(strict_types=1);
 
 require_once __DIR__ . '/../helpers_editar_mesas.php';
-require_once __DIR__ . '/../../notificaciones_email/notificaciones_email_cleanup.php';
 
-function mesas_editar_eliminar_input(): array
+function mesas_editar_docentes_eliminar_input(): array
 {
-    $data = mesas_editar_input_json();
+    $data = mesas_editar_docentes_input_json();
     if (!is_array($data)) {
         $data = [];
     }
     return array_merge($_GET ?? [], $data);
 }
 
-function mesas_editar_eliminar_resolver_grupo(array $data): int
+function mesas_editar_docentes_eliminar_resolver_grupo(array $data): int
 {
     $numeroGrupo = (int)($data['numero_grupo'] ?? $data['id_grupo'] ?? $data['grupo'] ?? 0);
     if ($numeroGrupo <= 0) {
@@ -23,7 +22,7 @@ function mesas_editar_eliminar_resolver_grupo(array $data): int
     return $numeroGrupo;
 }
 
-function mesas_editar_eliminar_resolver_numero(array $data): int
+function mesas_editar_docentes_eliminar_resolver_numero(array $data): int
 {
     $numeroMesa = (int)($data['numero_mesa'] ?? $data['numero'] ?? 0);
     if ($numeroMesa <= 0) {
@@ -32,7 +31,7 @@ function mesas_editar_eliminar_resolver_numero(array $data): int
     return $numeroMesa;
 }
 
-function mesas_editar_eliminar_filas_grupo(PDO $pdo, int $numeroGrupo): array
+function mesas_editar_docentes_eliminar_filas_grupo(PDO $pdo, int $numeroGrupo): array
 {
     $stmt = $pdo->prepare('
         SELECT numero_grupo, numero_mesa, fecha_mesa, id_turno, hora, id_area, tipo_mesa, prioridad, cantidad_alumnos, orden
@@ -44,7 +43,7 @@ function mesas_editar_eliminar_filas_grupo(PDO $pdo, int $numeroGrupo): array
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-function mesas_editar_eliminar_fila_numero_grupo(PDO $pdo, int $numeroGrupo, int $numeroMesa): ?array
+function mesas_editar_docentes_eliminar_fila_numero_grupo(PDO $pdo, int $numeroGrupo, int $numeroMesa): ?array
 {
     $stmt = $pdo->prepare('
         SELECT numero_grupo, numero_mesa, fecha_mesa, id_turno, hora, id_area, tipo_mesa, prioridad, cantidad_alumnos, orden
@@ -58,7 +57,7 @@ function mesas_editar_eliminar_fila_numero_grupo(PDO $pdo, int $numeroGrupo, int
     return $fila ?: null;
 }
 
-function mesas_editar_eliminar_reordenar_grupo(PDO $pdo, int $numeroGrupo): void
+function mesas_editar_docentes_eliminar_reordenar_grupo(PDO $pdo, int $numeroGrupo): void
 {
     $stmt = $pdo->prepare('
         SELECT numero_mesa
@@ -86,20 +85,20 @@ function mesas_editar_eliminar_reordenar_grupo(PDO $pdo, int $numeroGrupo): void
     }
 }
 
-function mesas_editar_eliminar_pasar_filas_a_no_agrupadas(PDO $pdo, array $filas): int
+function mesas_editar_docentes_eliminar_pasar_filas_a_no_agrupadas(PDO $pdo, array $filas): int
 {
     $cantidad = 0;
     foreach ($filas as $fila) {
         if ((int)($fila['numero_mesa'] ?? 0) <= 0) {
             continue;
         }
-        mesas_editar_insertar_no_agrupada_desde_grupo($pdo, $fila);
+        mesas_editar_docentes_insertar_no_agrupada_desde_grupo($pdo, $fila);
         $cantidad++;
     }
     return $cantidad;
 }
 
-function mesas_editar_eliminar_no_agrupada(PDO $pdo, array $data): array
+function mesas_editar_docentes_eliminar_no_agrupada(PDO $pdo, array $data): array
 {
     $idNoAgrupada = (int)($data['id_no_agrupada'] ?? 0);
     $numeroMesa = (int)($data['numero_mesa'] ?? 0);
@@ -119,10 +118,6 @@ function mesas_editar_eliminar_no_agrupada(PDO $pdo, array $data): array
         throw new RuntimeException('No se encontró el número sin agrupar solicitado.');
     }
 
-    $notificacionesLimpiadas = function_exists('mesas_notificaciones_cleanup_por_numeros_mesa')
-        ? mesas_notificaciones_cleanup_por_numeros_mesa($pdo, [$numeroMesaReal])
-        : [];
-
     $stmtDeleteNo = $pdo->prepare("DELETE FROM mesas_no_agrupadas WHERE {$where}");
     $stmtDeleteNo->execute([$valor]);
 
@@ -135,6 +130,5 @@ function mesas_editar_eliminar_no_agrupada(PDO $pdo, array $data): array
         'numero_mesa' => $numeroMesaReal,
         'filas_mesas_eliminadas' => $stmtDeleteMesas->rowCount(),
         'filas_no_agrupadas_eliminadas' => $stmtDeleteNo->rowCount(),
-        'notificaciones_limpiadas' => $notificacionesLimpiadas,
     ];
 }

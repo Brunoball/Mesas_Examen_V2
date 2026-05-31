@@ -1,10 +1,10 @@
 <?php
-// backend/modules/mesas/editar_mesas/helpers_editar_mesas.php
+// backend/modules/mesas/edicion_por_docente/helpers_editar_mesas.php
 declare(strict_types=1);
 
 require_once __DIR__ . '/../armado_rango_helper.php';
 
-function mesas_editar_input_json(): array
+function mesas_editar_docentes_input_json(): array
 {
     $raw = file_get_contents('php://input');
     if ($raw === false || trim($raw) === '') {
@@ -16,7 +16,7 @@ function mesas_editar_input_json(): array
 }
 
 
-function mesas_editar_parametro_presente($valor): bool
+function mesas_editar_docentes_parametro_presente($valor): bool
 {
     if ($valor === null) {
         return false;
@@ -26,25 +26,173 @@ function mesas_editar_parametro_presente($valor): bool
     return $texto !== '' && $texto !== 'undefined' && $texto !== 'null' && $texto !== 'nan';
 }
 
-function mesas_editar_parametro_texto($valor): string
+function mesas_editar_docentes_parametro_texto($valor): string
 {
-    return mesas_editar_parametro_presente($valor) ? trim((string)$valor) : '';
+    return mesas_editar_docentes_parametro_presente($valor) ? trim((string)$valor) : '';
 }
 
 
 
-function mesas_editar_tipo_armado_actual(PDO $pdo): string
+function mesas_editar_docentes_normalizar_tipo_armado(?string $tipo): string
 {
-    return 'area';
+    $tipoLower = mb_strtolower(trim((string)$tipo), 'UTF-8');
+    if ($tipoLower === '') {
+        return '';
+    }
+
+    if (str_contains($tipoLower, 'docente') || str_contains($tipoLower, 'dispon')) {
+        return 'docentes';
+    }
+
+    if (str_contains($tipoLower, 'area') || str_contains($tipoLower, 'área')) {
+        return 'area';
+    }
+
+    return '';
 }
 
-function mesas_editar_debe_respetar_area(PDO $pdo): bool
+function mesas_editar_docentes_timestamp_seguro(?string $fechaHora): int
 {
-    return true;
+    $fechaHora = trim((string)$fechaHora);
+    if ($fechaHora === '') {
+        return 0;
+    }
+
+    $ts = strtotime($fechaHora);
+    return $ts === false ? 0 : (int)$ts;
 }
 
+function mesas_editar_docentes_payload_a_array(?string $json): array
+{
+    $json = trim((string)$json);
+    if ($json === '') {
+        return [];
+    }
 
-function mesas_editar_normalizar_fecha(?string $fecha): string
+    $datos = json_decode($json, true);
+    if (!is_array($datos)) {
+        return [];
+    }
+
+    $body = is_array($datos['body'] ?? null) ? $datos['body'] : [];
+    $post = is_array($datos['post'] ?? null) ? $datos['post'] : [];
+    $get = is_array($datos['get'] ?? null) ? $datos['get'] : [];
+
+    return array_merge($get, $post, $body);
+}
+
+function mesas_editar_docentes_tipo_armado_desde_auditoria(PDO $pdo, ?array $rangoActual = null): array
+{
+    try {
+        $stmt = $pdo->query("
+            SELECT accion, datos_request, fecha_hora
+            FROM auditoria
+            WHERE modulo = 'mesas'
+              AND resultado = 1
+              AND accion IN (
+                  'mesas_armado_crear',
+                  'mesas_armado_crear_numerado',
+                  'mesas_armado_crear_docentes',
+                  'mesas_armado_docentes_crear',
+                  'mesas_armado_crear_por_disponibilidad_docente'
+              )
+            ORDER BY fecha_hora DESC, id_auditoria DESC
+            LIMIT 50
+        ");
+
+        if (!$stmt) {
+            return ['tipo' => '', 'fecha_hora' => '', 'origen' => ''];
+        }
+
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $accion = trim((string)($row['accion'] ?? ''));
+            $tipo = mesas_editar_docentes_normalizar_tipo_armado($accion);
+
+            // Las acciones históricas del armado por área no tienen la palabra "area" en el nombre.
+            if ($tipo === '' && in_array($accion, ['mesas_armado_crear', 'mesas_armado_crear_numerado'], true)) {
+                $tipo = 'area';
+            }
+
+            if ($tipo === '') {
+                continue;
+            }
+
+            return [
+                'tipo' => $tipo,
+                'fecha_hora' => trim((string)($row['fecha_hora'] ?? '')),
+                'origen' => 'auditoria',
+            ];
+        }
+    } catch (Throwable $e) {
+        return ['tipo' => '', 'fecha_hora' => '', 'origen' => ''];
+    }
+
+    return ['tipo' => '', 'fecha_hora' => '', 'origen' => ''];
+}
+
+function mesas_editar_docentes_tipo_armado_actual(PDO $pdo): string
+{
+    static $cache = [];
+    $key = spl_object_id($pdo);
+    if (isset($cache[$key])) {
+        return $cache[$key];
+    }
+
+    $rango = null;
+    $tipoTabla = '';
+    $tsTabla = 0;
+
+    try {
+        $rango = function_exists('mesas_armado_rango_obtener_actual')
+            ? mesas_armado_rango_obtener_actual($pdo)
+            : null;
+
+        if (is_array($rango)) {
+            $tipoTabla = mesas_editar_docentes_normalizar_tipo_armado((string)($rango['tipo_armado'] ?? ''));
+            $tsTabla = mesas_editar_docentes_timestamp_seguro((string)($rango['actualizado_en'] ?? ''));
+        }
+    } catch (Throwable $e) {
+        $rango = null;
+        $tipoTabla = '';
+        $tsTabla = 0;
+    }
+
+    $auditoria = mesas_editar_docentes_tipo_armado_desde_auditoria($pdo, is_array($rango) ? $rango : null);
+    $tipoAuditoria = (string)($auditoria['tipo'] ?? '');
+    $tsAuditoria = mesas_editar_docentes_timestamp_seguro((string)($auditoria['fecha_hora'] ?? ''));
+
+    // Si la tabla quedó vieja por una versión anterior, la auditoría más nueva recupera
+    // el modo real del último armado y evita que la edición por docentes se comporte como área.
+    if ($tipoAuditoria !== '' && ($tipoTabla === '' || $tsTabla === 0 || $tsAuditoria >= $tsTabla)) {
+        $cache[$key] = $tipoAuditoria;
+        return $cache[$key];
+    }
+
+    if ($tipoTabla !== '') {
+        $cache[$key] = $tipoTabla;
+        return $cache[$key];
+    }
+
+    if ($tipoAuditoria !== '') {
+        $cache[$key] = $tipoAuditoria;
+        return $cache[$key];
+    }
+
+    $cache[$key] = 'area';
+    return $cache[$key];
+}
+
+function mesas_editar_docentes_es_armado_por_docentes(PDO $pdo): bool
+{
+    return mesas_editar_docentes_tipo_armado_actual($pdo) === 'docentes';
+}
+
+function mesas_editar_docentes_debe_respetar_area(PDO $pdo): bool
+{
+    return !mesas_editar_docentes_es_armado_por_docentes($pdo);
+}
+
+function mesas_editar_docentes_normalizar_fecha(?string $fecha): string
 {
     $fecha = trim((string)$fecha);
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
@@ -65,7 +213,7 @@ function mesas_editar_normalizar_fecha(?string $fecha): string
 }
 
 
-function mesas_editar_normalizar_fecha_rango(?string $fecha): string
+function mesas_editar_docentes_normalizar_fecha_rango(?string $fecha): string
 {
     $fecha = trim((string)$fecha);
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
@@ -80,7 +228,7 @@ function mesas_editar_normalizar_fecha_rango(?string $fecha): string
     return $fecha;
 }
 
-function mesas_editar_horario_rango_por_turno(string $turno): array
+function mesas_editar_docentes_horario_rango_por_turno(string $turno): array
 {
     $turnoLower = mb_strtolower(trim($turno), 'UTF-8');
 
@@ -101,7 +249,7 @@ function mesas_editar_horario_rango_por_turno(string $turno): array
     ];
 }
 
-function mesas_editar_hora_a_minutos(string $hora): int
+function mesas_editar_docentes_hora_a_minutos(string $hora): int
 {
     if (!preg_match('/^(\d{2}):(\d{2})(?::\d{2})?$/', $hora, $m)) {
         throw new InvalidArgumentException('La hora debe tener formato HH:MM.');
@@ -117,9 +265,9 @@ function mesas_editar_hora_a_minutos(string $hora): int
     return ($hh * 60) + $mm;
 }
 
-function mesas_editar_normalizar_hora(?string $hora, string $turno = ''): string
+function mesas_editar_docentes_normalizar_hora(?string $hora, string $turno = ''): string
 {
-    $rango = mesas_editar_horario_rango_por_turno($turno);
+    $rango = mesas_editar_docentes_horario_rango_por_turno($turno);
     $hora = trim((string)$hora);
 
     if ($hora === '') {
@@ -134,9 +282,9 @@ function mesas_editar_normalizar_hora(?string $hora, string $turno = ''): string
         throw new InvalidArgumentException('La hora debe tener formato HH:MM.');
     }
 
-    $minutos = mesas_editar_hora_a_minutos($hora);
-    $min = mesas_editar_hora_a_minutos($rango['min']);
-    $max = mesas_editar_hora_a_minutos($rango['max']);
+    $minutos = mesas_editar_docentes_hora_a_minutos($hora);
+    $min = mesas_editar_docentes_hora_a_minutos($rango['min']);
+    $max = mesas_editar_docentes_hora_a_minutos($rango['max']);
 
     if ($minutos < $min || $minutos > $max) {
         throw new InvalidArgumentException('El horario del turno ' . trim($turno) . ' debe estar entre ' . $rango['texto'] . '.');
@@ -145,7 +293,7 @@ function mesas_editar_normalizar_hora(?string $hora, string $turno = ''): string
     return $hora . ':00';
 }
 
-function mesas_editar_obtener_turno(PDO $pdo, int $idTurno): array
+function mesas_editar_docentes_obtener_turno(PDO $pdo, int $idTurno): array
 {
     if ($idTurno <= 0) {
         throw new InvalidArgumentException('Debe seleccionar un turno válido.');
@@ -168,14 +316,14 @@ function mesas_editar_obtener_turno(PDO $pdo, int $idTurno): array
     return $turno;
 }
 
-function mesas_editar_tipo_desde_payload(array $data): string
+function mesas_editar_docentes_tipo_desde_payload(array $data): string
 {
     $tipo = trim((string)($data['tipo'] ?? $data['origen_tipo'] ?? $data['tipo_mesa_edicion'] ?? 'grupo'));
     return in_array($tipo, ['grupo', 'no_agrupada'], true) ? $tipo : 'grupo';
 }
 
 
-function mesas_editar_slots_extra_asegurar_tabla(PDO $pdo): void
+function mesas_editar_docentes_slots_extra_asegurar_tabla(PDO $pdo): void
 {
     $pdo->exec('
         CREATE TABLE IF NOT EXISTS mesas_grupos_slots_extra (
@@ -199,7 +347,7 @@ function mesas_editar_slots_extra_asegurar_tabla(PDO $pdo): void
     }
 }
 
-function mesas_editar_slots_extra_obtener(PDO $pdo, int $numeroGrupo): int
+function mesas_editar_docentes_slots_extra_obtener(PDO $pdo, int $numeroGrupo): int
 {
     if ($numeroGrupo <= 0) {
         return 0;
@@ -215,13 +363,13 @@ function mesas_editar_slots_extra_obtener(PDO $pdo, int $numeroGrupo): int
     }
 }
 
-function mesas_editar_slots_extra_incrementar(PDO $pdo, int $numeroGrupo, int $maxExtra = 12): int
+function mesas_editar_docentes_slots_extra_incrementar(PDO $pdo, int $numeroGrupo, int $maxExtra = 12): int
 {
     if ($numeroGrupo <= 0) {
         throw new InvalidArgumentException('Debe indicar el grupo al que querés habilitarle un nuevo slot.');
     }
 
-    mesas_editar_slots_extra_asegurar_tabla($pdo);
+    mesas_editar_docentes_slots_extra_asegurar_tabla($pdo);
 
     $maxExtra = max(1, min(20, $maxExtra));
     $stmt = $pdo->prepare('
@@ -233,18 +381,18 @@ function mesas_editar_slots_extra_incrementar(PDO $pdo, int $numeroGrupo, int $m
     ');
     $stmt->execute([$numeroGrupo, $maxExtra]);
 
-    return mesas_editar_slots_extra_obtener($pdo, $numeroGrupo);
+    return mesas_editar_docentes_slots_extra_obtener($pdo, $numeroGrupo);
 }
 
-function mesas_editar_slots_extra_decrementar(PDO $pdo, int $numeroGrupo): int
+function mesas_editar_docentes_slots_extra_decrementar(PDO $pdo, int $numeroGrupo): int
 {
     if ($numeroGrupo <= 0) {
         throw new InvalidArgumentException('Debe indicar el grupo al que querés quitarle el slot libre.');
     }
 
-    mesas_editar_slots_extra_asegurar_tabla($pdo);
+    mesas_editar_docentes_slots_extra_asegurar_tabla($pdo);
 
-    $actual = mesas_editar_obtener_grupo_hidratado($pdo, $numeroGrupo);
+    $actual = mesas_editar_docentes_obtener_grupo_hidratado($pdo, $numeroGrupo);
     if (!$actual) {
         throw new RuntimeException('No se encontró el grupo al que querés quitarle el slot libre.');
     }
@@ -270,10 +418,10 @@ function mesas_editar_slots_extra_decrementar(PDO $pdo, int $numeroGrupo): int
 
     $pdo->prepare('DELETE FROM mesas_grupos_slots_extra WHERE numero_grupo = ? AND slots_extra <= 0')->execute([$numeroGrupo]);
 
-    return mesas_editar_slots_extra_obtener($pdo, $numeroGrupo);
+    return mesas_editar_docentes_slots_extra_obtener($pdo, $numeroGrupo);
 }
 
-function mesas_editar_grupo_es_taller_por_numeros(array $numeros, array $grupo = []): bool
+function mesas_editar_docentes_grupo_es_taller_por_numeros(array $numeros, array $grupo = []): bool
 {
     foreach ($numeros as $numero) {
         $tipo = mb_strtolower(trim((string)($numero['tipo_mesa'] ?? $numero['tipo_numero'] ?? $numero['tipo'] ?? '')), 'UTF-8');
@@ -290,7 +438,7 @@ function mesas_editar_grupo_es_taller_por_numeros(array $numeros, array $grupo =
     return $textoTipos !== '' && str_contains($textoTipos, 'taller');
 }
 
-function mesas_editar_capacidad_slots_calcular(int $cantidadNumeros, bool $esTaller, int $slotsExtra = 0): array
+function mesas_editar_docentes_capacidad_slots_calcular(int $cantidadNumeros, bool $esTaller, int $slotsExtra = 0): array
 {
     $cantidadNumeros = max(0, $cantidadNumeros);
     $slotsExtra = max(0, $slotsExtra);
@@ -308,31 +456,31 @@ function mesas_editar_capacidad_slots_calcular(int $cantidadNumeros, bool $esTal
     ];
 }
 
-function mesas_editar_capacidad_slots_fila(PDO $pdo, array $grupo): array
+function mesas_editar_docentes_capacidad_slots_fila(PDO $pdo, array $grupo): array
 {
     $numeroGrupo = (int)($grupo['numero_grupo'] ?? $grupo['id_grupo'] ?? 0);
     $cantidadNumeros = (int)($grupo['cantidad_numeros'] ?? 0);
     $cantidadTalleres = (int)($grupo['cantidad_talleres'] ?? 0);
     $slotsExtra = array_key_exists('slots_extra', $grupo)
         ? (int)$grupo['slots_extra']
-        : mesas_editar_slots_extra_obtener($pdo, $numeroGrupo);
+        : mesas_editar_docentes_slots_extra_obtener($pdo, $numeroGrupo);
 
-    return mesas_editar_capacidad_slots_calcular($cantidadNumeros, $cantidadTalleres > 0, $slotsExtra);
+    return mesas_editar_docentes_capacidad_slots_calcular($cantidadNumeros, $cantidadTalleres > 0, $slotsExtra);
 }
 
-function mesas_editar_aplicar_slots_extra_a_grupo(PDO $pdo, array $grupo): array
+function mesas_editar_docentes_aplicar_slots_extra_a_grupo(PDO $pdo, array $grupo): array
 {
     $numeroGrupo = (int)($grupo['numero_grupo'] ?? $grupo['id_grupo'] ?? 0);
     $numeros = is_array($grupo['numeros'] ?? null) ? $grupo['numeros'] : [];
     $cantidadNumeros = count($numeros) > 0 ? count($numeros) : (int)($grupo['cantidad_numeros'] ?? 0);
-    $esTaller = mesas_editar_grupo_es_taller_por_numeros($numeros, $grupo);
-    $slotsExtra = mesas_editar_slots_extra_obtener($pdo, $numeroGrupo);
-    $capacidad = mesas_editar_capacidad_slots_calcular($cantidadNumeros, $esTaller, $slotsExtra);
+    $esTaller = mesas_editar_docentes_grupo_es_taller_por_numeros($numeros, $grupo);
+    $slotsExtra = mesas_editar_docentes_slots_extra_obtener($pdo, $numeroGrupo);
+    $capacidad = mesas_editar_docentes_capacidad_slots_calcular($cantidadNumeros, $esTaller, $slotsExtra);
 
     return array_merge($grupo, $capacidad);
 }
 
-function mesas_editar_area_nombre_por_id(PDO $pdo, ?int $idArea): string
+function mesas_editar_docentes_area_nombre_por_id(PDO $pdo, ?int $idArea): string
 {
     $idArea = (int)($idArea ?? 0);
     if ($idArea <= 0) {
@@ -344,7 +492,7 @@ function mesas_editar_area_nombre_por_id(PDO $pdo, ?int $idArea): string
     return trim((string)($stmt->fetchColumn() ?: ''));
 }
 
-function mesas_editar_area_canonica_grupo(PDO $pdo, int $numeroGrupo): ?array
+function mesas_editar_docentes_area_canonica_grupo(PDO $pdo, int $numeroGrupo): ?array
 {
     if ($numeroGrupo <= 0) {
         return null;
@@ -372,13 +520,20 @@ function mesas_editar_area_canonica_grupo(PDO $pdo, int $numeroGrupo): ?array
     $idArea = (int)$row['id_area'];
     return [
         'id_area' => $idArea,
-        'area' => mesas_editar_area_nombre_por_id($pdo, $idArea),
+        'area' => mesas_editar_docentes_area_nombre_por_id($pdo, $idArea),
     ];
 }
 
-function mesas_editar_normalizar_area_grupo(PDO $pdo, int $numeroGrupo): ?array
+function mesas_editar_docentes_normalizar_area_grupo(PDO $pdo, int $numeroGrupo): ?array
 {
-    $area = mesas_editar_area_canonica_grupo($pdo, $numeroGrupo);
+    // En el armado por disponibilidad docente el área NO define el grupo.
+    // No normalizamos todas las filas al mismo área porque el grupo puede mezclar
+    // Matemática, Sociales, Lengua, etc. siempre que coincida fecha/turno y disponibilidad.
+    if (mesas_editar_docentes_es_armado_por_docentes($pdo)) {
+        return null;
+    }
+
+    $area = mesas_editar_docentes_area_canonica_grupo($pdo, $numeroGrupo);
     if (!$area) {
         return null;
     }
@@ -395,8 +550,12 @@ function mesas_editar_normalizar_area_grupo(PDO $pdo, int $numeroGrupo): ?array
     return $area;
 }
 
-function mesas_editar_normalizar_areas_grupos_finales(PDO $pdo, ?array $numerosGrupo = null): void
+function mesas_editar_docentes_normalizar_areas_grupos_finales(PDO $pdo, ?array $numerosGrupo = null): void
 {
+    if (mesas_editar_docentes_es_armado_por_docentes($pdo)) {
+        return;
+    }
+
     $params = [];
     $where = '';
 
@@ -413,18 +572,22 @@ function mesas_editar_normalizar_areas_grupos_finales(PDO $pdo, ?array $numerosG
     $stmt->execute($params);
 
     foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $numeroGrupo) {
-        mesas_editar_normalizar_area_grupo($pdo, (int)$numeroGrupo);
+        mesas_editar_docentes_normalizar_area_grupo($pdo, (int)$numeroGrupo);
     }
 }
 
-function mesas_editar_aplicar_area_canonica_a_fila_grupo(PDO $pdo, array $grupo): array
+function mesas_editar_docentes_aplicar_area_canonica_a_fila_grupo(PDO $pdo, array $grupo): array
 {
+    if (mesas_editar_docentes_es_armado_por_docentes($pdo)) {
+        return $grupo;
+    }
+
     $numeroGrupo = (int)($grupo['numero_grupo'] ?? $grupo['id_grupo'] ?? 0);
     if ($numeroGrupo <= 0) {
         return $grupo;
     }
 
-    $area = mesas_editar_normalizar_area_grupo($pdo, $numeroGrupo);
+    $area = mesas_editar_docentes_normalizar_area_grupo($pdo, $numeroGrupo);
     if ($area) {
         $grupo['id_area'] = (int)$area['id_area'];
         $grupo['area'] = $area['area'];
@@ -434,7 +597,7 @@ function mesas_editar_aplicar_area_canonica_a_fila_grupo(PDO $pdo, array $grupo)
 }
 
 
-function mesas_editar_obtener_grupo_hidratado(PDO $pdo, int $numeroGrupo): ?array
+function mesas_editar_docentes_obtener_grupo_hidratado(PDO $pdo, int $numeroGrupo): ?array
 {
     // Importante: esta función también se usa dentro de transacciones de edición.
     // En MySQL/MariaDB los CREATE/ALTER/DROP hacen COMMIT implícito; por eso no
@@ -443,7 +606,7 @@ function mesas_editar_obtener_grupo_hidratado(PDO $pdo, int $numeroGrupo): ?arra
         mesas_armado_grupos_asegurar_tablas($pdo);
     }
 
-    mesas_editar_normalizar_area_grupo($pdo, $numeroGrupo);
+    mesas_editar_docentes_normalizar_area_grupo($pdo, $numeroGrupo);
 
     $stmt = $pdo->prepare("
         SELECT
@@ -482,7 +645,7 @@ function mesas_editar_obtener_grupo_hidratado(PDO $pdo, int $numeroGrupo): ?arra
     }
 
     if (!$pdo->inTransaction()) {
-        mesas_editar_slots_extra_asegurar_tabla($pdo);
+        mesas_editar_docentes_slots_extra_asegurar_tabla($pdo);
     }
 
     $grupos = mesas_armado_grupos_hidratar_detalles($pdo, [$base], [$numeroGrupo]);
@@ -490,10 +653,10 @@ function mesas_editar_obtener_grupo_hidratado(PDO $pdo, int $numeroGrupo): ?arra
         return null;
     }
 
-    return mesas_editar_aplicar_slots_extra_a_grupo($pdo, $grupos[0]);
+    return mesas_editar_docentes_aplicar_slots_extra_a_grupo($pdo, $grupos[0]);
 }
 
-function mesas_editar_obtener_no_agrupada_hidratada(PDO $pdo, ?int $idNoAgrupada = null, ?int $numeroMesa = null): ?array
+function mesas_editar_docentes_obtener_no_agrupada_hidratada(PDO $pdo, ?int $idNoAgrupada = null, ?int $numeroMesa = null): ?array
 {
     // Evita DDL dentro de transacciones de edición para no provocar commits implícitos.
     if (!$pdo->inTransaction()) {
@@ -613,7 +776,7 @@ function mesas_editar_obtener_no_agrupada_hidratada(PDO $pdo, ?int $idNoAgrupada
                 'docente' => $filaDetalle['docente'] ?? '',
                 'curso_alumno' => $filaDetalle['curso_alumno'] ?? '',
                 'division_alumno' => $filaDetalle['division_alumno'] ?? '',
-                'curso' => trim((string)(($filaDetalle['curso_materia'] ?? '') . ' ' . ($filaDetalle['division_materia'] ?? ''))),
+                'curso' => trim((string)(($filaDetalle['curso_alumno'] ?? '') . ' ' . ($filaDetalle['division_alumno'] ?? ''))),
                 'curso_materia' => $filaDetalle['curso_materia'] ?? '',
                 'division_materia' => $filaDetalle['division_materia'] ?? '',
                 'condicion' => $filaDetalle['condicion'] ?? '',
@@ -641,12 +804,12 @@ function mesas_editar_obtener_no_agrupada_hidratada(PDO $pdo, ?int $idNoAgrupada
     return mesas_armado_grupos_limpieza_salida($grupo);
 }
 
-function mesas_editar_resolver_item(PDO $pdo, string $tipo, array $data): ?array
+function mesas_editar_docentes_resolver_item(PDO $pdo, string $tipo, array $data): ?array
 {
     if ($tipo === 'no_agrupada') {
         $idNoAgrupada = isset($data['id_no_agrupada']) ? (int)$data['id_no_agrupada'] : null;
         $numeroMesa = isset($data['numero_mesa']) ? (int)$data['numero_mesa'] : null;
-        return mesas_editar_obtener_no_agrupada_hidratada($pdo, $idNoAgrupada, $numeroMesa);
+        return mesas_editar_docentes_obtener_no_agrupada_hidratada($pdo, $idNoAgrupada, $numeroMesa);
     }
 
     $numeroGrupo = (int)($data['numero_grupo'] ?? $data['id_grupo'] ?? 0);
@@ -654,11 +817,11 @@ function mesas_editar_resolver_item(PDO $pdo, string $tipo, array $data): ?array
         return null;
     }
 
-    return mesas_editar_obtener_grupo_hidratado($pdo, $numeroGrupo);
+    return mesas_editar_docentes_obtener_grupo_hidratado($pdo, $numeroGrupo);
 }
 
 
-function mesas_editar_rango_fechas_existentes_armado(PDO $pdo): ?array
+function mesas_editar_docentes_rango_fechas_existentes_armado(PDO $pdo): ?array
 {
     try {
         $stmt = $pdo->query("
@@ -677,8 +840,8 @@ function mesas_editar_rango_fechas_existentes_armado(PDO $pdo): ?array
             return null;
         }
 
-        $inicio = mesas_editar_normalizar_fecha_rango((string)($row['fecha_inicio'] ?? ''));
-        $fin = mesas_editar_normalizar_fecha_rango((string)($row['fecha_fin'] ?? ''));
+        $inicio = mesas_editar_docentes_normalizar_fecha_rango((string)($row['fecha_inicio'] ?? ''));
+        $fin = mesas_editar_docentes_normalizar_fecha_rango((string)($row['fecha_fin'] ?? ''));
 
         if ($fin < $inicio) {
             [$inicio, $fin] = [$fin, $inicio];
@@ -695,7 +858,7 @@ function mesas_editar_rango_fechas_existentes_armado(PDO $pdo): ?array
     }
 }
 
-function mesas_editar_rango_contiene_fecha(?array $rango, ?string $fecha): bool
+function mesas_editar_docentes_rango_contiene_fecha(?array $rango, ?string $fecha): bool
 {
     $fecha = trim((string)$fecha);
     if ($fecha === '' || !$rango || empty($rango['fecha_inicio']) || empty($rango['fecha_fin'])) {
@@ -705,10 +868,10 @@ function mesas_editar_rango_contiene_fecha(?array $rango, ?string $fecha): bool
     return $fecha >= (string)$rango['fecha_inicio'] && $fecha <= (string)$rango['fecha_fin'];
 }
 
-function mesas_editar_rango_armado_confiable(PDO $pdo, ?array $rangoBase = null): ?array
+function mesas_editar_docentes_rango_armado_confiable(PDO $pdo, ?array $rangoBase = null): ?array
 {
     $rangoBase = $rangoBase ?? (function_exists('mesas_armado_rango_obtener_actual') ? mesas_armado_rango_obtener_actual($pdo) : null);
-    $rangoReal = mesas_editar_rango_fechas_existentes_armado($pdo);
+    $rangoReal = mesas_editar_docentes_rango_fechas_existentes_armado($pdo);
 
     if (!$rangoBase || empty($rangoBase['fecha_inicio']) || empty($rangoBase['fecha_fin'])) {
         return $rangoReal;
@@ -749,13 +912,13 @@ function mesas_editar_rango_armado_confiable(PDO $pdo, ?array $rangoBase = null)
     return $rangoBase;
 }
 
-function mesas_editar_obtener_numero_siguiente_grupo(PDO $pdo): int
+function mesas_editar_docentes_obtener_numero_siguiente_grupo(PDO $pdo): int
 {
     $stmt = $pdo->query('SELECT COALESCE(MAX(numero_grupo), 0) + 1 FROM mesas_grupos');
     return max(1, (int)$stmt->fetchColumn());
 }
 
-function mesas_editar_insertar_no_agrupada_desde_grupo(PDO $pdo, array $fila): void
+function mesas_editar_docentes_insertar_no_agrupada_desde_grupo(PDO $pdo, array $fila): void
 {
     $numeroMesa = (int)$fila['numero_mesa'];
 
@@ -786,7 +949,7 @@ function mesas_editar_insertar_no_agrupada_desde_grupo(PDO $pdo, array $fila): v
     ]);
 }
 
-function mesas_editar_fecha_a_indice_slot(string $fecha, int $idTurno): int
+function mesas_editar_docentes_fecha_a_indice_slot(string $fecha, int $idTurno): int
 {
     $dt = DateTimeImmutable::createFromFormat('!Y-m-d', $fecha);
     if (!$dt) {
@@ -796,7 +959,7 @@ function mesas_editar_fecha_a_indice_slot(string $fecha, int $idTurno): int
     return ((int)$dt->format('Ymd') * 1000) + max(0, $idTurno);
 }
 
-function mesas_editar_normalizar_lista_numeros(array $numeros): array
+function mesas_editar_docentes_normalizar_lista_numeros(array $numeros): array
 {
     $out = [];
     foreach ($numeros as $numero) {
@@ -808,13 +971,13 @@ function mesas_editar_normalizar_lista_numeros(array $numeros): array
     return array_values($out);
 }
 
-function mesas_editar_resolver_numeros_desde_payload(PDO $pdo, string $tipo, array $data): array
+function mesas_editar_docentes_resolver_numeros_desde_payload(PDO $pdo, string $tipo, array $data): array
 {
     if ($tipo === 'no_agrupada') {
         $idNoAgrupada = isset($data['id_no_agrupada']) ? (int)$data['id_no_agrupada'] : 0;
         $numeroMesa = isset($data['numero_mesa']) ? (int)$data['numero_mesa'] : 0;
 
-        $actual = mesas_editar_obtener_no_agrupada_hidratada(
+        $actual = mesas_editar_docentes_obtener_no_agrupada_hidratada(
             $pdo,
             $idNoAgrupada > 0 ? $idNoAgrupada : null,
             $numeroMesa > 0 ? $numeroMesa : null
@@ -840,7 +1003,7 @@ function mesas_editar_resolver_numeros_desde_payload(PDO $pdo, string $tipo, arr
     $stmtNumeros = $pdo->prepare('SELECT numero_mesa FROM mesas_grupos WHERE numero_grupo = ? ORDER BY orden ASC');
     $stmtNumeros->execute([$numeroGrupo]);
 
-    $numeros = mesas_editar_normalizar_lista_numeros($stmtNumeros->fetchAll(PDO::FETCH_COLUMN));
+    $numeros = mesas_editar_docentes_normalizar_lista_numeros($stmtNumeros->fetchAll(PDO::FETCH_COLUMN));
     if (count($numeros) === 0) {
         throw new RuntimeException('No se encontraron números de mesa dentro del grupo final.');
     }
@@ -848,9 +1011,9 @@ function mesas_editar_resolver_numeros_desde_payload(PDO $pdo, string $tipo, arr
     return $numeros;
 }
 
-function mesas_editar_obtener_detalle_numeros(PDO $pdo, array $numeros): array
+function mesas_editar_docentes_obtener_detalle_numeros(PDO $pdo, array $numeros): array
 {
-    $numeros = mesas_editar_normalizar_lista_numeros($numeros);
+    $numeros = mesas_editar_docentes_normalizar_lista_numeros($numeros);
     if (count($numeros) === 0) {
         throw new InvalidArgumentException('No hay números de mesa para validar.');
     }
@@ -945,22 +1108,22 @@ function mesas_editar_obtener_detalle_numeros(PDO $pdo, array $numeros): array
 }
 
 
-function mesas_editar_slot_key(string $fechaMesa, int $idTurno): string
+function mesas_editar_docentes_slot_key(string $fechaMesa, int $idTurno): string
 {
     return $fechaMesa . '|' . $idTurno;
 }
 
-function mesas_editar_slot_actual_desde_item(?array $item): ?array
+function mesas_editar_docentes_slot_actual_desde_item(?array $item): ?array
 {
     if (!is_array($item)) {
         return null;
     }
 
-    $fecha = mesas_editar_parametro_texto($item['fecha_mesa'] ?? null);
+    $fecha = mesas_editar_docentes_parametro_texto($item['fecha_mesa'] ?? null);
     if ($fecha === '') {
-        $fecha = mesas_editar_parametro_texto($item['fecha'] ?? null);
+        $fecha = mesas_editar_docentes_parametro_texto($item['fecha'] ?? null);
     }
-    $fecha = mesas_editar_fecha_slot_segura($fecha);
+    $fecha = mesas_editar_docentes_fecha_slot_segura($fecha);
 
     $idTurno = (int)($item['id_turno'] ?? 0);
     if ($fecha === '' || $idTurno <= 0) {
@@ -973,7 +1136,7 @@ function mesas_editar_slot_actual_desde_item(?array $item): ?array
     ];
 }
 
-function mesas_editar_fecha_slot_segura(?string $fecha): string
+function mesas_editar_docentes_fecha_slot_segura(?string $fecha): string
 {
     $fecha = trim((string)$fecha);
     if (preg_match('/^\d{4}-\d{2}-\d{2}/', $fecha)) {
@@ -988,9 +1151,9 @@ function mesas_editar_fecha_slot_segura(?string $fecha): string
     return '';
 }
 
-function mesas_editar_obtener_slot_actual(PDO $pdo, string $tipo, array $data, ?array $itemActual = null): ?array
+function mesas_editar_docentes_obtener_slot_actual(PDO $pdo, string $tipo, array $data, ?array $itemActual = null): ?array
 {
-    $desdeItem = mesas_editar_slot_actual_desde_item($itemActual);
+    $desdeItem = mesas_editar_docentes_slot_actual_desde_item($itemActual);
     if ($desdeItem !== null) {
         return $desdeItem;
     }
@@ -1025,7 +1188,7 @@ function mesas_editar_obtener_slot_actual(PDO $pdo, string $tipo, array $data, ?
                 $stmt->execute($params);
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
                 if ($row) {
-                    $fecha = mesas_editar_fecha_slot_segura($row['fecha_mesa'] ?? null);
+                    $fecha = mesas_editar_docentes_fecha_slot_segura($row['fecha_mesa'] ?? null);
                     $idTurno = (int)($row['id_turno'] ?? 0);
                     if ($fecha !== '' && $idTurno > 0) {
                         return ['fecha_mesa' => $fecha, 'id_turno' => $idTurno];
@@ -1047,7 +1210,7 @@ function mesas_editar_obtener_slot_actual(PDO $pdo, string $tipo, array $data, ?
                 $stmt->execute([$numeroMesa]);
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
                 if ($row) {
-                    $fecha = mesas_editar_fecha_slot_segura($row['fecha_mesa'] ?? null);
+                    $fecha = mesas_editar_docentes_fecha_slot_segura($row['fecha_mesa'] ?? null);
                     $idTurno = (int)($row['id_turno'] ?? 0);
                     if ($fecha !== '' && $idTurno > 0) {
                         return ['fecha_mesa' => $fecha, 'id_turno' => $idTurno];
@@ -1079,7 +1242,7 @@ function mesas_editar_obtener_slot_actual(PDO $pdo, string $tipo, array $data, ?
         $stmt->execute([$numeroGrupo]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($row) {
-            $fecha = mesas_editar_fecha_slot_segura($row['fecha_mesa'] ?? null);
+            $fecha = mesas_editar_docentes_fecha_slot_segura($row['fecha_mesa'] ?? null);
             $idTurno = (int)($row['id_turno'] ?? 0);
             if ($fecha !== '' && $idTurno > 0) {
                 return ['fecha_mesa' => $fecha, 'id_turno' => $idTurno];
@@ -1092,23 +1255,23 @@ function mesas_editar_obtener_slot_actual(PDO $pdo, string $tipo, array $data, ?
     return null;
 }
 
-function mesas_editar_es_slot_actual(array $contexto, string $fechaMesa, int $idTurno): bool
+function mesas_editar_docentes_es_slot_actual(array $contexto, string $fechaMesa, int $idTurno): bool
 {
     $slotActual = is_array($contexto['slot_actual'] ?? null) ? $contexto['slot_actual'] : null;
     if (!$slotActual) {
         return false;
     }
 
-    $fechaActual = mesas_editar_fecha_slot_segura($slotActual['fecha_mesa'] ?? null);
+    $fechaActual = mesas_editar_docentes_fecha_slot_segura($slotActual['fecha_mesa'] ?? null);
     $turnoActual = (int)($slotActual['id_turno'] ?? 0);
 
     return $fechaActual !== ''
         && $turnoActual > 0
-        && $fechaActual === mesas_editar_fecha_slot_segura($fechaMesa)
+        && $fechaActual === mesas_editar_docentes_fecha_slot_segura($fechaMesa)
         && $turnoActual === $idTurno;
 }
 
-function mesas_editar_precargar_bloqueos_docentes(PDO $pdo, array $idsDocentes, string $fechaInicio, string $fechaFin): array
+function mesas_editar_docentes_precargar_bloqueos_docentes(PDO $pdo, array $idsDocentes, string $fechaInicio, string $fechaFin): array
 {
     $idsDocentes = array_values(array_filter(array_map('intval', $idsDocentes), static fn ($id) => $id > 0));
     if (count($idsDocentes) === 0 || !mesas_armado_tabla_existe($pdo, 'docentes_bloques_no')) {
@@ -1138,7 +1301,7 @@ function mesas_editar_precargar_bloqueos_docentes(PDO $pdo, array $idsDocentes, 
             continue;
         }
 
-        $key = mesas_editar_slot_key($fecha, $idTurno);
+        $key = mesas_editar_docentes_slot_key($fecha, $idTurno);
         if (!isset($mapa[$key])) {
             $mapa[$key] = [];
         }
@@ -1148,7 +1311,7 @@ function mesas_editar_precargar_bloqueos_docentes(PDO $pdo, array $idsDocentes, 
     return $mapa;
 }
 
-function mesas_editar_bloqueos_docentes_desde_contexto(array $contexto, array $idsDocentes, string $fechaMesa, int $idTurno): array
+function mesas_editar_docentes_bloqueos_docentes_desde_contexto(array $contexto, array $idsDocentes, string $fechaMesa, int $idTurno): array
 {
     if (!isset($contexto['bloqueos_docentes']) || !is_array($contexto['bloqueos_docentes'])) {
         return [];
@@ -1161,8 +1324,8 @@ function mesas_editar_bloqueos_docentes_desde_contexto(array $contexto, array $i
 
     $mapa = $contexto['bloqueos_docentes'];
     $keys = [
-        mesas_editar_slot_key($fechaMesa, $idTurno),
-        mesas_editar_slot_key($fechaMesa, 0), // bloqueo de día completo, sin turno específico
+        mesas_editar_docentes_slot_key($fechaMesa, $idTurno),
+        mesas_editar_docentes_slot_key($fechaMesa, 0), // bloqueo de día completo, sin turno específico
     ];
 
     $out = [];
@@ -1181,11 +1344,11 @@ function mesas_editar_bloqueos_docentes_desde_contexto(array $contexto, array $i
     return array_values($out);
 }
 
-function mesas_editar_precargar_choques_docentes(PDO $pdo, array $detalle, string $fechaInicio, string $fechaFin): array
+function mesas_editar_docentes_precargar_choques_docentes(PDO $pdo, array $detalle, string $fechaInicio, string $fechaFin): array
 {
     $idsDocentes = array_keys($detalle['docentes'] ?? []);
     $idsDocentes = array_values(array_filter(array_map('intval', $idsDocentes), static fn ($id) => $id > 0));
-    $numeros = mesas_editar_normalizar_lista_numeros($detalle['numeros'] ?? []);
+    $numeros = mesas_editar_docentes_normalizar_lista_numeros($detalle['numeros'] ?? []);
 
     if (count($idsDocentes) === 0 || count($numeros) === 0) {
         return [];
@@ -1214,7 +1377,7 @@ function mesas_editar_precargar_choques_docentes(PDO $pdo, array $detalle, strin
             continue;
         }
 
-        $key = mesas_editar_slot_key($fecha, $idTurno);
+        $key = mesas_editar_docentes_slot_key($fecha, $idTurno);
         if (!isset($mapa[$key])) {
             $mapa[$key] = [];
         }
@@ -1224,11 +1387,11 @@ function mesas_editar_precargar_choques_docentes(PDO $pdo, array $detalle, strin
     return $mapa;
 }
 
-function mesas_editar_precargar_choques_alumnos(PDO $pdo, array $detalle, string $fechaInicio, string $fechaFin): array
+function mesas_editar_docentes_precargar_choques_alumnos(PDO $pdo, array $detalle, string $fechaInicio, string $fechaFin): array
 {
     $dnis = array_keys($detalle['dnis'] ?? []);
     $dnis = array_values(array_filter(array_map('strval', $dnis), static fn ($dni) => trim($dni) !== ''));
-    $numeros = mesas_editar_normalizar_lista_numeros($detalle['numeros'] ?? []);
+    $numeros = mesas_editar_docentes_normalizar_lista_numeros($detalle['numeros'] ?? []);
 
     if (count($dnis) === 0 || count($numeros) === 0) {
         return [];
@@ -1257,7 +1420,7 @@ function mesas_editar_precargar_choques_alumnos(PDO $pdo, array $detalle, string
             continue;
         }
 
-        $key = mesas_editar_slot_key($fecha, $idTurno);
+        $key = mesas_editar_docentes_slot_key($fecha, $idTurno);
         if (!isset($mapa[$key])) {
             $mapa[$key] = [];
         }
@@ -1267,30 +1430,30 @@ function mesas_editar_precargar_choques_alumnos(PDO $pdo, array $detalle, string
     return $mapa;
 }
 
-function mesas_editar_preparar_contexto_validacion(PDO $pdo, string $tipo, array $data, ?string $fechaInicio = null, ?string $fechaFin = null, ?array $itemActual = null): array
+function mesas_editar_docentes_preparar_contexto_validacion(PDO $pdo, string $tipo, array $data, ?string $fechaInicio = null, ?string $fechaFin = null, ?array $itemActual = null): array
 {
-    $numeros = mesas_editar_resolver_numeros_desde_payload($pdo, $tipo, $data);
-    $detalle = mesas_editar_obtener_detalle_numeros($pdo, $numeros);
+    $numeros = mesas_editar_docentes_resolver_numeros_desde_payload($pdo, $tipo, $data);
+    $detalle = mesas_editar_docentes_obtener_detalle_numeros($pdo, $numeros);
 
     $contexto = [
         'numeros' => $numeros,
         'detalle' => $detalle,
-        'slot_actual' => mesas_editar_obtener_slot_actual($pdo, $tipo, $data, $itemActual),
+        'slot_actual' => mesas_editar_docentes_obtener_slot_actual($pdo, $tipo, $data, $itemActual),
         'disponibilidad' => mesas_armado_obtener_disponibilidad_docentes($pdo),
-        'correlativas' => mesas_editar_obtener_correlativas($pdo),
-        'otras_previas' => mesas_editar_obtener_otras_previas_mismos_alumnos($pdo, $detalle),
+        'correlativas' => mesas_editar_docentes_obtener_correlativas($pdo),
+        'otras_previas' => mesas_editar_docentes_obtener_otras_previas_mismos_alumnos($pdo, $detalle),
     ];
 
     if ($fechaInicio !== null && $fechaFin !== null) {
-        $contexto['bloqueos_docentes'] = mesas_editar_precargar_bloqueos_docentes($pdo, array_keys($detalle['docentes']), $fechaInicio, $fechaFin);
-        $contexto['choques_docentes'] = mesas_editar_precargar_choques_docentes($pdo, $detalle, $fechaInicio, $fechaFin);
-        $contexto['choques_alumnos'] = mesas_editar_precargar_choques_alumnos($pdo, $detalle, $fechaInicio, $fechaFin);
+        $contexto['bloqueos_docentes'] = mesas_editar_docentes_precargar_bloqueos_docentes($pdo, array_keys($detalle['docentes']), $fechaInicio, $fechaFin);
+        $contexto['choques_docentes'] = mesas_editar_docentes_precargar_choques_docentes($pdo, $detalle, $fechaInicio, $fechaFin);
+        $contexto['choques_alumnos'] = mesas_editar_docentes_precargar_choques_alumnos($pdo, $detalle, $fechaInicio, $fechaFin);
     }
 
     return $contexto;
 }
 
-function mesas_editar_bloqueados_en_slot(PDO $pdo, array $idsDocentes, string $fechaMesa, int $idTurno): array
+function mesas_editar_docentes_docentes_bloqueados_en_slot(PDO $pdo, array $idsDocentes, string $fechaMesa, int $idTurno): array
 {
     $idsDocentes = array_values(array_filter(array_map('intval', $idsDocentes), static fn ($id) => $id > 0));
     if (count($idsDocentes) === 0 || !mesas_armado_tabla_existe($pdo, 'docentes_bloques_no')) {
@@ -1311,7 +1474,7 @@ function mesas_editar_bloqueados_en_slot(PDO $pdo, array $idsDocentes, string $f
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-function mesas_editar_validar_docentes(PDO $pdo, array $detalle, string $fechaMesa, int $idTurno, array $contexto = []): array
+function mesas_editar_docentes_validar_docentes(PDO $pdo, array $detalle, string $fechaMesa, int $idTurno, array $contexto = []): array
 {
     $errores = [];
     $disponibilidad = isset($contexto['disponibilidad']) && is_array($contexto['disponibilidad'])
@@ -1330,9 +1493,9 @@ function mesas_editar_validar_docentes(PDO $pdo, array $detalle, string $fechaMe
     }
 
     if (array_key_exists('bloqueos_docentes', $contexto)) {
-        $bloqueados = mesas_editar_bloqueos_docentes_desde_contexto($contexto, array_keys($detalle['docentes']), $fechaMesa, $idTurno);
+        $bloqueados = mesas_editar_docentes_bloqueos_docentes_desde_contexto($contexto, array_keys($detalle['docentes']), $fechaMesa, $idTurno);
     } else {
-        $bloqueados = mesas_editar_bloqueados_en_slot($pdo, array_keys($detalle['docentes']), $fechaMesa, $idTurno);
+        $bloqueados = mesas_editar_docentes_docentes_bloqueados_en_slot($pdo, array_keys($detalle['docentes']), $fechaMesa, $idTurno);
     }
 
     foreach ($bloqueados as $bloqueado) {
@@ -1341,7 +1504,7 @@ function mesas_editar_validar_docentes(PDO $pdo, array $detalle, string $fechaMe
 
     if (count($detalle['docentes']) > 0) {
         if (array_key_exists('choques_docentes', $contexto) && is_array($contexto['choques_docentes'])) {
-            $choques = $contexto['choques_docentes'][mesas_editar_slot_key($fechaMesa, $idTurno)] ?? [];
+            $choques = $contexto['choques_docentes'][mesas_editar_docentes_slot_key($fechaMesa, $idTurno)] ?? [];
         } else {
             $idsDocentes = array_keys($detalle['docentes']);
             $phDocentes = implode(',', array_fill(0, count($idsDocentes), '?'));
@@ -1369,7 +1532,7 @@ function mesas_editar_validar_docentes(PDO $pdo, array $detalle, string $fechaMe
     return $errores;
 }
 
-function mesas_editar_validar_alumnos(PDO $pdo, array $detalle, string $fechaMesa, int $idTurno, array $contexto = []): array
+function mesas_editar_docentes_validar_alumnos(PDO $pdo, array $detalle, string $fechaMesa, int $idTurno, array $contexto = []): array
 {
     $errores = [];
 
@@ -1386,7 +1549,7 @@ function mesas_editar_validar_alumnos(PDO $pdo, array $detalle, string $fechaMes
     }
 
     if (array_key_exists('choques_alumnos', $contexto) && is_array($contexto['choques_alumnos'])) {
-        $choques = $contexto['choques_alumnos'][mesas_editar_slot_key($fechaMesa, $idTurno)] ?? [];
+        $choques = $contexto['choques_alumnos'][mesas_editar_docentes_slot_key($fechaMesa, $idTurno)] ?? [];
     } else {
         $phDnis = implode(',', array_fill(0, count($dnis), '?'));
         $phNumeros = implode(',', array_fill(0, count($detalle['numeros']), '?'));
@@ -1412,7 +1575,7 @@ function mesas_editar_validar_alumnos(PDO $pdo, array $detalle, string $fechaMes
     return $errores;
 }
 
-function mesas_editar_obtener_otras_previas_mismos_alumnos(PDO $pdo, array $detalle): array
+function mesas_editar_docentes_obtener_otras_previas_mismos_alumnos(PDO $pdo, array $detalle): array
 {
     $dnis = array_keys($detalle['dnis']);
     if (count($dnis) === 0) {
@@ -1448,7 +1611,7 @@ function mesas_editar_obtener_otras_previas_mismos_alumnos(PDO $pdo, array $deta
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-function mesas_editar_obtener_correlativas(PDO $pdo): array
+function mesas_editar_docentes_obtener_correlativas(PDO $pdo): array
 {
     if (!mesas_armado_tabla_existe($pdo, 'materias_correlativas')) {
         return [];
@@ -1464,30 +1627,30 @@ function mesas_editar_obtener_correlativas(PDO $pdo): array
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-function mesas_editar_registro_coincide_materia_curso(array $registro, int $idMateria, int $idCurso): bool
+function mesas_editar_docentes_registro_coincide_materia_curso(array $registro, int $idMateria, int $idCurso): bool
 {
     return (int)($registro['id_materia'] ?? 0) === $idMateria
         && (int)($registro['id_curso'] ?? 0) === $idCurso;
 }
 
-function mesas_editar_validar_correlativas(PDO $pdo, array $detalle, string $fechaMesa, int $idTurno, array $contexto = []): array
+function mesas_editar_docentes_validar_correlativas(PDO $pdo, array $detalle, string $fechaMesa, int $idTurno, array $contexto = []): array
 {
     $errores = [];
     $correlativas = isset($contexto['correlativas']) && is_array($contexto['correlativas'])
         ? $contexto['correlativas']
-        : mesas_editar_obtener_correlativas($pdo);
+        : mesas_editar_docentes_obtener_correlativas($pdo);
     if (count($correlativas) === 0) {
         return $errores;
     }
 
     $otras = isset($contexto['otras_previas']) && is_array($contexto['otras_previas'])
         ? $contexto['otras_previas']
-        : mesas_editar_obtener_otras_previas_mismos_alumnos($pdo, $detalle);
+        : mesas_editar_docentes_obtener_otras_previas_mismos_alumnos($pdo, $detalle);
     if (count($otras) === 0) {
         return $errores;
     }
 
-    $indiceDestino = mesas_editar_fecha_a_indice_slot($fechaMesa, $idTurno);
+    $indiceDestino = mesas_editar_docentes_fecha_a_indice_slot($fechaMesa, $idTurno);
 
     foreach ($detalle['registros'] as $actual) {
         if (($actual['dni'] ?? '') === '' || (int)($actual['id_materia'] ?? 0) <= 0 || (int)($actual['id_curso'] ?? 0) <= 0) {
@@ -1499,7 +1662,7 @@ function mesas_editar_validar_correlativas(PDO $pdo, array $detalle, string $fec
                 continue;
             }
 
-            $indiceOtra = mesas_editar_fecha_a_indice_slot((string)$otra['fecha_mesa'], (int)$otra['id_turno']);
+            $indiceOtra = mesas_editar_docentes_fecha_a_indice_slot((string)$otra['fecha_mesa'], (int)$otra['id_turno']);
 
             foreach ($correlativas as $corr) {
                 $idMateria = (int)$corr['id_materia'];
@@ -1510,30 +1673,30 @@ function mesas_editar_validar_correlativas(PDO $pdo, array $detalle, string $fec
 
                 if ($tipo === 'anterior') {
                     // id_materia/id_curso es la materia posterior; id_materia_relacionada/id_curso_relacionada es la anterior.
-                    if (mesas_editar_registro_coincide_materia_curso($actual, $idMateria, $idCurso)
-                        && mesas_editar_registro_coincide_materia_curso($otra, $idMateriaRel, $idCursoRel)
+                    if (mesas_editar_docentes_registro_coincide_materia_curso($actual, $idMateria, $idCurso)
+                        && mesas_editar_docentes_registro_coincide_materia_curso($otra, $idMateriaRel, $idCursoRel)
                         && $indiceDestino <= $indiceOtra
                     ) {
                         $errores[] = 'Correlativa: ' . ($actual['alumno'] ?: $actual['dni']) . ' debe rendir ' . ($otra['materia'] ?: 'la correlativa anterior') . ' antes de ' . ($actual['materia'] ?: 'esta materia') . '.';
                     }
 
-                    if (mesas_editar_registro_coincide_materia_curso($actual, $idMateriaRel, $idCursoRel)
-                        && mesas_editar_registro_coincide_materia_curso($otra, $idMateria, $idCurso)
+                    if (mesas_editar_docentes_registro_coincide_materia_curso($actual, $idMateriaRel, $idCursoRel)
+                        && mesas_editar_docentes_registro_coincide_materia_curso($otra, $idMateria, $idCurso)
                         && $indiceDestino >= $indiceOtra
                     ) {
                         $errores[] = 'Correlativa: ' . ($actual['alumno'] ?: $actual['dni']) . ' debe rendir ' . ($actual['materia'] ?: 'esta materia') . ' antes de ' . ($otra['materia'] ?: 'la correlativa posterior') . '.';
                     }
                 } elseif ($tipo === 'posterior') {
                     // id_materia_relacionada/id_curso_relacionada es la posterior.
-                    if (mesas_editar_registro_coincide_materia_curso($actual, $idMateria, $idCurso)
-                        && mesas_editar_registro_coincide_materia_curso($otra, $idMateriaRel, $idCursoRel)
+                    if (mesas_editar_docentes_registro_coincide_materia_curso($actual, $idMateria, $idCurso)
+                        && mesas_editar_docentes_registro_coincide_materia_curso($otra, $idMateriaRel, $idCursoRel)
                         && $indiceDestino >= $indiceOtra
                     ) {
                         $errores[] = 'Correlativa: ' . ($actual['alumno'] ?: $actual['dni']) . ' debe rendir ' . ($actual['materia'] ?: 'esta materia') . ' antes de ' . ($otra['materia'] ?: 'la correlativa posterior') . '.';
                     }
 
-                    if (mesas_editar_registro_coincide_materia_curso($actual, $idMateriaRel, $idCursoRel)
-                        && mesas_editar_registro_coincide_materia_curso($otra, $idMateria, $idCurso)
+                    if (mesas_editar_docentes_registro_coincide_materia_curso($actual, $idMateriaRel, $idCursoRel)
+                        && mesas_editar_docentes_registro_coincide_materia_curso($otra, $idMateria, $idCurso)
                         && $indiceDestino <= $indiceOtra
                     ) {
                         $errores[] = 'Correlativa: ' . ($actual['alumno'] ?: $actual['dni']) . ' debe rendir ' . ($otra['materia'] ?: 'la correlativa anterior') . ' antes de ' . ($actual['materia'] ?: 'esta materia') . '.';
@@ -1547,7 +1710,7 @@ function mesas_editar_validar_correlativas(PDO $pdo, array $detalle, string $fec
 }
 
 
-function mesas_editar_resumen_numero_para_grupo_unico(PDO $pdo, int $numeroMesa): ?array
+function mesas_editar_docentes_resumen_numero_para_grupo_unico(PDO $pdo, int $numeroMesa): ?array
 {
     $stmt = $pdo->prepare(''
         . 'SELECT '
@@ -1581,13 +1744,13 @@ function mesas_editar_resumen_numero_para_grupo_unico(PDO $pdo, int $numeroMesa)
 }
 
 
-function mesas_editar_validar_fecha_en_rango_armado(PDO $pdo, string $fechaMesa, array $contexto = []): array
+function mesas_editar_docentes_validar_fecha_en_rango_armado(PDO $pdo, string $fechaMesa, array $contexto = []): array
 {
     $rangoBase = isset($contexto['rango_armado']) && is_array($contexto['rango_armado'])
         ? $contexto['rango_armado']
         : (function_exists('mesas_armado_rango_obtener_actual') ? mesas_armado_rango_obtener_actual($pdo) : null);
 
-    $rango = mesas_editar_rango_armado_confiable($pdo, $rangoBase);
+    $rango = mesas_editar_docentes_rango_armado_confiable($pdo, $rangoBase);
 
     if (!$rango || empty($rango['fecha_inicio']) || empty($rango['fecha_fin'])) {
         return [];
@@ -1603,7 +1766,7 @@ function mesas_editar_validar_fecha_en_rango_armado(PDO $pdo, string $fechaMesa,
     return [];
 }
 
-function mesas_editar_validar_programacion_completa(PDO $pdo, string $tipo, array $data, string $fechaMesa, int $idTurno, string $hora, array $turno, array $contexto = []): array
+function mesas_editar_docentes_validar_programacion_completa(PDO $pdo, string $tipo, array $data, string $fechaMesa, int $idTurno, string $hora, array $turno, array $contexto = []): array
 {
     $errores = [];
     $advertencias = [];
@@ -1612,20 +1775,20 @@ function mesas_editar_validar_programacion_completa(PDO $pdo, string $tipo, arra
         $numeros = $contexto['numeros'];
         $detalle = $contexto['detalle'];
     } else {
-        $numeros = mesas_editar_resolver_numeros_desde_payload($pdo, $tipo, $data);
-        $detalle = mesas_editar_obtener_detalle_numeros($pdo, $numeros);
+        $numeros = mesas_editar_docentes_resolver_numeros_desde_payload($pdo, $tipo, $data);
+        $detalle = mesas_editar_docentes_obtener_detalle_numeros($pdo, $numeros);
     }
 
     if (!array_key_exists('slot_actual', $contexto)) {
-        $contexto['slot_actual'] = mesas_editar_obtener_slot_actual($pdo, $tipo, $data);
+        $contexto['slot_actual'] = mesas_editar_docentes_obtener_slot_actual($pdo, $tipo, $data);
     }
 
-    $esSlotActual = mesas_editar_es_slot_actual($contexto, $fechaMesa, $idTurno);
+    $esSlotActual = mesas_editar_docentes_es_slot_actual($contexto, $fechaMesa, $idTurno);
 
-    $errores = array_merge($errores, mesas_editar_validar_fecha_en_rango_armado($pdo, $fechaMesa, $contexto));
-    $errores = array_merge($errores, mesas_editar_validar_docentes($pdo, $detalle, $fechaMesa, $idTurno, $contexto));
-    $errores = array_merge($errores, mesas_editar_validar_alumnos($pdo, $detalle, $fechaMesa, $idTurno, $contexto));
-    $errores = array_merge($errores, mesas_editar_validar_correlativas($pdo, $detalle, $fechaMesa, $idTurno, $contexto));
+    $errores = array_merge($errores, mesas_editar_docentes_validar_fecha_en_rango_armado($pdo, $fechaMesa, $contexto));
+    $errores = array_merge($errores, mesas_editar_docentes_validar_docentes($pdo, $detalle, $fechaMesa, $idTurno, $contexto));
+    $errores = array_merge($errores, mesas_editar_docentes_validar_alumnos($pdo, $detalle, $fechaMesa, $idTurno, $contexto));
+    $errores = array_merge($errores, mesas_editar_docentes_validar_correlativas($pdo, $detalle, $fechaMesa, $idTurno, $contexto));
 
     $errores = array_values(array_unique($errores));
     $erroresIgnoradosSlotActual = [];
@@ -1651,21 +1814,21 @@ function mesas_editar_validar_programacion_completa(PDO $pdo, string $tipo, arra
         'docentes' => $detalle['docentes'],
         'alumnos' => $detalle['dnis'],
         'hora' => $hora,
-        'rango_horario' => mesas_editar_horario_rango_por_turno((string)$turno['turno']),
+        'rango_horario' => mesas_editar_docentes_horario_rango_por_turno((string)$turno['turno']),
     ];
 }
 
-function mesas_editar_rango_fechas_para_slots(PDO $pdo, array $data, ?array $grupo = null): array
+function mesas_editar_docentes_rango_fechas_para_slots(PDO $pdo, array $data, ?array $grupo = null): array
 {
-    $fechaInicio = mesas_editar_parametro_texto($data['fecha_inicio'] ?? null);
-    $fechaFin = mesas_editar_parametro_texto($data['fecha_fin'] ?? null);
+    $fechaInicio = mesas_editar_docentes_parametro_texto($data['fecha_inicio'] ?? null);
+    $fechaFin = mesas_editar_docentes_parametro_texto($data['fecha_fin'] ?? null);
 
     if ($fechaInicio !== '' && $fechaFin !== '') {
-        $inicioSolicitado = mesas_editar_normalizar_fecha_rango($fechaInicio);
-        $finSolicitado = mesas_editar_normalizar_fecha_rango($fechaFin);
+        $inicioSolicitado = mesas_editar_docentes_normalizar_fecha_rango($fechaInicio);
+        $finSolicitado = mesas_editar_docentes_normalizar_fecha_rango($fechaFin);
     } else {
-        $anio = mesas_editar_parametro_presente($data['anio'] ?? null) ? (int)$data['anio'] : 0;
-        $mes = mesas_editar_parametro_presente($data['mes'] ?? null) ? (int)$data['mes'] : 0;
+        $anio = mesas_editar_docentes_parametro_presente($data['anio'] ?? null) ? (int)$data['anio'] : 0;
+        $mes = mesas_editar_docentes_parametro_presente($data['mes'] ?? null) ? (int)$data['mes'] : 0;
 
         if ($anio > 1900 && $mes >= 1 && $mes <= 12) {
             $inicio = new DateTimeImmutable(sprintf('%04d-%02d-01', $anio, $mes));
@@ -1673,10 +1836,10 @@ function mesas_editar_rango_fechas_para_slots(PDO $pdo, array $data, ?array $gru
             $inicioSolicitado = $inicio->format('Y-m-d');
             $finSolicitado = $fin->format('Y-m-d');
         } else {
-            $fechaBase = mesas_editar_parametro_texto($grupo['fecha_mesa'] ?? null);
+            $fechaBase = mesas_editar_docentes_parametro_texto($grupo['fecha_mesa'] ?? null);
             if ($fechaBase === '') {
-                $rangoReal = mesas_editar_rango_fechas_existentes_armado($pdo);
-                $fechaBase = mesas_editar_parametro_texto($rangoReal['fecha_inicio'] ?? null);
+                $rangoReal = mesas_editar_docentes_rango_fechas_existentes_armado($pdo);
+                $fechaBase = mesas_editar_docentes_parametro_texto($rangoReal['fecha_inicio'] ?? null);
             }
 
             if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaBase)) {
@@ -1693,7 +1856,7 @@ function mesas_editar_rango_fechas_para_slots(PDO $pdo, array $data, ?array $gru
         [$inicioSolicitado, $finSolicitado] = [$finSolicitado, $inicioSolicitado];
     }
 
-    $rangoArmado = mesas_editar_rango_armado_confiable(
+    $rangoArmado = mesas_editar_docentes_rango_armado_confiable(
         $pdo,
         function_exists('mesas_armado_rango_obtener_actual') ? mesas_armado_rango_obtener_actual($pdo) : null
     );
@@ -1718,7 +1881,7 @@ function mesas_editar_rango_fechas_para_slots(PDO $pdo, array $data, ?array $gru
         // de auditoría/tabla porque eso hace que el calendario muestre "sin fechas" aunque
         // la mesa ya esté armada en ese mes. Se devuelve el mes solicitado y la validación
         // posterior marca cada día como válido o bloqueado según restricciones reales.
-        $fechaGrupo = mesas_editar_parametro_texto($grupo['fecha_mesa'] ?? null);
+        $fechaGrupo = mesas_editar_docentes_parametro_texto($grupo['fecha_mesa'] ?? null);
         if ($fechaGrupo !== '' && $fechaGrupo >= $inicioSolicitado && $fechaGrupo <= $finSolicitado) {
             return [$inicioSolicitado, $finSolicitado];
         }
@@ -1734,7 +1897,7 @@ function mesas_editar_rango_fechas_para_slots(PDO $pdo, array $data, ?array $gru
     return [$inicioSolicitado, $finSolicitado];
 }
 
-function mesas_editar_construir_slots_validos(PDO $pdo, string $tipo, array $data, string $fechaInicio, string $fechaFin, ?array $itemActual = null): array
+function mesas_editar_docentes_construir_slots_validos(PDO $pdo, string $tipo, array $data, string $fechaInicio, string $fechaFin, ?array $itemActual = null): array
 {
     $turnos = $pdo->query('SELECT id_turno, turno FROM turnos WHERE activo = 1 ORDER BY id_turno ASC')->fetchAll(PDO::FETCH_ASSOC);
     $inicio = DateTimeImmutable::createFromFormat('!Y-m-d', $fechaInicio);
@@ -1747,8 +1910,8 @@ function mesas_editar_construir_slots_validos(PDO $pdo, string $tipo, array $dat
     // Optimización clave: antes se recalculaban números, alumnos, docentes,
     // correlativas, disponibilidad y choques para cada día/turno del calendario.
     // Ahora ese contexto se arma una sola vez por rango y cada slot solo consulta mapas en memoria.
-    $contexto = mesas_editar_preparar_contexto_validacion($pdo, $tipo, $data, $fechaInicio, $fechaFin, $itemActual);
-    $rangoArmado = mesas_editar_rango_armado_confiable(
+    $contexto = mesas_editar_docentes_preparar_contexto_validacion($pdo, $tipo, $data, $fechaInicio, $fechaFin, $itemActual);
+    $rangoArmado = mesas_editar_docentes_rango_armado_confiable(
         $pdo,
         function_exists('mesas_armado_rango_obtener_actual') ? mesas_armado_rango_obtener_actual($pdo) : null
     );
@@ -1768,11 +1931,11 @@ function mesas_editar_construir_slots_validos(PDO $pdo, string $tipo, array $dat
 
         foreach ($turnos as $turno) {
             $idTurno = (int)$turno['id_turno'];
-            $rango = mesas_editar_horario_rango_por_turno((string)$turno['turno']);
+            $rango = mesas_editar_docentes_horario_rango_por_turno((string)$turno['turno']);
             $hora = $rango['default'] . ':00';
 
             try {
-                $validacion = mesas_editar_validar_programacion_completa($pdo, $tipo, $data, $fechaYmd, $idTurno, $hora, $turno, $contexto);
+                $validacion = mesas_editar_docentes_validar_programacion_completa($pdo, $tipo, $data, $fechaYmd, $idTurno, $hora, $turno, $contexto);
                 $valido = (bool)$validacion['valido'];
                 if ($valido) {
                     $totalValidos++;

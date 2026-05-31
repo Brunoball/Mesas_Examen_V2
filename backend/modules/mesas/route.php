@@ -6,13 +6,72 @@ require_once __DIR__ . '/armado_rango_helper.php';
 require_once __DIR__ . '/armado_mesas/armado_mesas_controller.php';
 require_once __DIR__ . '/armado_mesas_docentes/armado_mesas_docentes_controller.php';
 require_once __DIR__ . '/editar_mesas/route.php';
+require_once __DIR__ . '/edicion_por_docente/route.php';
 require_once __DIR__ . '/resultados/route_resultados.php';
 require_once __DIR__ . '/historial_mesas/route_historial.php';
 require_once __DIR__ . '/docentes_cambios/route_docentes_cambios.php';
 require_once __DIR__ . '/notificaciones_email/route_notificaciones_email.php';
 
+
+function route_mesas_es_accion_edicion(string $action): bool
+{
+    return str_starts_with($action, 'mesas_editar_')
+        || str_starts_with($action, 'mesas_edicion_');
+}
+
+function route_mesas_accion_edicion_docente(string $action): string
+{
+    if (str_starts_with($action, 'mesas_editar_')) {
+        return 'mesas_editar_docentes_' . substr($action, strlen('mesas_editar_'));
+    }
+
+    if (str_starts_with($action, 'mesas_edicion_')) {
+        return 'mesas_editar_docentes_' . substr($action, strlen('mesas_edicion_'));
+    }
+
+    return $action;
+}
+
+function route_mesas_armado_actual_es_docentes(): bool
+{
+    try {
+        $pdo = db();
+
+        // Primero se usa el detector específico de la edición por disponibilidad docente.
+        // Ese helper mira tabla de rango + auditoría y evita caer por error en la edición por área
+        // cuando el último armado fue por docentes pero la tabla quedó vieja/incompleta.
+        if (function_exists('mesas_editar_docentes_es_armado_por_docentes')) {
+            return mesas_editar_docentes_es_armado_por_docentes($pdo);
+        }
+
+        if (function_exists('mesas_armado_rango_obtener_actual')) {
+            $rango = mesas_armado_rango_obtener_actual($pdo);
+            $tipo = mb_strtolower(trim((string)($rango['tipo_armado'] ?? '')), 'UTF-8');
+            if ($tipo !== '') {
+                return str_contains($tipo, 'docente') || str_contains($tipo, 'dispon');
+            }
+        }
+
+        if (function_exists('mesas_armado_tabla_existe') && mesas_armado_tabla_existe($pdo, 'mesas_armado_rango_actual')) {
+            $stmt = $pdo->query("SELECT tipo_armado FROM mesas_armado_rango_actual WHERE id = 1 LIMIT 1");
+            $tipo = mb_strtolower(trim((string)($stmt ? $stmt->fetchColumn() : '')), 'UTF-8');
+            return str_contains($tipo, 'docente') || str_contains($tipo, 'dispon');
+        }
+    } catch (Throwable $e) {
+        return false;
+    }
+
+    return false;
+}
+
 function route_mesas(string $action): bool
 {
+    if (route_mesas_es_accion_edicion($action) && route_mesas_armado_actual_es_docentes()) {
+        if (route_mesas_editar_docentes(route_mesas_accion_edicion_docente($action))) {
+            return true;
+        }
+    }
+
     if (route_mesas_editar($action)) {
         return true;
     }
@@ -131,6 +190,14 @@ function route_mesas(string $action): bool
         case 'mesas_armado_fase_7_reoptimizar':
         case 'mesas_armado_reoptimizar_no_agrupadas':
         case 'mesas_armado_reoptimizar_grupos_finales':
+            // Si el armado vigente es por disponibilidad docente, la reoptimización manual
+            // también debe usar el motor de docentes. Antes esta acción genérica caía en
+            // la reoptimización por área y podía volver a aplicar criterios incorrectos.
+            if (route_mesas_armado_actual_es_docentes() && function_exists('mesas_armado_docentes_fase_7_reoptimizar_no_agrupadas')) {
+                mesas_armado_docentes_fase_7_reoptimizar_no_agrupadas();
+                return true;
+            }
+
             mesas_armado_fase_7_reoptimizar_no_agrupadas();
             return true;
 

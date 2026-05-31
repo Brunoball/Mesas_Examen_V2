@@ -98,6 +98,33 @@ const crearClaveSlotsEdicion = ({ tipo, item, anio, mes, fecha_inicio, fecha_fin
   return [tipoReal, idGrupo, idNoAgrupada, numeroMesa, anio || "", mes || "", fecha_inicio || "", fecha_fin || ""].join("|");
 };
 
+
+const esNumeroTallerEdicion = (numero) => {
+  const tipo = String(numero?.tipo_mesa || numero?.tipo_numero || numero?.tipo || "").toLowerCase();
+  return tipo.includes("taller") || Number(numero?.prioridad || numero?.prioridad_numero || 0) === 1;
+};
+
+const recalcularGrupoConSlotsExtra = (grupo, slotsExtraForzado) => {
+  if (!grupo) return grupo;
+
+  const numeros = Array.isArray(grupo.numeros) ? grupo.numeros : [];
+  const cantidadNumeros = numeros.length || Number(grupo.cantidad_numeros || 0) || 0;
+  const slotsExtra = Math.max(0, Number(slotsExtraForzado ?? grupo.slots_extra ?? 0));
+  const baseBackend = Number(grupo.capacidad_base_slots || 0);
+  const tiposTexto = String(grupo.tipos_mesa_texto || grupo.tipo_mesa || "").toLowerCase();
+  const esTaller = !!grupo.es_grupo_taller || tiposTexto.includes("taller") || numeros.some(esNumeroTallerEdicion);
+  const capacidadBase = baseBackend > 0 ? baseBackend : (esTaller ? 1 : 4);
+  const capacidadSlots = Math.max(cantidadNumeros, capacidadBase + slotsExtra);
+
+  return {
+    ...grupo,
+    slots_extra: slotsExtra,
+    capacidad_base_slots: capacidadBase,
+    capacidad_slots: capacidadSlots,
+    slots_libres: Math.max(0, capacidadSlots - cantidadNumeros),
+  };
+};
+
 const coincideValorBusqueda = (valor, filtro) => {
   if (!filtro?.texto) return true;
   return normalizarBusquedaFlexible(valor).includes(filtro.texto);
@@ -835,7 +862,7 @@ export const useMesasExamen = ({ onToast } = {}) => {
       return response;
     } catch (err) {
       setErrorMoverPersona(err.message || "No se pudo mover la previa.");
-      throw err;
+      return null;
     } finally {
       setMoviendoPersona(false);
     }
@@ -920,24 +947,34 @@ export const useMesasExamen = ({ onToast } = {}) => {
     setErrorMas("");
   }, [agregandoMas]);
 
-  const confirmarAgregarMas = useCallback(async (previa) => {
+  const confirmarAgregarMas = useCallback(async (previasSeleccionadas) => {
     const numeroMesa = Number(numeroMas?.numero_mesa || numeroMas);
-    const idPrevia = Number(previa?.id_previa);
+    const previas = Array.isArray(previasSeleccionadas) ? previasSeleccionadas : [previasSeleccionadas];
+    const idsPrevias = Array.from(new Set(
+      previas
+        .map((previa) => Number(previa?.id_previa || previa))
+        .filter((id) => Number.isFinite(id) && id > 0)
+    ));
 
-    if (!numeroMesa || !idPrevia) return;
+    if (!numeroMesa || idsPrevias.length === 0) return null;
 
     setAgregandoMas(true);
     setErrorMas("");
 
     try {
-      const response = await agregarPreviaMas({ numero_mesa: numeroMesa, id_previa: idPrevia });
+      const response = await agregarPreviaMas({ numero_mesa: numeroMesa, id_previas: idsPrevias });
       cerrarModalesInternosEdicion();
       await recargarGrupoEdicion();
-      mostrarToast("exito", "Estudiante agregado a la mesa con éxito.");
+      mostrarToast(
+        "exito",
+        idsPrevias.length === 1
+          ? "Estudiante agregado a la mesa con éxito."
+          : `${idsPrevias.length} estudiantes agregados a la mesa con éxito.`
+      );
       return response;
     } catch (err) {
-      setErrorMas(err.message || "No se pudo agregar la previa a la mesa.");
-      throw err;
+      setErrorMas(err.message || "No se pudieron agregar las previas a la mesa.");
+      return null;
     } finally {
       setAgregandoMas(false);
     }
@@ -1142,6 +1179,13 @@ export const useMesasExamen = ({ onToast } = {}) => {
     const numeroGrupo = Number(grupoDestino?.numero_grupo || grupoDestino?.id_grupo || grupoEdicion?.numero_grupo || grupoEdicion?.id_grupo || 0);
     if (!numeroGrupo || habilitandoSlotExtra) return null;
 
+    const grupoBase = grupoDestino || grupoEdicion;
+    const slotsExtraAnterior = Math.max(0, Number(grupoBase?.slots_extra || 0));
+    const grupoOptimista = recalcularGrupoConSlotsExtra(grupoBase, slotsExtraAnterior + 1);
+
+    // El slot se pinta al instante en el modal. No se espera la recarga de la tabla principal.
+    setGrupoEdicion(grupoOptimista);
+    setTipoEdicion("grupo");
     setHabilitandoSlotExtra(true);
     setErrorEdicion("");
 
@@ -1152,30 +1196,44 @@ export const useMesasExamen = ({ onToast } = {}) => {
       });
 
       const grupoActualizado = response?.data?.grupo || null;
-      if (grupoActualizado) {
-        setGrupoEdicion(grupoActualizado);
-        setTipoEdicion("grupo");
-        await cargarSlotsEdicion({ item: grupoActualizado, tipo: "grupo" });
-      } else {
-        await recargarGrupoEdicion();
-      }
+      const slotsExtraConfirmado = Number(response?.data?.slots_extra ?? grupoActualizado?.slots_extra ?? grupoOptimista?.slots_extra ?? slotsExtraAnterior + 1);
 
-      await cargarMesas();
+      if (grupoActualizado) {
+        setGrupoEdicion(recalcularGrupoConSlotsExtra(grupoActualizado, slotsExtraConfirmado));
+      } else {
+        setGrupoEdicion((actual) => recalcularGrupoConSlotsExtra(actual, slotsExtraConfirmado));
+      }
+      setTipoEdicion("grupo");
+
+      // Refresca validaciones y tabla en segundo plano, sin bloquear la aparición del slot.
+      cargarSlotsEdicion({ item: recalcularGrupoConSlotsExtra(grupoActualizado || grupoOptimista, slotsExtraConfirmado), tipo: "grupo" });
+      cargarMesas();
+
       mostrarToast("exito", "Nuevo slot habilitado para esta mesa.");
       return response;
     } catch (err) {
+      setGrupoEdicion(recalcularGrupoConSlotsExtra(grupoBase, slotsExtraAnterior));
       setErrorEdicion(err.message || "No se pudo habilitar un nuevo slot para esta mesa.");
       throw err;
     } finally {
       setHabilitandoSlotExtra(false);
     }
-  }, [grupoEdicion, habilitandoSlotExtra, cargarSlotsEdicion, recargarGrupoEdicion, cargarMesas, mostrarToast]);
+  }, [grupoEdicion, habilitandoSlotExtra, cargarSlotsEdicion, cargarMesas, mostrarToast]);
 
 
   const eliminarSlotExtraEdicion = useCallback(async (grupoDestino = grupoEdicion) => {
     const numeroGrupo = Number(grupoDestino?.numero_grupo || grupoDestino?.id_grupo || grupoEdicion?.numero_grupo || grupoEdicion?.id_grupo || 0);
     if (!numeroGrupo || eliminandoSlotExtra) return null;
 
+    const grupoBase = grupoDestino || grupoEdicion;
+    const slotsExtraAnterior = Math.max(0, Number(grupoBase?.slots_extra || 0));
+    if (slotsExtraAnterior <= 0) return null;
+
+    const grupoOptimista = recalcularGrupoConSlotsExtra(grupoBase, slotsExtraAnterior - 1);
+
+    // El slot libre se quita al instante del modal. La tabla se refresca en segundo plano.
+    setGrupoEdicion(grupoOptimista);
+    setTipoEdicion("grupo");
     setEliminandoSlotExtra(true);
     setErrorEdicion("");
 
@@ -1186,24 +1244,28 @@ export const useMesasExamen = ({ onToast } = {}) => {
       });
 
       const grupoActualizado = response?.data?.grupo || null;
-      if (grupoActualizado) {
-        setGrupoEdicion(grupoActualizado);
-        setTipoEdicion("grupo");
-        await cargarSlotsEdicion({ item: grupoActualizado, tipo: "grupo" });
-      } else {
-        await recargarGrupoEdicion();
-      }
+      const slotsExtraConfirmado = Number(response?.data?.slots_extra ?? grupoActualizado?.slots_extra ?? grupoOptimista?.slots_extra ?? Math.max(0, slotsExtraAnterior - 1));
 
-      await cargarMesas();
+      if (grupoActualizado) {
+        setGrupoEdicion(recalcularGrupoConSlotsExtra(grupoActualizado, slotsExtraConfirmado));
+      } else {
+        setGrupoEdicion((actual) => recalcularGrupoConSlotsExtra(actual, slotsExtraConfirmado));
+      }
+      setTipoEdicion("grupo");
+
+      cargarSlotsEdicion({ item: recalcularGrupoConSlotsExtra(grupoActualizado || grupoOptimista, slotsExtraConfirmado), tipo: "grupo" });
+      cargarMesas();
+
       mostrarToast("exito", "Slot libre eliminado correctamente.");
       return response;
     } catch (err) {
+      setGrupoEdicion(recalcularGrupoConSlotsExtra(grupoBase, slotsExtraAnterior));
       setErrorEdicion(err.message || "No se pudo eliminar el slot libre de esta mesa.");
       throw err;
     } finally {
       setEliminandoSlotExtra(false);
     }
-  }, [grupoEdicion, eliminandoSlotExtra, cargarSlotsEdicion, recargarGrupoEdicion, cargarMesas, mostrarToast]);
+  }, [grupoEdicion, eliminandoSlotExtra, cargarSlotsEdicion, cargarMesas, mostrarToast]);
 
 
   const guardarEdicionProgramacion = useCallback(async (payload) => {

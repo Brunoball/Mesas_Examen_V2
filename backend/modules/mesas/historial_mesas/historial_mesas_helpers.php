@@ -298,6 +298,91 @@ function mesas_historial_json(array $data): string
  * - Las notas 1 a 6 ya quedan guardadas en historial_previas_resultados / historial_mesas_detalle.
  * - La previa queda activa para que vuelva a entrar en próximos armados.
  */
+
+/**
+ * Elimina del historial de resultados las notas cargadas para el armado operativo actual.
+ *
+ * Se usa cuando el usuario elige eliminar mesas SIN guardar historial: la previa aprobada
+ * puede quedar dada de baja en `previas`, pero las notas no deben quedar como registros
+ * históricos sueltos sin un armado que las contenga.
+ */
+function mesas_historial_eliminar_resultados_armado_actual(PDO $pdo): int
+{
+    if (!mesas_historial_tabla_existe($pdo, 'historial_previas_resultados') || !mesas_historial_tabla_existe($pdo, 'mesas')) {
+        return 0;
+    }
+
+    $eliminados = 0;
+
+    // Caso normal actual: el historial de nota queda vinculado al id_mesa real.
+    $stmt = $pdo->prepare("
+        DELETE h
+        FROM historial_previas_resultados h
+        INNER JOIN mesas me ON me.id_mesa = h.id_mesa
+    ");
+    $stmt->execute();
+    $eliminados += (int)$stmt->rowCount();
+
+    // Respaldo para registros viejos que pudieron guardarse sin id_mesa.
+    // Se limita al mismo contexto exacto de la mesa actual para no borrar históricos reales.
+    $stmtFallback = $pdo->prepare("
+        DELETE h
+        FROM historial_previas_resultados h
+        INNER JOIN mesas me ON me.id_previa = h.id_previa_original
+            AND (h.id_mesa IS NULL OR h.id_mesa = 0)
+            AND h.numero_mesa <=> me.numero_mesa
+            AND h.fecha_mesa <=> me.fecha_mesa
+            AND h.id_turno <=> me.id_turno
+            AND (
+                h.id_catedra <=> me.id_catedra
+                OR h.id_docente <=> me.id_docente
+            )
+    ");
+    $stmtFallback->execute();
+    $eliminados += (int)$stmtFallback->rowCount();
+
+    return $eliminados;
+}
+
+
+/**
+ * Cuando el usuario elimina mesas SIN guardar historial, una previa aprobada debe quedar
+ * dada de baja, pero la nota cargada no debe quedar guardada como dato histórico.
+ */
+function mesas_historial_limpiar_notas_aprobadas_sin_historial_armado_actual(PDO $pdo): int
+{
+    if (!mesas_historial_columna_existe($pdo, 'previas', 'nota')) {
+        return 0;
+    }
+
+    $sets = [
+        'p.nota = NULL',
+        'p.activo = 0',
+    ];
+
+    if (mesas_historial_columna_existe($pdo, 'previas', 'fecha_nota')) {
+        $sets[] = 'p.fecha_nota = NULL';
+    }
+
+    if (mesas_historial_columna_existe($pdo, 'previas', 'motivo_baja')) {
+        $sets[] = "p.motivo_baja = 'Aprobada en mesa de examen.'";
+    }
+
+    $sql = "
+        UPDATE previas p
+        INNER JOIN (
+            SELECT DISTINCT id_previa
+            FROM mesas
+            WHERE id_previa IS NOT NULL
+        ) me ON me.id_previa = p.id_previa
+        SET " . implode(', ', $sets) . "
+        WHERE p.nota IS NOT NULL
+          AND p.nota >= 7
+    ";
+
+    return (int)$pdo->exec($sql);
+}
+
 function mesas_historial_limpiar_notas_desaprobadas_armado_actual(PDO $pdo): int
 {
     if (!mesas_historial_columna_existe($pdo, 'previas', 'nota')) {

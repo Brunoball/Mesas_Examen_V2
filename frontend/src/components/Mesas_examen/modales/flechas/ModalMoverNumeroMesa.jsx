@@ -200,7 +200,7 @@ const ModalMoverNumeroMesa = ({
           <div className="flechas-card">
             <h4>Grupo destino</h4>
             <p>
-              Elegí a qué grupo querés mover esta mesa. Se muestran únicamente grupos del área con lugar disponible y sin choques de alumnos, docentes ni correlativas.
+              Elegí a qué grupo querés mover esta mesa. Se muestran únicamente grupos compatibles con el criterio del armado actual, con lugar disponible y sin conflictos de alumnos, docentes ni correlativas.
             </p>
 
             <label className="flechas-search">
