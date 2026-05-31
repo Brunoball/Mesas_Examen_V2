@@ -760,18 +760,7 @@
    Evita reservar espacio del footer cuando Notificar/Eliminar/PDF
    suben al header y ajusta la tabla con 20px de diferencia.
 ========================================================= */
-.mesas-shell-card--tablas{
-  --mesas-tabla-resta:245px;
-}
 
-.mesas-shell-card--tablas.mesas-card-pdf-fijo .mesas-pdf-view:not(.mesas-pdf-view--historial),
-.mesas-shell-card--tablas.mesas-card-pdf-fijo .mesas-pdf-view{
-  flex:1 1 auto;
-  min-height:320px;
-  max-height:calc(100dvh - var(--mesas-tabla-resta)) !important;
-  overflow-y:auto !important;
-  overflow-x:hidden !important;
-}
 
 @media (min-width:1501px){
   .mesas-shell-card--tablas{

@@ -78,7 +78,7 @@
 
 
 
-.docenteCambio-item__body{
+.docenteCambio-item__body.gm-panel__body{
   min-width:0;
   padding:14px;
 }
@@ -195,7 +195,7 @@
     padding:11px;
   }
 
-  .docenteCambio-item__body{
+  .docenteCambio-item__body.gm-panel__body{
     padding:12px;
   }
 

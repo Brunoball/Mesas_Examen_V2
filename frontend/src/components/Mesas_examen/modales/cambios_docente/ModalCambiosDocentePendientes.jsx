@@ -82,7 +82,7 @@ const ModalCambiosDocentePendientes = ({
 
                 return (
                   <article key={id || `${cambio?.numero_mesa}-${cambio?.id_catedra}`} className="gm-panel docenteCambio-item">
-                    <div className="docenteCambio-item__body">
+                    <div className="gm-panel__body docenteCambio-item__body">
                       <div className="docenteCambio-cardGrid" aria-label="Detalle del cambio de docente pendiente">
                         <section className="docenteCambio-infoCard docenteCambio-infoCard--mesa">
                           <span className="docenteCambio-infoCard__label">Mesa</span>

@@ -2558,8 +2558,7 @@
 
 .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-view{
   flex:1 1 auto;
-  min-height:360px;
-  max-height:calc(100dvh - 245px);
+  max-height:calc(100dvh - 200px);
   overflow:auto !important;
     overflow-x: hidden !important; 
   overscroll-behavior:contain;
@@ -4018,253 +4017,6 @@
   letter-spacing:.03em;
 }
 
-.mesas-docenteCambioOverlay{
-  position:fixed;
-  inset:0;
-  z-index:9998;
-  background:rgba(15,23,42,.48);
-  backdrop-filter:blur(3px);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:22px;
-}
-
-.mesas-docenteCambioModal{
-  width:min(980px, 100%);
-  max-height:min(82vh, 760px);
-  overflow:hidden;
-  border-radius:24px;
-  background:#fffdf8;
-  border:1px solid rgba(217,132,16,.28);
-  box-shadow:0 24px 70px rgba(15,23,42,.25);
-  display:flex;
-  flex-direction:column;
-}
-
-.mesas-docenteCambioModal__head{
-  display:grid;
-  grid-template-columns:auto 1fr auto;
-  gap:14px;
-  align-items:flex-start;
-  padding:22px 24px;
-  background:linear-gradient(135deg, #fff7dc, #fff);
-  border-bottom:1px solid rgba(217,132,16,.18);
-}
-
-.mesas-docenteCambioModal__icon{
-  width:44px;
-  height:44px;
-  border-radius:16px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:#92400e;
-  background:#ffedbd;
-  border:1px solid rgba(217,132,16,.28);
-  font-size:19px;
-}
-
-.mesas-docenteCambioModal__head h3{
-  margin:0;
-  font-size:20px;
-  color:#1f2937;
-  font-weight:900;
-}
-
-.mesas-docenteCambioModal__head p{
-  margin:6px 0 0;
-  color:#6b7280;
-  font-size:13px;
-  line-height:1.45;
-}
-
-.mesas-docenteCambioModal__close{
-  width:36px;
-  height:36px;
-  border:0;
-  border-radius:12px;
-  background:rgba(255,255,255,.75);
-  color:#6b7280;
-  cursor:pointer;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-
-.mesas-docenteCambioModal__close:hover{
-  background:#fff;
-  color:#1f2937;
-}
-
-.mesas-docenteCambioModal__loading,
-.mesas-docenteCambioModal__empty{
-  padding:28px;
-  color:#6b7280;
-  display:flex;
-  align-items:center;
-  gap:10px;
-  justify-content:center;
-}
-
-.mesas-docenteCambioList{
-  padding:16px;
-  overflow:auto;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-
-.mesas-docenteCambioItem{
-  display:grid;
-  grid-template-columns:1.1fr 1.4fr .8fr auto;
-  gap:14px;
-  align-items:center;
-  border:1px solid rgba(214,226,243,.9);
-  border-radius:18px;
-  background:#fff;
-  padding:14px;
-}
-
-.mesas-docenteCambioItem__main,
-.mesas-docenteCambioItem__meta{
-  display:flex;
-  flex-direction:column;
-  gap:4px;
-}
-
-.mesas-docenteCambioItem__main strong{
-  color:#111827;
-  font-size:15px;
-}
-
-.mesas-docenteCambioItem__main span,
-.mesas-docenteCambioItem__main small,
-.mesas-docenteCambioItem__meta span{
-  color:#6b7280;
-  font-size:12px;
-}
-
-.mesas-docenteCambioItem__docentes{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-}
-
-.mesas-docenteCambioItem__docentes > div{
-  border-radius:14px;
-  background:#f8fafc;
-  border:1px solid #e5edf7;
-  padding:9px 10px;
-  min-width:0;
-}
-
-.mesas-docenteCambioItem__docentes span{
-  display:block;
-  color:#64748b;
-  font-size:10px;
-  text-transform:uppercase;
-  font-weight:800;
-  letter-spacing:.04em;
-  margin-bottom:3px;
-}
-
-.mesas-docenteCambioItem__docentes strong{
-  display:block;
-  color:#1f2937;
-  font-size:12px;
-  line-height:1.25;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-
-.mesas-docenteCambioItem__actions{
-  display:flex;
-  flex-wrap:wrap;
-  justify-content:flex-end;
-  gap:8px;
-}
-
-.mesas-docenteCambioBtn{
-  border:0;
-  border-radius:12px;
-  height:34px;
-  padding:0 12px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  gap:7px;
-  font-size:12px;
-  font-weight:800;
-  cursor:pointer;
-  transition:transform .14s ease, opacity .14s ease, background .14s ease;
-}
-
-.mesas-docenteCambioBtn:hover:not(:disabled){
-  transform:translateY(-1px);
-}
-
-.mesas-docenteCambioBtn:disabled{
-  opacity:.58;
-  cursor:not-allowed;
-}
-
-.mesas-docenteCambioBtn--ghost{
-  background:#f3f6fb;
-  color:#1f4b93;
-}
-
-.mesas-docenteCambioBtn--primary{
-  background:#1f4b93;
-  color:#fff;
-}
-
-.mesas-docenteCambioBtn--danger{
-  background:#fff1f2;
-  color:#be123c;
-}
-
-@media (max-width:860px){
-  .mesas-docenteCambioItem{
-    grid-template-columns:1fr;
-    align-items:stretch;
-  }
-
-  .mesas-docenteCambioItem__actions{
-    justify-content:stretch;
-  }
-
-  .mesas-docenteCambioBtn{
-    flex:1;
-  }
-}
-
-@media (max-width:560px){
-  .mesas-docenteCambioOverlay{
-    padding:10px;
-  }
-
-  .mesas-docenteCambioModal{
-    border-radius:18px;
-    max-height:92vh;
-  }
-
-  .mesas-docenteCambioModal__head{
-    grid-template-columns:auto 1fr;
-    padding:18px;
-  }
-
-  .mesas-docenteCambioModal__close{
-    grid-column:2;
-    grid-row:1;
-    justify-self:end;
-  }
-
-  .mesas-docenteCambioItem__docentes{
-    grid-template-columns:1fr;
-  }
-}
 
 /* Reapertura y resaltado específico de cambios de docente */
 .mesas-docenteCambioAlert{
@@ -4448,13 +4200,19 @@
 ========================================================= */
 .mesas-shell-card--tablas{
   --mesas-tabla-resta:245px;
+  --mesas-alerta-docente-resta:0px;
+}
+
+/* Cuando aparece el aviso de cambio de docente, reserva su alto en la tabla. */
+.mesas-shell-card--tablas.mesas-shell-card--alerta-docente{
+  --mesas-alerta-docente-resta:50px;
 }
 
 .mesas-shell-card--tablas.mesas-card-pdf-fijo .mesas-pdf-view:not(.mesas-pdf-view--historial),
 .mesas-shell-card--tablas.mesas-card-pdf-fijo .mesas-pdf-view{
   flex:1 1 auto;
-  min-height:320px;
-  max-height:calc(100dvh - var(--mesas-tabla-resta)) !important;
+
+  height:calc(100dvh - 500px) !important;
   overflow-y:auto !important;
   overflow-x:hidden !important;
 }
