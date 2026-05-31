@@ -166,6 +166,88 @@ function mesas_docentes_cambios_nombre_docente(PDO $pdo, ?int $idDocente): strin
     return $nombre !== '' ? $nombre : 'Docente #' . $idDocente;
 }
 
+
+/**
+ * Elimina avisos pendientes cuando ya no hay diferencia real entre Mesas y Cátedras.
+ *
+ * Caso clave:
+ * - La mesa quedó armada con MELANO.
+ * - En Cátedras se cambió a ORTIZ => se avisa MELANO -> ORTIZ.
+ * - En Cátedras se vuelve a MELANO => el aviso ya no corresponde y se borra.
+ */
+function mesas_docentes_cambios_eliminar_pendiente_actual(PDO $pdo, int $idCatedra, int $numeroMesa): int
+{
+    if ($idCatedra <= 0 || $numeroMesa <= 0) {
+        return 0;
+    }
+
+    $stmt = $pdo->prepare("
+        DELETE FROM mesas_docente_cambios_pendientes
+        WHERE id_catedra = :id_catedra
+          AND numero_mesa = :numero_mesa
+          AND estado = 'pendiente'
+    ");
+    $stmt->execute([
+        ':id_catedra' => $idCatedra,
+        ':numero_mesa' => $numeroMesa,
+    ]);
+
+    return $stmt->rowCount();
+}
+
+/**
+ * Limpieza defensiva para avisos viejos que quedaron pendientes por versiones anteriores.
+ * No crea avisos nuevos: solo borra los que ya están resueltos por la realidad actual.
+ */
+function mesas_docentes_cambios_limpiar_pendientes_resueltos(PDO $pdo): int
+{
+    $sql = "
+        DELETE c
+        FROM mesas_docente_cambios_pendientes c
+        LEFT JOIN (
+            SELECT
+                me.id_catedra,
+                me.numero_mesa,
+                MIN(me.id_docente) AS id_docente_en_mesa
+            FROM mesas me
+            WHERE me.id_catedra IS NOT NULL
+              AND me.numero_mesa IS NOT NULL
+            GROUP BY me.id_catedra, me.numero_mesa
+        ) mesa_actual
+            ON mesa_actual.id_catedra = c.id_catedra
+           AND mesa_actual.numero_mesa = c.numero_mesa
+        LEFT JOIN catedras cat
+            ON cat.id_catedra = c.id_catedra
+        LEFT JOIN catedras_docentes cd
+            ON cd.id_catedra = cat.id_catedra
+           AND cd.activo = 1
+           AND cd.id_catedra_docente = (
+                SELECT cd3.id_catedra_docente
+                FROM catedras_docentes cd3
+                LEFT JOIN docentes d3 ON d3.id_docente = cd3.id_docente
+                LEFT JOIN cargos cargo3 ON cargo3.id_cargo = cd3.id_cargo
+                WHERE cd3.id_catedra = cat.id_catedra
+                  AND cd3.activo = 1
+                ORDER BY
+                    CASE
+                        WHEN d3.activo = 1 AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 1
+                        ELSE 2
+                    END ASC,
+                    cd3.id_catedra_docente ASC
+                LIMIT 1
+           )
+        WHERE c.estado = 'pendiente'
+          AND (
+                mesa_actual.id_catedra IS NULL
+                OR COALESCE(mesa_actual.id_docente_en_mesa, 0) = COALESCE(cd.id_docente, cat.id_docente, 0)
+          )
+    ";
+
+    $afectados = $pdo->exec($sql);
+    return is_int($afectados) ? $afectados : 0;
+}
+
 function mesas_docentes_cambios_debe_omitir_por_estado_previo(PDO $pdo, int $idCatedra, int $numeroMesa, ?int $idDocenteEnMesa, ?int $idDocenteNuevo): bool
 {
     $stmt = $pdo->prepare("\n        SELECT COUNT(*)\n        FROM mesas_docente_cambios_pendientes\n        WHERE id_catedra = :id_catedra\n          AND numero_mesa = :numero_mesa\n          AND estado IN ('ignorado', 'resuelto')\n          AND COALESCE(id_docente_en_mesa, 0) = COALESCE(:id_docente_en_mesa, 0)\n          AND COALESCE(id_docente_nuevo, 0) = COALESCE(:id_docente_nuevo, 0)\n    ");
@@ -248,10 +330,6 @@ function mesas_docentes_cambios_registrar_catedra_actualizada(PDO $pdo, int $idC
     $anteriorNormalizado = $idDocenteAnterior !== null && $idDocenteAnterior > 0 ? $idDocenteAnterior : null;
     $nuevoNormalizado = $idDocenteNuevo !== null && $idDocenteNuevo > 0 ? $idDocenteNuevo : null;
 
-    if ($anteriorNormalizado === $nuevoNormalizado) {
-        return 0;
-    }
-
     mesas_docentes_cambios_asegurar_tabla($pdo);
 
     $stmtMesas = $pdo->prepare("\n        SELECT\n            me.id_catedra,\n            me.numero_mesa,\n            MIN(me.id_docente) AS id_docente_en_mesa,\n            MIN(me.fecha_mesa) AS fecha_mesa,\n            MIN(me.id_turno) AS id_turno,\n            MIN(g.numero_grupo) AS numero_grupo,\n            MAX(m.materia) AS materia\n        FROM mesas me\n        LEFT JOIN mesas_grupos g ON g.numero_mesa = me.numero_mesa\n        LEFT JOIN catedras cat ON cat.id_catedra = me.id_catedra\n        LEFT JOIN materias m ON m.id_materia = cat.id_materia\n        WHERE me.id_catedra = :id_catedra\n          AND me.numero_mesa IS NOT NULL\n        GROUP BY me.id_catedra, me.numero_mesa\n        ORDER BY me.numero_mesa ASC\n    ");
@@ -259,6 +337,14 @@ function mesas_docentes_cambios_registrar_catedra_actualizada(PDO $pdo, int $idC
     $filas = $stmtMesas->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
     if (count($filas) === 0) {
+        $stmtLimpiar = $pdo->prepare("\n            DELETE FROM mesas_docente_cambios_pendientes\n            WHERE id_catedra = :id_catedra\n              AND estado = 'pendiente'\n        ");
+        $stmtLimpiar->execute([':id_catedra' => $idCatedra]);
+        return 0;
+    }
+
+    // Si no cambió el docente de la cátedra, no generamos avisos nuevos.
+    // La limpieza defensiva general se ejecuta al listar pendientes en Mesas.
+    if ($anteriorNormalizado === $nuevoNormalizado) {
         return 0;
     }
 
@@ -267,16 +353,21 @@ function mesas_docentes_cambios_registrar_catedra_actualizada(PDO $pdo, int $idC
         $idDocenteEnMesa = isset($fila['id_docente_en_mesa']) && $fila['id_docente_en_mesa'] !== null
             ? (int)$fila['id_docente_en_mesa']
             : null;
+        $numeroMesa = (int)($fila['numero_mesa'] ?? 0);
 
-        // Si la mesa ya tiene el docente nuevo, no hace falta avisar.
+        // Si la mesa ya tiene el mismo docente que quedó en Cátedras,
+        // el cambio pendiente quedó resuelto por reversión y debe desaparecer.
         if ($idDocenteEnMesa === $nuevoNormalizado) {
+            mesas_docentes_cambios_eliminar_pendiente_actual($pdo, $idCatedra, $numeroMesa);
             continue;
         }
 
+        // Fuente de verdad del aviso: docente guardado en la mesa -> docente actual de la cátedra.
+        // Esto evita que queden avisos invertidos o viejos cuando se cambia varias veces.
         $afectados += mesas_docentes_cambios_guardar_pendiente(
             $pdo,
             $fila,
-            $anteriorNormalizado,
+            $idDocenteEnMesa,
             $nuevoNormalizado,
             'catedras_asignar_docente'
         );
@@ -322,8 +413,10 @@ function mesas_docentes_cambios_registrar_diferencias_actuales(PDO $pdo): int
 function mesas_docentes_cambios_listar_pendientes_data(PDO $pdo): array
 {
     // Consulta rápida: solo lee la tabla temporal de pendientes.
-    // No escaneamos toda la tabla mesas acá, para que ignorar/aplicar realmente elimine el aviso.
+    // No escaneamos toda la tabla mesas para crear avisos nuevos, así ignorar/aplicar no reaparece.
+    // Sí limpiamos avisos viejos que ya no tienen diferencia real entre Mesas y Cátedras.
     mesas_docentes_cambios_asegurar_tabla($pdo);
+    mesas_docentes_cambios_limpiar_pendientes_resueltos($pdo);
 
     $stmt = $pdo->query("\n        SELECT\n            c.id_cambio,\n            c.id_catedra,\n            c.numero_mesa,\n            c.numero_grupo,\n            c.id_docente_anterior,\n            c.id_docente_nuevo,\n            c.id_docente_en_mesa,\n            c.fecha_mesa,\n            DATE_FORMAT(c.fecha_mesa, '%d/%m/%Y') AS fecha_mesa_texto,\n            c.id_turno,\n            t.turno,\n            c.materia,\n            c.docente_anterior,\n            c.docente_nuevo,\n            c.estado,\n            c.origen,\n            c.observacion,\n            c.creado_en,\n            DATE_FORMAT(c.creado_en, '%d/%m/%Y %H:%i') AS creado_en_texto\n        FROM mesas_docente_cambios_pendientes c\n        LEFT JOIN turnos t ON t.id_turno = c.id_turno\n        WHERE c.estado = 'pendiente'\n        ORDER BY c.creado_en DESC, c.numero_mesa ASC\n    ");
 
