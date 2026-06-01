@@ -1,21 +1,34 @@
+import escudoIpEtUrl from "../../../../imagenes/Escudo.png";
+
+// Diseño del PDF basado en la planilla institucional de mesas de examen.
+// Formato A4 vertical: encabezado centrado y tablas compactas en escala de grises.
 const PAGE = {
-  width: 841.89,
-  height: 595.28,
-  margin: 24,
+  width: 595.28,
+  height: 841.89,
+  margin: 28.35,
 };
 
 const COLORS = {
-  blue: "#1f4b93",
-  blueDark: "#15376f",
-  blueSoft: "#eef4ff",
-  border: "#dbe3ef",
-  borderStrong: "#c4d0e0",
-  text: "#172033",
-  muted: "#46576d",
-  headerBg: "#f8fafc",
+  title: "#111111",
+  text: "#565656",
+  textStrong: "#505050",
+  border: "#c7c7c7",
+  borderStrong: "#222222",
+  headerBg: "#eeeeee",
   cellBg: "#ffffff",
-  cellAlt: "#f8fafc",
-  cellSoft: "#f4f7fb",
+};
+
+const TABLE = {
+  top: 86,
+  bottom: 813,
+  gap: 7,
+  headerHeight: 18,
+  minRowHeight: 18,
+  bodySize: 7.6,
+  strongSize: 7.7,
+  bodyLineHeight: 9.1,
+  paddingX: 4,
+  paddingY: 4.7,
 };
 
 const MESES_ES = [
@@ -96,13 +109,6 @@ const obtenerHoraMesa = (item) => {
 
 const obtenerTurnoMesa = (item) => textoCorto(item?.turno).toUpperCase();
 
-const obtenerFechaResumenPdf = (item) => {
-  const partes = obtenerPartesFechaMesa(item);
-  const turno = obtenerTurnoMesa(item);
-  const hora = obtenerHoraMesa(item);
-  if (!partes) return `${turno} · ${hora}`;
-  return `${partes.diaSemana} ${partes.dia} · ${turno} · ${hora}`;
-};
 
 const obtenerFechaStack = (item) => {
   const partes = obtenerPartesFechaMesa(item);
@@ -116,15 +122,6 @@ const obtenerFechaStack = (item) => {
   return [partes.diaSemana, String(partes.dia), partes.mesTexto, turno, hora];
 };
 
-const obtenerTextoNumerosMesa = (grupo) => {
-  const numeros = Array.isArray(grupo?.numeros) ? grupo.numeros : [];
-  const desdeNumeros = numeros
-    .map((numero) => numero?.numero_mesa)
-    .filter((numero) => numero !== undefined && numero !== null && numero !== "")
-    .join(" · ");
-  if (desdeNumeros) return desdeNumeros;
-  return String(grupo?.numeros_mesa_texto || grupo?.numero_mesa || "-").replace(/,/g, " · ");
-};
 
 const obtenerCursoAlumno = (alumno) => {
   if (!alumno) return "-";
@@ -201,7 +198,7 @@ const construirFilasGrupo = (grupo) => {
           estudiante: alumno ? textoCorto(alumno.estudiante || alumno.alumno, "Sin estudiante") : "Sin alumnos vinculados",
           dni: alumno ? textoCorto(alumno.dni) : "-",
           curso: alumno ? obtenerCursoAlumno(alumno) : "-",
-          nota: alumno && alumno.nota ? String(alumno.nota) : "-",
+          nota: alumno && alumno.nota !== undefined && alumno.nota !== null && String(alumno.nota).trim() ? String(alumno.nota) : "-",
         });
       });
     });
@@ -294,8 +291,32 @@ const escapePdfText = (texto) => {
 
 const medirTexto = (texto, size = 10, bold = false) => {
   const clean = normalizarTextoPdf(texto);
-  const factor = bold ? 0.56 : 0.52;
+  const factor = bold ? 0.59 : 0.54;
   return clean.length * size * factor;
+};
+
+// Métricas reales de Helvetica-Bold (unidades AFM / 1000). Se usan en el
+// encabezado institucional para que ambas líneas queden centradas sobre el
+// eje real de la hoja, independientemente de la cantidad de letras anchas o finas.
+const HELVETICA_BOLD_WIDTHS = {
+  " ": 278, "!": 333, '"': 474, "#": 556, "$": 556, "%": 889, "&": 722, "'": 278,
+  "(": 333, ")": 333, "*": 389, "+": 584, ",": 278, "-": 333, ".": 278, "/": 278,
+  "0": 556, "1": 556, "2": 556, "3": 556, "4": 556, "5": 556, "6": 556, "7": 556, "8": 556, "9": 556,
+  ":": 333, ";": 333, "<": 584, "=": 584, ">": 584, "?": 611, "@": 975,
+  A: 722, B: 722, C: 722, D: 722, E: 667, F: 611, G: 778, H: 722, I: 278, J: 556,
+  K: 722, L: 611, M: 833, N: 722, O: 778, P: 667, Q: 778, R: 722, S: 667, T: 611,
+  U: 722, V: 722, W: 944, X: 722, Y: 722, Z: 611,
+  "[": 333, "\\": 278, "]": 333, "^": 584, "_": 556, "`": 278,
+  a: 556, b: 611, c: 556, d: 611, e: 556, f: 333, g: 611, h: 611, i: 278, j: 278,
+  k: 556, l: 278, m: 889, n: 611, o: 611, p: 611, q: 611, r: 389, s: 556, t: 333,
+  u: 611, v: 556, w: 778, x: 556, y: 556, z: 500,
+  "{": 389, "|": 280, "}": 389, "~": 584, "°": 400,
+};
+
+const medirTextoHelveticaBold = (texto, size = 10) => {
+  const clean = normalizarTextoPdf(texto);
+  const unidades = Array.from(clean).reduce((total, char) => total + (HELVETICA_BOLD_WIDTHS[char] || 556), 0);
+  return (unidades * size) / 1000;
 };
 
 const recortarLinea = (texto, maxWidth, size, bold) => {
@@ -566,174 +587,357 @@ class PdfCanvas {
 }
 
 const columnas = [
-  { key: "hora", label: "Hora", width: 78 },
-  { key: "materia", label: "Espacio Curricular", width: 185 },
-  { key: "estudiante", label: "Estudiante", width: 190 },
-  { key: "dni", label: "DNI", width: 68 },
-  { key: "curso", label: "Curso", width: 62 },
-  { key: "nota", label: "Nota", width: 54 },
-  { key: "docente", label: "Docentes", width: 156.89 },
+  { key: "hora", label: "Hora", width: 62 },
+  { key: "materia", label: "Espacio Curricular", width: 116 },
+  { key: "estudiante", label: "Estudiante", width: 140 },
+  { key: "dni", label: "DNI", width: 56 },
+  { key: "curso", label: "Curso", width: 46 },
+  { key: "nota", label: "Nota", width: 35 },
+  { key: "docente", label: "Docentes", width: 83.58 },
 ];
 
+const anchoTabla = columnas.reduce((total, col) => total + col.width, 0);
 const xColumna = (index) => PAGE.margin + columnas.slice(0, index).reduce((total, col) => total + col.width, 0);
+const textoMayuscula = (valor) => normalizarTextoPdf(valor).toUpperCase();
 
 const dibujarLogoHeader = (pdf, logoAsset, x, yTop, width, height) => {
-  if (logoAsset) {
-    pdf.rect(x, yTop, width, height, { fill: "#ffffff", stroke: COLORS.borderStrong, lineWidth: 0.7 });
-    const caja = calcularCajaImagen(logoAsset, width - 8, height - 8);
-    pdf.image(logoAsset.name, x + 4 + caja.offsetX, yTop + 4 + caja.offsetY, caja.width, caja.height);
-    return;
-  }
+  if (!logoAsset) return;
 
-  pdf.rect(x, yTop, width, height, { fill: COLORS.blue, stroke: COLORS.blue, lineWidth: 0.7 });
-  pdf.text("LOGO", x + 8, yTop + 14, { size: 9, font: "F2", color: "#ffffff", maxWidth: width - 16, align: "center" });
+  const caja = calcularCajaImagen(logoAsset, width, height);
+  pdf.image(logoAsset.name, x + caja.offsetX, yTop + caja.offsetY, caja.width, caja.height);
 };
 
-const dibujarHeaderMesa = (pdf, grupo, titulo, paginaGrupo, totalPaginasGrupo, logoAsset, institucionNombre) => {
-  const x = PAGE.margin;
-  const width = PAGE.width - (PAGE.margin * 2);
-  const institucion = textoCorto(institucionNombre, "Institución");
+const dibujarHeaderDocumento = (pdf, titulo, logoAsset) => {
+  const institucion = 'IPET N° 50 "Ing. Emilio F. Olmos"';
+  const contentWidth = PAGE.width - (PAGE.margin * 2);
+  const tituloHeader = textoMayuscula(titulo);
+  const xTitulo = (PAGE.width - medirTextoHelveticaBold(tituloHeader, 18)) / 2;
+  const xInstitucion = (PAGE.width - medirTextoHelveticaBold(institucion, 10)) / 2;
 
-  pdf.rect(x, 22, width, 58, { fill: COLORS.headerBg, stroke: COLORS.blue, lineWidth: 1.2 });
-  dibujarLogoHeader(pdf, logoAsset, x + 12, 33, 44, 36);
+  dibujarLogoHeader(pdf, logoAsset, PAGE.margin + 2, 15, 37, 43);
 
-  pdf.text(titulo, x + 70, 34, { size: 17, font: "F2", color: COLORS.blue, maxWidth: 420 });
-  pdf.text(institucion, x + 70, 57, { size: 9.5, font: "F2", color: COLORS.muted, maxWidth: 330 });
+  // El escudo queda a la izquierda, pero los títulos se centran sobre toda la hoja.
+  pdf.text(tituloHeader, xTitulo, 19, {
+    size: 18,
+    font: "F2",
+    color: COLORS.title,
+  });
 
-  const metaX = x + width - 260;
-  pdf.text(obtenerFechaResumenPdf(grupo), metaX, 35, { size: 9.5, font: "F2", color: COLORS.text, maxWidth: 250, align: "right" });
-  pdf.text(`N° de mesa: ${obtenerTextoNumerosMesa(grupo)}`, metaX, 51, { size: 10.5, font: "F2", color: COLORS.blue, maxWidth: 250, align: "right" });
+  pdf.text(institucion, xInstitucion, 41, {
+    size: 10,
+    font: "F2",
+    color: COLORS.title,
+  });
 
-  if (totalPaginasGrupo > 1) {
-    pdf.text(`Página ${paginaGrupo} de ${totalPaginasGrupo}`, metaX, 66, { size: 8.5, font: "F1", color: COLORS.muted, maxWidth: 250, align: "right" });
-  }
+  pdf.rect(PAGE.margin, 67, contentWidth, 0.9, {
+    fill: COLORS.borderStrong,
+    stroke: COLORS.borderStrong,
+    lineWidth: 0.5,
+  });
 };
 
 const dibujarTablaHeader = (pdf, yTop) => {
   columnas.forEach((col, index) => {
     const x = xColumna(index);
-    pdf.rect(x, yTop, col.width, 24, { fill: COLORS.blue, stroke: COLORS.blue, lineWidth: 0.7 });
-    pdf.text(col.label, x + 4, yTop + 8, { size: 8.5, font: "F2", color: "#ffffff", maxWidth: col.width - 8, align: "center" });
-  });
-};
-
-const dibujarCeldaTexto = (pdf, texto, x, yTop, width, height, opciones = {}) => {
-  const {
-    size = 8.2,
-    font = "F1",
-    align = "left",
-    color = COLORS.text,
-    maxLines = 2,
-    paddingX = 5,
-    paddingY = 6,
-  } = opciones;
-
-  pdf.wrappedText(texto, x + paddingX, yTop + paddingY, width - (paddingX * 2), {
-    size,
-    font,
-    align,
-    color,
-    maxLines,
-    lineHeight: size + 2,
-  });
-};
-
-const dibujarHoraStack = (pdf, grupo, x, yTop, width, height) => {
-  const stack = obtenerFechaStack(grupo).filter(Boolean);
-  const lineHeight = 10.5;
-  const totalHeight = stack.length * lineHeight;
-  const inicioY = yTop + Math.max(6, (height - totalHeight) / 2);
-
-  stack.forEach((linea, index) => {
-    pdf.text(linea, x + 4, inicioY + (index * lineHeight), {
-      size: 8.6,
+    pdf.rect(x, yTop, col.width, TABLE.headerHeight, {
+      fill: COLORS.headerBg,
+      stroke: COLORS.border,
+      lineWidth: 0.55,
+    });
+    pdf.text(col.label, x + 2, yTop + 5.1, {
+      size: 7.7,
       font: "F2",
-      color: COLORS.blue,
-      maxWidth: width - 8,
+      color: COLORS.textStrong,
+      maxWidth: col.width - 4,
       align: "center",
     });
   });
 };
 
-const dibujarPaginaMesa = (pdf, { grupo, titulo, filas, paginaGrupo, totalPaginasGrupo, logoAsset, institucionNombre }) => {
-  const tableTop = 92;
-  const headerHeight = 24;
-  const rowHeight = 28;
-  const bodyTop = tableTop + headerHeight;
+const dibujarCeldaTexto = (pdf, texto, x, yTop, width, height, opciones = {}) => {
+  const {
+    size = TABLE.bodySize,
+    font = "F1",
+    align = "left",
+    color = COLORS.text,
+    maxLines = 6,
+    paddingX = TABLE.paddingX,
+    lineHeight = TABLE.bodyLineHeight,
+    verticalCenter = true,
+  } = opciones;
 
-  dibujarHeaderMesa(pdf, grupo, titulo, paginaGrupo, totalPaginasGrupo, logoAsset, institucionNombre);
-  dibujarTablaHeader(pdf, tableTop);
+  const bold = font === "F2";
+  const lineas = wrapText(textoMayuscula(texto), width - (paddingX * 2), size, bold, maxLines);
+  const altoTexto = lineas.length * lineHeight;
+  const inicioY = verticalCenter
+    ? yTop + Math.max(TABLE.paddingY, ((height - altoTexto) / 2) + 0.5)
+    : yTop + TABLE.paddingY;
 
-  const bodyHeight = filas.length * rowHeight;
-  pdf.rect(xColumna(0), bodyTop, columnas[0].width, bodyHeight, { fill: COLORS.blueSoft, stroke: COLORS.border, lineWidth: 0.7 });
-  dibujarHoraStack(pdf, grupo, xColumna(0), bodyTop, columnas[0].width, bodyHeight);
-
-  filas.forEach((fila, index) => {
-    const y = bodyTop + (index * rowHeight);
-    const fill = index % 2 === 0 ? COLORS.cellBg : COLORS.cellAlt;
-
-    columnas.slice(1).forEach((col, colIndex) => {
-      const absoluteIndex = colIndex + 1;
-      const x = xColumna(absoluteIndex);
-      const isSoft = col.key === "materia" || col.key === "docente";
-      pdf.rect(x, y, col.width, rowHeight, {
-        fill: isSoft ? COLORS.cellSoft : fill,
-        stroke: COLORS.border,
-        lineWidth: 0.7,
-      });
+  lineas.forEach((linea, index) => {
+    pdf.text(linea, x + paddingX, inicioY + (index * lineHeight), {
+      size,
+      font,
+      color,
+      maxWidth: width - (paddingX * 2),
+      align,
     });
-
-    dibujarCeldaTexto(pdf, fila.materia, xColumna(1), y, columnas[1].width, rowHeight, { font: "F2", maxLines: 2 });
-    dibujarCeldaTexto(pdf, fila.estudiante, xColumna(2), y, columnas[2].width, rowHeight, { font: "F2", maxLines: 2 });
-    dibujarCeldaTexto(pdf, fila.dni, xColumna(3), y, columnas[3].width, rowHeight, { font: "F2", align: "center", maxLines: 1, paddingY: 9 });
-    dibujarCeldaTexto(pdf, fila.curso, xColumna(4), y, columnas[4].width, rowHeight, { font: "F2", align: "center", maxLines: 1, paddingY: 9 });
-    dibujarCeldaTexto(pdf, fila.nota, xColumna(5), y, columnas[5].width, rowHeight, { font: "F2", align: "center", maxLines: 1, paddingY: 9 });
-    dibujarCeldaTexto(pdf, fila.docente, xColumna(6), y, columnas[6].width, rowHeight, { font: "F2", maxLines: 2 });
   });
 };
 
-const chunk = (items, size) => {
-  const chunks = [];
-  for (let i = 0; i < items.length; i += size) {
-    chunks.push(items.slice(i, i + size));
-  }
-  return chunks;
+const dibujarHoraStack = (pdf, grupo, x, yTop, width, height) => {
+  const stack = obtenerFechaStack(grupo).filter(Boolean).map(textoMayuscula);
+  const size = 7.7;
+  const lineHeight = 9.2;
+  const totalHeight = stack.length * lineHeight;
+  const inicioY = yTop + Math.max(TABLE.paddingY, ((height - totalHeight) / 2) + 0.4);
+
+  stack.forEach((linea, index) => {
+    pdf.text(linea, x + TABLE.paddingX, inicioY + (index * lineHeight), {
+      size,
+      font: "F2",
+      color: COLORS.textStrong,
+      maxWidth: width - (TABLE.paddingX * 2),
+      align: "center",
+    });
+  });
 };
 
-const generarPdfMesas = ({ mesas = [], titulo = "MESAS DE EXAMEN", logoAsset = null, institucionNombre = "Institución" } = {}) => {
+const construirSpans = (filas, key) => {
+  const spans = [];
+  let inicio = 0;
+
+  while (inicio < filas.length) {
+    const valor = filas[inicio]?.[key] || "-";
+    let fin = inicio + 1;
+    while (fin < filas.length && String(filas[fin]?.[key] || "-") === String(valor)) {
+      fin += 1;
+    }
+    spans.push({ inicio, cantidad: fin - inicio, valor });
+    inicio = fin;
+  }
+
+  return spans;
+};
+
+const altoMinimoTexto = (texto, width, size, font = "F1", maxLines = 6) => {
+  const bold = font === "F2";
+  const lineas = wrapText(textoMayuscula(texto), width - (TABLE.paddingX * 2), size, bold, maxLines);
+  return Math.max(TABLE.minRowHeight, (lineas.length * TABLE.bodyLineHeight) + (TABLE.paddingY * 2));
+};
+
+const ajustarAlturasPorSpan = (alturas, spans, keyWidth, size) => {
+  spans.forEach((span) => {
+    const requerido = altoMinimoTexto(span.valor, keyWidth, size, "F2");
+    const actual = alturas.slice(span.inicio, span.inicio + span.cantidad).reduce((total, item) => total + item, 0);
+    if (actual >= requerido) return;
+
+    const faltantePorFila = (requerido - actual) / span.cantidad;
+    for (let i = span.inicio; i < span.inicio + span.cantidad; i += 1) {
+      alturas[i] += faltantePorFila;
+    }
+  });
+};
+
+const prepararBloqueTabla = (grupo, filas) => {
+  const spansMateria = construirSpans(filas, "materia");
+  const spansDocente = construirSpans(filas, "docente");
+  const alturas = filas.map((fila) => Math.max(
+    TABLE.minRowHeight,
+    altoMinimoTexto(fila.estudiante, columnas[2].width, TABLE.bodySize),
+    altoMinimoTexto(fila.dni, columnas[3].width, TABLE.bodySize),
+    altoMinimoTexto(fila.curso, columnas[4].width, TABLE.bodySize),
+    altoMinimoTexto(fila.nota, columnas[5].width, TABLE.bodySize),
+  ));
+
+  ajustarAlturasPorSpan(alturas, spansMateria, columnas[1].width, TABLE.strongSize);
+  ajustarAlturasPorSpan(alturas, spansDocente, columnas[6].width, TABLE.strongSize);
+
+  const altoCuerpo = alturas.reduce((total, item) => total + item, 0);
+  return {
+    grupo,
+    filas,
+    spansMateria,
+    spansDocente,
+    alturas,
+    height: TABLE.headerHeight + altoCuerpo,
+  };
+};
+
+const obtenerYFila = (bloque, index, bodyTop) => bodyTop + bloque.alturas
+  .slice(0, index)
+  .reduce((total, height) => total + height, 0);
+
+const obtenerAltoSpan = (bloque, span) => bloque.alturas
+  .slice(span.inicio, span.inicio + span.cantidad)
+  .reduce((total, height) => total + height, 0);
+
+const dibujarBloqueTabla = (pdf, bloque, yTop) => {
+  const bodyTop = yTop + TABLE.headerHeight;
+  const bodyHeight = bloque.alturas.reduce((total, height) => total + height, 0);
+
+  dibujarTablaHeader(pdf, yTop);
+
+  pdf.rect(xColumna(0), bodyTop, columnas[0].width, bodyHeight, {
+    fill: COLORS.cellBg,
+    stroke: COLORS.border,
+    lineWidth: 0.55,
+  });
+  dibujarHoraStack(pdf, bloque.grupo, xColumna(0), bodyTop, columnas[0].width, bodyHeight);
+
+  bloque.spansMateria.forEach((span) => {
+    const y = obtenerYFila(bloque, span.inicio, bodyTop);
+    const height = obtenerAltoSpan(bloque, span);
+    pdf.rect(xColumna(1), y, columnas[1].width, height, {
+      fill: COLORS.cellBg,
+      stroke: COLORS.border,
+      lineWidth: 0.55,
+    });
+    dibujarCeldaTexto(pdf, span.valor, xColumna(1), y, columnas[1].width, height, {
+      size: TABLE.strongSize,
+      font: "F2",
+      color: COLORS.textStrong,
+      maxLines: 6,
+    });
+  });
+
+  bloque.filas.forEach((fila, index) => {
+    const y = obtenerYFila(bloque, index, bodyTop);
+    const height = bloque.alturas[index];
+
+    [2, 3, 4, 5].forEach((colIndex) => {
+      pdf.rect(xColumna(colIndex), y, columnas[colIndex].width, height, {
+        fill: COLORS.cellBg,
+        stroke: COLORS.border,
+        lineWidth: 0.55,
+      });
+    });
+
+    dibujarCeldaTexto(pdf, fila.estudiante, xColumna(2), y, columnas[2].width, height);
+    dibujarCeldaTexto(pdf, fila.dni, xColumna(3), y, columnas[3].width, height, {
+      align: "center",
+      maxLines: 1,
+    });
+    dibujarCeldaTexto(pdf, fila.curso, xColumna(4), y, columnas[4].width, height, {
+      align: "center",
+      maxLines: 1,
+    });
+    dibujarCeldaTexto(pdf, fila.nota, xColumna(5), y, columnas[5].width, height, {
+      align: "center",
+      maxLines: 1,
+    });
+  });
+
+  bloque.spansDocente.forEach((span) => {
+    const y = obtenerYFila(bloque, span.inicio, bodyTop);
+    const height = obtenerAltoSpan(bloque, span);
+    pdf.rect(xColumna(6), y, columnas[6].width, height, {
+      fill: COLORS.cellBg,
+      stroke: COLORS.border,
+      lineWidth: 0.55,
+    });
+    dibujarCeldaTexto(pdf, span.valor, xColumna(6), y, columnas[6].width, height, {
+      size: TABLE.strongSize,
+      font: "F2",
+      color: COLORS.textStrong,
+      maxLines: 8,
+    });
+  });
+
+  pdf.rect(PAGE.margin, yTop, anchoTabla, TABLE.headerHeight + bodyHeight, {
+    fill: null,
+    stroke: COLORS.borderStrong,
+    lineWidth: 0.85,
+  });
+};
+
+const cortarFilasQueEntran = (grupo, filas, maxHeight) => {
+  if (filas.length === 0) return { visibles: [], restantes: [] };
+
+  let cantidad = 1;
+  let ultimoQueEntra = null;
+  while (cantidad <= filas.length) {
+    const candidato = prepararBloqueTabla(grupo, filas.slice(0, cantidad));
+    if (candidato.height <= maxHeight) {
+      ultimoQueEntra = cantidad;
+      cantidad += 1;
+    } else {
+      break;
+    }
+  }
+
+  const corte = ultimoQueEntra || 1;
+  return {
+    visibles: filas.slice(0, corte),
+    restantes: filas.slice(corte),
+  };
+};
+
+const generarPdfMesas = ({ mesas = [], titulo = "MESAS DE EXAMEN", logoAsset = null } = {}) => {
   const pdf = new PdfCanvas();
-  const maxRowsPerPage = 16;
+  const alturaPaginaDisponible = TABLE.bottom - TABLE.top;
+  let paginaIniciada = false;
+  let cursorY = TABLE.top;
+  let hayTablaEnPagina = false;
+
+  const iniciarPagina = () => {
+    if (paginaIniciada) pdf.endPage();
+    pdf.beginPage();
+    dibujarHeaderDocumento(pdf, titulo, logoAsset);
+    paginaIniciada = true;
+    cursorY = TABLE.top;
+    hayTablaEnPagina = false;
+  };
+
+  iniciarPagina();
 
   if (!Array.isArray(mesas) || mesas.length === 0) {
-    pdf.beginPage();
-    pdf.rect(PAGE.margin, 22, PAGE.width - (PAGE.margin * 2), 58, { fill: COLORS.headerBg, stroke: COLORS.blue, lineWidth: 1.2 });
-    dibujarLogoHeader(pdf, logoAsset, PAGE.margin + 12, 33, 44, 36);
-    pdf.text(titulo, PAGE.margin + 70, 40, { size: 18, font: "F2", color: COLORS.blue, maxWidth: 500 });
-    pdf.text(textoCorto(institucionNombre, "Institución"), PAGE.margin + 70, 62, { size: 9.5, font: "F2", color: COLORS.muted, maxWidth: 330 });
-    pdf.text("No hay mesas visibles para exportar.", PAGE.margin + 18, 105, { size: 12, font: "F2", color: COLORS.text, maxWidth: 500 });
+    pdf.text("NO HAY MESAS VISIBLES PARA EXPORTAR.", PAGE.margin, TABLE.top + 14, {
+      size: 10,
+      font: "F2",
+      color: COLORS.textStrong,
+      maxWidth: anchoTabla,
+      align: "center",
+    });
     pdf.endPage();
     return construirDocumentoPdf(pdf.pages, { logoAsset });
   }
 
   mesas.forEach((grupo) => {
-    const filas = construirFilasGrupo(grupo);
-    const paginas = chunk(filas, maxRowsPerPage);
+    let pendientes = construirFilasGrupo(grupo);
 
-    paginas.forEach((filasPagina, index) => {
-      pdf.beginPage();
-      dibujarPaginaMesa(pdf, {
-        grupo,
-        titulo,
-        filas: filasPagina,
-        paginaGrupo: index + 1,
-        totalPaginasGrupo: paginas.length,
-        logoAsset,
-        institucionNombre,
-      });
-      pdf.endPage();
-    });
+    while (pendientes.length > 0) {
+      let bloqueCompleto = prepararBloqueTabla(grupo, pendientes);
+      const espacioNecesario = bloqueCompleto.height + (hayTablaEnPagina ? TABLE.gap : 0);
+      const restanteActual = TABLE.bottom - cursorY;
+
+      if (espacioNecesario <= restanteActual) {
+        if (hayTablaEnPagina) cursorY += TABLE.gap;
+        dibujarBloqueTabla(pdf, bloqueCompleto, cursorY);
+        cursorY += bloqueCompleto.height;
+        hayTablaEnPagina = true;
+        pendientes = [];
+        continue;
+      }
+
+      if (hayTablaEnPagina && bloqueCompleto.height <= alturaPaginaDisponible) {
+        iniciarPagina();
+        continue;
+      }
+
+      if (hayTablaEnPagina) iniciarPagina();
+
+      const { visibles, restantes } = cortarFilasQueEntran(grupo, pendientes, alturaPaginaDisponible);
+      bloqueCompleto = prepararBloqueTabla(grupo, visibles);
+      dibujarBloqueTabla(pdf, bloqueCompleto, cursorY);
+      cursorY += bloqueCompleto.height;
+      hayTablaEnPagina = true;
+      pendientes = restantes;
+
+      if (pendientes.length > 0) iniciarPagina();
+    }
   });
 
+  pdf.endPage();
   return construirDocumentoPdf(pdf.pages, { logoAsset });
 };
 
@@ -804,10 +1008,13 @@ const limpiarNombreArchivo = (valor) => {
   return base || "mesas-de-examen";
 };
 
-export const descargarPdfMesas = async ({ mesas = [], tituloFijo, continuacion, logoUrl = "", institucionNombre = "Institución" } = {}) => {
+export const descargarPdfMesas = async ({ mesas = [], tituloFijo, continuacion, logoUrl = "" } = {}) => {
   const titulo = construirTituloPdfExportacion({ tituloFijo, continuacion });
-  const logoAsset = await cargarImagenComoJpegAsset(logoUrl);
-  const bytes = generarPdfMesas({ mesas, titulo, logoAsset, institucionNombre });
+  // El PDF de Mesas siempre utiliza el escudo oficial incluido en src/imagenes,
+  // igual que la planilla institucional de referencia. El logo dinámico queda
+  // como respaldo únicamente si el recurso local no pudiera resolverse.
+  const logoAsset = await cargarImagenComoJpegAsset(escudoIpEtUrl || logoUrl);
+  const bytes = generarPdfMesas({ mesas, titulo, logoAsset });
   const blob = new Blob([bytes], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");

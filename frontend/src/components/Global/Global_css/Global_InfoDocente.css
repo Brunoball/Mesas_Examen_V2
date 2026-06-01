@@ -275,7 +275,7 @@
   line-height:1.1;
   font-weight:680;
   letter-spacing:-.02em;
-  overflow:auto;
+  overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
 }
@@ -817,7 +817,7 @@
 .docentes-modal--info .docentes-bloque-chip__main span{
   display:block;
   min-width:0;
-  overflow:auto;
+  overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
 }
