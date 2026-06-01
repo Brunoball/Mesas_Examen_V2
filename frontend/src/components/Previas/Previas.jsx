@@ -997,7 +997,7 @@ export default function Previas() {
               </div>
 
               <div className="previas-filterSelects" aria-label="Filtros de previas">
-                <label className={`previas-selectWrap ${filtrosPrevias.idCondicion ? 'is-active' : ''}`}>
+                <label className={`previas-selectWrap previas-selecwit ${filtrosPrevias.idCondicion ? 'is-active' : ''}`}>
                   <select
                     className="previas-select"
                     value={filtrosPrevias.idCondicion}
@@ -1013,7 +1013,7 @@ export default function Previas() {
                   <span className="previas-filterTabs__label">Condición</span>
                 </label>
 
-                <label className={`previas-selectWrap ${filtrosPrevias.idCurso ? 'is-active' : ''}`}>
+                <label className={`previas-selectWrap previas-selecwit ${filtrosPrevias.idCurso ? 'is-active' : ''}`}>
                   <select
                     className="previas-select"
                     value={filtrosPrevias.idCurso}
@@ -1061,7 +1061,7 @@ export default function Previas() {
 
           <div className="mov-card__actions previas-actionsHead">
             <BotonExportarHistorialGlobal
-              className="mov-btn mov-btn--secondary"
+              className="mov-btn mov-btn--secondary previas-headExportBtn"
               label="Exportar / importar"
               icon="excel"
               disabled={loading}
@@ -1206,6 +1206,16 @@ export default function Previas() {
               Coincidencias encontradas: <strong>{conteo.totalFiltrados}</strong>
             </span>
           )}
+
+          <div className="previas-footerActions" aria-label="Acciones de exportación e importación">
+            <BotonExportarHistorialGlobal
+              className="mov-btn mov-btn--secondary previas-footExportBtn"
+              label="Exportar / importar"
+              icon="excel"
+              disabled={loading}
+              onClick={() => setModalExportar(true)}
+            />
+          </div>
 
           <div className="previas-pagination">
             <button

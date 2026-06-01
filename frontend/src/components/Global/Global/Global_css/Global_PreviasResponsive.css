@@ -5,6 +5,22 @@
    scroll queda dentro del listado.
    ========================================================= */
 
+
+/* Exportación de Previas: replica el cambio de ubicación usado en Mesas. */
+@media (max-width: 1500px) {
+  .previas-headExportBtn {
+    display: none !important;
+  }
+
+  .previas-footerActions {
+    display: inline-flex;
+  }
+
+  .previas-pagination {
+    margin-left: 0;
+  }
+}
+
 @media (max-width: 1200px) {
   .previas-card__head {
     align-items: stretch;
@@ -95,7 +111,7 @@
   .previas-actionsHead {
     justify-content: stretch;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: 10px;
   }
 
@@ -173,7 +189,7 @@
   .previas-actionsHead {
     width: 100%;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     justify-content: stretch;
     gap: 8px;
   }
@@ -339,6 +355,17 @@
     display: none;
   }
 
+  .previas-footerActions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: stretch;
+  }
+
+  .previas-footExportBtn.mov-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
   .previas-pagination {
     width: 100%;
     margin-left: 0;
@@ -477,7 +504,7 @@
   }
 
   .previas-actionsHead {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .previas-actionsHead .mov-btn {

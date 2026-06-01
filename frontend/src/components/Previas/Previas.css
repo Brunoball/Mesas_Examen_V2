@@ -142,6 +142,9 @@
   cursor:pointer;
   transition:border-color var(--mov-trans), box-shadow var(--mov-trans), background var(--mov-trans);
 }
+.previas-selecwit{
+  min-width: 115px;
+}
 
 .previas-select:hover,
 .previas-select:focus,
@@ -371,6 +374,24 @@
 .previas-footer strong{
   color:var(--balto-ink);
   font-weight:620;
+}
+
+/* Exportar / importar: en resoluciones medias baja al pie de la tabla, como en Mesas. */
+.previas-footerActions{
+  display:none;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+  margin-left:auto;
+}
+
+.previas-footExportBtn.mov-btn{
+  height:34px;
+  min-height:34px;
+  padding:0 13px;
+  border-radius:10px;
+  font-size:12px;
+  white-space:nowrap;
 }
 
 .previas-footer-note{

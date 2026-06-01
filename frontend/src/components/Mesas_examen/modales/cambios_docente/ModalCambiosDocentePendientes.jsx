@@ -94,6 +94,12 @@ const ModalCambiosDocentePendientes = ({
                         </section>
 
                         <section className="docenteCambio-infoCard">
+                          <span className="docenteCambio-infoCard__label">Fecha y turno</span>
+                          <strong>{textoCorto(cambio?.fecha_mesa_texto || cambio?.fecha_mesa, "Sin fecha")}</strong>
+                          <p>{textoCorto(cambio?.turno, "Sin turno")}</p>
+                        </section>
+
+                        <section className="docenteCambio-infoCard">
                           <span className="docenteCambio-infoCard__label">Docente anterior</span>
                           <strong>{textoCorto(cambio?.docente_anterior, "Sin docente")}</strong>
                           <p>Docente que tenía la cátedra cuando se armó la mesa.</p>
@@ -103,12 +109,6 @@ const ModalCambiosDocentePendientes = ({
                           <span className="docenteCambio-infoCard__label">Docente nuevo</span>
                           <strong>{textoCorto(cambio?.docente_nuevo, "Sin docente")}</strong>
                           <p>Docente actual detectado para la cátedra.</p>
-                        </section>
-
-                        <section className="docenteCambio-infoCard">
-                          <span className="docenteCambio-infoCard__label">Fecha y turno</span>
-                          <strong>{textoCorto(cambio?.fecha_mesa_texto || cambio?.fecha_mesa, "Sin fecha")}</strong>
-                          <p>{textoCorto(cambio?.turno, "Sin turno")}</p>
                         </section>
                       </div>
                     </div>
