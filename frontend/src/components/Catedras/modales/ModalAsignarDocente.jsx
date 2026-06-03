@@ -496,29 +496,10 @@ export default function ModalAsignarDocente({ item, docentes = [], cargos = [], 
             </div>
           </section>
 
-          <section className="gm-panel catedras-modal-panel">
-            <div className="gm-panel__head gm-panel__head--split">
-              <div>
-                <span className="gm-panel__eyebrow">Asignaciones cargadas</span>
-                <h3>
-                  <FontAwesomeIcon icon={faUsers} />
-                  Docentes de la cátedra
-                </h3>
-              </div>
-              <span className="gm-panel__tag">{asignaciones.length} asignado{asignaciones.length === 1 ? '' : 's'}</span>
-            </div>
+          <section className="gm-panel catedras-modal-panel ">
+
 
             <div className="gm-panel__body catedras-modal-panelBody">
-              <div className={`catedras-modal-selection ${docenteLlamado ? 'has-docente' : 'is-empty'}`}>
-                <div className="catedras-modal-selectionIcon" aria-hidden="true">
-                  <FontAwesomeIcon icon={docenteLlamado ? faUserCheck : faUserSlash} />
-                </div>
-                <div>
-                  <span>{docenteLlamado ? 'Docente que se llamará al armar mesa' : 'Sin docente para mesa'}</span>
-                  <strong title={textoLlamado}>{textoLlamado}</strong>
-                </div>
-              </div>
-
               {asignaciones.length > 0 ? (
                 <div className="catedras-modal-asignacionesList">
                   {asignaciones.map((asignacion) => {

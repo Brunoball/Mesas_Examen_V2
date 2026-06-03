@@ -39,8 +39,66 @@ const useEscapeClose = (abierto, onClose, disabled = false) => {
   return overlayRef;
 };
 
+const PROPIEDADES_SCROLL_FONDO = ["overflow", "overflow-x", "overflow-y", "overscroll-behavior"];
+
+const bloquearScrollFondoConfirmacion = () => {
+  if (typeof document === "undefined" || typeof window === "undefined") return () => {};
+
+  const bloqueados = new Map();
+  const elementos = new Set([
+    document.documentElement,
+    document.body,
+    ...document.body.querySelectorAll("*"),
+  ]);
+
+  elementos.forEach((elemento) => {
+    if (!(elemento instanceof HTMLElement) || elemento.closest(".persona-confirm-overlay")) return;
+
+    const estilos = window.getComputedStyle(elemento);
+    const puedeScrollear =
+      elemento === document.documentElement ||
+      elemento === document.body ||
+      /(auto|scroll|overlay)/.test(`${estilos.overflow} ${estilos.overflowX} ${estilos.overflowY}`);
+
+    if (!puedeScrollear) return;
+
+    const originales = {};
+    PROPIEDADES_SCROLL_FONDO.forEach((propiedad) => {
+      originales[propiedad] = {
+        valor: elemento.style.getPropertyValue(propiedad),
+        prioridad: elemento.style.getPropertyPriority(propiedad),
+      };
+    });
+    bloqueados.set(elemento, originales);
+
+    elemento.style.setProperty("overflow", "hidden", "important");
+    elemento.style.setProperty("overflow-x", "hidden", "important");
+    elemento.style.setProperty("overflow-y", "hidden", "important");
+    elemento.style.setProperty("overscroll-behavior", "none", "important");
+  });
+
+  return () => {
+    bloqueados.forEach((originales, elemento) => {
+      if (!(elemento instanceof HTMLElement)) return;
+      PROPIEDADES_SCROLL_FONDO.forEach((propiedad) => {
+        const original = originales[propiedad];
+        if (original.valor) {
+          elemento.style.setProperty(propiedad, original.valor, original.prioridad);
+        } else {
+          elemento.style.removeProperty(propiedad);
+        }
+      });
+    });
+  };
+};
+
 const ModalConfirmarEliminarPrevia = ({ abierto, previa, eliminando, onCancel, onConfirm }) => {
   const overlayRef = useEscapeClose(abierto, onCancel, eliminando);
+
+  useEffect(() => {
+    if (!abierto) return undefined;
+    return bloquearScrollFondoConfirmacion();
+  }, [abierto]);
 
   if (!abierto) return null;
 
@@ -48,7 +106,7 @@ const ModalConfirmarEliminarPrevia = ({ abierto, previa, eliminando, onCancel, o
   if (!portalTarget) return null;
 
   return createPortal((
-    <div ref={overlayRef} className="persona-modal-overlay persona-modal-overlay-top" role="dialog" aria-modal="true" data-mesa-modal-root="true">
+    <div ref={overlayRef} className="persona-modal-overlay persona-modal-overlay-top persona-confirm-overlay" role="dialog" aria-modal="true" data-mesa-modal-root="true">
       <div className="persona-confirm-card">
         <div className="persona-confirm-icon">
           <FontAwesomeIcon icon={faTrash} />

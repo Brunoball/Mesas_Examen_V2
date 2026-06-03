@@ -820,6 +820,11 @@ body.pp-lockScroll{ overflow:hidden !important; }
 .pp-modal-overlay{
   position:fixed;
   inset:0;
+  width:100vw;
+  height:100dvh;
+  overflow:hidden;
+  overscroll-behavior:none;
+  touch-action:none;
   background:rgba(58, 46, 43, .55);
   backdrop-filter:blur(6px);
   display:flex;
@@ -832,6 +837,8 @@ body.pp-lockScroll{ overflow:hidden !important; }
 .pp-modal{
   width:100%;
   max-width:520px;
+  max-height:calc(100dvh - 40px);
+  overflow:hidden;
   background:#fff;
   border-radius:20px;
   border:1px solid rgba(58, 46, 43, 0.14);
@@ -958,18 +965,19 @@ body.pp-lockScroll{ overflow:hidden !important; }
   }
 
   .mov-topbar__lernaBrand{
-    width:148px;
-    height:42px;
-    flex:0 1 148px;
-    overflow:hidden;
+    width:clamp(132px, 38vw, 172px);
+    height:calc(var(--mov-topbar-h) - 8px);
+    flex:0 1 clamp(132px, 38vw, 172px);
+    overflow:visible;
     justify-content:flex-start;
   }
 
   .mov-topbar__lernaLogo{
-    height:136px;
-    width:auto;
-    max-width:none;
-    flex:0 0 auto;
+    width:100%;
+    height:100%;
+    max-width:100%;
+    max-height:calc(var(--mov-topbar-h) - 10px);
+    flex:0 1 auto;
     object-fit:contain;
     object-position:left center;
   }
@@ -1110,6 +1118,7 @@ body.pp-lockScroll{ overflow:hidden !important; }
 
   .pp-modal{
     max-width:100%;
+    max-height:calc(100dvh - 28px);
     padding:18px 16px 16px;
     border-radius:18px;
   }
@@ -1127,14 +1136,16 @@ body.pp-lockScroll{ overflow:hidden !important; }
   }
 
   .mov-topbar__lernaBrand{
-    width:122px;
-    height:40px;
-    flex-basis:200px;
+    width:clamp(118px, 36vw, 154px);
+    height:calc(var(--mov-topbar-h) - 8px);
+    flex-basis:clamp(118px, 36vw, 154px);
   }
 
   .mov-topbar__lernaLogo{
-    height:124px;
-    max-width:none;
+    width:100%;
+    height:100%;
+    max-width:100%;
+    max-height:calc(var(--mov-topbar-h) - 10px);
   }
 
   .pp-topbarLogout,
@@ -1178,12 +1189,15 @@ body.pp-lockScroll{ overflow:hidden !important; }
   }
 
   .mov-topbar__lernaBrand{
-    width:100px;
+    width:clamp(104px, 34vw, 132px);
+    flex-basis:clamp(104px, 34vw, 132px);
   }
 
   .mov-topbar__lernaLogo{
-    height:112px;
-    max-width:none;
+    width:100%;
+    height:100%;
+    max-width:100%;
+    max-height:calc(var(--mov-topbar-h) - 10px);
   }
 
   .mov-topbar__right{ gap:5px; }

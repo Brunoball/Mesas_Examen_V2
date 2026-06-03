@@ -1017,3 +1017,12 @@
 .persona-modal.is-loading{
   min-height:560px;
 }
+
+/* Confirmación eliminar: aislada del scroll de la sección */
+.persona-confirm-overlay{
+  width:100vw;
+  height:100dvh;
+  overflow:hidden;
+  overscroll-behavior:none;
+  touch-action:none;
+}

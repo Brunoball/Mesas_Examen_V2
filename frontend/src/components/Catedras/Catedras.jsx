@@ -13,6 +13,7 @@ import {
 import { useCatedras } from "./hooks/useCatedras.js";
 import ModalAsignarDocente from "./modales/ModalAsignarDocente.jsx";
 import ModalExportarGlobal from '../Global/Modales/ModalExportarGlobal.jsx';
+import TextoExpandibleGlobal from '../Global/Modales/TextoExpandibleGlobal.jsx';
 import BotonExportarHistorialGlobal from '../Global/Botones/BotonExportarHistorialGlobal.jsx';
 import Toast from '../Global/Toast.jsx';
 import '../Global/Global_css/roots.css';
@@ -22,7 +23,7 @@ import './Catedras.css';
 import '../Global/Global_css/Global_CatedrasResponsive.css';
 import Principal, { MesasShellContext } from '../Principal/Principal';
 
-const CATEDRAS_GRID_COLS = '0.75fr 0.75fr 1.65fr 2fr 0.72fr';
+const CATEDRAS_GRID_COLS = '0.3fr 0.3fr 1.5fr 3fr 0.35fr';
 const SKELETON_ROWS = 8;
 
 const CATEDRAS_COLUMNS = [
@@ -285,13 +286,23 @@ export default function Catedras() {
                         </span>
                       </div>
 
-                      <div className="mov-gridCell is-strong" role="cell" data-label="Materia" title={safeText(item.materia)}>
-                        <span className="mov-ellipsissss catedras-materia">{safeText(item.materia)}</span>
+                      <div className="mov-gridCell is-strong" role="cell" data-label="Materia">
+                        <TextoExpandibleGlobal
+                          value={item.materia}
+                          title="Materia completa"
+                          subtitle={`${safeText(item.nombre_curso)} · ${safeText(item.nombre_division)}`}
+                          textClassName="mov-ellipsissss catedras-materia"
+                        />
                       </div>
 
-                      <div className="mov-gridCell" role="cell" data-label="DOCENTE" title={docenteResumen(item)}>
+                      <div className="mov-gridCell" role="cell" data-label="DOCENTE">
                         {item.docentes_resumen || item.docente ? (
-                          <span className="mov-ellipsissss catedras-docente">{docenteResumen(item)}</span>
+                          <TextoExpandibleGlobal
+                            value={docenteResumen(item)}
+                            title="Docentes asignados"
+                            subtitle={safeText(item.materia)}
+                            textClassName="mov-ellipsissss catedras-docente"
+                          />
                         ) : (
                           <span className="mov-chip mov-chip--danger catedras-sin-docente">Sin docentes</span>
                         )}

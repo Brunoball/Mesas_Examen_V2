@@ -301,7 +301,7 @@ function Dashbord() {
 
               <article className="dashbord-panel dashbord-panel--progress">
                 <div className="dashbord-panel__head dashbord-panel__head--progress">
-                  <div>
+                  <div style={{width:"100%"}}>
                     <div className="header-dashboars"><h2>Estado del armado</h2>  <span className={`dashbord-reviewChip ${pendientes > 0 ? "is-alert" : "is-ok"}`}>
                     <FontAwesomeIcon icon={pendientes > 0 ? faTriangleExclamation : faCheckCircle} />
                     {texto(estadoArmado.titulo, "Sin información")}

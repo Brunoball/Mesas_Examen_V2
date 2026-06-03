@@ -28,6 +28,79 @@ function normalizarDetails(details = []) {
     }));
 }
 
+const SCROLL_LOCK_PROPERTIES = ['overflow', 'overflow-x', 'overflow-y', 'overscroll-behavior'];
+let scrollLockCount = 0;
+const elementosScrollBloqueados = new Map();
+
+function bloquearScrollDeFondo() {
+  if (typeof document === 'undefined' || typeof window === 'undefined') {
+    return () => {};
+  }
+
+  scrollLockCount += 1;
+
+  if (scrollLockCount === 1) {
+    const elementos = new Set([
+      document.documentElement,
+      document.body,
+      ...document.body.querySelectorAll('*'),
+    ]);
+
+    elementos.forEach((elemento) => {
+      if (!(elemento instanceof HTMLElement) || elemento.closest('.gdel-overlay')) return;
+
+      const estilos = window.getComputedStyle(elemento);
+      const puedeScrollear =
+        elemento === document.documentElement ||
+        elemento === document.body ||
+        /(auto|scroll|overlay)/.test(
+          `${estilos.overflow} ${estilos.overflowX} ${estilos.overflowY}`
+        );
+
+      if (!puedeScrollear) return;
+
+      const originales = {};
+      SCROLL_LOCK_PROPERTIES.forEach((propiedad) => {
+        originales[propiedad] = {
+          valor: elemento.style.getPropertyValue(propiedad),
+          prioridad: elemento.style.getPropertyPriority(propiedad),
+        };
+      });
+      elementosScrollBloqueados.set(elemento, originales);
+
+      elemento.style.setProperty('overflow', 'hidden', 'important');
+      elemento.style.setProperty('overflow-x', 'hidden', 'important');
+      elemento.style.setProperty('overflow-y', 'hidden', 'important');
+      elemento.style.setProperty('overscroll-behavior', 'none', 'important');
+    });
+  }
+
+  let desbloqueado = false;
+
+  return () => {
+    if (desbloqueado) return;
+    desbloqueado = true;
+    scrollLockCount = Math.max(0, scrollLockCount - 1);
+
+    if (scrollLockCount !== 0) return;
+
+    elementosScrollBloqueados.forEach((originales, elemento) => {
+      if (!(elemento instanceof HTMLElement)) return;
+
+      SCROLL_LOCK_PROPERTIES.forEach((propiedad) => {
+        const original = originales[propiedad];
+        if (original.valor) {
+          elemento.style.setProperty(propiedad, original.valor, original.prioridad);
+        } else {
+          elemento.style.removeProperty(propiedad);
+        }
+      });
+    });
+
+    elementosScrollBloqueados.clear();
+  };
+}
+
 const OPERACION_CONFIG = {
   eliminar: {
     icon: faTrash,
@@ -118,6 +191,12 @@ export default function ModalEliminarGlobal({
   const [procesandoInterno, setProcesandoInterno] = useState(false);
   const [reason, setReason] = useState(initialReason);
   const [toastLocal, setToastLocal] = useState(null);
+
+
+  useEffect(() => {
+    if (!open) return undefined;
+    return bloquearScrollDeFondo();
+  }, [open]);
 
   const config = OPERACION_CONFIG[operacion] || OPERACION_CONFIG.advertencia;
   const isLoading = loading || procesandoInterno;

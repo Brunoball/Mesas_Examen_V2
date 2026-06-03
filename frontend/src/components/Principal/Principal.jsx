@@ -9,6 +9,7 @@ import React, {
   memo,
 } from "react";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
+import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faSignOutAlt,
@@ -33,6 +34,84 @@ import BASE_URL from "../../config/config";
 export const MesasShellContext = createContext(false);
 
 /* =========================================================
+   Bloqueo de scroll para el modal de cierre de sesión
+   El shell contiene secciones con overflow propio; por eso se
+   bloquean sus scrolls mientras el modal está abierto.
+========================================================= */
+const LOGOUT_SCROLL_PROPS = ['overflow', 'overflow-x', 'overflow-y', 'overscroll-behavior'];
+let logoutScrollLockCount = 0;
+const logoutLockedElements = new Map();
+
+function bloquearScrollCierreSesion() {
+  if (typeof document === 'undefined' || typeof window === 'undefined') {
+    return () => {};
+  }
+
+  logoutScrollLockCount += 1;
+
+  if (logoutScrollLockCount === 1) {
+    const elementos = new Set([
+      document.documentElement,
+      document.body,
+      ...document.body.querySelectorAll('*'),
+    ]);
+
+    elementos.forEach((elemento) => {
+      if (!(elemento instanceof HTMLElement) || elemento.closest('.pp-modal-overlay')) return;
+
+      const estilos = window.getComputedStyle(elemento);
+      const puedeScrollear =
+        elemento === document.documentElement ||
+        elemento === document.body ||
+        /(auto|scroll|overlay)/.test(
+          `${estilos.overflow} ${estilos.overflowX} ${estilos.overflowY}`
+        );
+
+      if (!puedeScrollear) return;
+
+      const originales = {};
+      LOGOUT_SCROLL_PROPS.forEach((propiedad) => {
+        originales[propiedad] = {
+          valor: elemento.style.getPropertyValue(propiedad),
+          prioridad: elemento.style.getPropertyPriority(propiedad),
+        };
+      });
+      logoutLockedElements.set(elemento, originales);
+
+      elemento.style.setProperty('overflow', 'hidden', 'important');
+      elemento.style.setProperty('overflow-x', 'hidden', 'important');
+      elemento.style.setProperty('overflow-y', 'hidden', 'important');
+      elemento.style.setProperty('overscroll-behavior', 'none', 'important');
+    });
+  }
+
+  let desbloqueado = false;
+
+  return () => {
+    if (desbloqueado) return;
+    desbloqueado = true;
+    logoutScrollLockCount = Math.max(0, logoutScrollLockCount - 1);
+
+    if (logoutScrollLockCount !== 0) return;
+
+    logoutLockedElements.forEach((originales, elemento) => {
+      if (!(elemento instanceof HTMLElement)) return;
+
+      LOGOUT_SCROLL_PROPS.forEach((propiedad) => {
+        const original = originales[propiedad];
+        if (original.valor) {
+          elemento.style.setProperty(propiedad, original.valor, original.prioridad);
+        } else {
+          elemento.style.removeProperty(propiedad);
+        }
+      });
+    });
+
+    logoutLockedElements.clear();
+  };
+}
+
+/* =========================================================
    Modal cierre de sesión
 ========================================================= */
 const ConfirmLogoutModal = memo(function ConfirmLogoutModal({
@@ -42,6 +121,11 @@ const ConfirmLogoutModal = memo(function ConfirmLogoutModal({
   loading = false,
 }) {
   const cancelBtnRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    return bloquearScrollCierreSesion();
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -56,11 +140,11 @@ const ConfirmLogoutModal = memo(function ConfirmLogoutModal({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
   const stop = (e) => e.stopPropagation();
 
-  return (
+  return createPortal(
     <div
       className="pp-modal-overlay"
       role="dialog"
@@ -102,7 +186,8 @@ const ConfirmLogoutModal = memo(function ConfirmLogoutModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 });
 

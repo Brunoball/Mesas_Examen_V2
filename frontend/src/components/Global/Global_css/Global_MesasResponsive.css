@@ -808,3 +808,62 @@
     flex:1 1 auto;
   }
 }
+
+/* =========================================================
+   MESAS — Filtros full width solo responsive
+   No toca vista monitor: corrige buscador/selects en tablet y móvil.
+========================================================= */
+@media (max-width: 1100px) {
+  .mesas-page.mov-page .mesas-headFilters,
+  .mesas-page.mov-page .mov-headFilters.mesas-headFilters {
+    width: 100% !important;
+    max-width: none !important;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+  }
+
+  .mesas-page.mov-page .mesas-searchFilter,
+  .mesas-page.mov-page .mesas-selectFilter,
+  .mesas-page.mov-page .mesas-selectFilter--fecha,
+  .mesas-page.mov-page .mesas-selectFilter--turno,
+  .mesas-page.mov-page .mesas-floatingSearch,
+  .mesas-page.mov-page .mesas-floatingSelect,
+  .mesas-page.mov-page .cc-floatingField,
+  .mesas-page.mov-page .cc-searchInput,
+  .mesas-page.mov-page .cc-searchInput__fieldWrap {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    flex: 1 1 auto !important;
+  }
+
+  .mesas-page.mov-page .mesas-searchInput,
+  .mesas-page.mov-page .mesas-filterSelect,
+  .mesas-page.mov-page .mesas-filterSelect.cc-input,
+  .mesas-page.mov-page .cc-input.mesas-searchInput,
+  .mesas-page.mov-page .cc-input.mesas-filterSelect {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .mesas-page.mov-page .mesas-headFilters,
+  .mesas-page.mov-page .mov-headFilters.mesas-headFilters {
+    gap: 10px !important;
+  }
+
+  .mesas-page.mov-page .mesas-searchFilter .cc-searchInput {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .mesas-page.mov-page .mesas-clearTableFilters {
+    justify-self: start !important;
+  }
+}
