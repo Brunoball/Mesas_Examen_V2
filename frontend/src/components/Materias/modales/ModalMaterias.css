@@ -404,3 +404,44 @@
     max-height:min(32dvh, 215px) !important;
   }
 }
+
+/* Buscador dentro del selector de materias de áreas */
+.materias-editor-addRow--withSearch{
+  grid-template-columns:minmax(180px, .72fr) minmax(0, 1fr) auto !important;
+  align-items:end !important;
+}
+
+.materias-searchField{
+  position:relative;
+}
+
+.materias-searchField .gm-input{
+  padding-right:38px !important;
+}
+
+.materias-searchField__icon{
+  position:absolute;
+  right:13px;
+  top:50%;
+  transform:translateY(-50%);
+  color:rgba(58,46,43,.44);
+  pointer-events:none;
+  font-size:13px;
+}
+
+.materias-searchEmpty{
+  margin-top:-4px;
+  padding:9px 12px;
+  border:1px solid rgba(196,139,59,.14);
+  border-radius:12px;
+  background:rgba(196,139,59,.055);
+  color:var(--gm-action, #C48B3B);
+  font-size:12px;
+  font-weight:650;
+}
+
+@media (max-width:720px){
+  .materias-editor-addRow--withSearch{
+    grid-template-columns:1fr !important;
+  }
+}

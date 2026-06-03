@@ -25,6 +25,11 @@ const normalizar = (texto) =>
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 
+const esCursoEgresado = (curso) => {
+  const nombre = normalizar(curso?.nombre_curso || curso?.curso || "");
+  return nombre.includes("egresado");
+};
+
 const extraerIdsCatedras = (item) => {
   if (!item?.ids_catedras) return [];
 
@@ -71,6 +76,8 @@ const ModalTaller = ({
     extraerIdsCatedras(item)
   );
   const [catedrasCurso, setCatedrasCurso] = useState([]);
+  const [idsDivisionesConCatedras, setIdsDivisionesConCatedras] = useState([]);
+  const [cargandoDivisionesCurso, setCargandoDivisionesCurso] = useState(false);
   const [cargandoCatedras, setCargandoCatedras] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [pestaniaActiva, setPestaniaActiva] = useState(TAB_DIVISIONES);
@@ -103,6 +110,8 @@ const ModalTaller = ({
     setIdsDivisiones(extraerDivisionesIniciales(item));
     setActivo(item ? Number(item.activo) === 1 : true);
     setSeleccionadas(extraerIdsCatedras(item));
+    setIdsDivisionesConCatedras([]);
+    setCargandoDivisionesCurso(false);
     setIdArea("");
     setBusqueda("");
     setPestaniaActiva(TAB_DIVISIONES);
@@ -169,12 +178,86 @@ const ModalTaller = ({
   ]);
 
   const cursosActivos = useMemo(() => {
-    return cursos.filter((c) => Number(c.activo ?? 1) === 1);
+    return cursos.filter((c) => Number(c.activo ?? 1) === 1 && !esCursoEgresado(c));
   }, [cursos]);
 
   const divisionesActivas = useMemo(() => {
     return divisiones.filter((d) => Number(d.activo ?? 1) === 1);
   }, [divisiones]);
+
+  useEffect(() => {
+    let cancelado = false;
+
+    const cargarDivisionesDisponibles = async () => {
+      const id = Number(idCurso || 0);
+      const idsTodasDivisiones = divisionesActivas
+        .map((d) => Number(d.id_division))
+        .filter((x) => x > 0);
+
+      setIdsDivisionesConCatedras([]);
+
+      if (id <= 0 || idsTodasDivisiones.length === 0) {
+        setCargandoDivisionesCurso(false);
+        return;
+      }
+
+      setCargandoDivisionesCurso(true);
+
+      try {
+        let lista = [];
+
+        if (typeof onObtenerCatedrasTaller === "function") {
+          lista = await onObtenerCatedrasTaller(id, idsTodasDivisiones);
+        } else if (typeof onObtenerMateriasPorCurso === "function") {
+          const resultados = await Promise.all(
+            idsTodasDivisiones.map((idDivision) =>
+              onObtenerMateriasPorCurso(id, { idDivision })
+            )
+          );
+          lista = resultados.flat();
+        }
+
+        if (!cancelado) {
+          const ids = Array.from(
+            new Set(
+              (Array.isArray(lista) ? lista : [])
+                .map((cat) => Number(cat.id_division || 0))
+                .filter((x) => x > 0)
+            )
+          );
+
+          setIdsDivisionesConCatedras(ids);
+        }
+      } catch (error) {
+        console.error(error);
+
+        if (!cancelado) {
+          setIdsDivisionesConCatedras([]);
+          onToast?.("error", "No se pudieron cargar las divisiones disponibles de ese curso.");
+        }
+      } finally {
+        if (!cancelado) setCargandoDivisionesCurso(false);
+      }
+    };
+
+    cargarDivisionesDisponibles();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [idCurso, divisionesActivas, onObtenerCatedrasTaller, onObtenerMateriasPorCurso, onToast]);
+
+  const divisionesDisponiblesCurso = useMemo(() => {
+    if (!idCurso) return [];
+
+    const idsDisponibles = new Set(idsDivisionesConCatedras.map(Number));
+    const idsSeleccionadas = new Set(idsDivisiones.map(Number));
+
+    return divisionesActivas.filter((d) => {
+      const id = Number(d.id_division);
+      return idsDisponibles.has(id) || idsSeleccionadas.has(id);
+    });
+  }, [idCurso, divisionesActivas, idsDivisionesConCatedras, idsDivisiones]);
 
   const catedrasNormalizadas = useMemo(() => {
     return catedrasCurso
@@ -241,7 +324,7 @@ const ModalTaller = ({
     const nombres = idsDivisiones
       .map(
         (id) =>
-          divisionesActivas.find(
+          divisionesDisponiblesCurso.find(
             (d) => Number(d.id_division) === Number(id)
           )?.nombre_division
       )
@@ -250,7 +333,7 @@ const ModalTaller = ({
     return nombres.length > 0
       ? nombres.join(", ")
       : `${idsDivisiones.length} división/es`;
-  }, [idsDivisiones, divisionesActivas]);
+  }, [idsDivisiones, divisionesDisponiblesCurso]);
 
   const cursoSeleccionadoTexto = useMemo(() => {
     if (!idCurso) return "Sin curso";
@@ -275,6 +358,7 @@ const ModalTaller = ({
   const cambiarCurso = (valor) => {
     setIdCurso(valor);
     setIdsDivisiones([]);
+    setIdsDivisionesConCatedras([]);
     setSeleccionadas([]);
     setIdArea("");
     setBusqueda("");
@@ -298,7 +382,7 @@ const ModalTaller = ({
 
   const seleccionarTodasDivisiones = () => {
     setIdsDivisiones(
-      divisionesActivas.map((d) => Number(d.id_division)).filter(Boolean)
+      divisionesDisponiblesCurso.map((d) => Number(d.id_division)).filter(Boolean)
     );
     setSeleccionadas([]);
     setIdArea("");
@@ -543,7 +627,7 @@ const ModalTaller = ({
                       type="button"
                       className="gm-btn gm-btn--ghost"
                       onClick={seleccionarTodasDivisiones}
-                      disabled={!idCurso || divisionesActivas.length === 0}
+                      disabled={!idCurso || cargandoDivisionesCurso || divisionesDisponiblesCurso.length === 0}
                     >
                       Todas
                     </button>
@@ -563,9 +647,17 @@ const ModalTaller = ({
                   <div className="muted asignar-empty">
                     Seleccioná el curso para habilitar las divisiones.
                   </div>
+                ) : cargandoDivisionesCurso ? (
+                  <div className="muted asignar-empty">
+                    Cargando divisiones disponibles para ese curso...
+                  </div>
+                ) : divisionesDisponiblesCurso.length === 0 ? (
+                  <div className="muted asignar-empty">
+                    No hay divisiones con cátedras cargadas para ese curso.
+                  </div>
                 ) : (
                   <div className="materias-check-grid divisiones-check-grid">
-                    {divisionesActivas.map((d) => {
+                    {divisionesDisponiblesCurso.map((d) => {
                       const id = Number(d.id_division);
                       const checked = idsDivisiones.map(Number).includes(id);
 

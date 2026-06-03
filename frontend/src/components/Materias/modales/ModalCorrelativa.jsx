@@ -17,6 +17,17 @@ import "./ModalCorrelativa.css";
 
 const aMayusculas = (valor) => String(valor ?? "").toUpperCase();
 
+const normalizar = (texto) =>
+  String(texto || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+const esCursoEgresado = (curso) => {
+  const nombre = normalizar(curso?.nombre_curso || curso?.curso || "");
+  return nombre.includes("egresado");
+};
+
 const nuevaRelacionVacia = () => ({
   id_curso_posterior: "",
   id_materia_posterior: "",
@@ -161,8 +172,12 @@ const ModalCorrelativa = ({
   }, [materiasPorCurso]);
 
   const cursosActivos = useMemo(() => {
-    return cursos.filter((c) => Number(c.activo ?? 1) === 1);
+    return cursos.filter((c) => Number(c.activo ?? 1) === 1 && !esCursoEgresado(c));
   }, [cursos]);
+
+  const idsCursosActivos = useMemo(() => {
+    return new Set(cursosActivos.map((c) => Number(c.id_curso)).filter((id) => id > 0));
+  }, [cursosActivos]);
 
   const marcarCursoCargando = useCallback((idCurso, valor) => {
     const clave = String(idCurso || "");
@@ -445,6 +460,9 @@ const ModalCorrelativa = ({
     materiasPorCursoCompletas.forEach((m) => {
       if (Number(m.activo ?? 1) !== 1) return;
 
+      const idCurso = Number(m.id_curso);
+      if (!idsCursosActivos.has(idCurso)) return;
+
       const id = Number(m.id_materia);
       if (id <= 0) return;
 
@@ -457,7 +475,6 @@ const ModalCorrelativa = ({
       }
 
       const actual = map.get(id);
-      const idCurso = Number(m.id_curso);
 
       if (!actual.cursos.some((c) => Number(c.id_curso) === idCurso)) {
         actual.cursos.push({
@@ -470,7 +487,7 @@ const ModalCorrelativa = ({
     return Array.from(map.values())
       .filter((m) => m.cursos.length >= 2)
       .sort((a, b) => String(a.materia).localeCompare(String(b.materia), "es"));
-  }, [modo, esEdicion, materiasPorCursoCompletas]);
+  }, [modo, esEdicion, materiasPorCursoCompletas, idsCursosActivos]);
 
   const cursosAutoSeleccionados = useMemo(() => {
     const itemAuto = materiasAuto.find(

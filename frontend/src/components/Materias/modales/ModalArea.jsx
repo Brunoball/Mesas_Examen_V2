@@ -6,6 +6,7 @@ import {
   faBook,
   faCheckCircle,
   faLayerGroup,
+  faMagnifyingGlass,
   faPlus,
   faSave,
   faTimes,
@@ -16,6 +17,27 @@ import "./ModalMaterias.css";
 const TAB_FICHA = "ficha";
 const TAB_MATERIAS = "materias";
 const aMayusculas = (valor) => String(valor ?? "").toUpperCase();
+
+const normalizar = (texto) =>
+  String(texto || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+const puntuarMateria = (materia, busqueda) => {
+  const q = normalizar(busqueda);
+  if (!q) return 0;
+
+  const nombre = normalizar(materia?.materia);
+  const areas = normalizar(materia?.areas);
+
+  if (nombre === q) return 0;
+  if (nombre.startsWith(q)) return 1;
+  if (nombre.includes(q)) return 2;
+  if (areas.includes(q)) return 3;
+
+  return 99;
+};
 
 const parseIds = (valor) => {
   if (!valor) return [];
@@ -33,6 +55,7 @@ const ModalArea = ({ item, materias = [], onClose, onSave, onToast }) => {
   const [activo, setActivo] = useState(item ? Number(item.activo) === 1 : true);
   const [idsMaterias, setIdsMaterias] = useState(idsIniciales);
   const [idMateriaSeleccionada, setIdMateriaSeleccionada] = useState("");
+  const [busquedaMateria, setBusquedaMateria] = useState("");
 
   useEffect(() => {
     const overflowAnterior = document.body.style.overflow;
@@ -54,6 +77,15 @@ const ModalArea = ({ item, materias = [], onClose, onSave, onToast }) => {
     };
   }, [onClose]);
 
+  useEffect(() => {
+    setPestaniaActiva(TAB_FICHA);
+    setArea(aMayusculas(item?.area || ""));
+    setActivo(item ? Number(item.activo) === 1 : true);
+    setIdsMaterias(parseIds(item?.ids_materias));
+    setIdMateriaSeleccionada("");
+    setBusquedaMateria("");
+  }, [item]);
+
   const materiasActivas = useMemo(() => {
     return materias
       .filter((m) => Number(m.activo ?? 1) === 1)
@@ -67,15 +99,42 @@ const ModalArea = ({ item, materias = [], onClose, onSave, onToast }) => {
   }, [idsMaterias, materiasActivas]);
 
   const materiasDisponibles = useMemo(() => {
-    return materiasActivas.filter((m) => !idsMaterias.includes(Number(m.id_materia)));
-  }, [materiasActivas, idsMaterias]);
+    const q = normalizar(busquedaMateria);
 
-  const agregarMateria = () => {
-    const id = Number(idMateriaSeleccionada);
+    return materiasActivas
+      .filter((m) => !idsMaterias.includes(Number(m.id_materia)))
+      .map((m) => ({
+        materia: m,
+        puntaje: puntuarMateria(m, q),
+      }))
+      .filter(({ puntaje }) => !q || puntaje < 99)
+      .sort((a, b) => {
+        if (a.puntaje !== b.puntaje) return a.puntaje - b.puntaje;
+        return String(a.materia.materia || "").localeCompare(
+          String(b.materia.materia || ""),
+          "es"
+        );
+      })
+      .map(({ materia }) => materia);
+  }, [materiasActivas, idsMaterias, busquedaMateria]);
+
+  useEffect(() => {
+    if (!busquedaMateria.trim()) {
+      setIdMateriaSeleccionada("");
+      return;
+    }
+
+    const primeraMateria = materiasDisponibles[0];
+    setIdMateriaSeleccionada(primeraMateria?.id_materia ? String(primeraMateria.id_materia) : "");
+  }, [busquedaMateria, materiasDisponibles]);
+
+  const agregarMateria = (idForzado = null) => {
+    const id = Number(idForzado || idMateriaSeleccionada);
     if (id <= 0) return;
 
     setIdsMaterias((prev) => (prev.includes(id) ? prev : [...prev, id]));
     setIdMateriaSeleccionada("");
+    setBusquedaMateria("");
   };
 
   const quitarMateria = (id) => {
@@ -241,14 +300,34 @@ const ModalArea = ({ item, materias = [], onClose, onSave, onToast }) => {
               </div>
 
               <div className="gm-panel__body">
-                <div className="area-add-row materias-modalAddRow materias-editor-addRow">
+                <div className="area-add-row materias-modalAddRow materias-editor-addRow materias-editor-addRow--withSearch">
+                  <label className="gm-field materias-searchField">
+                    <input
+                      className="gm-input"
+                      value={busquedaMateria}
+                      onChange={(e) => setBusquedaMateria(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter") return;
+                        e.preventDefault();
+                        const primeraMateria = materiasDisponibles[0];
+                        agregarMateria(idMateriaSeleccionada || primeraMateria?.id_materia);
+                      }}
+                      placeholder=" "
+                      autoComplete="off"
+                    />
+                    <span className="gm-label">Buscar materia</span>
+                    <FontAwesomeIcon className="materias-searchField__icon" icon={faMagnifyingGlass} />
+                  </label>
+
                   <label className="gm-field">
                     <select
                       className="gm-input gm-select"
                       value={idMateriaSeleccionada}
                       onChange={(e) => setIdMateriaSeleccionada(e.target.value)}
                     >
-                      <option value="">Seleccionar materia</option>
+                      <option value="">
+                        {busquedaMateria.trim() ? "Primera coincidencia seleccionada" : "Seleccionar materia"}
+                      </option>
                       {materiasDisponibles.map((m) => (
                         <option key={m.id_materia} value={m.id_materia}>
                           {aMayusculas(m.materia)}
@@ -258,11 +337,17 @@ const ModalArea = ({ item, materias = [], onClose, onSave, onToast }) => {
                     <span className="gm-label is-up">Materia</span>
                   </label>
 
-                  <button type="button" className="gm-btn gm-btn--soft" onClick={agregarMateria} disabled={!idMateriaSeleccionada}>
+                  <button type="button" className="gm-btn gm-btn--soft" onClick={() => agregarMateria()} disabled={!idMateriaSeleccionada}>
                     <FontAwesomeIcon icon={faPlus} />
                     Agregar
                   </button>
                 </div>
+
+                {busquedaMateria.trim() && materiasDisponibles.length === 0 && (
+                  <div className="materias-searchEmpty">
+                    No se encontraron materias disponibles con esa búsqueda.
+                  </div>
+                )}
 
                 {materiasSeleccionadas.length === 0 ? (
                   <div className="gm-emptySchedule materias-modalEmpty">
