@@ -607,8 +607,8 @@ const dibujarLogoHeader = (pdf, logoAsset, x, yTop, width, height) => {
   pdf.image(logoAsset.name, x + caja.offsetX, yTop + caja.offsetY, caja.width, caja.height);
 };
 
-const dibujarHeaderDocumento = (pdf, titulo, logoAsset) => {
-  const institucion = 'IPET N° 50 "Ing. Emilio F. Olmos"';
+const dibujarHeaderDocumento = (pdf, titulo, logoAsset, institucionNombre = "Institución") => {
+  const institucion = textoCorto(institucionNombre, "Institución");
   const contentWidth = PAGE.width - (PAGE.margin * 2);
   const tituloHeader = textoMayuscula(titulo);
   const xTitulo = (PAGE.width - medirTextoHelveticaBold(tituloHeader, 18)) / 2;
@@ -872,7 +872,7 @@ const cortarFilasQueEntran = (grupo, filas, maxHeight) => {
   };
 };
 
-const generarPdfMesas = ({ mesas = [], titulo = "MESAS DE EXAMEN", logoAsset = null } = {}) => {
+const generarPdfMesas = ({ mesas = [], titulo = "MESAS DE EXAMEN", logoAsset = null, institucionNombre = "Institución" } = {}) => {
   const pdf = new PdfCanvas();
   const alturaPaginaDisponible = TABLE.bottom - TABLE.top;
   let paginaIniciada = false;
@@ -882,7 +882,7 @@ const generarPdfMesas = ({ mesas = [], titulo = "MESAS DE EXAMEN", logoAsset = n
   const iniciarPagina = () => {
     if (paginaIniciada) pdf.endPage();
     pdf.beginPage();
-    dibujarHeaderDocumento(pdf, titulo, logoAsset);
+    dibujarHeaderDocumento(pdf, titulo, logoAsset, institucionNombre);
     paginaIniciada = true;
     cursorY = TABLE.top;
     hayTablaEnPagina = false;
@@ -1008,13 +1008,15 @@ const limpiarNombreArchivo = (valor) => {
   return base || "mesas-de-examen";
 };
 
-export const descargarPdfMesas = async ({ mesas = [], tituloFijo, continuacion, logoUrl = "" } = {}) => {
+export const descargarPdfMesas = async ({ mesas = [], tituloFijo, continuacion, logoUrl = "", institucionNombre = "Institución" } = {}) => {
   const titulo = construirTituloPdfExportacion({ tituloFijo, continuacion });
-  // El PDF de Mesas siempre utiliza el escudo oficial incluido en src/imagenes,
-  // igual que la planilla institucional de referencia. El logo dinámico queda
-  // como respaldo únicamente si el recurso local no pudiera resolverse.
-  const logoAsset = await cargarImagenComoJpegAsset(escudoIpEtUrl || logoUrl);
-  const bytes = generarPdfMesas({ mesas, titulo, logoAsset });
+  // Primero se usa el logo institucional configurado en el perfil/tenant.
+  // Si no existe o no se puede cargar, queda como respaldo el escudo local.
+  let logoAsset = await cargarImagenComoJpegAsset(logoUrl);
+  if (!logoAsset && escudoIpEtUrl) {
+    logoAsset = await cargarImagenComoJpegAsset(escudoIpEtUrl);
+  }
+  const bytes = generarPdfMesas({ mesas, titulo, logoAsset, institucionNombre });
   const blob = new Blob([bytes], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");

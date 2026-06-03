@@ -243,17 +243,18 @@ function mesas_editar_mas_obtener_previa_base(PDO $pdo, int $idPrevia): ?array
                 LEFT JOIN docentes d2
                     ON d2.id_docente = COALESCE(cd2.id_docente, c2.id_docente)
                 LEFT JOIN cargos cargo2
-                    ON cargo2.id_cargo = COALESCE(cd2.id_cargo, d2.id_cargo)
+                    ON cargo2.id_cargo = cd2.id_cargo
                 WHERE c2.id_materia = p.id_materia
                   AND c2.id_curso = p.materia_id_curso
                   AND c2.id_division = p.materia_id_division
                   AND c2.activo = 1
                 ORDER BY
                     CASE
-                        WHEN d2.activo = 1 AND (COALESCE(cd2.id_cargo, d2.id_cargo) = 2 OR UPPER(TRIM(COALESCE(cargo2.cargo, ''))) = 'SUPLENTE') THEN 0
-                        WHEN d2.activo = 1 AND d2.id_docente IS NOT NULL THEN 1
-                        WHEN COALESCE(cd2.id_docente, c2.id_docente) IS NULL THEN 2
-                        ELSE 3
+                        WHEN d2.activo = 1 AND d2.id_docente IS NOT NULL AND (cd2.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo2.cargo, ''))) = 'SUPLENTE') THEN 0
+                        WHEN d2.activo = 1 AND d2.id_docente IS NOT NULL AND (cd2.id_cargo = 1 OR UPPER(TRIM(COALESCE(cargo2.cargo, ''))) = 'TITULAR') THEN 1
+                        WHEN d2.activo = 1 AND d2.id_docente IS NOT NULL THEN 2
+                        WHEN COALESCE(cd2.id_docente, c2.id_docente) IS NULL THEN 3
+                        ELSE 4
                     END ASC,
                     c2.id_catedra ASC
                 LIMIT 1
@@ -270,9 +271,10 @@ function mesas_editar_mas_obtener_previa_base(PDO $pdo, int $idPrevia): ?array
                   AND cd3.activo = 1
                 ORDER BY
                     CASE
-                        WHEN d3.activo = 1 AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
-                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 1
-                        ELSE 2
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 1 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'TITULAR') THEN 1
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 2
+                        ELSE 3
                     END ASC,
                     cd3.id_catedra_docente ASC
                 LIMIT 1
@@ -382,17 +384,18 @@ function mesas_editar_mas_obtener_previas_base_por_area(PDO $pdo, int $idArea, ?
                 LEFT JOIN docentes d2
                     ON d2.id_docente = COALESCE(cd2.id_docente, c2.id_docente)
                 LEFT JOIN cargos cargo2
-                    ON cargo2.id_cargo = COALESCE(cd2.id_cargo, d2.id_cargo)
+                    ON cargo2.id_cargo = cd2.id_cargo
                 WHERE c2.id_materia = p.id_materia
                   AND c2.id_curso = p.materia_id_curso
                   AND c2.id_division = p.materia_id_division
                   AND c2.activo = 1
                 ORDER BY
                     CASE
-                        WHEN d2.activo = 1 AND (COALESCE(cd2.id_cargo, d2.id_cargo) = 2 OR UPPER(TRIM(COALESCE(cargo2.cargo, ''))) = 'SUPLENTE') THEN 0
-                        WHEN d2.activo = 1 AND d2.id_docente IS NOT NULL THEN 1
-                        WHEN COALESCE(cd2.id_docente, c2.id_docente) IS NULL THEN 2
-                        ELSE 3
+                        WHEN d2.activo = 1 AND d2.id_docente IS NOT NULL AND (cd2.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo2.cargo, ''))) = 'SUPLENTE') THEN 0
+                        WHEN d2.activo = 1 AND d2.id_docente IS NOT NULL AND (cd2.id_cargo = 1 OR UPPER(TRIM(COALESCE(cargo2.cargo, ''))) = 'TITULAR') THEN 1
+                        WHEN d2.activo = 1 AND d2.id_docente IS NOT NULL THEN 2
+                        WHEN COALESCE(cd2.id_docente, c2.id_docente) IS NULL THEN 3
+                        ELSE 4
                     END ASC,
                     c2.id_catedra ASC
                 LIMIT 1
@@ -409,9 +412,10 @@ function mesas_editar_mas_obtener_previas_base_por_area(PDO $pdo, int $idArea, ?
                   AND cd3.activo = 1
                 ORDER BY
                     CASE
-                        WHEN d3.activo = 1 AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
-                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 1
-                        ELSE 2
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 1 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'TITULAR') THEN 1
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 2
+                        ELSE 3
                     END ASC,
                     cd3.id_catedra_docente ASC
                 LIMIT 1

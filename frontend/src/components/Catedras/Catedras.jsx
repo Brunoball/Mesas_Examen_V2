@@ -22,31 +22,37 @@ import './Catedras.css';
 import '../Global/Global_css/Global_CatedrasResponsive.css';
 import Principal, { MesasShellContext } from '../Principal/Principal';
 
-const CATEDRAS_GRID_COLS = '0.75fr 0.75fr 1.6fr 1.35fr 1fr 0.72fr';
+const CATEDRAS_GRID_COLS = '0.75fr 0.75fr 1.65fr 2fr 0.72fr';
 const SKELETON_ROWS = 8;
 
 const CATEDRAS_COLUMNS = [
   { key: 'curso', label: 'Curso', align: 'center' },
   { key: 'division', label: 'División', align: 'center' },
   { key: 'materia', label: 'Materia', strong: true },
-  { key: 'docente', label: 'Docente' },
-  { key: 'cargo', label: 'Cargo' },
+  { key: 'docente', label: 'DOCENTE' },
   { key: 'acciones', label: 'Acciones', align: 'center', actions: true },
 ];
 
-const SKELETON_WIDTHS = ['54%', '48%', '76%', '68%', '58%', '40%'];
+const SKELETON_WIDTHS = ['54%', '48%', '76%', '68%', '40%'];
 
 const CATEDRAS_EXPORT_COLUMNS = [
   { label: 'Curso', value: (item) => safeText(item.nombre_curso) },
   { label: 'División', value: (item) => safeText(item.nombre_division) },
   { label: 'Materia', value: (item) => safeText(item.materia) },
-  { label: 'Docente', value: (item) => safeText(item.docente) },
-  { label: 'Cargo', value: (item) => safeText(item.cargo_docente || item.cargo) },
+  { label: 'DOCENTE', value: (item) => safeText(item.docentes_resumen || item.docente) },
 ];
 
 function safeText(value) {
   const text = String(value ?? '').trim();
   return text || '—';
+}
+
+function docenteResumen(item) {
+  return safeText(item?.docentes_resumen || item?.docente);
+}
+
+function esCursoEgresado(curso) {
+  return String(curso?.nombre_curso || '').trim().toUpperCase() === 'EGRESADO';
 }
 
 function alignClass(align) {
@@ -124,12 +130,16 @@ export default function Catedras() {
     setModalAsignar({ abierto: false, item: null });
   }
 
-  async function handleAsignarDocente(idCatedra, idDocente, idCargo) {
-    cerrarModalAsignar();
-    return asignarDocente(idCatedra, idDocente, idCargo);
+  async function handleAsignarDocente(idCatedra, asignaciones) {
+    const resultado = await asignarDocente(idCatedra, asignaciones);
+    if (resultado?.ok) cerrarModalAsignar();
+    return resultado;
   }
 
   const listaCatedras = Array.isArray(catedras) ? catedras : [];
+  const cursosVisibles = Array.isArray(catalogos.cursos)
+    ? catalogos.cursos.filter((curso) => !esCursoEgresado(curso))
+    : [];
   const totalVisible = listaCatedras.length;
   const totalReferencia = Number(paginacion.totalRegistros || totalVisible);
   const hayFiltrosActivos = Boolean(
@@ -164,7 +174,7 @@ export default function Catedras() {
                   onChange={(e) => actualizarFiltro('id_curso', e.target.value)}
                 >
                   <option value="">Todos</option>
-                  {catalogos.cursos.map((curso) => (
+                  {cursosVisibles.map((curso) => (
                     <option key={curso.id_curso} value={curso.id_curso}>{curso.nombre_curso}</option>
                   ))}
                 </select>
@@ -279,16 +289,12 @@ export default function Catedras() {
                         <span className="mov-ellipsissss catedras-materia">{safeText(item.materia)}</span>
                       </div>
 
-                      <div className="mov-gridCell" role="cell" data-label="Docente" title={safeText(item.docente)}>
-                        {item.docente ? (
-                          <span className="mov-ellipsissss catedras-docente">{safeText(item.docente)}</span>
+                      <div className="mov-gridCell" role="cell" data-label="DOCENTE" title={docenteResumen(item)}>
+                        {item.docentes_resumen || item.docente ? (
+                          <span className="mov-ellipsissss catedras-docente">{docenteResumen(item)}</span>
                         ) : (
-                          <span className="mov-chip mov-chip--danger catedras-sin-docente">Sin docente</span>
+                          <span className="mov-chip mov-chip--danger catedras-sin-docente">Sin docentes</span>
                         )}
-                      </div>
-
-                      <div className="mov-gridCell" role="cell" data-label="Cargo" title={safeText(item.cargo_docente)}>
-                        <span className="mov-ellipsissss">{safeText(item.cargo_docente)}</span>
                       </div>
 
                       <div className="mov-gridCell mov-gridCell--actions is-center" role="cell" data-label="Acciones">
@@ -297,7 +303,7 @@ export default function Catedras() {
                             type="button"
                             className="mov-iconBtn catedras-icon-btn"
                             onClick={() => abrirModalAsignar(item)}
-                            title="Asignar docente"
+                            title="Asignar docentes y cargos"
                           >
                             <FontAwesomeIcon icon={faUserPen} />
                           </button>

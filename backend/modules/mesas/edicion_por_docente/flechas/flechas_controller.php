@@ -2,6 +2,8 @@
 // backend/modules/mesas/edicion_por_docente/flechas/flechas_controller.php
 declare(strict_types=1);
 
+require_once __DIR__ . '/../helpers_editar_mesas.php';
+require_once __DIR__ . '/../mas/mas_helpers.php';
 require_once __DIR__ . '/flechas_helpers.php';
 
 function mesas_editar_docentes_flechas_destinos(): void

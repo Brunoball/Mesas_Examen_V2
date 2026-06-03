@@ -62,10 +62,17 @@ export const catedrasApi = {
     };
   },
 
-  asignarDocente: (idCatedra, idDocente, idCargo) =>
-    apiPost('catedras_asignar_docente', {
+  asignarDocente: (idCatedra, docentes = []) => {
+    const docentesPayload = Array.isArray(docentes)
+      ? docentes.map((asignacion) => ({
+        id_docente: Number(asignacion.id_docente || 0),
+        id_cargo: Number(asignacion.id_cargo || 0),
+      }))
+      : [];
+
+    return apiPost('catedras_asignar_docente', {
       id_catedra: idCatedra,
-      id_docente: idDocente,
-      id_cargo: idCargo,
-    }),
+      docentes: docentesPayload,
+    });
+  },
 };

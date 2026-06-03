@@ -2,6 +2,7 @@
 // backend/modules/mesas/edicion_por_docente/mas/mas_controller.php
 declare(strict_types=1);
 
+require_once __DIR__ . '/../helpers_editar_mesas.php';
 require_once __DIR__ . '/mas_helpers.php';
 
 function mesas_editar_docentes_mas_previas_disponibles(): void
@@ -40,17 +41,17 @@ function mesas_editar_docentes_mas_agregar(): void
 
         $data = mesas_editar_docentes_input_json();
         $numeroMesa = mesas_editar_docentes_mas_int($data['numero_mesa'] ?? null, 'Debe indicar el número de mesa destino.');
-        $idPrevia = mesas_editar_docentes_mas_int($data['id_previa'] ?? null, 'Debe indicar la previa a agregar.');
+        $idsPrevias = mesas_editar_docentes_mas_normalizar_ids_previas($data);
 
         $pdo->beginTransaction();
-        $resultado = mesas_editar_docentes_mas_agregar_previa($pdo, $numeroMesa, $idPrevia);
+        $resultado = mesas_editar_docentes_mas_agregar_previas($pdo, $numeroMesa, $idsPrevias);
 
-        if (!$resultado['agregada']) {
+        if (!$resultado['agregadas']) {
             $pdo->rollBack();
             json_response([
                 'exito' => false,
-                'mensaje' => 'No se puede agregar la previa porque genera conflictos.',
-                'errores' => $resultado['validacion']['errores'] ?? [],
+                'mensaje' => 'No se pueden agregar las previas porque generan conflictos.',
+                'errores' => $resultado['errores'] ?? [],
                 'data' => $resultado,
             ], 422);
             return;
@@ -58,9 +59,12 @@ function mesas_editar_docentes_mas_agregar(): void
 
         $pdo->commit();
 
+        $cantidad = (int)($resultado['cantidad_agregada'] ?? 0);
         json_response([
             'exito' => true,
-            'mensaje' => 'Previa agregada correctamente al número de mesa.',
+            'mensaje' => $cantidad === 1
+                ? 'Previa agregada correctamente al número de mesa.'
+                : $cantidad . ' previas agregadas correctamente al número de mesa.',
             'data' => $resultado,
         ]);
     } catch (InvalidArgumentException $e) {

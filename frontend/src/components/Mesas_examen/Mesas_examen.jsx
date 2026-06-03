@@ -1807,7 +1807,14 @@ const MesasExamen = () => {
       }
 
       if (formato === "pdf") {
-        descargarPdfHistorialMesas(data);
+        const datosExportacion = await obtenerDatosInstitucionalesDesdeEndpointLogo(datosInstitucionales);
+        setDatosInstitucionales(datosExportacion);
+
+        await descargarPdfHistorialMesas({
+          ...data,
+          logoUrl: datosExportacion.logoDataUrl || datosExportacion.logoUrl,
+          institucionNombre: datosExportacion.nombre,
+        });
         mostrarToastGlobal("exito", `PDF del historial descargado correctamente (${cantidadMesas} mesas).`, 3200);
       } else {
         descargarExcelHistorialMesas(data);
@@ -1820,7 +1827,7 @@ const MesasExamen = () => {
     } finally {
       setExportandoHistorial(false);
     }
-  }, [exportandoHistorial, historial, mostrarToastGlobal]);
+  }, [datosInstitucionales, exportandoHistorial, historial, mostrarToastGlobal]);
 
   const contenido = (
     <div className="mesas-page mov-page">

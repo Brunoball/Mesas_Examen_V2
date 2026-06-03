@@ -486,6 +486,128 @@ const wrapText = (texto, maxWidth, size = 8, bold = false, maxLines = 2) => {
   return lines.map((line) => recortarLinea(line, maxWidth, size, bold));
 };
 
+
+const normalizarUrlLogo = (url) => {
+  const value = String(url || "").trim();
+  if (!value || value.toLowerCase() === "null" || value.toLowerCase() === "undefined" || value === "-") return "";
+  return value.replace(/\\/g, "/");
+};
+
+const dataUrlToBytes = (dataUrl) => {
+  const [, base64 = ""] = String(dataUrl || "").split(",");
+  if (!base64) return new Uint8Array();
+
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+};
+
+const bytesToBinaryString = (bytes) => {
+  const chunks = [];
+  const size = 0x8000;
+  for (let i = 0; i < bytes.length; i += size) {
+    chunks.push(String.fromCharCode(...bytes.subarray(i, i + size)));
+  }
+  return chunks.join("");
+};
+
+const cargarImagenComoJpegAsset = (url) => new Promise((resolve) => {
+  const logoUrl = normalizarUrlLogo(url);
+
+  if (!logoUrl || typeof document === "undefined") {
+    resolve(null);
+    return;
+  }
+
+  const img = new Image();
+  const esDataUrl = logoUrl.startsWith("data:");
+  const esBlobUrl = logoUrl.startsWith("blob:");
+
+  if (!esDataUrl && !esBlobUrl) {
+    img.crossOrigin = "anonymous";
+  }
+
+  let resuelto = false;
+  const finalizar = (asset) => {
+    if (resuelto) return;
+    resuelto = true;
+    resolve(asset || null);
+  };
+
+  const timeout = window.setTimeout(() => finalizar(null), 8000);
+
+  img.onload = () => {
+    try {
+      window.clearTimeout(timeout);
+
+      const maxSize = 512;
+      const widthOriginal = Math.max(1, img.naturalWidth || img.width || 1);
+      const heightOriginal = Math.max(1, img.naturalHeight || img.height || 1);
+      const ratio = Math.min(maxSize / widthOriginal, maxSize / heightOriginal, 1);
+      const drawWidth = Math.max(1, Math.round(widthOriginal * ratio));
+      const drawHeight = Math.max(1, Math.round(heightOriginal * ratio));
+
+      const canvas = document.createElement("canvas");
+      canvas.width = drawWidth;
+      canvas.height = drawHeight;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        finalizar(null);
+        return;
+      }
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, drawWidth, drawHeight);
+      ctx.drawImage(img, 0, 0, drawWidth, drawHeight);
+
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+      const bytes = dataUrlToBytes(dataUrl);
+
+      if (!bytes || bytes.length === 0) {
+        finalizar(null);
+        return;
+      }
+
+      finalizar({
+        name: "ImLogoHistorial",
+        width: drawWidth,
+        height: drawHeight,
+        bytes,
+      });
+    } catch (_) {
+      finalizar(null);
+    }
+  };
+
+  img.onerror = () => {
+    window.clearTimeout(timeout);
+    finalizar(null);
+  };
+
+  img.src = logoUrl;
+});
+
+const calcularCajaImagen = (asset, maxWidth, maxHeight) => {
+  if (!asset?.width || !asset?.height) {
+    return { width: maxWidth, height: maxHeight, offsetX: 0, offsetY: 0 };
+  }
+
+  const ratio = Math.min(maxWidth / asset.width, maxHeight / asset.height);
+  const width = asset.width * ratio;
+  const height = asset.height * ratio;
+
+  return {
+    width,
+    height,
+    offsetX: (maxWidth - width) / 2,
+    offsetY: (maxHeight - height) / 2,
+  };
+};
+
 class PdfCanvas {
   constructor() {
     this.pages = [];
@@ -517,6 +639,14 @@ class PdfCanvas {
     if (fill) this.raw(`${colorCmd(fill, "rg")}\n`);
     if (stroke) this.raw(`${colorCmd(stroke, "RG")}\n`);
     this.raw(`${x.toFixed(2)} ${y.toFixed(2)} ${width.toFixed(2)} ${height.toFixed(2)} re ${fill && stroke ? "B" : fill ? "f" : "S"}\n`);
+    this.raw("Q\n");
+  }
+
+  image(name, x, yTop, width, height) {
+    const y = this.topY(yTop, height);
+    this.raw("q\n");
+    this.raw(`${width.toFixed(2)} 0 0 ${height.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm\n`);
+    this.raw(`/${name} Do\n`);
     this.raw("Q\n");
   }
 
@@ -565,13 +695,24 @@ class PdfCanvas {
 
 const xColumna = (columnas, index) => PAGE.margin + columnas.slice(0, index).reduce((total, col) => total + col.width, 0);
 
-const dibujarHeaderSeccion = (pdf, { titulo, subtitulo, pagina, totalPaginas }) => {
+const dibujarHeaderSeccion = (pdf, { titulo, subtitulo, pagina, totalPaginas, logoAsset = null, institucionNombre = "Institución" }) => {
   const x = PAGE.margin;
   const width = PAGE.width - (PAGE.margin * 2);
+  const logoBox = 34;
+  const textoX = logoAsset ? x + 56 : x + 14;
+  const textoWidth = logoAsset ? 478 : 520;
+  const institucion = textoCorto(institucionNombre, "Institución");
 
   pdf.rect(x, 18, width, 50, { fill: COLORS.headerBg, stroke: COLORS.blue, lineWidth: 1 });
-  pdf.text(titulo, x + 14, 32, { size: 15, font: "F2", color: COLORS.blue, maxWidth: 520 });
-  pdf.text(subtitulo, x + 14, 53, { size: 8.5, font: "F2", color: COLORS.muted, maxWidth: 530 });
+
+  if (logoAsset) {
+    const caja = calcularCajaImagen(logoAsset, logoBox, logoBox);
+    pdf.image(logoAsset.name, x + 12 + caja.offsetX, 26 + caja.offsetY, caja.width, caja.height);
+  }
+
+  pdf.text(titulo, textoX, 29, { size: 14.5, font: "F2", color: COLORS.blue, maxWidth: textoWidth });
+  pdf.text(institucion, textoX, 47, { size: 7.6, font: "F2", color: COLORS.muted, maxWidth: textoWidth });
+  pdf.text(subtitulo, textoX, 58, { size: 7.4, font: "F1", color: COLORS.muted, maxWidth: textoWidth });
   pdf.text(`Página ${pagina} de ${totalPaginas}`, x + width - 150, 37, { size: 8.5, font: "F2", color: COLORS.muted, maxWidth: 140, align: "right" });
 };
 
@@ -653,7 +794,7 @@ const construirPaginasSeccion = ({ titulo, subtitulo, columnas, filas }) => {
   }));
 };
 
-const generarPdfHistorial = ({ resultados, detalle, busqueda }) => {
+const generarPdfHistorial = ({ resultados, detalle, busqueda, logoAsset = null, institucionNombre = "Institución" }) => {
   const pdf = new PdfCanvas();
   const filtro = String(busqueda || "").trim();
   const subtituloBase = filtro ? `Filtro aplicado: ${filtro}` : "Exportación completa del historial guardado";
@@ -680,6 +821,8 @@ const generarPdfHistorial = ({ resultados, detalle, busqueda }) => {
       subtitulo: pagina.subtitulo,
       pagina: index + 1,
       totalPaginas: paginas.length,
+      logoAsset,
+      institucionNombre,
     });
     const tableTop = 82;
     const headerHeight = 22;
@@ -697,10 +840,10 @@ const generarPdfHistorial = ({ resultados, detalle, busqueda }) => {
     pdf.endPage();
   });
 
-  return construirDocumentoPdf(pdf.pages);
+  return construirDocumentoPdf(pdf.pages, { logoAsset });
 };
 
-const construirDocumentoPdf = (pageStreams) => {
+const construirDocumentoPdf = (pageStreams, { logoAsset = null } = {}) => {
   const objects = [null];
   const addObject = (content) => {
     objects.push(content);
@@ -711,11 +854,25 @@ const construirDocumentoPdf = (pageStreams) => {
   const pagesId = addObject(null);
   const fontRegularId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
   const fontBoldId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
+  let logoObjectId = null;
+
+  if (logoAsset?.bytes?.length) {
+    const imageStream = bytesToBinaryString(logoAsset.bytes);
+    logoObjectId = addObject(`<< /Type /XObject /Subtype /Image /Width ${Math.max(1, Math.round(logoAsset.width))} /Height ${Math.max(1, Math.round(logoAsset.height))} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logoAsset.bytes.length} >>
+stream
+${imageStream}
+endstream`);
+  }
+
   const pageIds = [];
+  const xObjectResource = logoObjectId ? `/XObject << /${logoAsset.name} ${logoObjectId} 0 R >> ` : "";
 
   pageStreams.forEach((stream) => {
-    const contentId = addObject(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
-    const pageId = addObject(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${PAGE.width.toFixed(2)} ${PAGE.height.toFixed(2)}] /Resources << /Font << /F1 ${fontRegularId} 0 R /F2 ${fontBoldId} 0 R >> >> /Contents ${contentId} 0 R >>`);
+    const contentId = addObject(`<< /Length ${stream.length} >>
+stream
+${stream}
+endstream`);
+    const pageId = addObject(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${PAGE.width.toFixed(2)} ${PAGE.height.toFixed(2)}] /Resources << /Font << /F1 ${fontRegularId} 0 R /F2 ${fontBoldId} 0 R >> ${xObjectResource}>> /Contents ${contentId} 0 R >>`);
     pageIds.push(pageId);
   });
 
@@ -748,7 +905,7 @@ const construirDocumentoPdf = (pageStreams) => {
   return bytes;
 };
 
-export const descargarPdfHistorialMesas = (data = {}) => {
+export const descargarPdfHistorialMesas = async (data = {}) => {
   const resultados = construirResultadosHistorial(data);
   const detalle = construirDetallePlanoHistorial(data);
 
@@ -756,7 +913,14 @@ export const descargarPdfHistorialMesas = (data = {}) => {
     throw new Error("No hay historial para exportar.");
   }
 
-  const bytes = generarPdfHistorial({ resultados, detalle, busqueda: data?.busqueda });
+  const logoAsset = await cargarImagenComoJpegAsset(data?.logoDataUrl || data?.logoUrl || "");
+  const bytes = generarPdfHistorial({
+    resultados,
+    detalle,
+    busqueda: data?.busqueda,
+    logoAsset,
+    institucionNombre: data?.institucionNombre || "Institución",
+  });
   const blob = new Blob([bytes], { type: "application/pdf" });
   descargarBlob(blob, "historial-mesas-de-examen.pdf");
 };

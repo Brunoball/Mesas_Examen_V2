@@ -2,6 +2,7 @@
 // backend/modules/mesas/edicion_por_docente/persona/persona_controller.php
 declare(strict_types=1);
 
+require_once __DIR__ . '/../helpers_editar_mesas.php';
 require_once __DIR__ . '/persona_helpers.php';
 
 function mesas_editar_docentes_persona_previas_numero(): void

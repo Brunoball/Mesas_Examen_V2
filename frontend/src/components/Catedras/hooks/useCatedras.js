@@ -145,23 +145,44 @@ export function useCatedras() {
     setFiltros({ id_curso: '', id_division: '', id_docente: '', sin_docente: '' });
   }
 
-  async function asignarDocente(idCatedra, idDocente, idCargo) {
-    const hayDocente = Number(idDocente || 0) > 0;
+  async function asignarDocente(idCatedra, asignaciones = []) {
+    const docentesPayload = Array.isArray(asignaciones)
+      ? asignaciones
+        .map((asignacion) => ({
+          id_docente: Number(asignacion.id_docente || 0),
+          id_cargo: Number(asignacion.id_cargo || 0),
+        }))
+        .filter((asignacion) => asignacion.id_docente > 0 && asignacion.id_cargo > 0)
+      : [];
 
-    if (hayDocente && Number(idCargo || 0) <= 0) {
-      const msg = 'Seleccioná el cargo de esa cátedra.';
-      mostrarMensaje('error', msg);
-      return { ok: false, mensaje: msg };
+    const docentesUsados = new Set();
+    const cargosUsados = new Set();
+
+    for (const asignacion of docentesPayload) {
+      if (docentesUsados.has(asignacion.id_docente)) {
+        const msg = 'No podés repetir el mismo docente en una cátedra.';
+        mostrarMensaje('error', msg);
+        return { ok: false, mensaje: msg };
+      }
+
+      if (cargosUsados.has(asignacion.id_cargo)) {
+        const msg = 'No podés repetir el mismo cargo en una cátedra.';
+        mostrarMensaje('error', msg);
+        return { ok: false, mensaje: msg };
+      }
+
+      docentesUsados.add(asignacion.id_docente);
+      cargosUsados.add(asignacion.id_cargo);
     }
 
     try {
-      mostrarMensaje('cargando', hayDocente ? 'Guardando docente y cargo...' : 'Quitando docente...');
-      const res = await catedrasApi.asignarDocente(idCatedra, idDocente || 0, idCargo || 0);
+      mostrarMensaje('cargando', docentesPayload.length > 0 ? 'Guardando docentes y cargos...' : 'Quitando docentes...');
+      const res = await catedrasApi.asignarDocente(idCatedra, docentesPayload);
       await cargar();
-      mostrarMensaje('ok', res?.mensaje || (hayDocente ? 'Docente y cargo asignados correctamente.' : 'Docente quitado correctamente.'));
+      mostrarMensaje('ok', res?.mensaje || (docentesPayload.length > 0 ? 'Docentes y cargos guardados correctamente.' : 'Docentes quitados correctamente.'));
       return { ok: true };
     } catch (e) {
-      const msg = e.message || 'No se pudo asignar el docente y cargo.';
+      const msg = e.message || 'No se pudieron guardar los docentes y cargos.';
       mostrarMensaje('error', msg);
       return { ok: false, mensaje: msg };
     }

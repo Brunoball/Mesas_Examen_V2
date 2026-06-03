@@ -306,9 +306,10 @@ function mesas_armado_docentes_normalizar_docente_desde_catedra(PDO $pdo): int
                   AND cd3.activo = 1
                 ORDER BY
                     CASE
-                        WHEN d3.activo = 1 AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
-                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 1
-                        ELSE 2
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 1 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'TITULAR') THEN 1
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 2
+                        ELSE 3
                     END ASC,
                     cd3.id_catedra_docente ASC
                 LIMIT 1
@@ -384,9 +385,10 @@ function mesas_armado_docentes_obtener_filas_para_validar(PDO $pdo): array
                   AND cd3.activo = 1
                 ORDER BY
                     CASE
-                        WHEN d3.activo = 1 AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
-                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 1
-                        ELSE 2
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 1 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'TITULAR') THEN 1
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 2
+                        ELSE 3
                     END ASC,
                     cd3.id_catedra_docente ASC
                 LIMIT 1

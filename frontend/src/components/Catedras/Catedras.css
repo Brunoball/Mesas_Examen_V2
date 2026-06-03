@@ -130,18 +130,18 @@
 }
 
 .catedras-gridHead{
-  min-width:1000px;
+  min-width:920px;
 }
 
 
 
 .catedras-table-wrap .mov-gridBody--relative{
   height:calc(100vh - 310px);
-  min-width:1000px;
+  min-width:920px;
 }
 
 .catedras-gridRow{
-  min-width:1000px;
+  min-width:920px;
 }
 
 
@@ -159,6 +159,8 @@
   color:color-mix(in srgb, var(--balto-text) 84%, #000) !important;
   font-weight:460 !important;
 }
+
+
 
 .catedras-badge{
   min-width:42px;
@@ -294,3 +296,4 @@
     flex-wrap:wrap;
   }
 }
+

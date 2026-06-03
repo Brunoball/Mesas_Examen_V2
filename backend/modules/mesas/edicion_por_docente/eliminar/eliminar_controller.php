@@ -2,6 +2,7 @@
 // backend/modules/mesas/edicion_por_docente/eliminar/eliminar_controller.php
 declare(strict_types=1);
 
+require_once __DIR__ . '/../helpers_editar_mesas.php';
 require_once __DIR__ . '/eliminar_helpers.php';
 
 function mesas_editar_docentes_eliminar_smart(): void

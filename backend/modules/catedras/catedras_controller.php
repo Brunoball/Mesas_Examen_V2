@@ -30,37 +30,68 @@ function catedras_paginacion(): array
     ];
 }
 
-/**
- * Subquery reutilizable para tomar una sola asignación activa por cátedra.
- *
- * La estructura nueva guarda el cargo en catedras_docentes. Por ahora el módulo
- * Cátedras maneja una asignación principal por cátedra. Si en el futuro se
- * permiten titular + suplente simultáneos, este listado se puede ampliar para
- * mostrar varias filas o un detalle agrupado.
- */
-function catedras_sql_asignacion_principal(): string
+function catedras_docente_efectivo_order_sql(string $cdAlias = 'cd3', string $docAlias = 'd3', string $cargoAlias = 'cargo3'): string
 {
     return "
-        LEFT JOIN (
-            SELECT cd.*
-            FROM catedras_docentes cd
-            INNER JOIN (
-                SELECT id_catedra, MIN(id_catedra_docente) AS id_catedra_docente
-                FROM catedras_docentes
-                WHERE activo = 1
-                GROUP BY id_catedra
-            ) cd_min ON cd_min.id_catedra_docente = cd.id_catedra_docente
-        ) cd ON cd.id_catedra = cat.id_catedra
+        CASE
+            WHEN {$docAlias}.activo = 1
+             AND {$docAlias}.id_docente IS NOT NULL
+             AND (
+                    {$cdAlias}.id_cargo = 2
+                    OR UPPER(TRIM(COALESCE({$cargoAlias}.cargo, ''))) = 'SUPLENTE'
+                 )
+            THEN 0
+            WHEN {$docAlias}.activo = 1
+             AND {$docAlias}.id_docente IS NOT NULL
+             AND (
+                    {$cdAlias}.id_cargo = 1
+                    OR UPPER(TRIM(COALESCE({$cargoAlias}.cargo, ''))) = 'TITULAR'
+                 )
+            THEN 1
+            WHEN {$docAlias}.activo = 1
+             AND {$docAlias}.id_docente IS NOT NULL
+            THEN 2
+            ELSE 3
+        END ASC,
+        {$cdAlias}.id_catedra_docente ASC
     ";
 }
 
 /**
- * Registra un aviso pendiente cuando se cambia el docente de una cátedra
- * que ya forma parte de una mesa armada.
- *
- * Se usa un wrapper local para evitar errores si el helper de Mesas todavía
- * no fue copiado y para que el módulo Cátedras no dependa fuerte del módulo Mesas.
+ * Relación efectiva para mesas:
+ * - si hay SUPLENTE activo, se llama al suplente;
+ * - si no, se llama al TITULAR activo;
+ * - si no, se toma cualquier otro docente activo;
+ * - como compatibilidad final, queda catedras.id_docente.
  */
+function catedras_sql_join_docente_efectivo(string $catAlias = 'cat', string $cdAlias = 'cd_ef', string $docAlias = 'd_ef', string $cargoAlias = 'cargo_ef'): string
+{
+    $order = catedras_docente_efectivo_order_sql('cd3', 'd3', 'cargo3');
+
+    return "
+        LEFT JOIN catedras_docentes {$cdAlias}
+            ON {$cdAlias}.id_catedra = {$catAlias}.id_catedra
+           AND {$cdAlias}.activo = 1
+           AND {$cdAlias}.id_catedra_docente = (
+                SELECT cd3.id_catedra_docente
+                FROM catedras_docentes cd3
+                LEFT JOIN docentes d3
+                    ON d3.id_docente = cd3.id_docente
+                LEFT JOIN cargos cargo3
+                    ON cargo3.id_cargo = cd3.id_cargo
+                WHERE cd3.id_catedra = {$catAlias}.id_catedra
+                  AND cd3.activo = 1
+                ORDER BY {$order}
+                LIMIT 1
+           )
+        LEFT JOIN docentes {$docAlias}
+            ON {$docAlias}.id_docente = COALESCE({$cdAlias}.id_docente, {$catAlias}.id_docente)
+           AND {$docAlias}.activo = 1
+        LEFT JOIN cargos {$cargoAlias}
+            ON {$cargoAlias}.id_cargo = {$cdAlias}.id_cargo
+    ";
+}
+
 function catedras_registrar_cambio_docente_en_mesas(PDO $pdo, int $idCatedra, ?int $idDocenteAnterior, ?int $idDocenteNuevo): int
 {
     $funcion = 'mesas_docentes_cambios_registrar_catedra_actualizada';
@@ -92,15 +123,45 @@ function catedras_catalogos(): void
     $pdo = db();
 
     try {
-        // Docentes ahora representa persona única. El cargo no se toma desde docentes,
-        // se elige por cátedra y se guarda en catedras_docentes.
-        $docentes = $pdo->query("\n            SELECT\n                d.id_docente,\n                d.docente,\n                d.activo\n            FROM docentes d\n            WHERE d.activo = 1\n            ORDER BY d.docente ASC, d.id_docente ASC\n        ")->fetchAll(PDO::FETCH_ASSOC);
+        $docentes = $pdo->query("
+            SELECT
+                d.id_docente,
+                d.docente,
+                d.dni,
+                d.email,
+                d.activo
+            FROM docentes d
+            WHERE d.activo = 1
+            ORDER BY d.docente ASC, d.id_docente ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
 
-        $cargos = $pdo->query("\n            SELECT id_cargo, cargo\n            FROM cargos\n            WHERE activo = 1\n            ORDER BY id_cargo ASC\n        ")->fetchAll(PDO::FETCH_ASSOC);
+        $cargos = $pdo->query("
+            SELECT id_cargo, cargo, activo
+            FROM cargos
+            WHERE activo = 1
+            ORDER BY
+                CASE
+                    WHEN id_cargo = 1 OR UPPER(TRIM(cargo)) = 'TITULAR' THEN 1
+                    WHEN id_cargo = 2 OR UPPER(TRIM(cargo)) = 'SUPLENTE' THEN 2
+                    ELSE 3
+                END ASC,
+                id_cargo ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
 
-        $cursos = $pdo->query("\n            SELECT id_curso, nombre_curso\n            FROM curso\n            WHERE activo = 1\n            ORDER BY id_curso ASC\n        ")->fetchAll(PDO::FETCH_ASSOC);
+        $cursos = $pdo->query("
+            SELECT id_curso, nombre_curso
+            FROM curso
+            WHERE activo = 1
+              AND UPPER(TRIM(nombre_curso)) <> 'EGRESADO'
+            ORDER BY id_curso ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
 
-        $divisiones = $pdo->query("\n            SELECT id_division, nombre_division\n            FROM division\n            WHERE activo = 1\n            ORDER BY nombre_division ASC\n        ")->fetchAll(PDO::FETCH_ASSOC);
+        $divisiones = $pdo->query("
+            SELECT id_division, nombre_division
+            FROM division
+            WHERE activo = 1
+            ORDER BY nombre_division ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
 
         json_response([
             'exito' => true,
@@ -118,6 +179,74 @@ function catedras_catalogos(): void
             'mensaje' => 'No se pudieron obtener los catálogos de cátedras.',
         ], 500);
     }
+}
+
+function catedras_cargar_asignaciones_para_catedras(PDO $pdo, array $idsCatedras): array
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', $idsCatedras), static fn($id) => $id > 0)));
+    if (count($ids) === 0) {
+        return [];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $order = catedras_docente_efectivo_order_sql('cd', 'd', 'cargo');
+
+    $stmt = $pdo->prepare("
+        SELECT
+            cd.id_catedra,
+            cd.id_catedra_docente,
+            cd.id_docente,
+            d.docente,
+            cd.id_cargo,
+            cargo.cargo,
+            cd.activo,
+            cd.creado_en
+        FROM catedras_docentes cd
+        INNER JOIN docentes d
+            ON d.id_docente = cd.id_docente
+           AND d.activo = 1
+        LEFT JOIN cargos cargo
+            ON cargo.id_cargo = cd.id_cargo
+        WHERE cd.activo = 1
+          AND cd.id_catedra IN ({$placeholders})
+        ORDER BY cd.id_catedra ASC, {$order}
+    ");
+    $stmt->execute($ids);
+
+    $porCatedra = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $idCatedra = (int)$row['id_catedra'];
+        if (!isset($porCatedra[$idCatedra])) {
+            $porCatedra[$idCatedra] = [];
+        }
+
+        $porCatedra[$idCatedra][] = [
+            'id_catedra_docente' => (int)$row['id_catedra_docente'],
+            'id_docente' => (int)$row['id_docente'],
+            'docente' => (string)$row['docente'],
+            'id_cargo' => $row['id_cargo'] !== null ? (int)$row['id_cargo'] : null,
+            'cargo' => (string)($row['cargo'] ?? ''),
+            'activo' => (int)$row['activo'],
+            'creado_en' => $row['creado_en'] ?? null,
+        ];
+    }
+
+    return $porCatedra;
+}
+
+function catedras_formatear_resumen_asignaciones(array $asignaciones): string
+{
+    $partes = [];
+    foreach ($asignaciones as $asignacion) {
+        $docente = trim((string)($asignacion['docente'] ?? ''));
+        $cargo = trim((string)($asignacion['cargo'] ?? ''));
+        if ($docente === '') {
+            continue;
+        }
+        $partes[] = $cargo !== '' ? $docente . ' (' . $cargo . ')' : $docente;
+    }
+
+    return implode(', ', $partes);
 }
 
 function catedras_listar(): void
@@ -145,35 +274,63 @@ function catedras_listar(): void
     }
 
     if ($idDocente > 0) {
-        $where[] = 'COALESCE(cd.id_docente, cat.id_docente) = :id_docente';
+        $where[] = "(
+            EXISTS (
+                SELECT 1
+                FROM catedras_docentes cd_f
+                INNER JOIN docentes d_f ON d_f.id_docente = cd_f.id_docente AND d_f.activo = 1
+                WHERE cd_f.id_catedra = cat.id_catedra
+                  AND cd_f.activo = 1
+                  AND cd_f.id_docente = :id_docente
+            )
+            OR cat.id_docente = :id_docente_legacy
+        )";
         $params[':id_docente'] = $idDocente;
+        $params[':id_docente_legacy'] = $idDocente;
     }
 
     if ($sinDocente) {
-        $where[] = 'COALESCE(cd.id_docente, cat.id_docente) IS NULL';
+        $where[] = "(
+            NOT EXISTS (
+                SELECT 1
+                FROM catedras_docentes cd_sd
+                INNER JOIN docentes d_sd ON d_sd.id_docente = cd_sd.id_docente AND d_sd.activo = 1
+                WHERE cd_sd.id_catedra = cat.id_catedra
+                  AND cd_sd.activo = 1
+            )
+            AND cat.id_docente IS NULL
+        )";
     }
 
     if ($busqueda !== '') {
-        /*
-         * IMPORTANTE:
-         * No se reutiliza el mismo placeholder (:busqueda) varias veces en el OR.
-         * En varias configuraciones PDO/MySQL eso genera SQLSTATE[HY093] / 500
-         * cuando se busca, aunque el listado sin búsqueda funcione.
-         */
         $whereBusqueda = [
             'm.materia LIKE :busqueda_materia',
-            "COALESCE(d.docente, '') LIKE :busqueda_docente",
-            "COALESCE(cargo.cargo, '') LIKE :busqueda_cargo",
             'cu.nombre_curso LIKE :busqueda_curso',
             'divi.nombre_division LIKE :busqueda_division',
+            "COALESCE(d_ef.docente, '') LIKE :busqueda_docente_efectivo",
+            "COALESCE(cargo_ef.cargo, '') LIKE :busqueda_cargo_efectivo",
+            "EXISTS (
+                SELECT 1
+                FROM catedras_docentes cd_b
+                INNER JOIN docentes d_b ON d_b.id_docente = cd_b.id_docente AND d_b.activo = 1
+                LEFT JOIN cargos cargo_b ON cargo_b.id_cargo = cd_b.id_cargo
+                WHERE cd_b.id_catedra = cat.id_catedra
+                  AND cd_b.activo = 1
+                  AND (
+                        d_b.docente LIKE :busqueda_docente_asignado
+                        OR COALESCE(cargo_b.cargo, '') LIKE :busqueda_cargo_asignado
+                  )
+            )",
         ];
 
         $likeBusqueda = '%' . $busqueda . '%';
         $params[':busqueda_materia'] = $likeBusqueda;
-        $params[':busqueda_docente'] = $likeBusqueda;
-        $params[':busqueda_cargo'] = $likeBusqueda;
         $params[':busqueda_curso'] = $likeBusqueda;
         $params[':busqueda_division'] = $likeBusqueda;
+        $params[':busqueda_docente_efectivo'] = $likeBusqueda;
+        $params[':busqueda_cargo_efectivo'] = $likeBusqueda;
+        $params[':busqueda_docente_asignado'] = $likeBusqueda;
+        $params[':busqueda_cargo_asignado'] = $likeBusqueda;
 
         if (is_numeric($busqueda)) {
             $whereBusqueda[] = 'cat.id_catedra = :busqueda_id_catedra';
@@ -184,10 +341,18 @@ function catedras_listar(): void
     }
 
     $whereSql = implode(' AND ', $where);
-    $joinAsignacion = catedras_sql_asignacion_principal();
+    $joinDocenteEfectivo = catedras_sql_join_docente_efectivo('cat', 'cd_ef', 'd_ef', 'cargo_ef');
 
     try {
-        $countSql = "\n            SELECT COUNT(DISTINCT cat.id_catedra)\n            FROM catedras cat\n            INNER JOIN curso cu ON cu.id_curso = cat.id_curso\n            INNER JOIN division divi ON divi.id_division = cat.id_division\n            INNER JOIN materias m ON m.id_materia = cat.id_materia\n            {$joinAsignacion}\n            LEFT JOIN docentes d ON d.id_docente = COALESCE(cd.id_docente, cat.id_docente)\n            LEFT JOIN cargos cargo ON cargo.id_cargo = COALESCE(cd.id_cargo, d.id_cargo)\n            WHERE {$whereSql}\n        ";
+        $countSql = "
+            SELECT COUNT(DISTINCT cat.id_catedra)
+            FROM catedras cat
+            INNER JOIN curso cu ON cu.id_curso = cat.id_curso
+            INNER JOIN division divi ON divi.id_division = cat.id_division
+            INNER JOIN materias m ON m.id_materia = cat.id_materia
+            {$joinDocenteEfectivo}
+            WHERE {$whereSql}
+        ";
 
         $stmtCount = $pdo->prepare($countSql);
         foreach ($params as $key => $value) {
@@ -196,7 +361,36 @@ function catedras_listar(): void
         $stmtCount->execute();
         $total = (int)$stmtCount->fetchColumn();
 
-        $sql = "\n            SELECT\n                cat.id_catedra,\n                cat.id_curso,\n                cu.nombre_curso,\n                cat.id_division,\n                divi.nombre_division,\n                cat.id_materia,\n                m.materia,\n                cd.id_catedra_docente,\n                COALESCE(cd.id_docente, cat.id_docente) AS id_docente,\n                COALESCE(cd.id_cargo, d.id_cargo) AS id_cargo,\n                COALESCE(d.docente, '') AS docente,\n                COALESCE(cargo.cargo, '') AS cargo_docente,\n                COALESCE(cargo.cargo, '') AS cargo,\n                cat.activo,\n                cat.creado_en\n            FROM catedras cat\n            INNER JOIN curso cu ON cu.id_curso = cat.id_curso\n            INNER JOIN division divi ON divi.id_division = cat.id_division\n            INNER JOIN materias m ON m.id_materia = cat.id_materia\n            {$joinAsignacion}\n            LEFT JOIN docentes d ON d.id_docente = COALESCE(cd.id_docente, cat.id_docente)\n            LEFT JOIN cargos cargo ON cargo.id_cargo = COALESCE(cd.id_cargo, d.id_cargo)\n            WHERE {$whereSql}\n            ORDER BY cu.id_curso ASC, divi.nombre_division ASC, m.materia ASC\n            LIMIT :limit OFFSET :offset\n        ";
+        $sql = "
+            SELECT
+                cat.id_catedra,
+                cat.id_curso,
+                cu.nombre_curso,
+                cat.id_division,
+                divi.nombre_division,
+                cat.id_materia,
+                m.materia,
+                cd_ef.id_catedra_docente,
+                d_ef.id_docente AS id_docente,
+                cd_ef.id_cargo AS id_cargo,
+                COALESCE(d_ef.docente, '') AS docente,
+                COALESCE(cargo_ef.cargo, '') AS cargo_docente,
+                COALESCE(cargo_ef.cargo, '') AS cargo,
+                d_ef.id_docente AS id_docente_llamado,
+                cd_ef.id_cargo AS id_cargo_llamado,
+                COALESCE(d_ef.docente, '') AS docente_llamado,
+                COALESCE(cargo_ef.cargo, '') AS cargo_llamado,
+                cat.activo,
+                cat.creado_en
+            FROM catedras cat
+            INNER JOIN curso cu ON cu.id_curso = cat.id_curso
+            INNER JOIN division divi ON divi.id_division = cat.id_division
+            INNER JOIN materias m ON m.id_materia = cat.id_materia
+            {$joinDocenteEfectivo}
+            WHERE {$whereSql}
+            ORDER BY cu.id_curso ASC, divi.nombre_division ASC, m.materia ASC
+            LIMIT :limit OFFSET :offset
+        ";
 
         $stmt = $pdo->prepare($sql);
         foreach ($params as $key => $value) {
@@ -206,9 +400,28 @@ function catedras_listar(): void
         $stmt->bindValue(':offset', $pag['offset'], PDO::PARAM_INT);
         $stmt->execute();
 
+        $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $ids = array_map(static fn($fila) => (int)$fila['id_catedra'], $filas);
+        $asignacionesPorCatedra = catedras_cargar_asignaciones_para_catedras($pdo, $ids);
+
+        foreach ($filas as &$fila) {
+            $idCatedra = (int)$fila['id_catedra'];
+            $asignaciones = $asignacionesPorCatedra[$idCatedra] ?? [];
+            $fila['docentes_asignados'] = $asignaciones;
+            $fila['docentes_resumen'] = catedras_formatear_resumen_asignaciones($asignaciones);
+
+            if ($fila['docentes_resumen'] === '' && trim((string)($fila['docente'] ?? '')) !== '') {
+                $cargo = trim((string)($fila['cargo_docente'] ?? ''));
+                $fila['docentes_resumen'] = $cargo !== ''
+                    ? trim((string)$fila['docente']) . ' (' . $cargo . ')'
+                    : trim((string)$fila['docente']);
+            }
+        }
+        unset($fila);
+
         json_response([
             'exito' => true,
-            'data' => $stmt->fetchAll(PDO::FETCH_ASSOC),
+            'data' => $filas,
             'paginacion' => [
                 'pagina' => $pag['pagina'],
                 'por_pagina' => $pag['por_pagina'],
@@ -225,14 +438,161 @@ function catedras_listar(): void
     }
 }
 
+function catedras_obtener_docente_efectivo_desde_relacion(PDO $pdo, int $idCatedra): ?array
+{
+    $order = catedras_docente_efectivo_order_sql('cd', 'd', 'cargo');
+    $stmt = $pdo->prepare("
+        SELECT
+            cd.id_docente,
+            cd.id_cargo,
+            d.docente,
+            cargo.cargo
+        FROM catedras_docentes cd
+        INNER JOIN docentes d
+            ON d.id_docente = cd.id_docente
+           AND d.activo = 1
+        LEFT JOIN cargos cargo
+            ON cargo.id_cargo = cd.id_cargo
+        WHERE cd.id_catedra = :id_catedra
+          AND cd.activo = 1
+        ORDER BY {$order}
+        LIMIT 1
+    ");
+    $stmt->execute([':id_catedra' => $idCatedra]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $row ?: null;
+}
+
+function catedras_obtener_docente_efectivo_actual(PDO $pdo, int $idCatedra): ?int
+{
+    $docenteRelacion = catedras_obtener_docente_efectivo_desde_relacion($pdo, $idCatedra);
+    if ($docenteRelacion && (int)$docenteRelacion['id_docente'] > 0) {
+        return (int)$docenteRelacion['id_docente'];
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT d.id_docente
+        FROM catedras cat
+        INNER JOIN docentes d
+            ON d.id_docente = cat.id_docente
+           AND d.activo = 1
+        WHERE cat.id_catedra = :id_catedra
+          AND cat.activo = 1
+        LIMIT 1
+    ");
+    $stmt->execute([':id_catedra' => $idCatedra]);
+    $id = $stmt->fetchColumn();
+
+    return $id !== false && $id !== null ? (int)$id : null;
+}
+
+function catedras_leer_asignaciones_desde_body(array $body): array
+{
+    $asignaciones = [];
+
+    if (isset($body['docentes']) && is_array($body['docentes'])) {
+        foreach ($body['docentes'] as $fila) {
+            if (!is_array($fila)) {
+                continue;
+            }
+
+            $asignaciones[] = [
+                'id_docente' => catedras_int($fila['id_docente'] ?? 0),
+                'id_cargo' => catedras_int($fila['id_cargo'] ?? 0),
+            ];
+        }
+
+        return $asignaciones;
+    }
+
+    // Compatibilidad con el frontend anterior, que enviaba una sola asignación.
+    $idDocente = catedras_int($body['id_docente'] ?? 0);
+    $idCargo = catedras_int($body['id_cargo'] ?? 0);
+
+    if ($idDocente > 0) {
+        $asignaciones[] = [
+            'id_docente' => $idDocente,
+            'id_cargo' => $idCargo,
+        ];
+    }
+
+    return $asignaciones;
+}
+
+function catedras_validar_asignaciones(PDO $pdo, array $asignaciones): array
+{
+    $resultado = [];
+    $docentesUsados = [];
+    $cargosUsados = [];
+
+    foreach ($asignaciones as $asignacion) {
+        $idDocente = catedras_int($asignacion['id_docente'] ?? 0);
+        $idCargo = catedras_int($asignacion['id_cargo'] ?? 0);
+
+        if ($idDocente <= 0) {
+            json_response([
+                'exito' => false,
+                'mensaje' => 'Hay una asignación con docente inválido.',
+            ], 422);
+        }
+
+        if ($idCargo <= 0) {
+            json_response([
+                'exito' => false,
+                'mensaje' => 'Cada docente asignado debe tener un cargo.',
+            ], 422);
+        }
+
+        if (isset($docentesUsados[$idDocente])) {
+            json_response([
+                'exito' => false,
+                'mensaje' => 'No podés repetir el mismo docente en una cátedra.',
+            ], 422);
+        }
+
+        if (isset($cargosUsados[$idCargo])) {
+            json_response([
+                'exito' => false,
+                'mensaje' => 'No podés repetir el mismo cargo en una cátedra. Usá un cargo distinto para cada docente.',
+            ], 422);
+        }
+
+        $stmtDoc = $pdo->prepare('SELECT id_docente FROM docentes WHERE id_docente = :id_docente AND activo = 1 LIMIT 1');
+        $stmtDoc->execute([':id_docente' => $idDocente]);
+        if (!$stmtDoc->fetch(PDO::FETCH_ASSOC)) {
+            json_response([
+                'exito' => false,
+                'mensaje' => 'Uno de los docentes seleccionados no existe o está inactivo.',
+            ], 422);
+        }
+
+        $stmtCargo = $pdo->prepare('SELECT id_cargo FROM cargos WHERE id_cargo = :id_cargo AND activo = 1 LIMIT 1');
+        $stmtCargo->execute([':id_cargo' => $idCargo]);
+        if (!$stmtCargo->fetch(PDO::FETCH_ASSOC)) {
+            json_response([
+                'exito' => false,
+                'mensaje' => 'Uno de los cargos seleccionados no existe o está inactivo.',
+            ], 422);
+        }
+
+        $docentesUsados[$idDocente] = true;
+        $cargosUsados[$idCargo] = true;
+        $resultado[] = [
+            'id_docente' => $idDocente,
+            'id_cargo' => $idCargo,
+        ];
+    }
+
+    return $resultado;
+}
+
 function catedras_asignar_docente(): void
 {
     $pdo = db();
     $body = get_json_body();
 
     $idCatedra = catedras_int($body['id_catedra'] ?? 0);
-    $idDocente = catedras_int($body['id_docente'] ?? 0);
-    $idCargo = catedras_int($body['id_cargo'] ?? 0);
 
     if ($idCatedra <= 0) {
         json_response([
@@ -244,7 +604,13 @@ function catedras_asignar_docente(): void
     try {
         $pdo->beginTransaction();
 
-        $stmtCat = $pdo->prepare("\n            SELECT\n                cat.id_catedra,\n                cat.id_docente AS id_docente_legacy,\n                cd.id_docente AS id_docente_asignado,\n                cd.id_cargo AS id_cargo_asignado\n            FROM catedras cat\n            LEFT JOIN (\n                SELECT cd1.*\n                FROM catedras_docentes cd1\n                INNER JOIN (\n                    SELECT id_catedra, MIN(id_catedra_docente) AS id_catedra_docente\n                    FROM catedras_docentes\n                    WHERE activo = 1\n                    GROUP BY id_catedra\n                ) cd_min ON cd_min.id_catedra_docente = cd1.id_catedra_docente\n            ) cd ON cd.id_catedra = cat.id_catedra\n            WHERE cat.id_catedra = :id_catedra AND cat.activo = 1\n            LIMIT 1\n        ");
+        $stmtCat = $pdo->prepare('
+            SELECT id_catedra
+            FROM catedras
+            WHERE id_catedra = :id_catedra
+              AND activo = 1
+            LIMIT 1
+        ');
         $stmtCat->execute([':id_catedra' => $idCatedra]);
         $catedraActual = $stmtCat->fetch(PDO::FETCH_ASSOC);
 
@@ -256,75 +622,44 @@ function catedras_asignar_docente(): void
             ], 404);
         }
 
-        $idDocenteAnterior = isset($catedraActual['id_docente_asignado']) && $catedraActual['id_docente_asignado'] !== null
-            ? (int)$catedraActual['id_docente_asignado']
-            : (isset($catedraActual['id_docente_legacy']) && $catedraActual['id_docente_legacy'] !== null
-                ? (int)$catedraActual['id_docente_legacy']
-                : null);
+        $idDocenteAnterior = catedras_obtener_docente_efectivo_actual($pdo, $idCatedra);
+        $asignaciones = catedras_validar_asignaciones($pdo, catedras_leer_asignaciones_desde_body($body));
 
-        $idDocenteNuevo = $idDocente > 0 ? $idDocente : null;
+        $stmtDelete = $pdo->prepare('DELETE FROM catedras_docentes WHERE id_catedra = :id_catedra');
+        $stmtDelete->execute([':id_catedra' => $idCatedra]);
 
-        if ($idDocente > 0) {
-            $stmtDoc = $pdo->prepare('SELECT id_docente, id_cargo FROM docentes WHERE id_docente = :id_docente AND activo = 1 LIMIT 1');
-            $stmtDoc->execute([':id_docente' => $idDocente]);
-            $docenteSeleccionado = $stmtDoc->fetch(PDO::FETCH_ASSOC);
+        if (count($asignaciones) > 0) {
+            $stmtInsert = $pdo->prepare("
+                INSERT INTO catedras_docentes
+                    (id_catedra, id_docente, id_cargo, activo)
+                VALUES
+                    (:id_catedra, :id_docente, :id_cargo, 1)
+            ");
 
-            if (!$docenteSeleccionado) {
-                $pdo->rollBack();
-                json_response([
-                    'exito' => false,
-                    'mensaje' => 'El docente seleccionado no existe o está inactivo.',
-                ], 422);
-            }
-
-            // Compatibilidad: si por algún motivo el frontend viejo no manda id_cargo,
-            // se intenta conservar el cargo actual; si no existe, se usa el legado del docente
-            // y finalmente el primer cargo activo.
-            if ($idCargo <= 0) {
-                $idCargo = catedras_int($catedraActual['id_cargo_asignado'] ?? 0);
-            }
-            if ($idCargo <= 0) {
-                $idCargo = catedras_int($docenteSeleccionado['id_cargo'] ?? 0);
-            }
-            if ($idCargo <= 0) {
-                $idCargo = (int)$pdo->query('SELECT MIN(id_cargo) FROM cargos WHERE activo = 1')->fetchColumn();
-            }
-
-            $stmtCargo = $pdo->prepare('SELECT id_cargo FROM cargos WHERE id_cargo = :id_cargo AND activo = 1 LIMIT 1');
-            $stmtCargo->execute([':id_cargo' => $idCargo]);
-
-            if (!$stmtCargo->fetch(PDO::FETCH_ASSOC)) {
-                $pdo->rollBack();
-                json_response([
-                    'exito' => false,
-                    'mensaje' => 'El cargo seleccionado no existe o está inactivo.',
-                ], 422);
+            foreach ($asignaciones as $asignacion) {
+                $stmtInsert->execute([
+                    ':id_catedra' => $idCatedra,
+                    ':id_docente' => (int)$asignacion['id_docente'],
+                    ':id_cargo' => (int)$asignacion['id_cargo'],
+                ]);
             }
         }
 
-        // Compatibilidad con módulos todavía no migrados: catedras.id_docente sigue reflejando
-        // el docente principal. El cargo real queda guardado en catedras_docentes.
+        $docenteEfectivoNuevo = catedras_obtener_docente_efectivo_desde_relacion($pdo, $idCatedra);
+        $idDocenteNuevo = $docenteEfectivoNuevo && (int)$docenteEfectivoNuevo['id_docente'] > 0
+            ? (int)$docenteEfectivoNuevo['id_docente']
+            : null;
+
+        // Compatibilidad: catedras.id_docente queda reflejando el docente efectivo/prioritario.
+        // La fuente completa es catedras_docentes; esta columna ayuda a módulos viejos y reportes.
         $stmtUpdateCat = $pdo->prepare('UPDATE catedras SET id_docente = :id_docente WHERE id_catedra = :id_catedra');
-        if ($idDocente > 0) {
-            $stmtUpdateCat->bindValue(':id_docente', $idDocente, PDO::PARAM_INT);
+        if ($idDocenteNuevo !== null) {
+            $stmtUpdateCat->bindValue(':id_docente', $idDocenteNuevo, PDO::PARAM_INT);
         } else {
             $stmtUpdateCat->bindValue(':id_docente', null, PDO::PARAM_NULL);
         }
         $stmtUpdateCat->bindValue(':id_catedra', $idCatedra, PDO::PARAM_INT);
         $stmtUpdateCat->execute();
-
-        // La relación nueva es la fuente correcta: cátedra + docente + cargo.
-        $stmtDelete = $pdo->prepare('DELETE FROM catedras_docentes WHERE id_catedra = :id_catedra');
-        $stmtDelete->execute([':id_catedra' => $idCatedra]);
-
-        if ($idDocente > 0) {
-            $stmtInsert = $pdo->prepare("\n                INSERT INTO catedras_docentes\n                    (id_catedra, id_docente, id_cargo, activo)\n                VALUES\n                    (:id_catedra, :id_docente, :id_cargo, 1)\n            ");
-            $stmtInsert->execute([
-                ':id_catedra' => $idCatedra,
-                ':id_docente' => $idDocente,
-                ':id_cargo' => $idCargo,
-            ]);
-        }
 
         $pdo->commit();
 
@@ -337,15 +672,18 @@ function catedras_asignar_docente(): void
                 $idDocenteNuevo
             );
         } catch (Throwable $e) {
-            // El cambio de cátedra no debe fallar por el aviso de mesas. Lo dejamos logueado.
             log_error($e, 'catedras_asignar_docente_registrar_cambio_mesas');
         }
 
+        $cantidad = count($asignaciones);
         json_response([
             'exito' => true,
-            'mensaje' => $idDocente > 0 ? 'Docente y cargo asignados correctamente.' : 'Docente quitado correctamente.',
+            'mensaje' => $cantidad > 0
+                ? 'Docentes y cargos guardados correctamente.'
+                : 'Docentes quitados correctamente.',
             'data' => [
                 'cambios_mesas_pendientes' => $cambiosMesas,
+                'id_docente_llamado' => $idDocenteNuevo,
             ],
         ]);
     } catch (Throwable $e) {
@@ -355,7 +693,7 @@ function catedras_asignar_docente(): void
         log_error($e, __FUNCTION__);
         json_response([
             'exito' => false,
-            'mensaje' => 'No se pudo asignar el docente y cargo.',
+            'mensaje' => 'No se pudieron guardar los docentes y cargos de la cátedra.',
         ], 500);
     }
 }

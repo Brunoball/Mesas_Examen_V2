@@ -74,6 +74,332 @@ function fechaArchivo() {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`;
 }
 
+
+function leerJsonStorage(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function obtenerOrigenDesdeUrl(url) {
+  const value = String(url || "").trim();
+  if (!value) return "";
+
+  try {
+    return new URL(value, window.location.origin).origin.replace(/\/+$/, "");
+  } catch {
+    return "";
+  }
+}
+
+const LERNA_PROD_ORIGIN = "https://lerna.3devsnet.com";
+
+function esHostLocal() {
+  const host = String(window.location.hostname || "").toLowerCase();
+  return host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0";
+}
+
+function normalizarApiRoutesUrl(url) {
+  let value = String(url || "").trim();
+  if (!value) return "";
+
+  value = value.replace(/\/+$/, "");
+
+  if (/\/api\.php$/i.test(value)) return value;
+  if (/\/routes$/i.test(value)) return `${value}/api.php`;
+  if (/\/api\/routes$/i.test(value)) return `${value}/api.php`;
+
+  return `${value}/api.php`;
+}
+
+function obtenerUrlAbsolutaDesdeStorage() {
+  try {
+    const urls = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      const raw = key ? localStorage.getItem(key) : "";
+      const matches = String(raw || "").match(/https?:\/\/[^\"'\s\\]+/gi) || [];
+      urls.push(...matches);
+    }
+
+    return (
+      urls.find((url) => /\/uploads\//i.test(url)) ||
+      urls.find((url) => /lerna\.3devsnet\.com/i.test(url)) ||
+      urls.find((url) => !/auth-db|phpmyadmin/i.test(url)) ||
+      ""
+    );
+  } catch {
+    return "";
+  }
+}
+
+function resolverApiExportacionUrl() {
+  const envUrl = String(
+    process.env.REACT_APP_API_URL ||
+      process.env.REACT_APP_API_BASE_URL ||
+      process.env.REACT_APP_BASE_URL ||
+      ""
+  ).trim();
+
+  if (envUrl) return normalizarApiRoutesUrl(envUrl);
+
+  const storageUrl = obtenerUrlAbsolutaDesdeStorage();
+  const storageOrigin = obtenerOrigenDesdeUrl(storageUrl);
+  if (storageOrigin) return `${storageOrigin}/api/routes/api.php`;
+
+  if (esHostLocal()) return `${LERNA_PROD_ORIGIN}/api/routes/api.php`;
+
+  const origin = String(window.location.origin || LERNA_PROD_ORIGIN).replace(/\/+$/, "");
+  return `${origin}/api/routes/api.php`;
+}
+
+function resolverPublicBaseUrl() {
+  const publicEnvUrl = String(
+    process.env.REACT_APP_PUBLIC_BASE_URL || process.env.REACT_APP_APP_URL || ""
+  ).trim();
+
+  if (publicEnvUrl) return publicEnvUrl.replace(/\/+$/, "");
+
+  const storageUrl = obtenerUrlAbsolutaDesdeStorage();
+  const storageOrigin = obtenerOrigenDesdeUrl(storageUrl);
+  if (storageOrigin) return storageOrigin;
+
+  if (esHostLocal()) return LERNA_PROD_ORIGIN;
+
+  return String(window.location.origin || LERNA_PROD_ORIGIN).replace(/\/+$/, "");
+}
+
+function obtenerAuthTokenExportacion() {
+  return (
+    localStorage.getItem("token") ||
+    localStorage.getItem("session_key") ||
+    localStorage.getItem("sessionKey") ||
+    localStorage.getItem("auth_token") ||
+    sessionStorage.getItem("auth_token") ||
+    sessionStorage.getItem("session_key") ||
+    sessionStorage.getItem("sessionKey") ||
+    sessionStorage.getItem("token") ||
+    ""
+  );
+}
+
+function obtenerTenantIdExportacion() {
+  return localStorage.getItem("idTenant") || sessionStorage.getItem("idTenant") || "";
+}
+
+async function apiGetExportacion(action, params = {}) {
+  const apiUrl = resolverApiExportacionUrl();
+  const idTenant = obtenerTenantIdExportacion();
+  const query = new URLSearchParams({
+    action,
+    ...(idTenant ? { idTenant } : {}),
+    ...(params || {}),
+  }).toString();
+
+  const token = obtenerAuthTokenExportacion();
+  const res = await fetch(`${apiUrl}?${query}`, {
+    method: "GET",
+    credentials: "include",
+    headers: {
+      Accept: "application/json",
+      "X-Requested-With": "XMLHttpRequest",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  const text = await res.text();
+  let data = null;
+
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error("La API no devolvió JSON válido al obtener el logo institucional.");
+    }
+  }
+
+  if (!res.ok) {
+    throw new Error(data?.mensaje || `Error HTTP ${res.status}`);
+  }
+
+  return data;
+}
+
+function normalizarLogoPdfUrl(url) {
+  const value = String(url || "").trim();
+
+  if (
+    !value ||
+    value.toLowerCase() === "null" ||
+    value.toLowerCase() === "undefined" ||
+    value === "-"
+  ) {
+    return "";
+  }
+
+  if (/^(https?:)?\/\//i.test(value) || value.startsWith("data:") || value.startsWith("blob:")) {
+    return value;
+  }
+
+  const clean = value.replace(/\\/g, "/");
+  const publicBase = resolverPublicBaseUrl();
+  return clean.startsWith("/") ? `${publicBase}${clean}` : `${publicBase}/${clean}`;
+}
+
+function dataUrlToBytes(dataUrl) {
+  const [, base64 = ""] = String(dataUrl || "").split(",");
+  if (!base64) return new Uint8Array();
+
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function bytesToBinaryString(bytes) {
+  const chunks = [];
+  const size = 0x8000;
+  for (let i = 0; i < bytes.length; i += size) {
+    chunks.push(String.fromCharCode(...bytes.subarray(i, i + size)));
+  }
+  return chunks.join("");
+}
+
+function calcularCajaImagen(asset, maxWidth, maxHeight) {
+  if (!asset?.width || !asset?.height) {
+    return { width: maxWidth, height: maxHeight, offsetX: 0, offsetY: 0 };
+  }
+
+  const ratio = Math.min(maxWidth / asset.width, maxHeight / asset.height);
+  const width = asset.width * ratio;
+  const height = asset.height * ratio;
+
+  return {
+    width,
+    height,
+    offsetX: (maxWidth - width) / 2,
+    offsetY: (maxHeight - height) / 2,
+  };
+}
+
+function cargarImagenComoJpegAsset(url, name = "ImLogoExport") {
+  return new Promise((resolve) => {
+    const logoUrl = normalizarLogoPdfUrl(url);
+
+    if (!logoUrl || typeof document === "undefined") {
+      resolve(null);
+      return;
+    }
+
+    const img = new Image();
+    const esDataUrl = logoUrl.startsWith("data:");
+    const esBlobUrl = logoUrl.startsWith("blob:");
+
+    if (!esDataUrl && !esBlobUrl) {
+      img.crossOrigin = "anonymous";
+    }
+
+    let resuelto = false;
+    const finalizar = (asset) => {
+      if (resuelto) return;
+      resuelto = true;
+      resolve(asset || null);
+    };
+
+    const timeout = window.setTimeout(() => finalizar(null), 8000);
+
+    img.onload = () => {
+      try {
+        window.clearTimeout(timeout);
+
+        const maxSize = 512;
+        const widthOriginal = Math.max(1, img.naturalWidth || img.width || 1);
+        const heightOriginal = Math.max(1, img.naturalHeight || img.height || 1);
+        const ratio = Math.min(maxSize / widthOriginal, maxSize / heightOriginal, 1);
+        const drawWidth = Math.max(1, Math.round(widthOriginal * ratio));
+        const drawHeight = Math.max(1, Math.round(heightOriginal * ratio));
+
+        const canvas = document.createElement("canvas");
+        canvas.width = drawWidth;
+        canvas.height = drawHeight;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          finalizar(null);
+          return;
+        }
+
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, drawWidth, drawHeight);
+        ctx.drawImage(img, 0, 0, drawWidth, drawHeight);
+
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+        const bytes = dataUrlToBytes(dataUrl);
+
+        if (!bytes || bytes.length === 0) {
+          finalizar(null);
+          return;
+        }
+
+        finalizar({ name, width: drawWidth, height: drawHeight, bytes });
+      } catch (_) {
+        finalizar(null);
+      }
+    };
+
+    img.onerror = () => {
+      window.clearTimeout(timeout);
+      finalizar(null);
+    };
+
+    img.src = logoUrl;
+  });
+}
+
+function obtenerDatosInstitucionalesLocales() {
+  const usuario = leerJsonStorage("usuario") || {};
+  const tenant = usuario?.tenant || leerJsonStorage("tenant") || {};
+  const logoUrl = normalizarLogoPdfUrl(
+    tenant?.logo_icono_url ||
+    tenant?.logo_url ||
+    usuario?.tenant_logo_icono_url ||
+    usuario?.tenant_logo_url ||
+    usuario?.logo_icono_url ||
+    usuario?.logo_url ||
+    ""
+  );
+  const nombre = normalizarTexto(tenant?.nombre || usuario?.tenant_nombre || usuario?.institucion || "Institución");
+
+  return { logoUrl, nombre };
+}
+
+async function obtenerDatosInstitucionalesExportacion() {
+  const locales = obtenerDatosInstitucionalesLocales();
+
+  try {
+    const data = await apiGetExportacion("perfil_logo_institucional");
+    const tenant = data?.tenant || {};
+    const logoDataUrl = normalizarLogoPdfUrl(tenant?.logo_data_url || data?.logo_data_url || "");
+    const logoUrl = normalizarLogoPdfUrl(
+      logoDataUrl || tenant?.logo_icono_url || tenant?.logo_url || data?.logo_icono_url || data?.logo_url || ""
+    );
+    const nombre = normalizarTexto(tenant?.nombre || data?.nombre || data?.tenant_nombre || locales.nombre || "Institución");
+    const logoAsset = await cargarImagenComoJpegAsset(logoUrl || locales.logoUrl);
+
+    return { logoAsset, institucionNombre: nombre };
+  } catch (_) {
+    return {
+      logoAsset: await cargarImagenComoJpegAsset(locales.logoUrl),
+      institucionNombre: locales.nombre || "Institución",
+    };
+  }
+}
+
 function descargarBlob(blob, nombreArchivo) {
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -319,29 +645,95 @@ function estimarAnchosExcel(columnas, registros) {
   });
 }
 
-function crearWorksheetXml({ titulo, subtitulo, columnas, registros }) {
+function crearDrawingLogoXml(logoAsset, name = "Logo institucional") {
+  if (!logoAsset?.bytes?.length) return "";
+
+  const box = calcularCajaImagen(logoAsset, 34, 34);
+  const pxToEmu = (px) => Math.max(1, Math.round(Number(px || 0) * 9525));
+  const colOff = pxToEmu(4 + box.offsetX);
+  const rowOff = pxToEmu(3 + box.offsetY);
+  const cx = pxToEmu(box.width);
+  const cy = pxToEmu(box.height);
+
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <xdr:oneCellAnchor>
+    <xdr:from>
+      <xdr:col>0</xdr:col>
+      <xdr:colOff>${colOff}</xdr:colOff>
+      <xdr:row>0</xdr:row>
+      <xdr:rowOff>${rowOff}</xdr:rowOff>
+    </xdr:from>
+    <xdr:ext cx="${cx}" cy="${cy}"/>
+    <xdr:pic>
+      <xdr:nvPicPr>
+        <xdr:cNvPr id="1" name="${escapeXml(name)}"/>
+        <xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr>
+      </xdr:nvPicPr>
+      <xdr:blipFill>
+        <a:blip r:embed="rIdLogoImg"/>
+        <a:stretch><a:fillRect/></a:stretch>
+      </xdr:blipFill>
+      <xdr:spPr>
+        <a:xfrm>
+          <a:off x="0" y="0"/>
+          <a:ext cx="${cx}" cy="${cy}"/>
+        </a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+      </xdr:spPr>
+    </xdr:pic>
+    <xdr:clientData/>
+  </xdr:oneCellAnchor>
+</xdr:wsDr>`;
+}
+
+function crearWorksheetRelsLogoXml(drawingIndex) {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rIdLogo" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing${drawingIndex}.xml"/>
+</Relationships>`;
+}
+
+function crearDrawingRelsLogoXml() {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rIdLogoImg" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/logo_exportacion.jpeg"/>
+</Relationships>`;
+}
+
+function crearWorksheetXml({ titulo, subtitulo, columnas, registros, logoAsset = null }) {
   const cols = normalizarColumnas(columnas);
   const rows = Array.isArray(registros) ? registros : [];
   const cantidadColumnas = Math.max(cols.length, 1);
+  const conLogo = Boolean(logoAsset?.bytes?.length);
   const anchos = estimarAnchosExcel(cols, rows);
   const sheetRows = [];
   const merges = [];
   let fila = 1;
 
-  const agregarFila = (values, style = 4) => {
+  const agregarFila = (values, style = 4, options = {}) => {
+    const startCol = Number(options.startCol || 0);
     const celdas = values
-      .map((value, index) => crearCeldaXml(fila, index, value, style))
+      .map((value, index) => crearCeldaXml(fila, index + startCol, value, style))
       .join("");
-    sheetRows.push(`<row r="${fila}">${celdas}</row>`);
+    const heightAttrs = options.height ? ` ht="${options.height}" customHeight="1"` : "";
+    sheetRows.push(`<row r="${fila}"${heightAttrs}>${celdas}</row>`);
     fila += 1;
   };
 
-  agregarFila([titulo || "Registros"], 1);
-  if (cantidadColumnas > 1) merges.push(`<mergeCell ref="A1:${celdaExcel(1, cantidadColumnas - 1)}"/>`);
+  const tituloStartCol = conLogo && cantidadColumnas > 1 ? 1 : 0;
+  const ultimaColumna = cantidadColumnas - 1;
+
+  agregarFila([titulo || "Registros"], 1, { startCol: tituloStartCol, height: conLogo ? 30 : null });
+  if (cantidadColumnas > 1 && tituloStartCol <= ultimaColumna) {
+    merges.push(`<mergeCell ref="${celdaExcel(1, tituloStartCol)}:${celdaExcel(1, ultimaColumna)}"/>`);
+  }
 
   if (subtitulo) {
-    agregarFila([subtitulo], 2);
-    if (cantidadColumnas > 1) merges.push(`<mergeCell ref="A2:${celdaExcel(2, cantidadColumnas - 1)}"/>`);
+    agregarFila([subtitulo], 2, { startCol: tituloStartCol });
+    if (cantidadColumnas > 1 && tituloStartCol <= ultimaColumna) {
+      merges.push(`<mergeCell ref="${celdaExcel(2, tituloStartCol)}:${celdaExcel(2, ultimaColumna)}"/>`);
+    }
   }
 
   fila += 1;
@@ -358,33 +750,44 @@ function crearWorksheetXml({ titulo, subtitulo, columnas, registros }) {
   const colsXml = anchos
     .map((width, index) => `<col min="${index + 1}" max="${index + 1}" width="${width}" customWidth="1"/>`)
     .join("");
+  const drawingXml = conLogo ? `<drawing r:id="rIdLogo"/>` : "";
 
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <cols>${colsXml}</cols>
   <sheetData>${sheetRows.join("")}</sheetData>
   ${merges.length ? `<mergeCells count="${merges.length}">${merges.join("")}</mergeCells>` : ""}
+  ${drawingXml}
 </worksheet>`;
 }
 
-function crearXlsxBlob({ titulo, subtitulo, secciones }) {
+function crearXlsxBlob({ titulo, subtitulo, secciones, logoAsset = null }) {
   const seccionesNormalizadas = normalizarSecciones(secciones);
   const nombres = nombresHojasUnicos(seccionesNormalizadas);
   const archivos = {};
+  const conLogo = Boolean(logoAsset?.bytes?.length);
 
   const overridesHojas = seccionesNormalizadas
     .map((_, index) => `<Override PartName="/xl/worksheets/sheet${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`)
     .join("");
+  const overridesDrawings = conLogo
+    ? seccionesNormalizadas
+      .map((_, index) => `<Override PartName="/xl/drawings/drawing${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>`)
+      .join("")
+    : "";
+  const defaultImagen = conLogo ? `<Default Extension="jpeg" ContentType="image/jpeg"/>` : "";
 
   archivos["[Content_Types].xml"] = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
+  ${defaultImagen}
   <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
   <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
   <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
   <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
   ${overridesHojas}
+  ${overridesDrawings}
 </Types>`;
 
   archivos["_rels/.rels"] = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -451,20 +854,34 @@ function crearXlsxBlob({ titulo, subtitulo, secciones }) {
   <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
 
+  if (conLogo) {
+    archivos["xl/media/logo_exportacion.jpeg"] = logoAsset.bytes;
+  }
+
   seccionesNormalizadas.forEach((seccion, index) => {
-    archivos[`xl/worksheets/sheet${index + 1}.xml`] = crearWorksheetXml({
+    const sheetIndex = index + 1;
+    archivos[`xl/worksheets/sheet${sheetIndex}.xml`] = crearWorksheetXml({
       titulo: seccion.titulo || titulo,
       subtitulo: seccion.subtitulo || subtitulo,
       columnas: seccion.columnas,
       registros: seccion.registros,
+      logoAsset,
     });
+
+    if (conLogo) {
+      archivos[`xl/worksheets/_rels/sheet${sheetIndex}.xml.rels`] = crearWorksheetRelsLogoXml(sheetIndex);
+      archivos[`xl/drawings/drawing${sheetIndex}.xml`] = crearDrawingLogoXml(logoAsset, `Logo institucional ${sheetIndex}`);
+      archivos[`xl/drawings/_rels/drawing${sheetIndex}.xml.rels`] = crearDrawingRelsLogoXml();
+    }
   });
 
   return crearZipSinCompresion(archivos);
 }
 
-function exportarExcel({ titulo, subtitulo, secciones, nombreArchivo }) {
-  const blob = crearXlsxBlob({ titulo, subtitulo, secciones });
+async function exportarExcel({ titulo, subtitulo, secciones, nombreArchivo }) {
+  // El logo institucional queda solamente para PDF.
+  // En Excel se exporta limpio, sin imágenes, para evitar errores de armado del .xlsx.
+  const blob = crearXlsxBlob({ titulo, subtitulo, secciones, logoAsset: null });
   descargarBlob(
     blob,
     `${slugify(nombreArchivo || titulo)}_${fechaArchivo()}.xlsx`
@@ -559,7 +976,7 @@ function calcularAnchosPdf(columnas, registros, usableWidth) {
   return desired.map((width) => (width / totalDesired) * usableWidth);
 }
 
-function crearPaginasPdf({ titulo, subtitulo, secciones }) {
+function crearPaginasPdf({ titulo, subtitulo, secciones, logoAsset = null, institucionNombre = "Institución" }) {
   const pageWidth = 841.89;
   const pageHeight = 595.28;
   const margin = 24;
@@ -585,16 +1002,42 @@ function crearPaginasPdf({ titulo, subtitulo, secciones }) {
     commands.push(`0.72 0.76 0.82 RG ${x.toFixed(2)} ${(topY - height).toFixed(2)} ${width.toFixed(2)} ${height.toFixed(2)} re S`);
   };
 
+  const addImage = (asset, x, currentY, width, height) => {
+    if (!asset?.name) return;
+    commands.push("q");
+    commands.push(`${width.toFixed(2)} 0 0 ${height.toFixed(2)} ${x.toFixed(2)} ${currentY.toFixed(2)} cm`);
+    commands.push(`/${asset.name} Do`);
+    commands.push("Q");
+  };
+
   const startPage = () => {
     commands = [];
     y = pageHeight - margin;
     pageNumber += 1;
-    addText(titulo, margin, y, 14, true);
-    y -= 15;
+
+    const logoBox = 34;
+    const textoX = logoAsset ? margin + 44 : margin;
+    const textoWidth = usableWidth - (logoAsset ? 44 : 0);
+
+    if (logoAsset) {
+      const caja = calcularCajaImagen(logoAsset, logoBox, logoBox);
+      addImage(logoAsset, margin + caja.offsetX, y - logoBox + caja.offsetY + 3, caja.width, caja.height);
+    }
+
+    addText(titulo, textoX, y, 14, true, textoWidth);
+    y -= 13;
+
+    const institucion = normalizarTexto(institucionNombre || "");
+    if (institucion) {
+      addText(institucion, textoX, y, 7.5, true, textoWidth);
+      y -= 10;
+    }
+
     if (subtitulo) {
-      addText(subtitulo, margin, y, 8, false);
+      addText(subtitulo, textoX, y, 8, false, textoWidth);
       y -= 12;
     }
+
     addLine(margin, y + 4, pageWidth - margin, y + 4);
     y -= 10;
   };
@@ -702,8 +1145,8 @@ function crearPaginasPdf({ titulo, subtitulo, secciones }) {
   return { pages, pageWidth, pageHeight };
 }
 
-function construirPdf({ titulo, subtitulo, secciones }) {
-  const { pages, pageWidth, pageHeight } = crearPaginasPdf({ titulo, subtitulo, secciones });
+function construirPdf({ titulo, subtitulo, secciones, logoAsset = null, institucionNombre = "Institución" }) {
+  const { pages, pageWidth, pageHeight } = crearPaginasPdf({ titulo, subtitulo, secciones, logoAsset, institucionNombre });
   const objects = [];
   const pageObjectNumbers = [];
 
@@ -712,13 +1155,30 @@ function construirPdf({ titulo, subtitulo, secciones }) {
   objects[4] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>";
 
   let nextObject = 5;
+  let logoObjectNumber = null;
+
+  if (logoAsset?.bytes?.length) {
+    logoObjectNumber = nextObject;
+    const imageStream = bytesToBinaryString(logoAsset.bytes);
+    objects[logoObjectNumber] = `<< /Type /XObject /Subtype /Image /Width ${Math.max(1, Math.round(logoAsset.width))} /Height ${Math.max(1, Math.round(logoAsset.height))} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logoAsset.bytes.length} >>
+stream
+${imageStream}
+endstream`;
+    nextObject += 1;
+  }
+
+  const xObjectResource = logoObjectNumber ? `/XObject << /${logoAsset.name} ${logoObjectNumber} 0 R >> ` : "";
+
   pages.forEach((stream) => {
     const pageObj = nextObject;
     const contentObj = nextObject + 1;
     nextObject += 2;
     pageObjectNumbers.push(pageObj);
-    objects[pageObj] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth.toFixed(2)} ${pageHeight.toFixed(2)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentObj} 0 R >>`;
-    objects[contentObj] = `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
+    objects[pageObj] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth.toFixed(2)} ${pageHeight.toFixed(2)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> ${xObjectResource}>> /Contents ${contentObj} 0 R >>`;
+    objects[contentObj] = `<< /Length ${stream.length} >>
+stream
+${stream}
+endstream`;
   });
 
   objects[2] = `<< /Type /Pages /Count ${pageObjectNumbers.length} /Kids [${pageObjectNumbers.map((n) => `${n} 0 R`).join(" ")}] >>`;
@@ -744,8 +1204,9 @@ function construirPdf({ titulo, subtitulo, secciones }) {
   return pdf;
 }
 
-function exportarPdf({ titulo, subtitulo, secciones, nombreArchivo }) {
-  const pdf = construirPdf({ titulo, subtitulo, secciones });
+async function exportarPdf({ titulo, subtitulo, secciones, nombreArchivo }) {
+  const datosInstitucionales = await obtenerDatosInstitucionalesExportacion();
+  const pdf = construirPdf({ titulo, subtitulo, secciones, ...datosInstitucionales });
   const bytes = new Uint8Array(pdf.length);
   for (let i = 0; i < pdf.length; i += 1) {
     bytes[i] = pdf.charCodeAt(i) & 0xff;
@@ -754,7 +1215,7 @@ function exportarPdf({ titulo, subtitulo, secciones, nombreArchivo }) {
   descargarBlob(blob, `${slugify(nombreArchivo || titulo)}_${fechaArchivo()}.pdf`);
 }
 
-function exportarDesdeModalGlobal({ formato, titulo, subtitulo, secciones, nombreArchivo }) {
+async function exportarDesdeModalGlobal({ formato, titulo, subtitulo, secciones, nombreArchivo }) {
   const seccionesNormalizadas = normalizarSecciones(secciones);
   const totalRegistros = contarRegistrosSecciones(seccionesNormalizadas);
 
@@ -767,11 +1228,11 @@ function exportarDesdeModalGlobal({ formato, titulo, subtitulo, secciones, nombr
   }
 
   if (formato === "pdf") {
-    exportarPdf({ titulo, subtitulo, secciones: seccionesNormalizadas, nombreArchivo });
+    await exportarPdf({ titulo, subtitulo, secciones: seccionesNormalizadas, nombreArchivo });
     return;
   }
 
-  exportarExcel({ titulo, subtitulo, secciones: seccionesNormalizadas, nombreArchivo });
+  await exportarExcel({ titulo, subtitulo, secciones: seccionesNormalizadas, nombreArchivo });
 }
 
 const pluralizar = (cantidad, singular, plural) => (
@@ -814,7 +1275,7 @@ const ModalExportarGlobal = ({
   confirmLabel = "Exportar",
   cancelLabel = "Cancelar",
   loadingLabel = "Exportando...",
-  note = "El PDF y el Excel se descargan directamente, sin abrir una ventana emergente.",
+  note = "El PDF y el Excel se descargan directamente, sin abrir una ventana emergente. El logo institucional se incluye únicamente en PDF.",
   importLabel = "Importar",
   importTitle = "Abrir importación",
   importDisabled = false,
@@ -954,7 +1415,7 @@ const ModalExportarGlobal = ({
       const subtitulo = alcance === ALCANCE_TODOS ? subtituloArchivoTodos : subtituloArchivoActual;
       const sufijoNombre = alcance === ALCANCE_TODOS ? "todos" : "actual";
 
-      exportarDesdeModalGlobal({
+      await exportarDesdeModalGlobal({
         formato,
         titulo: tituloArchivo || title,
         subtitulo,

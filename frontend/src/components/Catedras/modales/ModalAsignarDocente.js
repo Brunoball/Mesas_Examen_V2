@@ -153,18 +153,6 @@ function textoAsignacion(asignacion) {
   return cargo ? `${docente} · ${cargo}` : docente;
 }
 
-function obtenerDocenteLlamado(asignaciones) {
-  if (!Array.isArray(asignaciones) || asignaciones.length === 0) return null;
-
-  const suplente = asignaciones.find((asignacion) => Number(asignacion.id_cargo) === 2 || normalizar(asignacion.cargo) === 'suplente');
-  if (suplente) return suplente;
-
-  const titular = asignaciones.find((asignacion) => Number(asignacion.id_cargo) === 1 || normalizar(asignacion.cargo) === 'titular');
-  if (titular) return titular;
-
-  return asignaciones[0] || null;
-}
-
 export default function ModalAsignarDocente({ item, docentes = [], cargos = [], onGuardar, onCerrar }) {
   const [asignaciones, setAsignaciones] = useState(() => normalizarAsignacionesIniciales(item));
   const [idDocente, setIdDocente] = useState('');
@@ -251,7 +239,6 @@ export default function ModalAsignarDocente({ item, docentes = [], cargos = [], 
     return seleccionadoEstaEnFiltro ? docentesFiltrados : [docenteSeleccionado, ...docentesFiltrados];
   }, [docenteSeleccionado, docentesFiltrados, idDocente]);
 
-  const docenteLlamado = useMemo(() => obtenerDocenteLlamado(asignaciones), [asignaciones]);
 
   function agregarAsignacion() {
     setError('');
@@ -328,9 +315,6 @@ export default function ModalAsignarDocente({ item, docentes = [], cargos = [], 
     : 'Sin docentes asignados';
   const cantidadFiltrada = Array.isArray(docentesFiltrados) ? docentesFiltrados.length : 0;
   const cursoDivision = `${item?.nombre_curso || 'Curso'} ${item?.nombre_division || ''}`.trim();
-  const textoLlamado = docenteLlamado
-    ? `${textoAsignacion(docenteLlamado)}${normalizar(docenteLlamado.cargo) === 'suplente' ? ' · se prioriza por suplencia' : ''}`
-    : 'La cátedra quedará sin docente para llamar a mesa.';
 
   return createPortal(
     <div
@@ -388,11 +372,6 @@ export default function ModalAsignarDocente({ item, docentes = [], cargos = [], 
             <div className={`catedras-modal-summaryItem ${asignaciones.length > 0 ? 'is-active' : 'is-empty'}`}>
               <span>Docentes actuales</span>
               <strong title={docenteActual}>{docenteActual}</strong>
-            </div>
-
-            <div className={`catedras-modal-summaryItem ${docenteLlamado ? 'is-active' : 'is-empty'}`}>
-              <span>Se llamará a mesa</span>
-              <strong title={textoLlamado}>{textoLlamado}</strong>
             </div>
           </div>
 
@@ -509,44 +488,31 @@ export default function ModalAsignarDocente({ item, docentes = [], cargos = [], 
             </div>
 
             <div className="gm-panel__body catedras-modal-panelBody">
-              <div className={`catedras-modal-selection ${docenteLlamado ? 'has-docente' : 'is-empty'}`}>
-                <div className="catedras-modal-selectionIcon" aria-hidden="true">
-                  <FontAwesomeIcon icon={docenteLlamado ? faUserCheck : faUserSlash} />
-                </div>
-                <div>
-                  <span>{docenteLlamado ? 'Docente que se llamará al armar mesa' : 'Sin docente para mesa'}</span>
-                  <strong title={textoLlamado}>{textoLlamado}</strong>
-                </div>
-              </div>
-
               {asignaciones.length > 0 ? (
                 <div className="catedras-modal-asignacionesList">
-                  {asignaciones.map((asignacion) => {
-                    const esLlamado = docenteLlamado && Number(docenteLlamado.id_docente) === Number(asignacion.id_docente);
-                    return (
-                      <div
-                        key={`${asignacion.id_docente}-${asignacion.id_cargo}`}
-                        className={`catedras-modal-asignacionItem ${esLlamado ? 'is-called' : ''}`}
-                      >
-                        <div className="catedras-modal-asignacionIcon" aria-hidden="true">
-                          <FontAwesomeIcon icon={esLlamado ? faUserCheck : faUsers} />
-                        </div>
-                        <div className="catedras-modal-asignacionText">
-                          <strong title={asignacion.docente}>{asignacion.docente || `Docente #${asignacion.id_docente}`}</strong>
-                          <span>{asignacion.cargo || 'Cargo sin nombre'}{esLlamado ? ' · llamado a mesa' : ''}</span>
-                        </div>
-                        <button
-                          type="button"
-                          className="catedras-modal-asignacionRemove"
-                          onClick={() => quitarAsignacion(asignacion.id_docente)}
-                          title="Quitar asignación"
-                          disabled={guardando}
-                        >
-                          <FontAwesomeIcon icon={faTrash} />
-                        </button>
+                  {asignaciones.map((asignacion) => (
+                    <div
+                      key={`${asignacion.id_docente}-${asignacion.id_cargo}`}
+                      className="catedras-modal-asignacionItem"
+                    >
+                      <div className="catedras-modal-asignacionIcon" aria-hidden="true">
+                        <FontAwesomeIcon icon={faUsers} />
                       </div>
-                    );
-                  })}
+                      <div className="catedras-modal-asignacionText">
+                        <strong title={asignacion.docente}>{asignacion.docente || `Docente #${asignacion.id_docente}`}</strong>
+                        <span>{asignacion.cargo || 'Cargo sin nombre'}</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="catedras-modal-asignacionRemove"
+                        onClick={() => quitarAsignacion(asignacion.id_docente)}
+                        title="Quitar asignación"
+                        disabled={guardando}
+                      >
+                        <FontAwesomeIcon icon={faTrash} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <div className="cc-emptyState catedras-modal-emptyState">

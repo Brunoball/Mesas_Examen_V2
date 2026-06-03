@@ -16,6 +16,7 @@ function route_catedras(string $action): bool
             return true;
 
         case 'catedras_asignar_docente':
+        case 'catedras_asignar_docentes':
             catedras_asignar_docente();
             return true;
 

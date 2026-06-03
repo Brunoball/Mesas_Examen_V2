@@ -243,17 +243,18 @@ function mesas_editar_docentes_mas_obtener_previa_base(PDO $pdo, int $idPrevia):
                 LEFT JOIN docentes d2
                     ON d2.id_docente = COALESCE(cd2.id_docente, c2.id_docente)
                 LEFT JOIN cargos cargo2
-                    ON cargo2.id_cargo = COALESCE(cd2.id_cargo, d2.id_cargo)
+                    ON cargo2.id_cargo = cd2.id_cargo
                 WHERE c2.id_materia = p.id_materia
                   AND c2.id_curso = p.materia_id_curso
                   AND c2.id_division = p.materia_id_division
                   AND c2.activo = 1
                 ORDER BY
                     CASE
-                        WHEN d2.activo = 1 AND (COALESCE(cd2.id_cargo, d2.id_cargo) = 2 OR UPPER(TRIM(COALESCE(cargo2.cargo, ''))) = 'SUPLENTE') THEN 0
-                        WHEN d2.activo = 1 AND d2.id_docente IS NOT NULL THEN 1
-                        WHEN COALESCE(cd2.id_docente, c2.id_docente) IS NULL THEN 2
-                        ELSE 3
+                        WHEN d2.activo = 1 AND d2.id_docente IS NOT NULL AND (cd2.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo2.cargo, ''))) = 'SUPLENTE') THEN 0
+                        WHEN d2.activo = 1 AND d2.id_docente IS NOT NULL AND (cd2.id_cargo = 1 OR UPPER(TRIM(COALESCE(cargo2.cargo, ''))) = 'TITULAR') THEN 1
+                        WHEN d2.activo = 1 AND d2.id_docente IS NOT NULL THEN 2
+                        WHEN COALESCE(cd2.id_docente, c2.id_docente) IS NULL THEN 3
+                        ELSE 4
                     END ASC,
                     c2.id_catedra ASC
                 LIMIT 1
@@ -270,9 +271,10 @@ function mesas_editar_docentes_mas_obtener_previa_base(PDO $pdo, int $idPrevia):
                   AND cd3.activo = 1
                 ORDER BY
                     CASE
-                        WHEN d3.activo = 1 AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
-                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 1
-                        ELSE 2
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 1 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'TITULAR') THEN 1
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 2
+                        ELSE 3
                     END ASC,
                     cd3.id_catedra_docente ASC
                 LIMIT 1
@@ -382,17 +384,18 @@ function mesas_editar_docentes_mas_obtener_previas_base_por_area(PDO $pdo, int $
                 LEFT JOIN docentes d2
                     ON d2.id_docente = COALESCE(cd2.id_docente, c2.id_docente)
                 LEFT JOIN cargos cargo2
-                    ON cargo2.id_cargo = COALESCE(cd2.id_cargo, d2.id_cargo)
+                    ON cargo2.id_cargo = cd2.id_cargo
                 WHERE c2.id_materia = p.id_materia
                   AND c2.id_curso = p.materia_id_curso
                   AND c2.id_division = p.materia_id_division
                   AND c2.activo = 1
                 ORDER BY
                     CASE
-                        WHEN d2.activo = 1 AND (COALESCE(cd2.id_cargo, d2.id_cargo) = 2 OR UPPER(TRIM(COALESCE(cargo2.cargo, ''))) = 'SUPLENTE') THEN 0
-                        WHEN d2.activo = 1 AND d2.id_docente IS NOT NULL THEN 1
-                        WHEN COALESCE(cd2.id_docente, c2.id_docente) IS NULL THEN 2
-                        ELSE 3
+                        WHEN d2.activo = 1 AND d2.id_docente IS NOT NULL AND (cd2.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo2.cargo, ''))) = 'SUPLENTE') THEN 0
+                        WHEN d2.activo = 1 AND d2.id_docente IS NOT NULL AND (cd2.id_cargo = 1 OR UPPER(TRIM(COALESCE(cargo2.cargo, ''))) = 'TITULAR') THEN 1
+                        WHEN d2.activo = 1 AND d2.id_docente IS NOT NULL THEN 2
+                        WHEN COALESCE(cd2.id_docente, c2.id_docente) IS NULL THEN 3
+                        ELSE 4
                     END ASC,
                     c2.id_catedra ASC
                 LIMIT 1
@@ -409,9 +412,10 @@ function mesas_editar_docentes_mas_obtener_previas_base_por_area(PDO $pdo, int $
                   AND cd3.activo = 1
                 ORDER BY
                     CASE
-                        WHEN d3.activo = 1 AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
-                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 1
-                        ELSE 2
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 1 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'TITULAR') THEN 1
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 2
+                        ELSE 3
                     END ASC,
                     cd3.id_catedra_docente ASC
                 LIMIT 1
@@ -557,7 +561,12 @@ function mesas_editar_docentes_mas_validar_previa_para_numero(PDO $pdo, int $num
     if (count($errores) === 0) {
         $fechaSlot = substr($fechaMesa, 0, 10);
         $detalle = mesas_editar_docentes_mas_detalle_desde_previa($previa, $numeroMesa);
-        $errores = array_merge($errores, mesas_editar_docentes_validar_docentes($pdo, $detalle, $fechaSlot, $idTurno));
+
+        // Igual que en editar_mesas por área: al agregar una previa a un número ya creado
+        // NO se vuelve a validar al docente como si fuera una mesa nueva. El número destino
+        // ya existe con ese docente y arriba se exige que la previa pertenezca al mismo
+        // docente de referencia. Revalidar al docente acá puede marcar falsos choques contra
+        // el propio número de mesa.
         $errores = array_merge($errores, mesas_editar_docentes_validar_alumnos($pdo, $detalle, $fechaSlot, $idTurno));
         $errores = array_merge($errores, mesas_editar_docentes_validar_correlativas($pdo, $detalle, $fechaSlot, $idTurno));
 
@@ -603,7 +612,7 @@ function mesas_editar_docentes_mas_normalizar_previa_salida(array $previa, array
         'docente' => trim((string)($previa['docente'] ?? '')),
         'id_area' => $previa['id_area'] !== null ? (int)$previa['id_area'] : null,
         'area' => trim((string)($previa['area'] ?? '')),
-        'curso' => trim((string)(($previa['curso_alumno'] ?? '') . ' ' . ($previa['division_alumno'] ?? ''))),
+        'curso' => trim((string)(($previa['curso_materia'] ?? '') . ' ' . ($previa['division_materia'] ?? ''))),
         'curso_materia' => trim((string)(($previa['curso_materia'] ?? '') . ' ' . ($previa['division_materia'] ?? ''))),
         'anio' => (int)($previa['anio'] ?? 0),
         'tipo_mesa' => ((int)($previa['tiene_correlativa_alumno'] ?? 0) === 1) ? 'correlativa' : 'simple',
@@ -782,3 +791,76 @@ function mesas_editar_docentes_mas_agregar_previa(PDO $pdo, int $numeroMesa, int
         'previa' => mesas_editar_docentes_mas_normalizar_previa_salida($previa, $validacion),
     ];
 }
+
+function mesas_editar_docentes_mas_normalizar_ids_previas(array $data): array
+{
+    $ids = [];
+
+    if (isset($data['id_previas']) && is_array($data['id_previas'])) {
+        foreach ($data['id_previas'] as $valor) {
+            $id = (int)($valor ?? 0);
+            if ($id > 0) {
+                $ids[$id] = $id;
+            }
+        }
+    } else {
+        $id = (int)($data['id_previa'] ?? 0);
+        if ($id > 0) {
+            $ids[$id] = $id;
+        }
+    }
+
+    if (count($ids) === 0) {
+        throw new InvalidArgumentException('Debe seleccionar al menos una previa para agregar.');
+    }
+
+    return array_values($ids);
+}
+
+function mesas_editar_docentes_mas_agregar_previas(PDO $pdo, int $numeroMesa, array $idsPrevias): array
+{
+    $idsPrevias = array_values(array_unique(array_map('intval', $idsPrevias)));
+    $idsPrevias = array_values(array_filter($idsPrevias, static fn ($id) => $id > 0));
+
+    if (count($idsPrevias) === 0) {
+        throw new InvalidArgumentException('Debe seleccionar al menos una previa para agregar.');
+    }
+
+    $resultados = [];
+    $errores = [];
+    $cantidadAgregada = 0;
+
+    foreach ($idsPrevias as $idPrevia) {
+        $resultado = mesas_editar_docentes_mas_agregar_previa($pdo, $numeroMesa, $idPrevia);
+        $resultados[] = $resultado;
+
+        if (!$resultado['agregada']) {
+            foreach (($resultado['validacion']['errores'] ?? []) as $error) {
+                $errores[] = $error;
+            }
+
+            return [
+                'agregadas' => false,
+                'cantidad_agregada' => $cantidadAgregada,
+                'cantidad_solicitada' => count($idsPrevias),
+                'numero_mesa' => $numeroMesa,
+                'id_previa_fallida' => $idPrevia,
+                'errores' => array_values(array_unique($errores)),
+                'resultados' => $resultados,
+            ];
+        }
+
+        $cantidadAgregada++;
+    }
+
+    return [
+        'agregadas' => true,
+        'cantidad_agregada' => $cantidadAgregada,
+        'cantidad_solicitada' => count($idsPrevias),
+        'numero_mesa' => $numeroMesa,
+        'ids_previas' => $idsPrevias,
+        'errores' => [],
+        'resultados' => $resultados,
+    ];
+}
+

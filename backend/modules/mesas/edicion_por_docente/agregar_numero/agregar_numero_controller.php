@@ -2,6 +2,8 @@
 // backend/modules/mesas/edicion_por_docente/agregar_numero/agregar_numero_controller.php
 declare(strict_types=1);
 
+require_once __DIR__ . '/../helpers_editar_mesas.php';
+require_once __DIR__ . '/../mas/mas_helpers.php';
 require_once __DIR__ . '/agregar_numero_helpers.php';
 
 function mesas_editar_docentes_agregar_numero_opciones_controller(): void

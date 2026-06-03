@@ -15,117 +15,14 @@ declare(strict_types=1);
  * Avisos de cambios de docente en cátedras que ya tienen mesas armadas.
  *
  * IMPORTANTE:
- * - Esta tabla vive en la DB tenant/colegio, no en la DB master.
- * - El sistema repara la estructura si ya existía una versión vieja de la tabla
- *   creada manualmente, porque CREATE TABLE IF NOT EXISTS no agrega columnas faltantes.
+ * - La tabla vive en la DB tenant/colegio.
+ * - La estructura ya existe en la base y no se modifica desde código.
  */
 function mesas_docentes_cambios_asegurar_tabla(PDO $pdo): void
 {
-    $pdo->exec("\n        CREATE TABLE IF NOT EXISTS mesas_docente_cambios_pendientes (\n            id_cambio INT UNSIGNED NOT NULL AUTO_INCREMENT,\n            id_catedra INT NOT NULL,\n            numero_mesa INT NULL,\n            numero_grupo INT UNSIGNED NULL,\n            id_docente_anterior INT NULL,\n            id_docente_nuevo INT NULL,\n            id_docente_en_mesa INT NULL,\n            fecha_mesa DATE NULL,\n            id_turno INT NULL,\n            materia VARCHAR(180) COLLATE utf8mb4_unicode_ci NULL,\n            docente_anterior VARCHAR(180) COLLATE utf8mb4_unicode_ci NULL,\n            docente_nuevo VARCHAR(180) COLLATE utf8mb4_unicode_ci NULL,\n            estado ENUM('pendiente','resuelto','ignorado') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pendiente',\n            origen VARCHAR(80) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'catedras_asignar_docente',\n            observacion VARCHAR(255) COLLATE utf8mb4_unicode_ci NULL,\n            creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n            actualizado_en TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,\n            resuelto_en TIMESTAMP NULL DEFAULT NULL,\n            PRIMARY KEY (id_cambio)\n        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci\n    ");
-
-    mesas_docentes_cambios_reparar_tabla($pdo);
-}
-
-function mesas_docentes_cambios_database(PDO $pdo): string
-{
-    return (string)$pdo->query('SELECT DATABASE()')->fetchColumn();
-}
-
-function mesas_docentes_cambios_columna_existe(PDO $pdo, string $tabla, string $columna): bool
-{
-    $stmt = $pdo->prepare("\n        SELECT COUNT(*)\n        FROM INFORMATION_SCHEMA.COLUMNS\n        WHERE TABLE_SCHEMA = DATABASE()\n          AND TABLE_NAME = :tabla\n          AND COLUMN_NAME = :columna\n    ");
-    $stmt->execute([
-        ':tabla' => $tabla,
-        ':columna' => $columna,
-    ]);
-
-    return (int)$stmt->fetchColumn() > 0;
-}
-
-function mesas_docentes_cambios_indice_existe(PDO $pdo, string $tabla, string $indice): bool
-{
-    $stmt = $pdo->prepare("\n        SELECT COUNT(*)\n        FROM INFORMATION_SCHEMA.STATISTICS\n        WHERE TABLE_SCHEMA = DATABASE()\n          AND TABLE_NAME = :tabla\n          AND INDEX_NAME = :indice\n    ");
-    $stmt->execute([
-        ':tabla' => $tabla,
-        ':indice' => $indice,
-    ]);
-
-    return (int)$stmt->fetchColumn() > 0;
-}
-
-function mesas_docentes_cambios_agregar_columna_si_falta(PDO $pdo, string $columna, string $definicion): void
-{
-    if (!mesas_docentes_cambios_columna_existe($pdo, 'mesas_docente_cambios_pendientes', $columna)) {
-        $pdo->exec("ALTER TABLE mesas_docente_cambios_pendientes ADD COLUMN {$columna} {$definicion}");
-    }
-}
-
-function mesas_docentes_cambios_agregar_indice_si_falta(PDO $pdo, string $indice, string $definicion): void
-{
-    if (!mesas_docentes_cambios_indice_existe($pdo, 'mesas_docente_cambios_pendientes', $indice)) {
-        $pdo->exec("ALTER TABLE mesas_docente_cambios_pendientes ADD {$definicion}");
-    }
-}
-
-function mesas_docentes_cambios_eliminar_indice_si_existe(PDO $pdo, string $indice): void
-{
-    if (mesas_docentes_cambios_indice_existe($pdo, 'mesas_docente_cambios_pendientes', $indice)) {
-        $pdo->exec("ALTER TABLE mesas_docente_cambios_pendientes DROP INDEX {$indice}");
-    }
-}
-
-/**
- * Repara tablas creadas con la versión anterior del SQL.
- * El problema principal era que la tabla podía existir con columnas como id_grupo,
- * docente_anterior_nombre, docente_nuevo_nombre o materia_nombre, pero el backend
- * nuevo intentaba insertar numero_grupo, docente_anterior, docente_nuevo y materia.
- */
-function mesas_docentes_cambios_reparar_tabla(PDO $pdo): void
-{
-    mesas_docentes_cambios_agregar_columna_si_falta($pdo, 'id_catedra', 'INT NOT NULL DEFAULT 0');
-    mesas_docentes_cambios_agregar_columna_si_falta($pdo, 'numero_mesa', 'INT NULL');
-    mesas_docentes_cambios_agregar_columna_si_falta($pdo, 'numero_grupo', 'INT UNSIGNED NULL');
-    mesas_docentes_cambios_agregar_columna_si_falta($pdo, 'id_docente_anterior', 'INT NULL');
-    mesas_docentes_cambios_agregar_columna_si_falta($pdo, 'id_docente_nuevo', 'INT NULL');
-    mesas_docentes_cambios_agregar_columna_si_falta($pdo, 'id_docente_en_mesa', 'INT NULL');
-    mesas_docentes_cambios_agregar_columna_si_falta($pdo, 'fecha_mesa', 'DATE NULL');
-    mesas_docentes_cambios_agregar_columna_si_falta($pdo, 'id_turno', 'INT NULL');
-    mesas_docentes_cambios_agregar_columna_si_falta($pdo, 'materia', 'VARCHAR(180) COLLATE utf8mb4_unicode_ci NULL');
-    mesas_docentes_cambios_agregar_columna_si_falta($pdo, 'docente_anterior', 'VARCHAR(180) COLLATE utf8mb4_unicode_ci NULL');
-    mesas_docentes_cambios_agregar_columna_si_falta($pdo, 'docente_nuevo', 'VARCHAR(180) COLLATE utf8mb4_unicode_ci NULL');
-    mesas_docentes_cambios_agregar_columna_si_falta($pdo, 'estado', "ENUM('pendiente','resuelto','ignorado') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pendiente'");
-    mesas_docentes_cambios_agregar_columna_si_falta($pdo, 'origen', "VARCHAR(80) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'catedras_asignar_docente'");
-    mesas_docentes_cambios_agregar_columna_si_falta($pdo, 'observacion', 'VARCHAR(255) COLLATE utf8mb4_unicode_ci NULL');
-    mesas_docentes_cambios_agregar_columna_si_falta($pdo, 'creado_en', 'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP');
-    mesas_docentes_cambios_agregar_columna_si_falta($pdo, 'actualizado_en', 'TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP');
-    mesas_docentes_cambios_agregar_columna_si_falta($pdo, 'resuelto_en', 'TIMESTAMP NULL DEFAULT NULL');
-
-    // Compatibilidad con la tabla que se había indicado manualmente al principio.
-    if (mesas_docentes_cambios_columna_existe($pdo, 'mesas_docente_cambios_pendientes', 'id_grupo')) {
-        $pdo->exec("\n            UPDATE mesas_docente_cambios_pendientes\n            SET numero_grupo = COALESCE(numero_grupo, id_grupo)\n            WHERE numero_grupo IS NULL\n        ");
-    }
-
-    if (mesas_docentes_cambios_columna_existe($pdo, 'mesas_docente_cambios_pendientes', 'materia_nombre')) {
-        $pdo->exec("\n            UPDATE mesas_docente_cambios_pendientes\n            SET materia = COALESCE(materia, materia_nombre)\n            WHERE materia IS NULL\n        ");
-    }
-
-    if (mesas_docentes_cambios_columna_existe($pdo, 'mesas_docente_cambios_pendientes', 'docente_anterior_nombre')) {
-        $pdo->exec("\n            UPDATE mesas_docente_cambios_pendientes\n            SET docente_anterior = COALESCE(docente_anterior, docente_anterior_nombre)\n            WHERE docente_anterior IS NULL\n        ");
-    }
-
-    if (mesas_docentes_cambios_columna_existe($pdo, 'mesas_docente_cambios_pendientes', 'docente_nuevo_nombre')) {
-        $pdo->exec("\n            UPDATE mesas_docente_cambios_pendientes\n            SET docente_nuevo = COALESCE(docente_nuevo, docente_nuevo_nombre)\n            WHERE docente_nuevo IS NULL\n        ");
-    }
-
-    // Este índice único bloqueaba más de un número de mesa para la misma cátedra.
-    // Lo eliminamos porque el backend ya actualiza el pendiente existente por cátedra+número.
-    mesas_docentes_cambios_eliminar_indice_si_existe($pdo, 'uq_cambio_pendiente_catedra');
-
-    mesas_docentes_cambios_agregar_indice_si_falta($pdo, 'idx_estado', 'INDEX idx_estado (estado)');
-    mesas_docentes_cambios_agregar_indice_si_falta($pdo, 'idx_numero_mesa', 'INDEX idx_numero_mesa (numero_mesa)');
-    mesas_docentes_cambios_agregar_indice_si_falta($pdo, 'idx_numero_grupo', 'INDEX idx_numero_grupo (numero_grupo)');
-    mesas_docentes_cambios_agregar_indice_si_falta($pdo, 'idx_catedra_estado', 'INDEX idx_catedra_estado (id_catedra, estado)');
-    mesas_docentes_cambios_agregar_indice_si_falta($pdo, 'idx_fecha_turno', 'INDEX idx_fecha_turno (fecha_mesa, id_turno)');
+    // La tabla mesas_docente_cambios_pendientes ya existe en la base de datos.
+    // No se crea ni se modifica estructura desde código para evitar cambios inesperados.
+    $pdo->query('SELECT 1 FROM mesas_docente_cambios_pendientes LIMIT 1');
 }
 
 function mesas_docentes_cambios_int($value): int
@@ -230,9 +127,10 @@ function mesas_docentes_cambios_limpiar_pendientes_resueltos(PDO $pdo): int
                   AND cd3.activo = 1
                 ORDER BY
                     CASE
-                        WHEN d3.activo = 1 AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
-                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 1
-                        ELSE 2
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 1 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'TITULAR') THEN 1
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 2
+                        ELSE 3
                     END ASC,
                     cd3.id_catedra_docente ASC
                 LIMIT 1
@@ -385,7 +283,7 @@ function mesas_docentes_cambios_registrar_diferencias_actuales(PDO $pdo): int
 {
     mesas_docentes_cambios_asegurar_tabla($pdo);
 
-    $stmt = $pdo->query("\n        SELECT\n            me.id_catedra,\n            me.numero_mesa,\n            MIN(me.id_docente) AS id_docente_en_mesa,\n            COALESCE(cd.id_docente, cat.id_docente) AS id_docente_actual_catedra,\n            MIN(me.fecha_mesa) AS fecha_mesa,\n            MIN(me.id_turno) AS id_turno,\n            MIN(g.numero_grupo) AS numero_grupo,\n            MAX(m.materia) AS materia\n        FROM mesas me\n        INNER JOIN catedras cat ON cat.id_catedra = me.id_catedra\n        LEFT JOIN catedras_docentes cd\n            ON cd.id_catedra = cat.id_catedra\n           AND cd.activo = 1\n           AND cd.id_catedra_docente = (\n                SELECT cd3.id_catedra_docente\n                FROM catedras_docentes cd3\n                LEFT JOIN docentes d3 ON d3.id_docente = cd3.id_docente\n                LEFT JOIN cargos cargo3 ON cargo3.id_cargo = cd3.id_cargo\n                WHERE cd3.id_catedra = cat.id_catedra\n                  AND cd3.activo = 1\n                ORDER BY\n                    CASE\n                        WHEN d3.activo = 1 AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0\n                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 1\n                        ELSE 2\n                    END ASC,\n                    cd3.id_catedra_docente ASC\n                LIMIT 1\n           )\n        LEFT JOIN mesas_grupos g ON g.numero_mesa = me.numero_mesa\n        LEFT JOIN materias m ON m.id_materia = cat.id_materia\n        WHERE me.id_catedra IS NOT NULL\n          AND me.numero_mesa IS NOT NULL\n          AND COALESCE(me.id_docente, 0) <> COALESCE(cd.id_docente, cat.id_docente, 0)\n        GROUP BY me.id_catedra, me.numero_mesa, COALESCE(cd.id_docente, cat.id_docente)\n        ORDER BY me.numero_mesa ASC\n    ");
+    $stmt = $pdo->query("\n        SELECT\n            me.id_catedra,\n            me.numero_mesa,\n            MIN(me.id_docente) AS id_docente_en_mesa,\n            COALESCE(cd.id_docente, cat.id_docente) AS id_docente_actual_catedra,\n            MIN(me.fecha_mesa) AS fecha_mesa,\n            MIN(me.id_turno) AS id_turno,\n            MIN(g.numero_grupo) AS numero_grupo,\n            MAX(m.materia) AS materia\n        FROM mesas me\n        INNER JOIN catedras cat ON cat.id_catedra = me.id_catedra\n        LEFT JOIN catedras_docentes cd\n            ON cd.id_catedra = cat.id_catedra\n           AND cd.activo = 1\n           AND cd.id_catedra_docente = (\n                SELECT cd3.id_catedra_docente\n                FROM catedras_docentes cd3\n                LEFT JOIN docentes d3 ON d3.id_docente = cd3.id_docente\n                LEFT JOIN cargos cargo3 ON cargo3.id_cargo = cd3.id_cargo\n                WHERE cd3.id_catedra = cat.id_catedra\n                  AND cd3.activo = 1\n                ORDER BY\n                    CASE\n                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0\n                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 1 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'TITULAR') THEN 1\n                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 2\n                        ELSE 3\n                    END ASC,\n                    cd3.id_catedra_docente ASC\n                LIMIT 1\n           )\n        LEFT JOIN mesas_grupos g ON g.numero_mesa = me.numero_mesa\n        LEFT JOIN materias m ON m.id_materia = cat.id_materia\n        WHERE me.id_catedra IS NOT NULL\n          AND me.numero_mesa IS NOT NULL\n          AND COALESCE(me.id_docente, 0) <> COALESCE(cd.id_docente, cat.id_docente, 0)\n        GROUP BY me.id_catedra, me.numero_mesa, COALESCE(cd.id_docente, cat.id_docente)\n        ORDER BY me.numero_mesa ASC\n    ");
 
     $filas = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     $afectados = 0;
@@ -509,12 +407,12 @@ function mesas_docentes_cambios_aplicar(): void
         }
 
         $idCatedra = (int)$cambio['id_catedra'];
-        $numeroMesa = (int)$cambio['numero_mesa'];
+        $numeroMesaOriginal = (int)$cambio['numero_mesa'];
         $idDocenteNuevo = isset($cambio['id_docente_nuevo']) && $cambio['id_docente_nuevo'] !== null
             ? (int)$cambio['id_docente_nuevo']
             : null;
 
-        if ($idCatedra <= 0 || $numeroMesa <= 0) {
+        if ($idCatedra <= 0 || $numeroMesaOriginal <= 0) {
             json_response([
                 'exito' => false,
                 'mensaje' => 'El cambio pendiente tiene datos incompletos.',
@@ -524,28 +422,295 @@ function mesas_docentes_cambios_aplicar(): void
 
         $pdo->beginTransaction();
 
-        $stmtMesas = $pdo->prepare('UPDATE mesas SET id_docente = :id_docente WHERE id_catedra = :id_catedra AND numero_mesa = :numero_mesa');
+        $stmtCantidadAfectada = $pdo->prepare('
+            SELECT COUNT(*)
+            FROM mesas
+            WHERE id_catedra = :id_catedra
+              AND numero_mesa = :numero_mesa
+        ');
+        $stmtCantidadAfectada->execute([
+            ':id_catedra' => $idCatedra,
+            ':numero_mesa' => $numeroMesaOriginal,
+        ]);
+        $cantidadAfectada = (int)$stmtCantidadAfectada->fetchColumn();
+
+        if ($cantidadAfectada <= 0) {
+            throw new RuntimeException('No se encontraron alumnos/previas de esa cátedra dentro del número de mesa original.');
+        }
+
+        $stmtOtras = $pdo->prepare('
+            SELECT COUNT(*)
+            FROM mesas
+            WHERE numero_mesa = :numero_mesa
+              AND COALESCE(id_catedra, 0) <> :id_catedra
+        ');
+        $stmtOtras->execute([
+            ':numero_mesa' => $numeroMesaOriginal,
+            ':id_catedra' => $idCatedra,
+        ]);
+        $tieneOtrasCatedras = (int)$stmtOtras->fetchColumn() > 0;
+
+        /*
+         * Caso importante:
+         * Si al quitar un suplente vuelve el titular y ese titular ya estaba dentro
+         * del mismo número de mesa por otra cátedra, NO hay que separar ni crear
+         * un slot/número nuevo. Solo se actualiza el docente de las filas afectadas.
+         */
+        $docenteNuevoYaEstaEnElNumero = false;
+        if ($tieneOtrasCatedras && $idDocenteNuevo !== null && $idDocenteNuevo > 0) {
+            $stmtDocenteEnNumero = $pdo->prepare('
+                SELECT COUNT(*)
+                FROM mesas
+                WHERE numero_mesa = :numero_mesa
+                  AND id_docente = :id_docente
+                  AND COALESCE(id_catedra, 0) <> :id_catedra
+            ');
+            $stmtDocenteEnNumero->execute([
+                ':numero_mesa' => $numeroMesaOriginal,
+                ':id_docente' => $idDocenteNuevo,
+                ':id_catedra' => $idCatedra,
+            ]);
+            $docenteNuevoYaEstaEnElNumero = (int)$stmtDocenteEnNumero->fetchColumn() > 0;
+        }
+
+        $debeSepararEnNumeroNuevo = $tieneOtrasCatedras && !$docenteNuevoYaEstaEnElNumero;
+
+        $numeroMesaFinal = $numeroMesaOriginal;
+        $seCreoNumeroNuevo = false;
+        $target = mesas_docentes_cambios_resolver_target($pdo, $numeroMesaOriginal);
+        $modo = $docenteNuevoYaEstaEnElNumero
+            ? 'actualizado_en_mismo_numero_docente_ya_presente'
+            : 'actualizado_en_mismo_numero';
+
+        if ($debeSepararEnNumeroNuevo) {
+            $stmtNuevoNumero = $pdo->query('
+                SELECT COALESCE(MAX(numero_mesa), 0) + 1
+                FROM (
+                    SELECT numero_mesa FROM mesas WHERE numero_mesa IS NOT NULL
+                    UNION ALL
+                    SELECT numero_mesa FROM mesas_grupos WHERE numero_mesa IS NOT NULL
+                    UNION ALL
+                    SELECT numero_mesa FROM mesas_no_agrupadas WHERE numero_mesa IS NOT NULL
+                ) numeros_usados
+            ');
+            $numeroMesaFinal = max(1, (int)($stmtNuevoNumero->fetchColumn() ?: 1));
+            $seCreoNumeroNuevo = true;
+
+            $stmtResumen = $pdo->prepare('
+                SELECT
+                    COUNT(*) AS cantidad_alumnos,
+                    MIN(fecha_mesa) AS fecha_mesa,
+                    MIN(id_turno) AS id_turno,
+                    MAX(CASE WHEN tipo_mesa = \'taller\' THEN 1 ELSE 0 END) AS tiene_taller,
+                    MAX(CASE WHEN tipo_mesa = \'correlativa\' THEN 1 ELSE 0 END) AS tiene_correlativa,
+                    MAX(prioridad) AS prioridad
+                FROM mesas
+                WHERE id_catedra = :id_catedra
+                  AND numero_mesa = :numero_mesa
+            ');
+            $stmtResumen->execute([
+                ':id_catedra' => $idCatedra,
+                ':numero_mesa' => $numeroMesaOriginal,
+            ]);
+            $resumen = $stmtResumen->fetch(PDO::FETCH_ASSOC) ?: [];
+            $tipoMesaNuevo = 'simple';
+            if ((int)($resumen['tiene_taller'] ?? 0) > 0) {
+                $tipoMesaNuevo = 'taller';
+            } elseif ((int)($resumen['tiene_correlativa'] ?? 0) > 0) {
+                $tipoMesaNuevo = 'correlativa';
+            }
+
+            $stmtGrupoOriginal = $pdo->prepare('
+                SELECT *
+                FROM mesas_grupos
+                WHERE numero_mesa = :numero_mesa
+                ORDER BY id_mesa_grupo ASC
+                LIMIT 1
+            ');
+            $stmtGrupoOriginal->execute([':numero_mesa' => $numeroMesaOriginal]);
+            $grupoOriginal = $stmtGrupoOriginal->fetch(PDO::FETCH_ASSOC) ?: null;
+
+            if ($grupoOriginal) {
+                $numeroGrupo = (int)$grupoOriginal['numero_grupo'];
+                $stmtOrden = $pdo->prepare('SELECT COALESCE(MAX(orden), 0) + 1 FROM mesas_grupos WHERE numero_grupo = :numero_grupo');
+                $stmtOrden->execute([':numero_grupo' => $numeroGrupo]);
+                $ordenNuevo = max(1, (int)($stmtOrden->fetchColumn() ?: 1));
+
+                $stmtInsertGrupo = $pdo->prepare('
+                    INSERT INTO mesas_grupos (
+                        numero_grupo, numero_mesa, fecha_mesa, id_turno, hora, id_area,
+                        orden, tipo_mesa, prioridad, cantidad_alumnos, estado, observacion
+                    ) VALUES (
+                        :numero_grupo, :numero_mesa, :fecha_mesa, :id_turno, :hora, :id_area,
+                        :orden, :tipo_mesa, :prioridad, :cantidad_alumnos, :estado, :observacion
+                    )
+                ');
+                $stmtInsertGrupo->execute([
+                    ':numero_grupo' => $numeroGrupo,
+                    ':numero_mesa' => $numeroMesaFinal,
+                    ':fecha_mesa' => $grupoOriginal['fecha_mesa'] ?? ($resumen['fecha_mesa'] ?? null),
+                    ':id_turno' => isset($grupoOriginal['id_turno']) ? (int)$grupoOriginal['id_turno'] : (int)($resumen['id_turno'] ?? 0),
+                    ':hora' => $grupoOriginal['hora'] ?? null,
+                    ':id_area' => isset($grupoOriginal['id_area']) && $grupoOriginal['id_area'] !== null ? (int)$grupoOriginal['id_area'] : null,
+                    ':orden' => $ordenNuevo,
+                    ':tipo_mesa' => $tipoMesaNuevo,
+                    ':prioridad' => (int)($resumen['prioridad'] ?? $grupoOriginal['prioridad'] ?? 0),
+                    ':cantidad_alumnos' => $cantidadAfectada,
+                    ':estado' => $grupoOriginal['estado'] ?? 'borrador',
+                    ':observacion' => 'Número creado automáticamente por cambio de docente.',
+                ]);
+
+                $stmtCapacidad = $pdo->prepare('
+                    SELECT
+                        COUNT(*) AS cantidad_numeros,
+                        SUM(CASE WHEN tipo_mesa = \'taller\' OR prioridad = 1 THEN 1 ELSE 0 END) AS cantidad_talleres
+                    FROM mesas_grupos
+                    WHERE numero_grupo = :numero_grupo
+                ');
+                $stmtCapacidad->execute([':numero_grupo' => $numeroGrupo]);
+                $capacidad = $stmtCapacidad->fetch(PDO::FETCH_ASSOC) ?: [];
+                $cantidadNumerosGrupo = (int)($capacidad['cantidad_numeros'] ?? 0);
+                $cantidadTalleresGrupo = (int)($capacidad['cantidad_talleres'] ?? 0);
+                $capacidadBase = $cantidadTalleresGrupo > 0 ? 1 : 4;
+                $slotsExtraNecesarios = max(0, $cantidadNumerosGrupo - $capacidadBase);
+
+                if ($slotsExtraNecesarios > 0) {
+                    $stmtSlots = $pdo->prepare('
+                        INSERT INTO mesas_grupos_slots_extra (numero_grupo, slots_extra)
+                        VALUES (:numero_grupo, :slots_extra)
+                        ON DUPLICATE KEY UPDATE
+                            slots_extra = GREATEST(slots_extra, VALUES(slots_extra)),
+                            actualizado_en = CURRENT_TIMESTAMP
+                    ');
+                    $stmtSlots->execute([
+                        ':numero_grupo' => $numeroGrupo,
+                        ':slots_extra' => $slotsExtraNecesarios,
+                    ]);
+                }
+
+                $target = [
+                    'tipo' => 'grupo',
+                    'numero_grupo' => $numeroGrupo,
+                    'id_grupo' => $numeroGrupo,
+                    'numero_mesa_original' => $numeroMesaOriginal,
+                    'numero_mesa' => $numeroMesaFinal,
+                    'numero_mesa_final' => $numeroMesaFinal,
+                    'numero_mesa_nuevo' => $numeroMesaFinal,
+                    'slot_agregado' => true,
+                    'slots_extra' => $slotsExtraNecesarios,
+                    'orden' => $ordenNuevo,
+                ];
+                $modo = 'separado_en_numero_nuevo_grupo';
+            } else {
+                $stmtNoAgrupadaOriginal = $pdo->prepare('
+                    SELECT *
+                    FROM mesas_no_agrupadas
+                    WHERE numero_mesa = :numero_mesa
+                    ORDER BY id ASC
+                    LIMIT 1
+                ');
+                $stmtNoAgrupadaOriginal->execute([':numero_mesa' => $numeroMesaOriginal]);
+                $noAgrupadaOriginal = $stmtNoAgrupadaOriginal->fetch(PDO::FETCH_ASSOC) ?: null;
+
+                if ($noAgrupadaOriginal) {
+                    $stmtInsertNoAgrupada = $pdo->prepare('
+                        INSERT INTO mesas_no_agrupadas (
+                            numero_mesa, fecha_mesa, id_turno, hora, id_area,
+                            tipo_mesa, prioridad, cantidad_alumnos, motivo, estado
+                        ) VALUES (
+                            :numero_mesa, :fecha_mesa, :id_turno, :hora, :id_area,
+                            :tipo_mesa, :prioridad, :cantidad_alumnos, :motivo, :estado
+                        )
+                    ');
+                    $stmtInsertNoAgrupada->execute([
+                        ':numero_mesa' => $numeroMesaFinal,
+                        ':fecha_mesa' => $noAgrupadaOriginal['fecha_mesa'] ?? ($resumen['fecha_mesa'] ?? null),
+                        ':id_turno' => isset($noAgrupadaOriginal['id_turno']) ? (int)$noAgrupadaOriginal['id_turno'] : (int)($resumen['id_turno'] ?? 0),
+                        ':hora' => $noAgrupadaOriginal['hora'] ?? null,
+                        ':id_area' => isset($noAgrupadaOriginal['id_area']) && $noAgrupadaOriginal['id_area'] !== null ? (int)$noAgrupadaOriginal['id_area'] : null,
+                        ':tipo_mesa' => $tipoMesaNuevo,
+                        ':prioridad' => (int)($resumen['prioridad'] ?? $noAgrupadaOriginal['prioridad'] ?? 0),
+                        ':cantidad_alumnos' => $cantidadAfectada,
+                        ':motivo' => 'separada_automaticamente_por_cambio_docente',
+                        ':estado' => $noAgrupadaOriginal['estado'] ?? 'pendiente',
+                    ]);
+                    $idNoAgrupadaNueva = (int)$pdo->lastInsertId();
+                } else {
+                    $idNoAgrupadaNueva = null;
+                }
+
+                $target = [
+                    'tipo' => 'no_agrupada',
+                    'id_no_agrupada' => $idNoAgrupadaNueva,
+                    'numero_mesa_original' => $numeroMesaOriginal,
+                    'numero_mesa' => $numeroMesaFinal,
+                    'numero_mesa_final' => $numeroMesaFinal,
+                    'numero_mesa_nuevo' => $numeroMesaFinal,
+                    'slot_agregado' => false,
+                ];
+                $modo = 'separado_en_numero_nuevo_no_agrupado';
+            }
+        }
+
+        $stmtMesas = $pdo->prepare('
+            UPDATE mesas
+            SET numero_mesa = :numero_mesa_final,
+                id_docente = :id_docente
+            WHERE id_catedra = :id_catedra
+              AND numero_mesa = :numero_mesa_original
+        ');
+        $stmtMesas->bindValue(':numero_mesa_final', $numeroMesaFinal, PDO::PARAM_INT);
         if ($idDocenteNuevo !== null && $idDocenteNuevo > 0) {
             $stmtMesas->bindValue(':id_docente', $idDocenteNuevo, PDO::PARAM_INT);
         } else {
             $stmtMesas->bindValue(':id_docente', null, PDO::PARAM_NULL);
         }
         $stmtMesas->bindValue(':id_catedra', $idCatedra, PDO::PARAM_INT);
-        $stmtMesas->bindValue(':numero_mesa', $numeroMesa, PDO::PARAM_INT);
+        $stmtMesas->bindValue(':numero_mesa_original', $numeroMesaOriginal, PDO::PARAM_INT);
         $stmtMesas->execute();
         $filasActualizadas = $stmtMesas->rowCount();
-        $stmtResolver = $pdo->prepare("
+
+        if ($seCreoNumeroNuevo) {
+            $stmtCantidadOriginal = $pdo->prepare('SELECT COUNT(*) FROM mesas WHERE numero_mesa = :numero_mesa');
+            $stmtCantidadOriginal->execute([':numero_mesa' => $numeroMesaOriginal]);
+            $cantidadOriginal = (int)$stmtCantidadOriginal->fetchColumn();
+
+            $stmtActualizarGrupoOriginal = $pdo->prepare('UPDATE mesas_grupos SET cantidad_alumnos = :cantidad WHERE numero_mesa = :numero_mesa');
+            $stmtActualizarGrupoOriginal->execute([
+                ':cantidad' => $cantidadOriginal,
+                ':numero_mesa' => $numeroMesaOriginal,
+            ]);
+
+            $stmtActualizarGrupoNuevo = $pdo->prepare('UPDATE mesas_grupos SET cantidad_alumnos = :cantidad WHERE numero_mesa = :numero_mesa');
+            $stmtActualizarGrupoNuevo->execute([
+                ':cantidad' => $cantidadAfectada,
+                ':numero_mesa' => $numeroMesaFinal,
+            ]);
+
+            $stmtActualizarNoAgrupadaOriginal = $pdo->prepare('UPDATE mesas_no_agrupadas SET cantidad_alumnos = :cantidad WHERE numero_mesa = :numero_mesa');
+            $stmtActualizarNoAgrupadaOriginal->execute([
+                ':cantidad' => $cantidadOriginal,
+                ':numero_mesa' => $numeroMesaOriginal,
+            ]);
+
+            $stmtActualizarNoAgrupadaNueva = $pdo->prepare('UPDATE mesas_no_agrupadas SET cantidad_alumnos = :cantidad WHERE numero_mesa = :numero_mesa');
+            $stmtActualizarNoAgrupadaNueva->execute([
+                ':cantidad' => $cantidadAfectada,
+                ':numero_mesa' => $numeroMesaFinal,
+            ]);
+        }
+
+        $stmtResolver = $pdo->prepare('
             DELETE FROM mesas_docente_cambios_pendientes
             WHERE id_cambio = :id_cambio
-        ");
+        ');
         $stmtResolver->execute([':id_cambio' => $idCambio]);
 
-        $target = mesas_docentes_cambios_resolver_target($pdo, $numeroMesa);
+        $tipo = $target['tipo'] ?? 'grupo';
 
         $pdo->commit();
 
         $grupo = null;
-        $tipo = $target['tipo'] ?? 'grupo';
 
         // La hidratación del grupo es opcional: si el helper de edición no está disponible,
         // el cambio igual queda aplicado y el frontend recarga Mesas normalmente.
@@ -559,7 +724,7 @@ function mesas_docentes_cambios_aplicar(): void
                 $grupo = mesas_editar_obtener_no_agrupada_hidratada(
                     $pdo,
                     isset($target['id_no_agrupada']) ? (int)$target['id_no_agrupada'] : null,
-                    $numeroMesa
+                    $numeroMesaFinal
                 );
             } elseif ($tipo !== 'no_agrupada' && function_exists('mesas_editar_obtener_grupo_hidratado')) {
                 $grupo = mesas_editar_obtener_grupo_hidratado($pdo, (int)$target['numero_grupo']);
@@ -568,15 +733,26 @@ function mesas_docentes_cambios_aplicar(): void
             log_error($e, 'mesas_docentes_cambios_aplicar_hidratar');
         }
 
+        $mensaje = $seCreoNumeroNuevo
+            ? 'Cambio aplicado: se creó un nuevo número de mesa para el docente nuevo y se agregó al mismo grupo.'
+            : 'Cambio de docente aplicado al número de mesa.';
+
         json_response([
             'exito' => true,
-            'mensaje' => 'Cambio de docente aplicado al número de mesa. Revisá la mesa para confirmar si debe reubicarse.',
+            'mensaje' => $mensaje,
             'data' => [
                 'filas_actualizadas' => $filasActualizadas,
+                'cantidad_afectada' => $cantidadAfectada,
+                'se_creo_numero_nuevo' => $seCreoNumeroNuevo,
+                'docente_nuevo_ya_estaba_en_numero' => $docenteNuevoYaEstaEnElNumero,
+                'numero_mesa_original' => $numeroMesaOriginal,
+                'numero_mesa_final' => $numeroMesaFinal,
+                'numero_mesa_nuevo' => $seCreoNumeroNuevo ? $numeroMesaFinal : null,
+                'modo' => $modo,
                 'tipo' => $tipo,
                 'target' => $target,
                 'grupo' => $grupo,
-                'numero_mesa' => $numeroMesa,
+                'numero_mesa' => $numeroMesaFinal,
             ],
         ]);
     } catch (Throwable $e) {
