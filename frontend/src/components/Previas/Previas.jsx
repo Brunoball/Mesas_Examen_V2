@@ -875,7 +875,6 @@ export default function Previas() {
       operacion: 'eliminar',
       title: 'Borrar inscripción',
       message: 'Confirmá la baja de la inscripción seleccionada. La previa seguirá cargada, pero volverá a figurar como no inscripta.',
-      warning: 'No se elimina la previa: solo se marca inscripción = 0 y se anula el detalle de inscripción.',
       confirmLabel: 'Borrar inscripción',
       loadingLabel: 'Procesando...',
       successMessage: 'Inscripción dada de baja correctamente.',
@@ -1150,7 +1149,7 @@ export default function Previas() {
 
                       <div className="mov-gridCell mov-gridCell--actions is-center" role="cell" data-label="Acciones">
                         <div className="mov-actionsInline">
-                          {vista !== 'bajas' && (
+                          {vista === 'activas' && (
                             <button type="button" className="mov-iconBtn previas-icon-btn" onClick={() => abrirEditar(item)} title="Editar previa">
                               <FontAwesomeIcon icon={faEdit} />
                             </button>
@@ -1162,11 +1161,13 @@ export default function Previas() {
                             </button>
                           )}
 
-                          {vista !== 'bajas' ? (
+                          {vista === 'activas' && (
                             <button type="button" className="mov-iconBtn previas-icon-btn previas-icon-warning" onClick={() => abrirConfirmar('baja', item)} title="Dar de baja previa">
                               <FontAwesomeIcon icon={faUserSlash} />
                             </button>
-                          ) : (
+                          )}
+
+                          {vista === 'bajas' && (
                             <button type="button" className="mov-iconBtn previas-icon-btn previas-icon-success" onClick={() => abrirConfirmar('alta', item)} title="Dar de alta">
                               <FontAwesomeIcon icon={faUserCheck} />
                             </button>
