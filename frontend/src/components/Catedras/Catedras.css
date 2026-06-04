@@ -160,6 +160,42 @@
   font-weight:460 !important;
 }
 
+.catedras-docentes-inline{
+  min-width:0;
+  max-width:100%;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  white-space:nowrap;
+}
+
+.catedras-docente-separador,
+.catedras-docente-punto{
+  color:var(--mov-muted);
+  font-weight:500;
+}
+
+.catedras-docente-nombre{
+  color:color-mix(in srgb, var(--balto-text) 84%, #000);
+  font-weight:460;
+}
+
+.catedras-docente-rol{
+  font-weight:600;
+}
+
+.catedras-docente-rol--titular{
+  color:#0055BB;
+}
+
+.catedras-docente-rol--suplente{
+  color:#B45309;
+}
+
+.catedras-docente-rol--otro{
+  color:color-mix(in srgb, var(--balto-text) 84%, #000);
+}
+
 
 
 .catedras-badge{
@@ -297,3 +333,11 @@
   }
 }
 
+
+@media (max-width: 820px){
+  .catedras-docentes-inline{
+    flex-wrap:wrap;
+    justify-content:flex-end;
+    white-space:normal;
+  }
+}

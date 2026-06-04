@@ -11,6 +11,7 @@ const textoSeguro = (valor, fallback = '—') => {
 
 export default function TextoExpandibleGlobal({
   value,
+  displayValue = null,
   fallback = '—',
   title = 'Detalle completo',
   subtitle = '',
@@ -65,7 +66,7 @@ export default function TextoExpandibleGlobal({
     <>
       <span className={`ginfo-inline ${className}`.trim()} title={text}>
         <span ref={textRef} className={`ginfo-inline__text ${textClassName}`.trim()}>
-          {text}
+          {displayValue ?? text}
         </span>
 
         {isOverflowing ? (

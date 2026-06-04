@@ -2,7 +2,7 @@ import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBoxOpen, faEdit, faFlask, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 
-const TALLERES_GRID_COLS = ".7fr .5fr .5fr .9fr 2fr .6fr .5fr";
+const TALLERES_GRID_COLS = ".4fr .4fr .4fr .9fr 3fr .5fr .5fr";
 const SKELETON_ROWS = 7;
 
 const TALLERES_COLUMNS = [

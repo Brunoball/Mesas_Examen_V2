@@ -40,7 +40,7 @@ const CATEDRAS_EXPORT_COLUMNS = [
   { label: 'Curso', value: (item) => safeText(item.nombre_curso) },
   { label: 'División', value: (item) => safeText(item.nombre_division) },
   { label: 'Materia', value: (item) => safeText(item.materia) },
-  { label: 'DOCENTE', value: (item) => safeText(item.docentes_resumen || item.docente) },
+  { label: 'DOCENTE', value: (item) => docenteResumen(item) },
 ];
 
 function safeText(value) {
@@ -48,8 +48,98 @@ function safeText(value) {
   return text || '—';
 }
 
+function textoAsignacionDocente(asignacion = {}) {
+  const docente = safeText(asignacion?.docente);
+  const cargo = String(asignacion?.cargo || asignacion?.cargo_docente || '').trim();
+
+  return cargo ? `${docente} · ${cargo}` : docente;
+}
+
+function normalizarSeparadorDocentes(value) {
+  const texto = safeText(value);
+
+  // Cambia solo la coma que separa docentes, conservando "APELLIDO, NOMBRE".
+  return texto.replace(
+    /,\s*(?=[^,;|]+,\s*[^,;|]+?\s*(?:·|-|\()\s*[^,;|]+)/g,
+    ' | '
+  );
+}
+
 function docenteResumen(item) {
-  return safeText(item?.docentes_resumen || item?.docente);
+  const asignaciones = Array.isArray(item?.docentes_asignados)
+    ? item.docentes_asignados
+    : [];
+
+  if (asignaciones.length > 0) {
+    return asignaciones.map((asignacion) => textoAsignacionDocente(asignacion)).join(' | ');
+  }
+
+  return normalizarSeparadorDocentes(item?.docentes_resumen || item?.docente);
+}
+
+function claseCargoDocente(valor) {
+  const cargo = String(valor || '').toUpperCase();
+
+  if (cargo.includes('TITULAR')) return 'titular';
+  if (cargo.includes('SUPLENTE')) return 'suplente';
+  return 'otro';
+}
+
+function separarDocenteYCargo(textoCompleto) {
+  const texto = safeText(textoCompleto);
+  const coincidencia = texto.match(/^(.*?)\s*(?:·|-|\()\s*(TITULAR|SUPLENTE)\)?\s*$/i);
+
+  if (!coincidencia) {
+    return { texto, docente: texto, cargo: '', tipo: 'otro' };
+  }
+
+  const docente = coincidencia[1].trim();
+  const cargo = coincidencia[2].toUpperCase();
+  return { texto, docente, cargo, tipo: claseCargoDocente(cargo) };
+}
+
+function docentesParaMostrar(item) {
+  const asignaciones = Array.isArray(item?.docentes_asignados)
+    ? item.docentes_asignados
+    : [];
+
+  if (asignaciones.length > 0) {
+    return asignaciones.map((asignacion) => {
+      const docente = safeText(asignacion?.docente);
+      const cargo = String(asignacion?.cargo || asignacion?.cargo_docente || '').trim().toUpperCase();
+      const texto = cargo ? `${docente} · ${cargo}` : docente;
+
+      return { texto, docente, cargo, tipo: claseCargoDocente(cargo) };
+    });
+  }
+
+  return docenteResumen(item)
+    .split(/\s*\|\s*/g)
+    .filter(Boolean)
+    .map((texto) => separarDocenteYCargo(texto));
+}
+
+function renderDocentesConColor(item) {
+  const docentes = docentesParaMostrar(item);
+
+  return (
+    <span className="catedras-docentes-inline">
+      {docentes.map((docente, index) => (
+        <React.Fragment key={`${docente.texto}-${index}`}>
+          {index > 0 && <span className="catedras-docente-separador">|</span>}
+          <span className="catedras-docente-nombre">{docente.docente}</span>
+          {docente.cargo && (
+            <>
+              <span className="catedras-docente-punto">·</span>
+              <span className={`catedras-docente-rol catedras-docente-rol--${docente.tipo}`}>
+                {docente.cargo}
+              </span>
+            </>
+          )}
+        </React.Fragment>
+      ))}
+    </span>
+  );
 }
 
 function esCursoEgresado(curso) {
@@ -296,9 +386,10 @@ export default function Catedras() {
                       </div>
 
                       <div className="mov-gridCell" role="cell" data-label="DOCENTE">
-                        {item.docentes_resumen || item.docente ? (
+                        {docentesParaMostrar(item).some((docente) => docente.texto !== '—') ? (
                           <TextoExpandibleGlobal
                             value={docenteResumen(item)}
+                            displayValue={renderDocentesConColor(item)}
                             title="Docentes asignados"
                             subtitle={safeText(item.materia)}
                             textClassName="mov-ellipsissss catedras-docente"
