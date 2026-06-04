@@ -281,7 +281,9 @@ function usePrevias() {
 
   function setBusqueda(value) {
     paginacion.setPagina(1);
-    setBusquedaState(value);
+    // El buscador debe conservar lo que escribe el usuario (mayúsculas/minúsculas).
+    // Los demás campos siguen usando normalizarMayus cuando corresponde.
+    setBusquedaState(String(value ?? ''));
   }
 
   function setFiltroPrevia(campo, valor) {
@@ -596,6 +598,7 @@ function usePrevias() {
 }
 
 const PREVIAS_GRID_COLS = '1.35fr .5fr 2fr .5fr .5fr .5fr .9fr';
+const PREVIAS_BAJAS_GRID_COLS = '1.22fr .45fr 1.65fr .48fr .48fr .58fr 1.12fr .84fr';
 const SKELETON_ROWS = 8;
 
 const PREVIAS_COLUMNS = [
@@ -605,6 +608,17 @@ const PREVIAS_COLUMNS = [
   { key: 'condicion', label: 'Condición', align: 'center' },
   { key: 'curso', label: 'Curso', align: 'center' },
   { key: 'inscripcion', label: 'Inscripción', align: 'center' },
+  { key: 'acciones', label: 'Acciones', align: 'center', actions: true },
+];
+
+const PREVIAS_BAJAS_COLUMNS = [
+  { key: 'alumno', label: 'Alumno', strong: true },
+  { key: 'dni', label: 'DNI', align: 'center' },
+  { key: 'materia', label: 'Materia' },
+  { key: 'condicion', label: 'Condición', align: 'center' },
+  { key: 'curso', label: 'Curso', align: 'center' },
+  { key: 'fecha_baja', label: 'Fecha baja', align: 'center' },
+  { key: 'motivo_baja', label: 'Motivo baja' },
   { key: 'acciones', label: 'Acciones', align: 'center', actions: true },
 ];
 
@@ -621,9 +635,35 @@ const PREVIAS_EXPORT_COLUMNS = [
   { label: 'Inscripción', value: (item) => safeText(item.inscripcion_texto || (Number(item.inscripcion) === 1 ? 'Sí' : 'No')) },
 ];
 
+const PREVIAS_BAJAS_EXPORT_COLUMNS = [
+  { label: 'Alumno', value: (item) => safeText(item.alumno) },
+  { label: 'DNI', value: (item) => safeText(item.dni) },
+  { label: 'Materia', value: (item) => safeText(item.materia) },
+  { label: 'Condición', value: (item) => safeText(item.condicion) },
+  { label: 'Curso materia', value: (item) => safeText(item.curso_materia) },
+  { label: 'Curso actual', value: (item) => safeText(item.curso_cursando) },
+  { label: 'Año', value: (item) => safeText(item.anio) },
+  { label: 'Fecha de baja', value: (item) => fechaBajaTexto(item.fecha_baja) },
+  { label: 'Motivo de baja', value: (item) => safeText(item.motivo_baja) },
+];
+
 function safeText(value) {
   const text = String(value ?? '').trim();
   return text || '—';
+}
+
+function normalizarMayus(value) {
+  return String(value ?? '').toLocaleUpperCase('es-AR');
+}
+
+function fechaBajaTexto(value) {
+  const text = String(value ?? '').trim();
+  if (!text) return '—';
+
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return text;
+
+  return `${match[3]}/${match[2]}/${match[1]}`;
 }
 
 function alignClass(align) {
@@ -632,16 +672,16 @@ function alignClass(align) {
   return '';
 }
 
-function renderSkeletonRow(index) {
+function renderSkeletonRow(index, columns = PREVIAS_COLUMNS, gridCols = PREVIAS_GRID_COLS) {
   return (
     <div
       key={`previa-skel-${index}`}
       className="mov-gridTable mov-gridTable--row mov-row--skeleton global-divTable__row previas-gridRow"
-      style={{ gridTemplateColumns: PREVIAS_GRID_COLS }}
+      style={{ gridTemplateColumns: gridCols }}
       role="row"
       aria-hidden="true"
     >
-      {PREVIAS_COLUMNS.map((column, columnIndex) => (
+      {columns.map((column, columnIndex) => (
         <div
           key={column.key}
           className={[
@@ -804,6 +844,9 @@ export default function Previas() {
   const riesgoEliminacion = modalConfirmar.tipo === 'eliminar' ? modalConfirmar.riesgo : null;
   const previaVinculada = Boolean(riesgoEliminacion?.vinculada || riesgoEliminacion?.requiere_doble_confirmacion);
   const nombreVista = vista === 'bajas' ? 'previas dadas de baja' : (vista === 'inscriptos' ? 'previas inscriptas' : 'previas activas');
+  const columnasTabla = vista === 'bajas' ? PREVIAS_BAJAS_COLUMNS : PREVIAS_COLUMNS;
+  const gridColsTabla = vista === 'bajas' ? PREVIAS_BAJAS_GRID_COLS : PREVIAS_GRID_COLS;
+  const columnasExportacion = vista === 'bajas' ? PREVIAS_BAJAS_EXPORT_COLUMNS : PREVIAS_EXPORT_COLUMNS;
 
   function puedeInscribirManual(item) {
     const condicion = String(item?.condicion || '').trim().toUpperCase();
@@ -1081,10 +1124,10 @@ export default function Previas() {
         <div className="previas-divTable global-divTable" role="table" aria-label="Listado de previas">
           <div
             className="mov-gridTable mov-gridTable--head global-divTable__head previas-gridHead"
-            style={{ gridTemplateColumns: PREVIAS_GRID_COLS }}
+            style={{ gridTemplateColumns: gridColsTabla }}
             role="row"
           >
-            {PREVIAS_COLUMNS.map((column) => (
+            {columnasTabla.map((column) => (
               <div
                 key={column.key}
                 className={[
@@ -1103,7 +1146,7 @@ export default function Previas() {
             <div className={`mov-gridBody mov-gridBody--relative global-divTable__body previas-gridBody ${loading ? 'mov-softLoading' : ''}`}>
               {loading ? (
                 <div className="mov-skeletonWrap" aria-busy="true" aria-label="Cargando previas">
-                  {Array.from({ length: SKELETON_ROWS }).map((_, index) => renderSkeletonRow(index))}
+                  {Array.from({ length: SKELETON_ROWS }).map((_, index) => renderSkeletonRow(index, columnasTabla, gridColsTabla))}
                 </div>
               ) : (
                 <>
@@ -1111,7 +1154,7 @@ export default function Previas() {
                     <div
                       key={item.id_previa}
                       className="mov-gridTable mov-gridTable--row global-divTable__row previas-gridRow"
-                      style={{ gridTemplateColumns: PREVIAS_GRID_COLS }}
+                      style={{ gridTemplateColumns: gridColsTabla }}
                       role="row"
                     >
                       <div className="mov-gridCell is-strong" role="cell" data-label="Alumno">
@@ -1142,11 +1185,25 @@ export default function Previas() {
                         </span>
                       </div>
 
-                      <div className="mov-gridCell is-center" role="cell" data-label="Inscripción">
-                        <span className={`mov-chip previas-pill ${Number(item.inscripcion) === 1 ? 'mov-chip--ok previas-pill-ok' : 'mov-chip--neutral previas-pill-muted'}`}>
-                          {item.inscripcion_texto || (Number(item.inscripcion) === 1 ? 'Sí' : 'No')}
-                        </span>
-                      </div>
+                      {vista === 'bajas' ? (
+                        <>
+                          <div className="mov-gridCell is-center" role="cell" data-label="Fecha baja">
+                            <span className="mov-chip mov-chip--neutral previas-pill previas-pill-muted">
+                              {fechaBajaTexto(item.fecha_baja)}
+                            </span>
+                          </div>
+
+                          <div className="mov-gridCell" role="cell" data-label="Motivo baja" title={safeText(item.motivo_baja)}>
+                            <span className="previas-motivo-baja-cell">{safeText(item.motivo_baja)}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="mov-gridCell is-center" role="cell" data-label="Inscripción">
+                          <span className={`mov-chip previas-pill ${Number(item.inscripcion) === 1 ? 'mov-chip--ok previas-pill-ok' : 'mov-chip--neutral previas-pill-muted'}`}>
+                            {item.inscripcion_texto || (Number(item.inscripcion) === 1 ? 'Sí' : 'No')}
+                          </span>
+                        </div>
+                      )}
 
                       <div className="mov-gridCell mov-gridCell--actions is-center" role="cell" data-label="Acciones">
                         <div className="mov-actionsInline">
@@ -1254,7 +1311,7 @@ export default function Previas() {
         subtitle="Elegí cómo exportar las previas o abrí la importación desde este mismo modal."
         tituloArchivo="Mesas · Previas"
         nombreArchivo={`previas_${vista}`}
-        columnas={PREVIAS_EXPORT_COLUMNS}
+        columnas={columnasExportacion}
         registrosActuales={previas}
         obtenerRegistrosTodos={obtenerTodasParaExportar}
         cantidadActual={totalVisible}
