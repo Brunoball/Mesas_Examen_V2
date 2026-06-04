@@ -47,6 +47,10 @@ function normalizarCurso(item = {}) {
   };
 }
 
+function esCursoEgresado(curso = {}) {
+  return String(curso?.nombre_curso || '').trim().toUpperCase() === 'EGRESADO';
+}
+
 function normalizarDivision(item = {}) {
   return {
     ...item,
@@ -795,7 +799,7 @@ export default function Previas() {
   const hayBusqueda = busqueda.trim() !== '';
   const hayFiltrosAplicados = Boolean(hayBusqueda || hayFiltrosPrevias);
   const condicionesFiltro = Array.isArray(catalogos?.condiciones) ? catalogos.condiciones : [];
-  const cursosFiltro = Array.isArray(catalogos?.cursos) ? catalogos.cursos : [];
+  const cursosFiltro = Array.isArray(catalogos?.cursos) ? catalogos.cursos.filter((curso) => !esCursoEgresado(curso)) : [];
   const divisionesFiltro = Array.isArray(catalogos?.divisiones) ? catalogos.divisiones : [];
   const riesgoEliminacion = modalConfirmar.tipo === 'eliminar' ? modalConfirmar.riesgo : null;
   const previaVinculada = Boolean(riesgoEliminacion?.vinculada || riesgoEliminacion?.requiere_doble_confirmacion);

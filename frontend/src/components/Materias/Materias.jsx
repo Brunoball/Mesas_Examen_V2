@@ -8,12 +8,10 @@ import {
   faDiagramProject,
   faEdit,
   faMagnifyingGlass,
-  faPlus,
   faFlask,
   faLayerGroup,
   faPowerOff,
   faTimes,
-  faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "../Global/Global_css/roots.css";
@@ -156,8 +154,6 @@ function renderSkeletonRow(index) {
           {column.actions ? (
             <div className="mov-skelActions">
               <span className="mov-skelIcon" />
-              <span className="mov-skelIcon" />
-              <span className="mov-skelIcon" />
             </div>
           ) : (
             <span
@@ -216,8 +212,6 @@ const Materias = () => {
     cerrarConfirmacion,
     confirmarAccion,
     guardarMateria,
-    eliminarMateria,
-    cambiarEstadoMateria,
     guardarCorrelativa,
     eliminarCorrelativa,
     guardarTaller,
@@ -605,14 +599,6 @@ const Materias = () => {
 
           <div className="mov-card__actions materias-actionsHead">
             {renderBotonExportar()}
-
-            <button
-              className="mov-btn mov-btn--primary"
-              onClick={() => setModalMateria({ abierto: true, item: null })}
-              type="button"
-            >
-              <FontAwesomeIcon icon={faPlus} /> Nueva materia
-            </button>
           </div>
         </div>
 
@@ -691,23 +677,6 @@ const Materias = () => {
                             <FontAwesomeIcon icon={faEdit} />
                           </button>
 
-                          <button
-                            className="mov-iconBtn materias-icon-btn"
-                            title="Activar / desactivar"
-                            onClick={() => cambiarEstadoMateria(m)}
-                            type="button"
-                          >
-                            <FontAwesomeIcon icon={faPowerOff} />
-                          </button>
-
-                          <button
-                            className="mov-iconBtn mov-iconBtn--danger materias-icon-btn materias-icon-danger"
-                            title="Eliminar"
-                            onClick={() => eliminarMateria(m)}
-                            type="button"
-                          >
-                            <FontAwesomeIcon icon={faTrash} />
-                          </button>
                         </div>
                       </div>
                     </div>

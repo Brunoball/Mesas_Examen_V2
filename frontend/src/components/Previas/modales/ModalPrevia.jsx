@@ -41,6 +41,10 @@ function normalizarMayus(valor) {
   return String(valor || '').toUpperCase();
 }
 
+function esCursoEgresado(curso = {}) {
+  return String(curso?.nombre_curso || '').trim().toUpperCase() === 'EGRESADO';
+}
+
 function crearMateriaInicial(condicionPreviaId = '') {
   return {
     uid: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -217,7 +221,7 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
 
   const esEgresado = useMemo(() => {
     const curso = cursos.find((c) => String(c.id_curso) === String(datosAlumno.cursando_id_curso));
-    return String(curso?.nombre_curso || '').toUpperCase() === 'EGRESADO';
+    return esCursoEgresado(curso);
   }, [cursos, datosAlumno.cursando_id_curso]);
 
   useEffect(() => {
@@ -441,7 +445,7 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
             onChange={(e) => actualizarMateria(tabMateria, 'materia_id_curso', e.target.value)}
           >
             <option value="">Seleccionar...</option>
-            {cursos.filter((c) => String(c.nombre_curso).toUpperCase() !== 'EGRESADO').map((c) => (
+            {cursos.filter((c) => !esCursoEgresado(c)).map((c) => (
               <option key={c.id_curso} value={c.id_curso}>{c.nombre_curso}</option>
             ))}
           </SelectField>
