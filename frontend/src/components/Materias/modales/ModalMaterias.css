@@ -250,7 +250,9 @@
   font-size:13.2px;
   font-weight:680;
   letter-spacing:.002em;
-}
+  display: flex;
+  align-items: center;
+height: 100%;}
 
 .materias-modalCheck:hover{
   transform:translateY(-1px) !important;

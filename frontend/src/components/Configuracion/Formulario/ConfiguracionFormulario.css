@@ -130,6 +130,11 @@
   max-height:70vh;
   overscroll-behavior:contain;
   scrollbar-gutter:stable;
+
+  /* Las columnas deben medir su alto por el contenido real.
+     Evita que el bloque visual quede por fuera del panel principal. */
+  align-items:start;
+  grid-auto-rows:max-content;
 }
 
 .cfgFormPanel{
@@ -142,8 +147,10 @@
 
 .cfgFormPanel--main{
   padding:0;
-  min-height:0;
+  height:max-content;
+  min-height:max-content;
   max-height:none;
+  align-self:start;
   overflow:visible;
 }
 
@@ -203,6 +210,7 @@
   display:grid;
   grid-template-columns:repeat(2, minmax(0, 1fr));
   gap:16px;
+  align-content:start;
 }
 
 .cfgFormGridFull{

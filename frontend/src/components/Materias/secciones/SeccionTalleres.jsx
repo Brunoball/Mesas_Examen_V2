@@ -1,15 +1,16 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBoxOpen, faEdit, faFlask, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import TextoExpandibleGlobal from "../../Global/Modales/TextoExpandibleGlobal";
 
-const TALLERES_GRID_COLS = ".4fr .4fr .4fr .9fr 3fr .5fr .5fr";
+const TALLERES_GRID_COLS = ".4fr .4fr .4fr .6fr 3.2fr .5fr .5fr";
 const SKELETON_ROWS = 7;
 
 const TALLERES_COLUMNS = [
   { key: "taller", label: "Taller", strong: true },
   { key: "curso", label: "Curso", align: "center" },
   { key: "division", label: "División", align: "center" },
-  { key: "cantidad", label: "Cantidad cátedras", align: "center" },
+  { key: "cantidad", label: "Cant. cátedras", align: "center" },
   { key: "catedras", label: "Cátedras incluidas" },
   { key: "estado", label: "Estado", align: "center" },
   { key: "acciones", label: "Acciones", align: "center", actions: true },
@@ -149,8 +150,13 @@ const SeccionTalleres = ({
                     <div className="mov-gridCell is-center" role="cell" data-label="Cantidad cátedras">
                       <span className="mov-chip materias-badge">{t.cantidad_materias || 0}</span>
                     </div>
-                    <div className="mov-gridCell" role="cell" data-label="Cátedras incluidas" title={safeText(t.materias)}>
-                      <span className="mov-ellipsissss">{safeText(t.materias)}</span>
+                    <div className="mov-gridCell" role="cell" data-label="Cátedras incluidas">
+                      <TextoExpandibleGlobal
+                        value={t.materias}
+                        title="Cátedras incluidas"
+                        subtitle={formatearNombreTaller(t.taller)}
+                        textClassName="mov-ellipsissss"
+                      />
                     </div>
                     <div className="mov-gridCell is-center" role="cell" data-label="Estado">
                       <span className={`mov-chip materias-badge ${Number(t.activo) === 1 ? "mov-chip--ok" : "mov-chip--neutral"}`}>
