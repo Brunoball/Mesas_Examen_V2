@@ -1640,7 +1640,7 @@ function previas_eliminar(): void
         $numerosGrupoAfectados = $contextoMesas['numeros_grupo'] ?? [];
 
         $cleanupNotificaciones = function_exists('mesas_notificaciones_cleanup_por_previas')
-            ? mesas_notificaciones_cleanup_por_previas($pdo, $ids, true)
+            ? mesas_notificaciones_cleanup_por_previas($pdo, $ids, true, true)
             : null;
 
         // Evita que el FK ON DELETE SET NULL deje filas de mesas sin alumno.

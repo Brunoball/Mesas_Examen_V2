@@ -256,7 +256,76 @@ function mesas_notificaciones_cleanup_limpiar_asignacion_previas(PDO $pdo, array
     return $stmt->rowCount();
 }
 
-function mesas_notificaciones_cleanup_por_previas(PDO $pdo, array $idsPrevias, bool $limpiarAsignacion = true): array
+function mesas_notificaciones_cleanup_eliminar_inscripciones_previas(PDO $pdo, array $idsPrevias, array $idsInscripciones): array
+{
+    $idsPrevias = mesas_notificaciones_cleanup_ids($idsPrevias);
+    $idsInscripciones = mesas_notificaciones_cleanup_ids($idsInscripciones);
+
+    $resultado = [
+        'detalles_eliminados' => 0,
+        'inscripciones_eliminadas' => 0,
+        'inscripciones_actualizadas' => 0,
+    ];
+
+    if (!$idsPrevias || !mesas_notificaciones_cleanup_tabla_existe($pdo, 'formulario_inscripciones_detalle')) {
+        return $resultado;
+    }
+
+    // Al eliminar una previa, la inscripción puntual de esa materia también debe desaparecer.
+    // Esto evita que el módulo de emails siga mostrando una inscripción/gmail asociado a una previa inexistente.
+    $phPrevias = mesas_notificaciones_cleanup_placeholders($idsPrevias);
+    $stmtDeleteDetalles = $pdo->prepare("DELETE FROM formulario_inscripciones_detalle WHERE id_previa IN ({$phPrevias})");
+    $stmtDeleteDetalles->execute($idsPrevias);
+    $resultado['detalles_eliminados'] = $stmtDeleteDetalles->rowCount();
+
+    if (!$idsInscripciones || !mesas_notificaciones_cleanup_tabla_existe($pdo, 'formulario_inscripciones')) {
+        return $resultado;
+    }
+
+    $phInscripciones = mesas_notificaciones_cleanup_placeholders($idsInscripciones);
+    $stmtVacias = $pdo->prepare("
+        SELECT fi.id_inscripcion
+          FROM formulario_inscripciones fi
+          LEFT JOIN formulario_inscripciones_detalle fid ON fid.id_inscripcion = fi.id_inscripcion
+         WHERE fi.id_inscripcion IN ({$phInscripciones})
+         GROUP BY fi.id_inscripcion
+        HAVING COUNT(fid.id_detalle) = 0
+    ");
+    $stmtVacias->execute($idsInscripciones);
+    $idsVacias = mesas_notificaciones_cleanup_ids($stmtVacias->fetchAll(PDO::FETCH_COLUMN) ?: []);
+
+    if ($idsVacias) {
+        $phVacias = mesas_notificaciones_cleanup_placeholders($idsVacias);
+        $stmtDeleteInscripciones = $pdo->prepare("DELETE FROM formulario_inscripciones WHERE id_inscripcion IN ({$phVacias})");
+        $stmtDeleteInscripciones->execute($idsVacias);
+        $resultado['inscripciones_eliminadas'] = $stmtDeleteInscripciones->rowCount();
+    }
+
+    $idsRestantes = array_values(array_diff($idsInscripciones, $idsVacias));
+    if ($idsRestantes && mesas_notificaciones_cleanup_columna_existe($pdo, 'formulario_inscripciones', 'total_materias')) {
+        $phRestantes = mesas_notificaciones_cleanup_placeholders($idsRestantes);
+        $whereDetalleActivo = mesas_notificaciones_cleanup_columna_existe($pdo, 'formulario_inscripciones_detalle', 'estado')
+            ? " AND fid.estado <> 'anulada'"
+            : '';
+
+        $stmtActualizar = $pdo->prepare("
+            UPDATE formulario_inscripciones fi
+               SET total_materias = (
+                   SELECT COUNT(*)
+                     FROM formulario_inscripciones_detalle fid
+                    WHERE fid.id_inscripcion = fi.id_inscripcion{$whereDetalleActivo}
+               ),
+               actualizado_en = NOW()
+             WHERE fi.id_inscripcion IN ({$phRestantes})
+        ");
+        $stmtActualizar->execute($idsRestantes);
+        $resultado['inscripciones_actualizadas'] = $stmtActualizar->rowCount();
+    }
+
+    return $resultado;
+}
+
+function mesas_notificaciones_cleanup_por_previas(PDO $pdo, array $idsPrevias, bool $limpiarAsignacion = true, bool $eliminarInscripciones = false): array
 {
     $idsPrevias = mesas_notificaciones_cleanup_ids($idsPrevias);
     if (!$idsPrevias || !mesas_notificaciones_cleanup_tabla_existe($pdo, 'formulario_inscripciones_detalle')) {
@@ -265,6 +334,9 @@ function mesas_notificaciones_cleanup_por_previas(PDO $pdo, array $idsPrevias, b
             'inscripciones_afectadas' => 0,
             'detalles_limpiados' => 0,
             'detalles_reiniciados' => 0,
+            'detalles_eliminados' => 0,
+            'inscripciones_eliminadas' => 0,
+            'inscripciones_actualizadas' => 0,
             'items_eliminados' => 0,
             'lotes_afectados' => 0,
         ];
@@ -275,18 +347,41 @@ function mesas_notificaciones_cleanup_por_previas(PDO $pdo, array $idsPrevias, b
     $stmtInscripciones->execute($idsPrevias);
     $idsInscripciones = mesas_notificaciones_cleanup_ids($stmtInscripciones->fetchAll(PDO::FETCH_COLUMN) ?: []);
 
+    // Primero se eliminan los items de email preparados/enviados, porque dependen del id_inscripcion.
+    // Luego, si se está eliminando la previa, se elimina el detalle de inscripción y, si quedó vacía,
+    // también la inscripción madre donde está guardado el gmail.
+    $items = mesas_notificaciones_cleanup_items_por_inscripciones($pdo, $idsInscripciones);
+
+    if ($eliminarInscripciones) {
+        $eliminacion = mesas_notificaciones_cleanup_eliminar_inscripciones_previas($pdo, $idsPrevias, $idsInscripciones);
+
+        return [
+            'previas_afectadas' => count($idsPrevias),
+            'inscripciones_afectadas' => count($idsInscripciones),
+            'detalles_limpiados' => 0,
+            'detalles_reiniciados' => 0,
+            'detalles_eliminados' => (int)($eliminacion['detalles_eliminados'] ?? 0),
+            'inscripciones_eliminadas' => (int)($eliminacion['inscripciones_eliminadas'] ?? 0),
+            'inscripciones_actualizadas' => (int)($eliminacion['inscripciones_actualizadas'] ?? 0),
+            'items_eliminados' => (int)($items['items_eliminados'] ?? 0),
+            'lotes_afectados' => (int)($items['lotes_afectados'] ?? 0),
+        ];
+    }
+
     $detallesLimpiados = $limpiarAsignacion
         ? mesas_notificaciones_cleanup_limpiar_asignacion_previas($pdo, $idsPrevias)
         : 0;
 
     $detallesReiniciados = mesas_notificaciones_cleanup_reset_inscripciones($pdo, $idsInscripciones);
-    $items = mesas_notificaciones_cleanup_items_por_inscripciones($pdo, $idsInscripciones);
 
     return [
         'previas_afectadas' => count($idsPrevias),
         'inscripciones_afectadas' => count($idsInscripciones),
         'detalles_limpiados' => $detallesLimpiados,
         'detalles_reiniciados' => $detallesReiniciados,
+        'detalles_eliminados' => 0,
+        'inscripciones_eliminadas' => 0,
+        'inscripciones_actualizadas' => 0,
         'items_eliminados' => (int)($items['items_eliminados'] ?? 0),
         'lotes_afectados' => (int)($items['lotes_afectados'] ?? 0),
     ];

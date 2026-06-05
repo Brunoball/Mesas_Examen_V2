@@ -726,11 +726,12 @@ function mesas_armado_docentes_recalcular_correlativas_operativas(PDO $pdo): arr
  *
  * Regla del armado:
  * - Si un docente NO tiene registros en docentes_disponibilidad, puede ir
- *   cualquier dia habil y cualquier turno.
- * - Si un docente SI tiene registros, solamente puede ser ubicado en los
- *   dia_semana + id_turno cargados.
- * - El armado no trabaja por fecha puntual de disponibilidad: calcula el dia
- *   de la semana desde fecha_mesa y compara contra dia_semana.
+ *   cualquier día hábil y cualquier turno.
+ * - Si un docente SI tiene registros, solamente puede ubicarse en los registros cargados.
+ * - Los registros con fecha NULL funcionan como disponibilidad semanal fija
+ *   por dia_semana + id_turno.
+ * - Los registros con fecha cargada funcionan como disponibilidad puntual
+ *   solo para esa fecha exacta + id_turno.
  */
 function mesas_armado_docentes_obtener_disponibilidad_docentes(PDO $pdo): array
 {
@@ -739,11 +740,11 @@ function mesas_armado_docentes_obtener_disponibilidad_docentes(PDO $pdo): array
     }
 
     $stmt = $pdo->query("
-        SELECT id_docente, dia_semana, id_turno
+        SELECT id_docente, dia_semana, id_turno, fecha
         FROM docentes_disponibilidad
         WHERE dia_semana BETWEEN 1 AND 5
           AND id_turno IS NOT NULL
-        ORDER BY id_docente ASC, dia_semana ASC, id_turno ASC
+        ORDER BY id_docente ASC, fecha ASC, dia_semana ASC, id_turno ASC
     ");
 
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -753,6 +754,8 @@ function mesas_armado_docentes_obtener_disponibilidad_docentes(PDO $pdo): array
         $idDocente = (int)$row['id_docente'];
         $diaSemana = (int)$row['dia_semana'];
         $idTurno = (int)$row['id_turno'];
+        $fecha = trim((string)($row['fecha'] ?? ''));
+        $fecha = mesas_armado_docentes_fecha_valida($fecha) ? $fecha : null;
 
         if ($idDocente <= 0 || $diaSemana < 1 || $diaSemana > 5 || $idTurno <= 0) {
             continue;
@@ -765,6 +768,7 @@ function mesas_armado_docentes_obtener_disponibilidad_docentes(PDO $pdo): array
         $map[$idDocente][] = [
             'dia_semana' => $diaSemana,
             'id_turno' => $idTurno,
+            'fecha' => $fecha,
         ];
     }
 
@@ -782,6 +786,15 @@ function mesas_armado_docentes_tabla_existe(PDO $pdo, string $tabla): bool
     $stmt->execute([$tabla]);
 
     return (int)$stmt->fetchColumn() > 0;
+}
+
+function mesas_armado_docentes_limpiar_slots_extra_grupos(PDO $pdo): int
+{
+    if (!mesas_armado_docentes_tabla_existe($pdo, 'mesas_grupos_slots_extra')) {
+        return 0;
+    }
+
+    return (int)$pdo->exec('DELETE FROM mesas_grupos_slots_extra');
 }
 
 function mesas_armado_docentes_dia_semana_desde_fecha(string $fecha): ?int
@@ -804,6 +817,10 @@ function mesas_armado_docentes_docente_disponible(array $disponibilidadDocentes,
         return true;
     }
 
+    if (!mesas_armado_docentes_fecha_valida($fecha)) {
+        return false;
+    }
+
     $diaSemana = mesas_armado_docentes_dia_semana_desde_fecha($fecha);
 
     if ($diaSemana === null || $diaSemana < 1 || $diaSemana > 5) {
@@ -811,10 +828,21 @@ function mesas_armado_docentes_docente_disponible(array $disponibilidadDocentes,
     }
 
     foreach ($disponibilidadDocentes[$idDocente] as $registro) {
-        $diaRegistro = (int)($registro['dia_semana'] ?? 0);
         $turnoRegistro = (int)($registro['id_turno'] ?? 0);
+        if ($turnoRegistro !== $idTurno) {
+            continue;
+        }
 
-        if ($diaRegistro === $diaSemana && $turnoRegistro === $idTurno) {
+        $fechaRegistro = trim((string)($registro['fecha'] ?? ''));
+        if ($fechaRegistro !== '') {
+            if ($fechaRegistro === $fecha) {
+                return true;
+            }
+            continue;
+        }
+
+        $diaRegistro = (int)($registro['dia_semana'] ?? 0);
+        if ($diaRegistro === $diaSemana) {
             return true;
         }
     }

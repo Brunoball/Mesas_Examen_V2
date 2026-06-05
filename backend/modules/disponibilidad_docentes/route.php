@@ -86,6 +86,30 @@ function disponibilidad_docentes_fecha_nullable($value): ?string
     return $fecha;
 }
 
+function disponibilidad_docentes_dia_semana_desde_fecha(string $fecha): int
+{
+    $dt = DateTime::createFromFormat('Y-m-d', $fecha);
+    if (!$dt || $dt->format('Y-m-d') !== $fecha) {
+        return 0;
+    }
+
+    // PHP: 1=Lunes ... 7=Domingo. El sistema de mesas trabaja de lunes a viernes.
+    $dia = (int)$dt->format('N');
+    return ($dia >= 1 && $dia <= 5) ? $dia : 0;
+}
+
+function disponibilidad_docentes_turnos_activos(PDO $pdo): array
+{
+    $stmt = $pdo->query("
+        SELECT id_turno
+        FROM turnos
+        WHERE activo = 1
+        ORDER BY id_turno ASC
+    ");
+
+    return array_values(array_filter(array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [])));
+}
+
 function disponibilidad_docentes_dias(): array
 {
     return [
@@ -578,7 +602,7 @@ function disponibilidad_docentes_guardar(): void
         $input = disponibilidad_docentes_input();
         $idDisponibilidad = disponibilidad_docentes_int($input['id_disponibilidad'] ?? 0);
         $idDocente = disponibilidad_docentes_int($input['id_docente'] ?? 0);
-        $diaSemana = disponibilidad_docentes_int($input['dia_semana'] ?? 0);
+        $diaSemana = disponibilidad_docentes_int($input['dia_semana'] ?? $input['id_dia_semana'] ?? 0);
         $idTurno = disponibilidad_docentes_int($input['id_turno'] ?? 0);
         $fecha = disponibilidad_docentes_fecha_nullable($input['fecha'] ?? null);
         $origen = disponibilidad_docentes_str($input['origen'] ?? 'manual');
@@ -588,19 +612,45 @@ function disponibilidad_docentes_guardar(): void
         }
 
         disponibilidad_docentes_validar_docente($pdo, $idDocente);
-        disponibilidad_docentes_validar_turno($pdo, $idTurno);
+
+        if ($fecha !== null) {
+            $diaDesdeFecha = disponibilidad_docentes_dia_semana_desde_fecha($fecha);
+            if ($diaDesdeFecha <= 0) {
+                throw new InvalidArgumentException('La fecha puntual debe caer entre lunes y viernes.');
+            }
+            $diaSemana = $diaDesdeFecha;
+        }
 
         if ($diaSemana < 1 || $diaSemana > 5) {
             throw new InvalidArgumentException('El día seleccionado no es válido.');
         }
 
-        if ($idDisponibilidad > 0) {
+        $turnosParaGuardar = [];
+        if ($idTurno > 0) {
+            disponibilidad_docentes_validar_turno($pdo, $idTurno);
+            $turnosParaGuardar = [$idTurno];
+        } elseif ($fecha !== null) {
+            // Fecha sin turno: se guarda para todos los turnos activos de esa fecha.
+            $turnosParaGuardar = disponibilidad_docentes_turnos_activos($pdo);
+        }
+
+        if (!$turnosParaGuardar) {
+            throw new InvalidArgumentException('Seleccioná al menos un turno válido.');
+        }
+
+        if ($idDisponibilidad > 0 && count($turnosParaGuardar) === 1) {
             $stmt = $pdo->prepare("\n                UPDATE docentes_disponibilidad\n                SET id_docente = ?, dia_semana = ?, id_turno = ?, fecha = ?, origen = ?\n                WHERE id_disponibilidad = ?\n            ");
-            $stmt->execute([$idDocente, $diaSemana, $idTurno, $fecha, $origen, $idDisponibilidad]);
+            $stmt->execute([$idDocente, $diaSemana, $turnosParaGuardar[0], $fecha, $origen, $idDisponibilidad]);
         } else {
-            $stmt = $pdo->prepare("\n                INSERT INTO docentes_disponibilidad (id_docente, dia_semana, id_turno, fecha, origen)\n                VALUES (?, ?, ?, ?, ?)\n            ");
-            $stmt->execute([$idDocente, $diaSemana, $idTurno, $fecha, $origen]);
-            $idDisponibilidad = (int)$pdo->lastInsertId();
+            $stmt = $pdo->prepare("\n                INSERT IGNORE INTO docentes_disponibilidad (id_docente, dia_semana, id_turno, fecha, origen)\n                VALUES (?, ?, ?, ?, ?)\n            ");
+
+            $ultimoId = 0;
+            foreach ($turnosParaGuardar as $turnoAGuardar) {
+                $stmt->execute([$idDocente, $diaSemana, $turnoAGuardar, $fecha, $origen]);
+                $ultimoId = (int)$pdo->lastInsertId() ?: $ultimoId;
+            }
+
+            $idDisponibilidad = $ultimoId ?: $idDisponibilidad;
         }
 
         json_response([
@@ -613,7 +663,7 @@ function disponibilidad_docentes_guardar(): void
     } catch (Throwable $e) {
         // 23000 suele ser clave única duplicada.
         if (($e instanceof PDOException) && (string)$e->getCode() === '23000') {
-            json_response(['exito' => false, 'mensaje' => 'Ese docente ya tiene cargado ese día y turno.'], 409);
+            json_response(['exito' => false, 'mensaje' => 'Ese docente ya tiene cargado ese día, turno y fecha.'], 409);
             return;
         }
 

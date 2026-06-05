@@ -113,10 +113,35 @@ function docentes_validar_fecha($fecha): ?string
     $dt = DateTime::createFromFormat('Y-m-d', $fecha);
 
     if (!$dt || $dt->format('Y-m-d') !== $fecha) {
-        return null;
+        throw new InvalidArgumentException('La fecha debe tener formato YYYY-MM-DD.');
     }
 
     return $fecha;
+}
+
+function docentes_dia_semana_desde_fecha(string $fecha): int
+{
+    $dt = DateTime::createFromFormat('Y-m-d', $fecha);
+
+    if (!$dt || $dt->format('Y-m-d') !== $fecha) {
+        return 0;
+    }
+
+    // PHP: 1=Lunes ... 7=Domingo. El sistema de mesas trabaja de lunes a viernes.
+    $dia = (int)$dt->format('N');
+    return ($dia >= 1 && $dia <= 5) ? $dia : 0;
+}
+
+function docentes_obtener_turnos_activos(PDO $pdo): array
+{
+    $stmt = $pdo->query("
+        SELECT id_turno
+        FROM turnos
+        WHERE activo = 1
+        ORDER BY id_turno ASC
+    ");
+
+    return array_values(array_filter(array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [])));
 }
 
 function docentes_validar_dia_semana($dia): int
@@ -316,6 +341,7 @@ function docentes_guardar_disponibilidades(PDO $pdo, int $idDocente, array $disp
 
     $stmtInsertDisponibilidad = $pdo->prepare("\n        INSERT IGNORE INTO docentes_disponibilidad\n            (id_docente, dia_semana, id_turno, fecha)\n        VALUES\n            (:id_docente, :dia_semana, :id_turno, :fecha)\n    ");
 
+    $turnosActivos = docentes_obtener_turnos_activos($pdo);
     $disponibilidadesUnicas = [];
 
     foreach ($disponibilidades as $bloque) {
@@ -323,39 +349,70 @@ function docentes_guardar_disponibilidades(PDO $pdo, int $idDocente, array $disp
             continue;
         }
 
+        $fecha = docentes_validar_fecha($bloque['fecha'] ?? null);
         $diaSemana = docentes_validar_dia_semana($bloque['id_dia_semana'] ?? $bloque['dia_semana'] ?? null);
         $idTurno = docentes_int($bloque['id_turno'] ?? 0);
-        $fecha = docentes_validar_fecha($bloque['fecha'] ?? null);
 
-        if ($diaSemana <= 0 || $idTurno <= 0) {
-            continue;
-        }
-
-        $claveBloque = $diaSemana . '|' . $idTurno . '|' . ($fecha ?? '');
-
-        if (isset($disponibilidadesUnicas[$claveBloque])) {
-            continue;
-        }
-
-        $disponibilidadesUnicas[$claveBloque] = true;
-
-        $stmtTurno->execute([':id_turno' => $idTurno]);
-
-        if (!$stmtTurno->fetch(PDO::FETCH_ASSOC)) {
-            continue;
-        }
-
-        $stmtInsertDisponibilidad->bindValue(':id_docente', $idDocente, PDO::PARAM_INT);
-        $stmtInsertDisponibilidad->bindValue(':dia_semana', $diaSemana, PDO::PARAM_INT);
-        $stmtInsertDisponibilidad->bindValue(':id_turno', $idTurno, PDO::PARAM_INT);
-
+        // Si hay fecha puntual, el día semanal real se calcula desde esa fecha.
+        // Esto evita que el frontend mande fecha sin día y el backend descarte la regla.
         if ($fecha !== null) {
-            $stmtInsertDisponibilidad->bindValue(':fecha', $fecha, PDO::PARAM_STR);
-        } else {
-            $stmtInsertDisponibilidad->bindValue(':fecha', null, PDO::PARAM_NULL);
+            $diaDesdeFecha = docentes_dia_semana_desde_fecha($fecha);
+            if ($diaDesdeFecha <= 0) {
+                throw new InvalidArgumentException('La fecha puntual debe caer entre lunes y viernes.');
+            }
+            $diaSemana = $diaDesdeFecha;
         }
 
-        $stmtInsertDisponibilidad->execute();
+        $turnosParaGuardar = [];
+
+        if ($idTurno > 0) {
+            $turnosParaGuardar = [$idTurno];
+        } elseif ($fecha !== null) {
+            // Fecha sin turno: se guarda para todos los turnos activos de esa fecha.
+            $turnosParaGuardar = $turnosActivos;
+        }
+
+        if ($fecha === null && $idTurno > 0 && $diaSemana <= 0) {
+            // Turno sin día ni fecha: se interpreta como regla semanal para ese turno,
+            // de lunes a viernes, porque la tabla no admite día nulo.
+            $diasParaGuardar = [1, 2, 3, 4, 5];
+        } else {
+            $diasParaGuardar = $diaSemana > 0 ? [$diaSemana] : [];
+        }
+
+        if (!$turnosParaGuardar || !$diasParaGuardar) {
+            continue;
+        }
+
+        foreach ($diasParaGuardar as $diaAGuardar) {
+            foreach ($turnosParaGuardar as $turnoAGuardar) {
+                $stmtTurno->execute([':id_turno' => $turnoAGuardar]);
+
+                if (!$stmtTurno->fetch(PDO::FETCH_ASSOC)) {
+                    continue;
+                }
+
+                $claveBloque = $diaAGuardar . '|' . $turnoAGuardar . '|' . ($fecha ?? '');
+
+                if (isset($disponibilidadesUnicas[$claveBloque])) {
+                    continue;
+                }
+
+                $disponibilidadesUnicas[$claveBloque] = true;
+
+                $stmtInsertDisponibilidad->bindValue(':id_docente', $idDocente, PDO::PARAM_INT);
+                $stmtInsertDisponibilidad->bindValue(':dia_semana', $diaAGuardar, PDO::PARAM_INT);
+                $stmtInsertDisponibilidad->bindValue(':id_turno', $turnoAGuardar, PDO::PARAM_INT);
+
+                if ($fecha !== null) {
+                    $stmtInsertDisponibilidad->bindValue(':fecha', $fecha, PDO::PARAM_STR);
+                } else {
+                    $stmtInsertDisponibilidad->bindValue(':fecha', null, PDO::PARAM_NULL);
+                }
+
+                $stmtInsertDisponibilidad->execute();
+            }
+        }
     }
 }
 
@@ -449,6 +506,15 @@ function docentes_guardar(): void
             'mensaje' => 'Docente guardado correctamente.',
             'id_docente' => $idDocente,
         ]);
+    } catch (InvalidArgumentException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        json_response([
+            'exito' => false,
+            'mensaje' => $e->getMessage(),
+        ], 422);
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();

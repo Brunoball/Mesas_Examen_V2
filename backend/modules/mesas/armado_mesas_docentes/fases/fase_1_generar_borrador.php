@@ -59,6 +59,9 @@ function mesas_armado_docentes_crear(): void
 
             if (function_exists('mesas_armado_docentes_grupos_asegurar_tablas')) {
                 $pdo->exec('DELETE FROM mesas_no_agrupadas');
+                if (function_exists('mesas_armado_docentes_limpiar_slots_extra_grupos')) {
+                    mesas_armado_docentes_limpiar_slots_extra_grupos($pdo);
+                }
                 $pdo->exec('DELETE FROM mesas_grupos');
             }
 

@@ -616,8 +616,12 @@ function mesas_armado_eliminar_borrador(): void
             $notificacionesLimpiadas = mesas_notificaciones_cleanup_todo($pdo);
         }
 
+        $slotsExtraEliminados = 0;
         if (function_exists('mesas_armado_grupos_asegurar_tablas')) {
             $noAgrupadasEliminadas = (int)$pdo->exec('DELETE FROM mesas_no_agrupadas');
+            if (function_exists('mesas_armado_limpiar_slots_extra_grupos')) {
+                $slotsExtraEliminados = mesas_armado_limpiar_slots_extra_grupos($pdo);
+            }
             $gruposEliminados = (int)$pdo->exec('DELETE FROM mesas_grupos');
         }
 
@@ -634,6 +638,7 @@ function mesas_armado_eliminar_borrador(): void
                 'eliminadas' => $stmt->rowCount(),
                 'grupos_eliminados' => $gruposEliminados,
                 'no_agrupadas_eliminadas' => $noAgrupadasEliminadas,
+                'slots_extra_eliminados' => $slotsExtraEliminados,
                 'guardar_historial_armado' => $guardarHistorialArmado,
                 'id_historial_armado' => $idHistorialArmado,
                 'notas_desaprobadas_limpiadas' => $notasDesaprobadasLimpiadas,

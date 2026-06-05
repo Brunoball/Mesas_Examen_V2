@@ -1146,6 +1146,7 @@ function mesas_armado_describir_sin_slot_por_disponibilidad_fuera_rango(array $g
     }
 
     $slotsPermitidos = [];
+    $slotsPermitidosPorFecha = [];
     foreach ($slots as $slot) {
         $fecha = (string)($slot['fecha'] ?? $slot['fecha_mesa'] ?? '');
         $idTurno = (int)($slot['id_turno'] ?? 0);
@@ -1156,9 +1157,13 @@ function mesas_armado_describir_sin_slot_por_disponibilidad_fuera_rango(array $g
         if ($diaSemana !== null && $idTurno > 0) {
             $slotsPermitidos[$diaSemana . '|' . $idTurno] = true;
         }
+
+        if (mesas_armado_fecha_valida($fecha) && $idTurno > 0) {
+            $slotsPermitidosPorFecha[$fecha . '|' . $idTurno] = true;
+        }
     }
 
-    if (count($slotsPermitidos) === 0) {
+    if (count($slotsPermitidos) === 0 && count($slotsPermitidosPorFecha) === 0) {
         return null;
     }
 
@@ -1179,6 +1184,11 @@ function mesas_armado_describir_sin_slot_por_disponibilidad_fuera_rango(array $g
         };
     };
 
+    $formatearFecha = static function (string $fecha): string {
+        $dt = DateTimeImmutable::createFromFormat('!Y-m-d', $fecha);
+        return $dt ? $dt->format('d/m/Y') : $fecha;
+    };
+
     $docentes = array_values($grupo['docentes'] ?? []);
     $nombres = array_values($grupo['docentes_nombres'] ?? []);
     $docentesFuera = [];
@@ -1195,7 +1205,21 @@ function mesas_armado_describir_sin_slot_por_disponibilidad_fuera_rango(array $g
         foreach ($disponibilidadDocentes[$idDocente] as $registro) {
             $diaRegistro = (int)($registro['dia_semana'] ?? 0);
             $turnoRegistro = (int)($registro['id_turno'] ?? 0);
-            if ($diaRegistro <= 0 || $turnoRegistro <= 0) {
+            $fechaRegistro = trim((string)($registro['fecha'] ?? ''));
+            if ($turnoRegistro <= 0) {
+                continue;
+            }
+
+            if ($fechaRegistro !== '') {
+                if (isset($slotsPermitidosPorFecha[$fechaRegistro . '|' . $turnoRegistro])) {
+                    $tieneDisponibilidadEnRango = true;
+                }
+
+                $disponibilidadesTexto[$formatearFecha($fechaRegistro) . ' ' . $nombreTurno($turnoRegistro)] = true;
+                continue;
+            }
+
+            if ($diaRegistro <= 0) {
                 continue;
             }
 
@@ -1228,6 +1252,7 @@ function mesas_armado_describir_sin_slot_por_disponibilidad_fuera_rango(array $g
         'UTF-8'
     );
 }
+
 
 function mesas_armado_buscar_slot_disponible_para_grupo(
     array $grupo,

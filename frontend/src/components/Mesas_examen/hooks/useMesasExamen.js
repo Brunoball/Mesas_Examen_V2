@@ -536,18 +536,12 @@ export const useMesasExamen = ({ onToast } = {}) => {
       setResumenArmado(null);
 
       try {
-        const tipoArmado = payload?.tipo_armado || "area";
         const response = await crearArmadoInicialMesas(payload);
-        const responseGrupos = await crearGruposFinalesMesas({
-          limpiar_grupos: true,
-          min_numeros: 2,
-          max_numeros: 4,
-          tipo_armado: tipoArmado,
-        });
+        const datosArmado = response.data || {};
 
         setResumenArmado({
-          ...(response.data || {}),
-          grupos_finales: responseGrupos.data || null,
+          ...datosArmado,
+          grupos_finales: datosArmado.fase_6_grupos_finales || datosArmado.grupos_finales || null,
         });
         ocultarResumenArmadoLuego();
         setModalCrearAbierto(false);

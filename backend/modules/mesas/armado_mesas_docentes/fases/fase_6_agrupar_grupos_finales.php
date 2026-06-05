@@ -357,6 +357,9 @@ function mesas_armado_docentes_grupos_columnas_tabla(PDO $pdo, string $tabla): ?
 function mesas_armado_docentes_grupos_limpiar(PDO $pdo): void
 {
     $pdo->exec('DELETE FROM mesas_no_agrupadas');
+    if (function_exists('mesas_armado_docentes_limpiar_slots_extra_grupos')) {
+        mesas_armado_docentes_limpiar_slots_extra_grupos($pdo);
+    }
     $pdo->exec('DELETE FROM mesas_grupos');
 }
 
