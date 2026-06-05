@@ -638,33 +638,9 @@ function mesas_armado_actualizar_estado_validacion(PDO $pdo, array $idsConError,
 
 function mesas_armado_obtener_relaciones_correlativas_para_calendarizar(PDO $pdo): array
 {
-    $stmt = $pdo->query("
-        SELECT
-            p1.id_previa AS id_previa_base,
-            p2.id_previa AS id_previa_relacionada,
-            p1.dni,
-            mc.tipo,
-            COALESCE(mc.orden, 999999) AS orden
-        FROM materias_correlativas mc
-        INNER JOIN previas p1
-            ON p1.id_materia = mc.id_materia
-           AND p1.materia_id_curso = mc.id_curso
-           AND p1.activo = 1
-           AND p1.inscripcion = 1
-           AND p1.id_condicion = 3
-        INNER JOIN previas p2
-            ON p2.dni = p1.dni
-           AND p2.id_materia = mc.id_materia_relacionada
-           AND p2.materia_id_curso = mc.id_curso_relacionada
-           AND p2.activo = 1
-           AND p2.inscripcion = 1
-           AND p2.id_condicion = 3
-        WHERE mc.activo = 1
-          AND mc.bloquea_armado = 1
-        ORDER BY p1.dni ASC, orden ASC
-    ");
-
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $rows = function_exists('mesas_armado_obtener_correlativas_operativas_desde_mesas')
+        ? mesas_armado_obtener_correlativas_operativas_desde_mesas($pdo)
+        : [];
 
     $roles = [];
     $anterioresPorPosterior = [];
@@ -673,30 +649,55 @@ function mesas_armado_obtener_relaciones_correlativas_para_calendarizar(PDO $pdo
     foreach ($rows as $row) {
         $idBase = (int)$row['id_previa_base'];
         $idRelacionada = (int)$row['id_previa_relacionada'];
-        $tipo = (string)$row['tipo'];
 
-        if ($tipo === 'anterior') {
-            /*
-             * En la tabla, id_materia/id_curso es la materia posterior y
-             * id_materia_relacionada/id_curso_relacionada es la correlativa anterior.
-             * Ejemplo real: ANÁLISIS MATEMÁTICO 6° depende de MATEMÁTICA 5°.
-             * Por eso la relacionada debe ir antes que la base.
-             */
-            $idAnterior = $idRelacionada;
-            $idPosterior = $idBase;
-            $roles[$idAnterior] = min($roles[$idAnterior] ?? 9, 0);
-            $roles[$idPosterior] = min($roles[$idPosterior] ?? 9, 2);
-        } elseif ($tipo === 'posterior') {
-            // Caso inverso: la relacionada es posterior a la materia base.
-            $idAnterior = $idBase;
-            $idPosterior = $idRelacionada;
-            $roles[$idAnterior] = min($roles[$idAnterior] ?? 9, 0);
-            $roles[$idPosterior] = min($roles[$idPosterior] ?? 9, 2);
-        } else {
+        if ($idBase <= 0 || $idRelacionada <= 0 || $idBase === $idRelacionada) {
+            continue;
+        }
+
+        $tipo = (string)$row['tipo'];
+        $cursoBase = (int)($row['id_curso_base'] ?? 0);
+        $cursoRelacionada = (int)($row['id_curso_relacionada_real'] ?? 0);
+        $criterioOrden = 'tipo';
+
+        if ($tipo === 'equivalente') {
             $idAnterior = null;
             $idPosterior = null;
             $roles[$idBase] = min($roles[$idBase] ?? 9, 1);
             $roles[$idRelacionada] = min($roles[$idRelacionada] ?? 9, 1);
+            $criterioOrden = 'equivalente';
+        } else {
+            /*
+             * Regla fuerte para calendarizar correlativas:
+             * la materia del curso menor SIEMPRE se toma como anterior y debe
+             * rendirse en un slot previo. Esto corrige el caso crítico de taller:
+             * si DIGITAL IV está expandida dentro de un taller y el alumno también
+             * debe DIGITAL II, DIGITAL II queda antes aunque el taller tenga prioridad.
+             *
+             * No dependemos del sentido exacto en que se guardó la fila en
+             * materias_correlativas, porque en distintas pantallas puede mostrarse
+             * como "anterior -> posterior" o "materia -> relacionada".
+             */
+            if ($cursoBase > 0 && $cursoRelacionada > 0 && $cursoBase !== $cursoRelacionada) {
+                if ($cursoBase < $cursoRelacionada) {
+                    $idAnterior = $idBase;
+                    $idPosterior = $idRelacionada;
+                } else {
+                    $idAnterior = $idRelacionada;
+                    $idPosterior = $idBase;
+                }
+                $criterioOrden = 'curso_menor_primero';
+            } elseif ($tipo === 'anterior') {
+                // Fallback cuando no se puede comparar curso: se respeta el alta visible anterior -> posterior.
+                $idAnterior = $idBase;
+                $idPosterior = $idRelacionada;
+            } else {
+                // Fallback para tipo posterior: base posterior, relacionada anterior.
+                $idAnterior = $idRelacionada;
+                $idPosterior = $idBase;
+            }
+
+            $roles[$idAnterior] = min($roles[$idAnterior] ?? 9, 0);
+            $roles[$idPosterior] = min($roles[$idPosterior] ?? 9, 2);
         }
 
         if ($idAnterior !== null && $idPosterior !== null) {
@@ -713,6 +714,13 @@ function mesas_armado_obtener_relaciones_correlativas_para_calendarizar(PDO $pdo
             'tipo' => $tipo,
             'orden' => (int)$row['orden'],
             'dni' => (string)$row['dni'],
+            'materia_base' => (string)($row['materia_base'] ?? ''),
+            'curso_base' => (int)($row['id_curso_base'] ?? 0),
+            'materia_relacionada' => (string)($row['materia_relacionada'] ?? ''),
+            'curso_relacionada' => (int)($row['id_curso_relacionada_real'] ?? 0),
+            'id_previa_anterior' => $idAnterior,
+            'id_previa_posterior' => $idPosterior,
+            'criterio_orden' => $criterioOrden,
         ];
     }
 
@@ -918,8 +926,9 @@ function mesas_armado_obtener_grupos_calendarizables(PDO $pdo, array $relaciones
             return 2;
         };
 
-        return [$tipoOrden($a), (int)$a['orden_correlativa'], -(int)$a['cantidad_alumnos'], -(int)$a['cantidad_previas'], -(int)$a['cantidad_registros_disponibilidad_docentes'], (string)$a['area_key'], (int)$a['numero_mesa']]
-            <=> [$tipoOrden($b), (int)$b['orden_correlativa'], -(int)$b['cantidad_alumnos'], -(int)$b['cantidad_previas'], -(int)$b['cantidad_registros_disponibilidad_docentes'], (string)$b['area_key'], (int)$b['numero_mesa']];
+        // La correlativa anterior se ordena SIEMPRE primero, incluso si la posterior es taller.
+        return [(int)$a['orden_correlativa'], $tipoOrden($a), -(int)$a['cantidad_alumnos'], -(int)$a['cantidad_previas'], -(int)$a['cantidad_registros_disponibilidad_docentes'], (string)$a['area_key'], (int)$a['numero_mesa']]
+            <=> [(int)$b['orden_correlativa'], $tipoOrden($b), -(int)$b['cantidad_alumnos'], -(int)$b['cantidad_previas'], -(int)$b['cantidad_registros_disponibilidad_docentes'], (string)$b['area_key'], (int)$b['numero_mesa']];
     });
 
     return $grupos;
@@ -1477,6 +1486,7 @@ function mesas_armado_indices_slots_para_grupo(
 function mesas_armado_slot_respeta_correlativas(array $grupo, int $slotIndex, array $previaSlotIndex, array $relacionesCorrelativas): bool
 {
     $anterioresPorPosterior = $relacionesCorrelativas['anteriores_por_posterior'] ?? [];
+    $idsGrupo = array_flip(array_map('intval', $grupo['ids_previa'] ?? []));
 
     foreach ($grupo['ids_previa'] as $idPrevia) {
         $idPrevia = (int)$idPrevia;
@@ -1488,7 +1498,19 @@ function mesas_armado_slot_respeta_correlativas(array $grupo, int $slotIndex, ar
         foreach ($anterioresPorPosterior[$idPrevia] as $idAnterior => $_) {
             $idAnterior = (int)$idAnterior;
 
-            if (isset($previaSlotIndex[$idAnterior]) && $slotIndex <= (int)$previaSlotIndex[$idAnterior]) {
+            // Si por una edición manual quedó la anterior y la posterior dentro del mismo número,
+            // no se puede cumplir el orden académico en el mismo slot.
+            if (isset($idsGrupo[$idAnterior])) {
+                return false;
+            }
+
+            // La posterior NO puede ubicarse si la anterior todavía no fue calendarizada.
+            // Antes esto se permitía y podía mandar un taller posterior antes de su correlativa.
+            if (!isset($previaSlotIndex[$idAnterior])) {
+                return false;
+            }
+
+            if ($slotIndex <= (int)$previaSlotIndex[$idAnterior]) {
                 return false;
             }
         }

@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../../config/db.php';
 require_once __DIR__ . '/../../../config/env.php';
 require_once __DIR__ . '/../../../core/helpers.php';
 require_once __DIR__ . '/../../../core/auth.php';
+require_once __DIR__ . '/../../../core/mailer_hostinger.php';
 require_once __DIR__ . '/../../formulario/formulario_helpers.php';
 require_once __DIR__ . '/notificaciones_email_cleanup.php';
 
@@ -797,19 +798,23 @@ function mesas_notificaciones_enviar_email_mesa(array $item, array $cfg): array
         $fromName = trim((string)(env_value('MAIL_FROM_NAME', 'Soporte Lerna') ?? 'Soporte Lerna'));
     }
 
-    $headers = [];
-    $headers[] = 'MIME-Version: 1.0';
-    $headers[] = 'Content-Type: text/html; charset=UTF-8';
-    $headers[] = 'From: ' . formulario_mail_header_from($fromName, $fromEmail);
-    $headers[] = 'Reply-To: ' . formulario_mail_header_from($fromName, $fromEmail);
-    $headers[] = 'X-Mailer: PHP/' . PHP_VERSION;
-
-    $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
-    $ok = @mail($destino, $encodedSubject, $html, implode("\r\n", $headers));
+    $enviarEmailHtml = 'app_mail_enviar_html';
+    $resultadoEmail = $enviarEmailHtml(
+        $destino,
+        $subject,
+        $html,
+        $fromEmail,
+        $fromName,
+        $fromEmail,
+        $fromName
+    );
 
     return [
-        'enviado' => (bool)$ok,
-        'error' => $ok ? null : 'No se pudo enviar el email con mail(). Revisá MAIL_FROM_EMAIL y el correo del hosting.',
+        'enviado' => (bool)($resultadoEmail['enviado'] ?? false),
+        'guardado_enviados' => (bool)($resultadoEmail['guardado_enviados'] ?? false),
+        'carpeta_enviados' => $resultadoEmail['carpeta_enviados'] ?? null,
+        'advertencia' => $resultadoEmail['advertencia'] ?? null,
+        'error' => !empty($resultadoEmail['enviado']) ? null : ($resultadoEmail['error'] ?? 'No se pudo enviar el email. Revisá la configuración SMTP del hosting.'),
     ];
 }
 

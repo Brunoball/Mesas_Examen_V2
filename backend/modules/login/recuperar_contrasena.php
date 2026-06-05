@@ -5,6 +5,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/helpers.php';
+require_once __DIR__ . '/../../core/mailer_hostinger.php';
 
 function login_password_reset_minutos(): int
 {
@@ -138,16 +139,18 @@ function login_password_reset_enviar_email(string $destino, string $usuario, str
 </html>
 HTML;
 
-    $headers = [];
-    $headers[] = 'MIME-Version: 1.0';
-    $headers[] = 'Content-Type: text/html; charset=UTF-8';
-    $headers[] = 'From: ' . login_password_reset_header_from($fromName, $fromEmail);
-    $headers[] = 'Reply-To: ' . login_password_reset_header_from($fromName, $fromEmail);
-    $headers[] = 'X-Mailer: PHP/' . PHP_VERSION;
+    $enviarEmailHtml = 'app_mail_enviar_html';
+    $resultadoEmail = $enviarEmailHtml(
+        $destino,
+        $subject,
+        $html,
+        $fromEmail,
+        $fromName,
+        $fromEmail,
+        $fromName
+    );
 
-    $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
-
-    return @mail($destino, $encodedSubject, $html, implode("\r\n", $headers));
+    return (bool)($resultadoEmail['enviado'] ?? false);
 }
 
 function login_password_reset_buscar_usuario(PDO $master, int $idTenant, string $usuarioOEmail): ?array
@@ -250,7 +253,7 @@ function login_recuperar_contrasena_solicitar(): void
         }
 
         if (!$enviado) {
-            log_error(new RuntimeException('No se pudo enviar el email de recuperación con mail().'), 'recuperar_contrasena_solicitar');
+            log_error(new RuntimeException('No se pudo enviar el email de recuperación por SMTP.'), 'recuperar_contrasena_solicitar');
             json_response(['exito' => false, 'mensaje' => 'Se generó el enlace, pero no se pudo enviar el email. Revisá la configuración de correo del servidor.'], 500);
         }
 

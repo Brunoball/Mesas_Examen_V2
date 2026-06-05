@@ -42,6 +42,90 @@ if (!function_exists('materias_bool_int')) {
     }
 }
 
+if (!function_exists('materias_normalizar_cadena_correlativa')) {
+    function materias_normalizar_cadena_correlativa(string $texto): string
+    {
+        $texto = trim($texto);
+        if ($texto === '') return '';
+
+        if (function_exists('mb_strtoupper')) {
+            $texto = mb_strtoupper($texto, 'UTF-8');
+        } else {
+            $texto = strtoupper($texto);
+        }
+
+        $reemplazos = [
+            'Á' => 'A', 'É' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ú' => 'U', 'Ü' => 'U', 'Ñ' => 'N',
+            'À' => 'A', 'È' => 'E', 'Ì' => 'I', 'Ò' => 'O', 'Ù' => 'U',
+        ];
+        $texto = strtr($texto, $reemplazos);
+        $texto = preg_replace('/\s+/u', ' ', $texto) ?: $texto;
+        return trim($texto);
+    }
+}
+
+if (!function_exists('materias_romano_a_entero')) {
+    function materias_romano_a_entero(string $valor): int
+    {
+        $romanos = [
+            'I' => 1,
+            'II' => 2,
+            'III' => 3,
+            'IV' => 4,
+            'V' => 5,
+            'VI' => 6,
+            'VII' => 7,
+            'VIII' => 8,
+            'IX' => 9,
+            'X' => 10,
+            'XI' => 11,
+            'XII' => 12,
+        ];
+
+        $clave = materias_normalizar_cadena_correlativa($valor);
+        return $romanos[$clave] ?? 0;
+    }
+}
+
+if (!function_exists('materias_analizar_cadena_correlativa')) {
+    function materias_analizar_cadena_correlativa(string $materia): array
+    {
+        $normalizada = materias_normalizar_cadena_correlativa($materia);
+        $base = $normalizada;
+        $orden = 0;
+        $sufijo = '';
+        $tieneNumeracion = false;
+
+        if (preg_match('/^(.*?)(?:\s+|-)(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII|[1-9][0-9]?)$/u', $normalizada, $match)) {
+            $posibleBase = trim((string)$match[1]);
+            $posibleSufijo = trim((string)$match[2]);
+            $numero = ctype_digit($posibleSufijo) ? (int)$posibleSufijo : materias_romano_a_entero($posibleSufijo);
+
+            if ($posibleBase !== '' && $numero > 0) {
+                $base = $posibleBase;
+                $orden = $numero;
+                $sufijo = $posibleSufijo;
+                $tieneNumeracion = true;
+            }
+        }
+
+        return [
+            'normalizada' => $normalizada,
+            'base' => $base,
+            'orden' => $orden,
+            'sufijo' => $sufijo,
+            'tiene_numeracion' => $tieneNumeracion,
+        ];
+    }
+}
+
+if (!function_exists('materias_curso_es_egresado')) {
+    function materias_curso_es_egresado(?string $curso): bool
+    {
+        return strpos(materias_normalizar_cadena_correlativa((string)$curso), 'EGRESADO') !== false;
+    }
+}
+
 function materias_correlativas_listar(): void
 {
     $pdo = db();
@@ -234,59 +318,172 @@ function materias_correlativas_autogenerar_por_materia(): void
     }
 
     try {
-        $stmtCursos = $pdo->prepare("\n            SELECT DISTINCT ca.id_curso, cu.nombre_curso\n            FROM catedras ca\n            INNER JOIN curso cu ON cu.id_curso = ca.id_curso AND cu.activo = 1\n            INNER JOIN materias m ON m.id_materia = ca.id_materia AND m.activo = 1\n            WHERE ca.activo = 1\n              AND ca.id_materia = :id_materia\n            ORDER BY ca.id_curso ASC\n        ");
-        $stmtCursos->execute([':id_materia' => $idMateria]);
-        $cursos = $stmtCursos->fetchAll(PDO::FETCH_ASSOC);
+        $stmtSeleccionada = $pdo->prepare("\n            SELECT id_materia, materia\n            FROM materias\n            WHERE id_materia = :id_materia\n              AND activo = 1\n            LIMIT 1\n        ");
+        $stmtSeleccionada->execute([':id_materia' => $idMateria]);
+        $materiaSeleccionada = $stmtSeleccionada->fetch(PDO::FETCH_ASSOC);
 
-        if (count($cursos) < 2) {
+        if (!$materiaSeleccionada) {
+            json_response(['exito' => false, 'mensaje' => 'La materia seleccionada no existe o está inactiva.']);
+        }
+
+        $analisisSeleccionada = materias_analizar_cadena_correlativa((string)$materiaSeleccionada['materia']);
+
+        $stmtCatedras = $pdo->query("\n            SELECT DISTINCT\n                ca.id_curso,\n                cu.nombre_curso,\n                m.id_materia,\n                m.materia\n            FROM catedras ca\n            INNER JOIN curso cu ON cu.id_curso = ca.id_curso AND cu.activo = 1\n            INNER JOIN materias m ON m.id_materia = ca.id_materia AND m.activo = 1\n            WHERE ca.activo = 1\n            ORDER BY ca.id_curso ASC, m.materia ASC, m.id_materia ASC\n        ");
+
+        $candidatas = [];
+        $vistas = [];
+
+        while ($fila = $stmtCatedras->fetch(PDO::FETCH_ASSOC)) {
+            $nombreCurso = (string)($fila['nombre_curso'] ?? '');
+            if (materias_curso_es_egresado($nombreCurso)) continue;
+
+            $analisis = materias_analizar_cadena_correlativa((string)$fila['materia']);
+            $pertenece = false;
+
+            if ($analisisSeleccionada['tiene_numeracion']) {
+                $pertenece = $analisis['tiene_numeracion'] && $analisis['base'] === $analisisSeleccionada['base'];
+            } else {
+                $pertenece = $analisis['normalizada'] === $analisisSeleccionada['normalizada'];
+            }
+
+            if (!$pertenece) continue;
+
+            $idCurso = (int)$fila['id_curso'];
+            $idMat = (int)$fila['id_materia'];
+            $clave = $idCurso . '-' . $idMat;
+            if (isset($vistas[$clave])) continue;
+            $vistas[$clave] = true;
+
+            $candidatas[] = [
+                'id_curso' => $idCurso,
+                'nombre_curso' => $nombreCurso,
+                'id_materia' => $idMat,
+                'materia' => (string)$fila['materia'],
+                'orden_numeracion' => (int)$analisis['orden'],
+                'tiene_numeracion' => (bool)$analisis['tiene_numeracion'],
+            ];
+        }
+
+        usort($candidatas, static function (array $a, array $b) use ($analisisSeleccionada): int {
+            if ($analisisSeleccionada['tiene_numeracion']) {
+                $ordenA = (int)($a['orden_numeracion'] ?: 9999);
+                $ordenB = (int)($b['orden_numeracion'] ?: 9999);
+                if ($ordenA !== $ordenB) return $ordenA <=> $ordenB;
+            }
+
+            $cursoA = (int)$a['id_curso'];
+            $cursoB = (int)$b['id_curso'];
+            if ($cursoA !== $cursoB) return $cursoA <=> $cursoB;
+
+            return (int)$a['id_materia'] <=> (int)$b['id_materia'];
+        });
+
+        if (count($candidatas) < 2) {
+            $detalle = $analisisSeleccionada['tiene_numeracion']
+                ? 'No se encontraron dos o más materias con la misma base y numeración correlativa.'
+                : 'La materia seleccionada no aparece en dos o más cursos.';
+
             json_response([
                 'exito' => false,
-                'mensaje' => 'La materia seleccionada no aparece en dos o más cursos. No se puede generar una cadena automática.',
+                'mensaje' => $detalle . ' No se puede generar una cadena automática.',
             ]);
         }
 
-        $stmtMateria = $pdo->prepare("SELECT materia FROM materias WHERE id_materia = :id_materia LIMIT 1");
-        $stmtMateria->execute([':id_materia' => $idMateria]);
-        $nombreMateria = (string)$stmtMateria->fetchColumn();
-
         $pdo->beginTransaction();
 
-        $stmt = $pdo->prepare("\n            INSERT INTO materias_correlativas\n                (id_materia, id_curso, id_materia_relacionada, id_curso_relacionada, tipo, activo, bloquea_inscripcion, bloquea_armado, orden)\n            VALUES\n                (:id_materia, :id_curso, :id_materia_relacionada, :id_curso_relacionada, :tipo, :activo, :bloquea_inscripcion, :bloquea_armado, :orden)\n            ON DUPLICATE KEY UPDATE\n                activo              = VALUES(activo),\n                bloquea_inscripcion = VALUES(bloquea_inscripcion),\n                bloquea_armado      = VALUES(bloquea_armado),\n                orden               = VALUES(orden)\n        ");
+        $stmtExiste = $pdo->prepare("\n            SELECT id_materia_correlativa, activo, bloquea_inscripcion, bloquea_armado, orden\n            FROM materias_correlativas\n            WHERE id_materia             = :id_materia\n              AND id_curso               = :id_curso\n              AND id_materia_relacionada = :id_materia_relacionada\n              AND id_curso_relacionada   = :id_curso_relacionada\n              AND tipo                   = :tipo\n            LIMIT 1\n        ");
+
+        $stmtInsertar = $pdo->prepare("\n            INSERT INTO materias_correlativas\n                (id_materia, id_curso, id_materia_relacionada, id_curso_relacionada, tipo, activo, bloquea_inscripcion, bloquea_armado, orden)\n            VALUES\n                (:id_materia, :id_curso, :id_materia_relacionada, :id_curso_relacionada, :tipo, :activo, :bloquea_inscripcion, :bloquea_armado, :orden)\n        ");
+
+        $stmtActualizar = $pdo->prepare("\n            UPDATE materias_correlativas\n            SET activo = :activo,\n                bloquea_inscripcion = :bloquea_inscripcion,\n                bloquea_armado = :bloquea_armado,\n                orden = :orden\n            WHERE id_materia_correlativa = :id\n        ");
 
         $guardadas = 0;
+        $saltadas = 0;
         $relaciones = [];
+        $existentes = [];
 
-        for ($i = 0; $i < count($cursos) - 1; $i++) {
-            $cursoAnterior = $cursos[$i];
-            $cursoPosterior = $cursos[$i + 1];
+        for ($i = 0; $i < count($candidatas) - 1; $i++) {
+            $anterior = $candidatas[$i];
+            $posterior = $candidatas[$i + 1];
+
+            if (
+                (int)$anterior['id_materia'] === (int)$posterior['id_materia'] &&
+                (int)$anterior['id_curso'] === (int)$posterior['id_curso']
+            ) {
+                $saltadas++;
+                continue;
+            }
+
             $orden = $i + 1;
+            $paramsBase = [
+                ':id_materia' => (int)$posterior['id_materia'],
+                ':id_curso' => (int)$posterior['id_curso'],
+                ':id_materia_relacionada' => (int)$anterior['id_materia'],
+                ':id_curso_relacionada' => (int)$anterior['id_curso'],
+                ':tipo' => $tipo,
+            ];
 
-            $stmt->execute([
-                ':id_materia'             => $idMateria,
-                ':id_curso'               => (int)$cursoPosterior['id_curso'],
-                ':id_materia_relacionada' => $idMateria,
-                ':id_curso_relacionada'   => (int)$cursoAnterior['id_curso'],
-                ':tipo'                   => $tipo,
-                ':activo'                 => $activo,
-                ':bloquea_inscripcion'    => $bloqueaInscripcion,
-                ':bloquea_armado'         => $bloqueaArmado,
-                ':orden'                  => $orden,
-            ]);
+            $stmtExiste->execute($paramsBase);
+            $existente = $stmtExiste->fetch(PDO::FETCH_ASSOC);
+
+            if ($existente && (int)$existente['activo'] === 1) {
+                $saltadas++;
+                $existentes[] = [
+                    'anterior' => $anterior['nombre_curso'] . ' - ' . $anterior['materia'],
+                    'posterior' => $posterior['nombre_curso'] . ' - ' . $posterior['materia'],
+                ];
+                continue;
+            }
+
+            if ($existente) {
+                $stmtActualizar->execute([
+                    ':activo' => $activo,
+                    ':bloquea_inscripcion' => $bloqueaInscripcion,
+                    ':bloquea_armado' => $bloqueaArmado,
+                    ':orden' => $orden,
+                    ':id' => (int)$existente['id_materia_correlativa'],
+                ]);
+            } else {
+                $stmtInsertar->execute(array_merge($paramsBase, [
+                    ':activo' => $activo,
+                    ':bloquea_inscripcion' => $bloqueaInscripcion,
+                    ':bloquea_armado' => $bloqueaArmado,
+                    ':orden' => $orden,
+                ]));
+            }
 
             $guardadas++;
             $relaciones[] = [
-                'anterior' => $cursoAnterior['nombre_curso'] . ' - ' . $nombreMateria,
-                'posterior' => $cursoPosterior['nombre_curso'] . ' - ' . $nombreMateria,
+                'anterior' => $anterior['nombre_curso'] . ' - ' . $anterior['materia'],
+                'posterior' => $posterior['nombre_curso'] . ' - ' . $posterior['materia'],
             ];
+        }
+
+        if ($guardadas <= 0) {
+            $pdo->rollBack();
+            json_response([
+                'exito' => false,
+                'mensaje' => 'Todas las correlatividades automáticas de esta cadena ya están realizadas. No había relaciones nuevas para guardar.',
+                'guardadas' => 0,
+                'saltadas' => $saltadas,
+                'existentes' => $existentes,
+            ]);
         }
 
         $pdo->commit();
 
+        $mensaje = "Cadena correlativa generada correctamente. Relaciones nuevas guardadas: {$guardadas}.";
+        if ($saltadas > 0) {
+            $mensaje .= " Ya existían o se omitieron: {$saltadas}.";
+        }
+
         json_response([
             'exito' => true,
-            'mensaje' => "Cadena correlativa generada correctamente. Relaciones guardadas: {$guardadas}.",
+            'mensaje' => $mensaje,
             'guardadas' => $guardadas,
+            'saltadas' => $saltadas,
             'relaciones' => $relaciones,
+            'existentes' => $existentes,
         ]);
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();

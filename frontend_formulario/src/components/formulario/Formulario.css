@@ -1822,3 +1822,31 @@ html, body{ overflow-x: hidden; }
     font-size: 11.8px;
   }
 }
+
+/* Estado de carga al confirmar inscripción */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-primary.is-loading,
+.btn-primary:disabled,
+.btn-hero-secondary:disabled,
+.btn-light:disabled {
+  cursor: not-allowed;
+  opacity: .78;
+  pointer-events: none;
+}
+
+.btn-loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, .45);
+  border-top-color: #fff;
+  border-radius: 50%;
+  display: inline-block;
+  flex: 0 0 auto;
+  animation: spin .8s linear infinite;
+}

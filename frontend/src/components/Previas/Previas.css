@@ -240,12 +240,12 @@
 
 .previas-table-wrap .mov-gridBody--relative{
   height:calc(100vh - 292px);
-  min-width:1120px;
+  min-width:1240px;
 }
 
 .previas-gridHead,
 .previas-gridRow{
-  min-width:1120px;
+  min-width:1240px;
 }
 
 .previas-name-cell,
@@ -283,6 +283,18 @@
 .previas-dni-cell{
   color:var(--balto-action) !important;
   font-weight:560 !important;
+}
+
+.previas-motivo-baja-cell{
+  display:block;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:var(--balto-ink);
+  font-size:12px;
+  font-weight:560;
+  text-transform:uppercase;
 }
 
 .previas-icon-btn{

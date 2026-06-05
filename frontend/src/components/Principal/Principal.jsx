@@ -257,6 +257,13 @@ const NAV_ITEMS = [
     ruta: "/docentes",
     description: "Gestionar altas, bajas, datos e indisponibilidad.",
   },
+  {
+    key: "estadisticas",
+    label: "Estadísticas",
+    icon: faChartLine,
+    ruta: "/estadisticas",
+    description: "Indicadores por historial de mesa: inscriptos, aprobados, ausentes y desaprobados.",
+  },
 ];
 
 

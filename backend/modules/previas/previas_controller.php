@@ -1580,6 +1580,11 @@ function previas_cambiar_estado(): void
             $set[] = $activo === 1 ? 'fecha_baja = NULL' : 'fecha_baja = CURDATE()';
         }
 
+        if (previas_columna_existe($pdo, 'previas', 'inscripcion')) {
+            // Al dar de baja o volver a dar de alta una previa, siempre queda como no inscripta.
+            $set[] = 'inscripcion = 0';
+        }
+
         if (previas_columna_existe($pdo, 'previas', 'motivo_baja')) {
             $set[] = 'motivo_baja = :motivo';
             $params[':motivo'] = $activo === 1 ? null : ($motivo !== '' ? $motivo : null);

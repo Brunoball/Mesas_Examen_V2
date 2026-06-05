@@ -368,6 +368,360 @@ function mesas_armado_docentes_obtener_previas_para_armar(PDO $pdo): array
 }
 
 /**
+ * Obtiene relaciones de correlatividad desde las filas operativas de `mesas`.
+ *
+ * IMPORTANTE para TALLER:
+ * - En talleres, la previa original puede ser "TALLER - LABORATORIO", pero la fila
+ *   operativa de `mesas` se expande a cátedras reales (ej. ELECTRÓNICA DIGITAL IV).
+ * - Por eso la correlativa se calcula con la materia/curso de la CÁTEDRA (`cat`),
+ *   no solo con `previas.id_materia`.
+ * - Así, si el alumno debe rendir DIGITAL II y también un taller que contiene
+ *   DIGITAL IV, el sistema detecta DIGITAL II -> DIGITAL IV y obliga el orden.
+ */
+function mesas_armado_docentes_obtener_correlativas_operativas_desde_mesas(PDO $pdo): array
+{
+    if (!mesas_armado_docentes_tabla_existe($pdo, 'materias_correlativas')) {
+        return [];
+    }
+
+    /*
+     * Correlativas operativas reales, incluyendo cadenas transitivas.
+     *
+     * Caso que se corrige:
+     * DIGITAL II -> DIGITAL III -> DIGITAL IV.
+     * Si el alumno debe DIGITAL II y también un taller que contiene DIGITAL IV,
+     * aunque no deba DIGITAL III, DIGITAL II debe rendirse antes que el taller.
+     *
+     * Por eso no alcanza con buscar solo relaciones directas en SQL. Se arma un
+     * grafo anterior -> posterior y se compara cada materia efectiva de las mesas
+     * actuales, usando la cátedra expandida del taller.
+     */
+    $stmtMesas = $pdo->query("
+        SELECT
+            me.id_mesa,
+            me.id_previa,
+            me.tipo_mesa,
+            me.numero_mesa,
+            p.dni,
+            p.alumno,
+            cat.id_materia,
+            cat.id_curso,
+            mat.materia
+        FROM mesas me
+        INNER JOIN previas p
+            ON p.id_previa = me.id_previa
+           AND p.activo = 1
+           AND p.inscripcion = 1
+           AND p.id_condicion = 3
+        INNER JOIN catedras cat
+            ON cat.id_catedra = me.id_catedra
+           AND cat.activo = 1
+        INNER JOIN materias mat
+            ON mat.id_materia = cat.id_materia
+           AND mat.activo = 1
+        WHERE me.id_previa IS NOT NULL
+          AND me.id_catedra IS NOT NULL
+          AND me.estado IN ('borrador', 'armada', 'observada')
+        ORDER BY p.dni ASC, me.id_mesa ASC
+    ");
+
+    $filasMesas = $stmtMesas->fetchAll(PDO::FETCH_ASSOC);
+
+    if (count($filasMesas) === 0) {
+        return [];
+    }
+
+    $stmtCorrelativas = $pdo->query("
+        SELECT
+            id_materia,
+            id_curso,
+            id_materia_relacionada,
+            id_curso_relacionada,
+            tipo,
+            COALESCE(orden, 999999) AS orden
+        FROM materias_correlativas
+        WHERE activo = 1
+          AND bloquea_armado = 1
+        ORDER BY COALESCE(orden, 999999) ASC, id_materia_correlativa ASC
+    ");
+
+    $correlativas = $stmtCorrelativas->fetchAll(PDO::FETCH_ASSOC);
+
+    if (count($correlativas) === 0) {
+        return [];
+    }
+
+    $claveMateriaCurso = static function (int $idMateria, int $idCurso): string {
+        return $idMateria . '|' . $idCurso;
+    };
+
+    $grafo = [];
+    $equivalentes = [];
+    $ordenEdge = [];
+
+    foreach ($correlativas as $corr) {
+        $idMateriaA = (int)$corr['id_materia'];
+        $idCursoA = (int)$corr['id_curso'];
+        $idMateriaB = (int)$corr['id_materia_relacionada'];
+        $idCursoB = (int)$corr['id_curso_relacionada'];
+        $tipo = (string)$corr['tipo'];
+        $orden = (int)$corr['orden'];
+
+        if ($idMateriaA <= 0 || $idCursoA <= 0 || $idMateriaB <= 0 || $idCursoB <= 0) {
+            continue;
+        }
+
+        $claveA = $claveMateriaCurso($idMateriaA, $idCursoA);
+        $claveB = $claveMateriaCurso($idMateriaB, $idCursoB);
+
+        if ($claveA === $claveB) {
+            continue;
+        }
+
+        if ($tipo === 'equivalente') {
+            $equivalentes[$claveA][$claveB] = true;
+            $equivalentes[$claveB][$claveA] = true;
+            continue;
+        }
+
+        /*
+         * Regla obligatoria: el curso menor es anterior. Esto evita que una
+         * materia de 7° dentro de taller quede antes que una correlativa de 5°.
+         * Si no se puede decidir por curso, se usa un fallback compatible con el
+         * alta visible anterior -> posterior.
+         */
+        if ($idCursoA !== $idCursoB) {
+            $desde = $idCursoA < $idCursoB ? $claveA : $claveB;
+            $hacia = $idCursoA < $idCursoB ? $claveB : $claveA;
+        } elseif ($tipo === 'posterior') {
+            $desde = $claveB;
+            $hacia = $claveA;
+        } else {
+            $desde = $claveA;
+            $hacia = $claveB;
+        }
+
+        if (!isset($grafo[$desde])) {
+            $grafo[$desde] = [];
+        }
+
+        $grafo[$desde][$hacia] = true;
+        $ordenEdge[$desde . '>' . $hacia] = min($ordenEdge[$desde . '>' . $hacia] ?? 999999, $orden);
+    }
+
+    $buscarCamino = static function (string $origen, string $destino) use (&$grafo): ?array {
+        if ($origen === $destino) {
+            return null;
+        }
+
+        $cola = [[$origen, []]];
+        $visitados = [$origen => true];
+
+        while (count($cola) > 0) {
+            [$actual, $camino] = array_shift($cola);
+            $vecinos = $grafo[$actual] ?? [];
+
+            foreach ($vecinos as $siguiente => $_) {
+                if (isset($visitados[$siguiente])) {
+                    continue;
+                }
+
+                $nuevoCamino = array_merge($camino, [[$actual, (string)$siguiente]]);
+
+                if ((string)$siguiente === $destino) {
+                    return $nuevoCamino;
+                }
+
+                $visitados[$siguiente] = true;
+                $cola[] = [(string)$siguiente, $nuevoCamino];
+            }
+        }
+
+        return null;
+    };
+
+    $ordenDesdeCamino = static function (?array $camino) use (&$ordenEdge): int {
+        if (!is_array($camino) || count($camino) === 0) {
+            return 999999;
+        }
+
+        $orden = 999999;
+        foreach ($camino as $edge) {
+            $orden = min($orden, (int)($ordenEdge[$edge[0] . '>' . $edge[1]] ?? 999999));
+        }
+
+        return $orden;
+    };
+
+    $porDni = [];
+    foreach ($filasMesas as $fila) {
+        $dni = trim((string)$fila['dni']);
+        if ($dni === '') {
+            continue;
+        }
+
+        $porDni[$dni][] = $fila;
+    }
+
+    $relaciones = [];
+    $relacionesIndex = [];
+
+    foreach ($porDni as $dni => $filasAlumno) {
+        $total = count($filasAlumno);
+
+        for ($i = 0; $i < $total; $i++) {
+            for ($j = $i + 1; $j < $total; $j++) {
+                $a = $filasAlumno[$i];
+                $b = $filasAlumno[$j];
+
+                $idPreviaA = (int)$a['id_previa'];
+                $idPreviaB = (int)$b['id_previa'];
+
+                if ($idPreviaA <= 0 || $idPreviaB <= 0 || $idPreviaA === $idPreviaB) {
+                    continue;
+                }
+
+                $claveA = $claveMateriaCurso((int)$a['id_materia'], (int)$a['id_curso']);
+                $claveB = $claveMateriaCurso((int)$b['id_materia'], (int)$b['id_curso']);
+
+                if ($claveA === $claveB) {
+                    continue;
+                }
+
+                $caminoAB = $buscarCamino($claveA, $claveB);
+                $caminoBA = $buscarCamino($claveB, $claveA);
+                $esEquivalente = isset($equivalentes[$claveA][$claveB]) || isset($equivalentes[$claveB][$claveA]);
+
+                if ($caminoAB !== null && $caminoBA === null) {
+                    $anterior = $a;
+                    $posterior = $b;
+                    $orden = $ordenDesdeCamino($caminoAB);
+                    $tipoRelacion = count($caminoAB) > 1 ? 'anterior_transitiva' : 'anterior';
+                } elseif ($caminoBA !== null && $caminoAB === null) {
+                    $anterior = $b;
+                    $posterior = $a;
+                    $orden = $ordenDesdeCamino($caminoBA);
+                    $tipoRelacion = count($caminoBA) > 1 ? 'anterior_transitiva' : 'anterior';
+                } elseif ($esEquivalente) {
+                    $anterior = $a;
+                    $posterior = $b;
+                    $orden = 999999;
+                    $tipoRelacion = 'equivalente';
+                } else {
+                    continue;
+                }
+
+                $idMesaAnterior = (int)$anterior['id_mesa'];
+                $idMesaPosterior = (int)$posterior['id_mesa'];
+                $indexKey = $idMesaAnterior . '>' . $idMesaPosterior . '|' . $tipoRelacion;
+
+                if (isset($relacionesIndex[$indexKey])) {
+                    continue;
+                }
+
+                $relacionesIndex[$indexKey] = true;
+                $relaciones[] = [
+                    'id_mesa_base' => $idMesaAnterior,
+                    'id_previa_base' => (int)$anterior['id_previa'],
+                    'tipo_mesa_base' => (string)$anterior['tipo_mesa'],
+                    'numero_mesa_base' => $anterior['numero_mesa'] !== null ? (int)$anterior['numero_mesa'] : null,
+                    'dni' => (string)$anterior['dni'],
+                    'alumno' => (string)$anterior['alumno'],
+                    'id_materia_base' => (int)$anterior['id_materia'],
+                    'id_curso_base' => (int)$anterior['id_curso'],
+                    'materia_base' => (string)$anterior['materia'],
+
+                    'id_mesa_relacionada' => $idMesaPosterior,
+                    'id_previa_relacionada' => (int)$posterior['id_previa'],
+                    'tipo_mesa_relacionada' => (string)$posterior['tipo_mesa'],
+                    'numero_mesa_relacionada' => $posterior['numero_mesa'] !== null ? (int)$posterior['numero_mesa'] : null,
+                    'id_materia_relacionada_real' => (int)$posterior['id_materia'],
+                    'id_curso_relacionada_real' => (int)$posterior['id_curso'],
+                    'materia_relacionada' => (string)$posterior['materia'],
+
+                    // Para el resto del motor se comporta como correlativa anterior.
+                    'tipo' => $tipoRelacion === 'equivalente' ? 'equivalente' : 'anterior',
+                    'tipo_origen' => $tipoRelacion,
+                    'orden' => $orden,
+                ];
+            }
+        }
+    }
+
+    usort($relaciones, static function (array $a, array $b): int {
+        return [(string)$a['dni'], (int)$a['orden'], (int)$a['id_mesa_base'], (int)$a['id_mesa_relacionada']]
+            <=> [(string)$b['dni'], (int)$b['orden'], (int)$b['id_mesa_base'], (int)$b['id_mesa_relacionada']];
+    });
+
+    return $relaciones;
+}
+
+/**
+ * Recalcula prioridad/tipo correlativa usando las filas operativas de `mesas`.
+ * Esto corrige el caso clave: una correlativa simple contra una materia expandida
+ * dentro de un taller. El taller sigue siendo `tipo_mesa = taller`, pero la otra
+ * materia deja de quedar como simple y pasa a prioridad correlativa.
+ */
+function mesas_armado_docentes_recalcular_correlativas_operativas(PDO $pdo): array
+{
+    $relaciones = mesas_armado_docentes_obtener_correlativas_operativas_desde_mesas($pdo);
+
+    if (count($relaciones) === 0) {
+        return [
+            'total_relaciones_operativas' => 0,
+            'filas_marcadas_correlativas' => 0,
+            'filas_taller_en_correlativa' => 0,
+            'nota' => 'No se detectaron correlativas operativas entre las mesas actuales.',
+        ];
+    }
+
+    $idsNoTaller = [];
+    $idsTaller = [];
+
+    foreach ($relaciones as $relacion) {
+        $pares = [
+            [(int)$relacion['id_mesa_base'], (string)$relacion['tipo_mesa_base']],
+            [(int)$relacion['id_mesa_relacionada'], (string)$relacion['tipo_mesa_relacionada']],
+        ];
+
+        foreach ($pares as [$idMesa, $tipoMesa]) {
+            if ($idMesa <= 0) {
+                continue;
+            }
+
+            if ($tipoMesa === 'taller') {
+                $idsTaller[$idMesa] = true;
+            } else {
+                $idsNoTaller[$idMesa] = true;
+            }
+        }
+    }
+
+    $filasMarcadas = 0;
+
+    if (count($idsNoTaller) > 0) {
+        $ids = array_map('intval', array_keys($idsNoTaller));
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $pdo->prepare("
+            UPDATE mesas
+            SET tipo_mesa = 'correlativa',
+                prioridad = CASE WHEN prioridad < 2 THEN 2 ELSE prioridad END
+            WHERE id_mesa IN ({$placeholders})
+              AND tipo_mesa <> 'taller'
+        ");
+        $stmt->execute($ids);
+        $filasMarcadas = $stmt->rowCount();
+    }
+
+    return [
+        'total_relaciones_operativas' => count($relaciones),
+        'filas_marcadas_correlativas' => $filasMarcadas,
+        'filas_taller_en_correlativa' => count($idsTaller),
+        'nota' => 'Correlativas recalculadas por materia/curso efectivo de cátedra. Si una correlativa cruza con taller, la anterior queda como correlativa y el taller conserva su tipo especial.',
+    ];
+}
+
+/**
  * Obtiene la disponibilidad positiva de los docentes.
  *
  * Regla del armado:

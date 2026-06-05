@@ -328,6 +328,14 @@ const ResumenAlumno = ({
 
   // Todas empiezan deseleccionadas
   const [seleccion, setSeleccion] = useState(() => new Set());
+  const [inscribiendo, setInscribiendo] = useState(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     setSeleccion(new Set());
@@ -553,7 +561,9 @@ const ResumenAlumno = ({
     });
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    if (inscribiendo) return;
+
     const elegidas = materiasOrdenadas.filter((m) => {
       const claveUnica = generarClaveUnica(m);
       return !Number(m.inscripcion) && seleccion.has(claveUnica);
@@ -584,21 +594,29 @@ const ResumenAlumno = ({
       return;
     }
 
-    onConfirmar({
-      dni: data.alumno.dni,
-      gmail: data.gmail ?? "",
-      nombre_alumno: data.alumno?.nombre ?? "",
-      materias: elegidas.map((m) => ({
-        id_previa: m.id_previa,
-        id_materia: m.id_materia,
-        curso_id: m.curso_id,
-        division_id: m.division_id,
-        materia: m.materia || "",
-        curso: m.curso || "",
-        division: m.division || "",
-      })),
-      materias_nombres: elegidas.map((m) => m.materia || ""),
-    });
+    setInscribiendo(true);
+
+    try {
+      await onConfirmar({
+        dni: data.alumno.dni,
+        gmail: data.gmail ?? "",
+        nombre_alumno: data.alumno?.nombre ?? "",
+        materias: elegidas.map((m) => ({
+          id_previa: m.id_previa,
+          id_materia: m.id_materia,
+          curso_id: m.curso_id,
+          division_id: m.division_id,
+          materia: m.materia || "",
+          curso: m.curso || "",
+          division: m.division || "",
+        })),
+        materias_nombres: elegidas.map((m) => m.materia || ""),
+      });
+    } finally {
+      if (mountedRef.current) {
+        setInscribiendo(false);
+      }
+    }
   };
 
   const a = data.alumno;
@@ -687,6 +705,7 @@ const ResumenAlumno = ({
                 type="button"
                 className="btn-hero-secondary"
                 onClick={onVolver}
+                disabled={inscribiendo}
               >
                 Volver
               </button>
@@ -744,7 +763,7 @@ const ResumenAlumno = ({
                 !yaInscripto && !materiaEstaDisponiblePorCorrelativa(m);
 
               const disabled =
-                yaInscripto || !abierta || bloqueadaPorCorrelativa;
+                yaInscripto || !abierta || bloqueadaPorCorrelativa || inscribiendo;
 
               const classes = [
                 "materia-card",
@@ -760,6 +779,8 @@ const ResumenAlumno = ({
 
               const title = yaInscripto
                 ? "Ya estás inscripto en esta materia"
+                : inscribiendo
+                ? "Inscripción en proceso"
                 : !abierta
                 ? "La inscripción está cerrada"
                 : bloqueadaPorCorrelativa
@@ -868,29 +889,42 @@ const ResumenAlumno = ({
         <div className="actions-right only-desktop">
           <button
             type="button"
-            className="btn-primary"
+            className={`btn-primary ${inscribiendo ? "is-loading" : ""}`}
             onClick={handleConfirm}
-            disabled={!abierta}
+            disabled={!abierta || inscribiendo}
             title={!abierta ? "La inscripción está cerrada" : ""}
+            aria-busy={inscribiendo}
           >
-            Confirmar inscripción
+            {inscribiendo && (
+              <span className="btn-loading-spinner" aria-hidden="true" />
+            )}
+            {inscribiendo ? "Inscribiendo..." : "Confirmar inscripción"}
           </button>
         </div>
       </section>
 
       <nav className="nav-bar only-mobile">
-        <button type="button" className="btn-light" onClick={onVolver}>
+        <button
+          type="button"
+          className="btn-light"
+          onClick={onVolver}
+          disabled={inscribiendo}
+        >
           Volver
         </button>
 
         <button
           type="button"
-          className="btn-primary"
+          className={`btn-primary ${inscribiendo ? "is-loading" : ""}`}
           onClick={handleConfirm}
-          disabled={!abierta}
+          disabled={!abierta || inscribiendo}
           title={!abierta ? "La inscripción está cerrada" : ""}
+          aria-busy={inscribiendo}
         >
-          Confirmar inscripción
+          {inscribiendo && (
+            <span className="btn-loading-spinner" aria-hidden="true" />
+          )}
+          {inscribiendo ? "Inscribiendo..." : "Confirmar inscripción"}
         </button>
       </nav>
     </div>

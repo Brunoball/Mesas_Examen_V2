@@ -16,6 +16,10 @@ function safeText(value) {
   return text || '—';
 }
 
+function normalizarMayus(value) {
+  return String(value ?? '').toLocaleUpperCase('es-AR');
+}
+
 function normalizarDetails(details = []) {
   if (!Array.isArray(details)) return [];
 
@@ -188,8 +192,9 @@ export default function ModalEliminarGlobal({
   confirmDisabled = false,
 }) {
   const cancelRef = useRef(null);
+  const reasonRef = useRef(null);
   const [procesandoInterno, setProcesandoInterno] = useState(false);
-  const [reason, setReason] = useState(initialReason);
+  const [reason, setReason] = useState(normalizarMayus(initialReason));
   const [toastLocal, setToastLocal] = useState(null);
 
 
@@ -214,7 +219,7 @@ export default function ModalEliminarGlobal({
 
   useEffect(() => {
     if (!open) return;
-    setReason(initialReason || '');
+    setReason(normalizarMayus(initialReason));
     setToastLocal(null);
   }, [open, initialReason]);
 
@@ -316,8 +321,21 @@ export default function ModalEliminarGlobal({
     if (!open) return undefined;
 
     const timer = setTimeout(() => {
-      cancelRef.current?.focus();
+      const elemento = showReason ? reasonRef.current : cancelRef.current;
+      if (!elemento || typeof elemento.focus !== 'function') return;
+
+      try {
+        elemento.focus({ preventScroll: true });
+      } catch (e) {
+        elemento.focus();
+      }
     }, 0);
+
+    return () => clearTimeout(timer);
+  }, [open, showReason]);
+
+  useEffect(() => {
+    if (!open) return undefined;
 
     const onKeyDown = (event) => {
       if (event.key === 'Escape') {
@@ -342,7 +360,6 @@ export default function ModalEliminarGlobal({
     document.addEventListener('keydown', onKeyDown, true);
 
     return () => {
-      clearTimeout(timer);
       document.removeEventListener('keydown', onKeyDown, true);
     };
   }, [open, cerrar, isLoading, confirmDisabled, handleConfirm]);
@@ -417,9 +434,10 @@ export default function ModalEliminarGlobal({
           <label className={`gdel-reason ${reason.trim() ? 'is-active' : ''}`}>
             <span className="gdel-reason__label">{reasonLabel}</span>
             <textarea
+              ref={reasonRef}
               rows={3}
               value={reason}
-              onChange={(event) => setReason(event.target.value)}
+              onChange={(event) => setReason(normalizarMayus(event.target.value))}
               placeholder={reasonPlaceholder}
               disabled={isLoading}
             />

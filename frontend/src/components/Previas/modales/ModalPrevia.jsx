@@ -38,7 +38,7 @@ function dividirAlumno(alumno = '') {
 }
 
 function normalizarMayus(valor) {
-  return String(valor || '').toUpperCase();
+  return String(valor || '').toLocaleUpperCase('es-AR');
 }
 
 function esCursoEgresado(curso = {}) {
@@ -156,8 +156,8 @@ export default function ModalPrevia({ modo = 'crear', item = null, catalogos, on
 
   const [datosAlumno, setDatosAlumno] = useState({
     dni: item?.dni || '',
-    apellido: alumnoInicial.apellido || '',
-    nombre: alumnoInicial.nombre || '',
+    apellido: normalizarMayus(alumnoInicial.apellido || ''),
+    nombre: normalizarMayus(alumnoInicial.nombre || ''),
     cursando_id_curso: item?.cursando_id_curso ? String(item.cursando_id_curso) : '',
     cursando_id_division: item?.cursando_id_division ? String(item.cursando_id_division) : '',
   });

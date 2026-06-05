@@ -106,6 +106,8 @@ function mesas_armado_numerar_por_docente_materia_core(
         ");
     }
 
+    $correlativasOperativas = mesas_armado_recalcular_correlativas_operativas($pdo);
+
     $stmt = $pdo->query("
         SELECT
             me.id_mesa,
@@ -333,6 +335,7 @@ function mesas_armado_numerar_por_docente_materia_core(
         'total_filas_docente_materia' => $totalFilasDocenteMateria,
         'total_mesas_docente_materia' => $totalMesasDocenteMateria,
         'sin_datos_para_numerar' => $sinDatosParaNumerar,
+        'correlativas_operativas' => $correlativasOperativas,
         'primeros_grupos' => array_slice($gruposOrdenados, 0, 25),
     ];
 }

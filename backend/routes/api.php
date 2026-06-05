@@ -94,6 +94,7 @@ try {
     require_once __DIR__ . '/../modules/login/route.php';
     require_once __DIR__ . '/../modules/global/route.php';
     require_once __DIR__ . '/../modules/dashbord/route.php';
+    require_once __DIR__ . '/../modules/estadisticas/route.php';
     require_once __DIR__ . '/../modules/configuracion/route.php';
     require_once __DIR__ . '/../modules/formulario/route.php';
     require_once __DIR__ . '/../modules/perfil/route.php';
@@ -119,6 +120,10 @@ try {
     }
 
     if (route_dashbord($action)) {
+        exit;
+    }
+
+    if (route_estadisticas($action)) {
         exit;
     }
 

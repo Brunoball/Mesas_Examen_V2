@@ -761,6 +761,7 @@ const Materias = () => {
         <ModalCorrelativa
           item={modalCorrelativa.item}
           materias={catalogos.materias}
+          correlativas={correlativas}
           materiasPorCurso={catalogos.materiasPorCurso}
           cursos={catalogos.cursos}
           onObtenerMateriasPorCurso={obtenerMateriasPorCurso}

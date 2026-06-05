@@ -63,8 +63,83 @@ const unificarListaMaterias = (lista = []) => {
   });
 };
 
+
+const ROMANOS_CORRELATIVAS = {
+  i: 1,
+  ii: 2,
+  iii: 3,
+  iv: 4,
+  v: 5,
+  vi: 6,
+  vii: 7,
+  viii: 8,
+  ix: 9,
+  x: 10,
+  xi: 11,
+  xii: 12,
+};
+
+const analizarCadenaMateria = (materia) => {
+  const normalizada = normalizar(materia).replace(/\s+/g, " ").trim();
+  const analisis = {
+    normalizada,
+    base: normalizada,
+    orden: 0,
+    sufijo: "",
+    tieneNumeracion: false,
+  };
+
+  const match = normalizada.match(/^(.*?)(?:\s+|-)(xii|xi|viii|vii|vi|iv|ix|iii|ii|i|x|v|[1-9][0-9]?)$/i);
+  if (!match) return analisis;
+
+  const base = String(match[1] || "").trim();
+  const sufijo = String(match[2] || "").trim().toLowerCase();
+  const orden = /^\d+$/.test(sufijo) ? Number(sufijo) : Number(ROMANOS_CORRELATIVAS[sufijo] || 0);
+
+  if (!base || orden <= 0) return analisis;
+
+  return {
+    normalizada,
+    base,
+    orden,
+    sufijo,
+    tieneNumeracion: true,
+  };
+};
+
+const claveRelacionCorrelativa = (rel) => [
+  Number(rel?.id_materia || 0),
+  Number(rel?.id_curso || 0),
+  Number(rel?.id_materia_relacionada || 0),
+  Number(rel?.id_curso_relacionada || 0),
+  String(rel?.tipo || "anterior").toLowerCase(),
+].join("|");
+
+const claveRelacionPendiente = (anterior, posterior) => [
+  Number(posterior?.id_materia || 0),
+  Number(posterior?.id_curso || 0),
+  Number(anterior?.id_materia || 0),
+  Number(anterior?.id_curso || 0),
+  "anterior",
+].join("|");
+
+const ordenarCadena = (a, b, tieneNumeracion) => {
+  if (tieneNumeracion) {
+    const ordenA = Number(a.orden || 9999);
+    const ordenB = Number(b.orden || 9999);
+    if (ordenA !== ordenB) return ordenA - ordenB;
+  }
+
+  const cursoA = Number(a.id_curso || 0);
+  const cursoB = Number(b.id_curso || 0);
+  if (cursoA !== cursoB) return cursoA - cursoB;
+
+  return Number(a.id_materia || 0) - Number(b.id_materia || 0);
+};
+
 const ModalCorrelativa = ({
   item,
+  correlativas = [],
   materiasPorCurso = [],
   cursos = [],
   onObtenerMateriasPorCurso,
@@ -178,6 +253,25 @@ const ModalCorrelativa = ({
   const idsCursosActivos = useMemo(() => {
     return new Set(cursosActivos.map((c) => Number(c.id_curso)).filter((id) => id > 0));
   }, [cursosActivos]);
+
+
+  const nombreCursoPorId = useMemo(() => {
+    const mapa = new Map();
+    cursosActivos.forEach((c) => {
+      const id = Number(c?.id_curso || 0);
+      if (id > 0) mapa.set(id, c?.nombre_curso || c?.curso || "");
+    });
+    return mapa;
+  }, [cursosActivos]);
+
+  const correlativasRealizadasSet = useMemo(() => {
+    const set = new Set();
+    (Array.isArray(correlativas) ? correlativas : []).forEach((rel) => {
+      if (Number(rel?.activo ?? 1) !== 1) return;
+      set.add(claveRelacionCorrelativa(rel));
+    });
+    return set;
+  }, [correlativas]);
 
   const marcarCursoCargando = useCallback((idCurso, valor) => {
     const clave = String(idCurso || "");
@@ -455,51 +549,104 @@ const ModalCorrelativa = ({
   const materiasAuto = useMemo(() => {
     if (modo !== "auto" || esEdicion) return [];
 
-    const map = new Map();
+    const grupos = new Map();
 
     materiasPorCursoCompletas.forEach((m) => {
       if (Number(m.activo ?? 1) !== 1) return;
 
-      const idCurso = Number(m.id_curso);
-      if (!idsCursosActivos.has(idCurso)) return;
+      const idCurso = Number(m.id_curso || 0);
+      const idMateria = Number(m.id_materia || 0);
+      if (idCurso <= 0 || idMateria <= 0 || !idsCursosActivos.has(idCurso)) return;
 
-      const id = Number(m.id_materia);
-      if (id <= 0) return;
+      const analisis = analizarCadenaMateria(m.materia);
+      if (!analisis.normalizada) return;
 
-      if (!map.has(id)) {
-        map.set(id, {
-          id_materia: id,
-          materia: m.materia,
-          cursos: [],
+      const key = analisis.tieneNumeracion
+        ? `num:${analisis.base}`
+        : `exact:${analisis.normalizada}`;
+
+      if (!grupos.has(key)) {
+        grupos.set(key, {
+          key,
+          base: analisis.base,
+          nombreVisible: analisis.tieneNumeracion ? analisis.base : analisis.normalizada,
+          tieneNumeracion: analisis.tieneNumeracion,
+          items: [],
+          vistos: new Set(),
         });
       }
 
-      const actual = map.get(id);
+      const grupo = grupos.get(key);
+      const claveItem = `${idCurso}-${idMateria}`;
+      if (grupo.vistos.has(claveItem)) return;
+      grupo.vistos.add(claveItem);
 
-      if (!actual.cursos.some((c) => Number(c.id_curso) === idCurso)) {
-        actual.cursos.push({
-          id_curso: idCurso,
-          nombre_curso: m.nombre_curso,
-        });
-      }
+      grupo.items.push({
+        id_curso: idCurso,
+        nombre_curso: m.nombre_curso || nombreCursoPorId.get(idCurso) || "",
+        id_materia: idMateria,
+        materia: m.materia,
+        orden: analisis.orden,
+        sufijo: analisis.sufijo,
+      });
     });
 
-    return Array.from(map.values())
-      .filter((m) => m.cursos.length >= 2)
-      .sort((a, b) => String(a.materia).localeCompare(String(b.materia), "es"));
-  }, [modo, esEdicion, materiasPorCursoCompletas, idsCursosActivos]);
+    return Array.from(grupos.values())
+      .map((grupo) => {
+        const cadena = [...grupo.items].sort((a, b) => ordenarCadena(a, b, grupo.tieneNumeracion));
+        const relacionesTotales = [];
+
+        for (let i = 0; i < cadena.length - 1; i++) {
+          const anterior = cadena[i];
+          const posterior = cadena[i + 1];
+
+          if (
+            Number(anterior.id_curso) === Number(posterior.id_curso) &&
+            Number(anterior.id_materia) === Number(posterior.id_materia)
+          ) {
+            continue;
+          }
+
+          relacionesTotales.push({ anterior, posterior });
+        }
+
+        const relacionesPendientes = relacionesTotales.filter(
+          ({ anterior, posterior }) => !correlativasRealizadasSet.has(claveRelacionPendiente(anterior, posterior))
+        );
+
+        const primero = cadena[0] || {};
+
+        return {
+          id_materia: primero.id_materia,
+          materia: grupo.tieneNumeracion ? grupo.base : primero.materia,
+          etiqueta: grupo.tieneNumeracion ? grupo.base : primero.materia,
+          cursos: cadena.map((item) => ({
+            id_curso: item.id_curso,
+            nombre_curso: item.nombre_curso,
+            materia: item.materia,
+          })),
+          cadena,
+          relacionesTotales,
+          relacionesPendientes,
+          tieneNumeracion: grupo.tieneNumeracion,
+        };
+      })
+      .filter((m) => m.relacionesTotales.length > 0 && m.relacionesPendientes.length > 0)
+      .sort((a, b) => String(a.etiqueta || a.materia).localeCompare(String(b.etiqueta || b.materia), "es"));
+  }, [modo, esEdicion, materiasPorCursoCompletas, idsCursosActivos, nombreCursoPorId, correlativasRealizadasSet]);
+
+  const itemAutoSeleccionado = useMemo(() => {
+    return materiasAuto.find((m) => String(m.id_materia) === String(idMateriaAuto)) || null;
+  }, [idMateriaAuto, materiasAuto]);
 
   const cursosAutoSeleccionados = useMemo(() => {
-    const itemAuto = materiasAuto.find(
-      (m) => Number(m.id_materia) === Number(idMateriaAuto)
-    );
+    if (!itemAutoSeleccionado) return [];
+    return [...itemAutoSeleccionado.cursos];
+  }, [itemAutoSeleccionado]);
 
-    if (!itemAuto) return [];
-
-    return [...itemAuto.cursos].sort(
-      (a, b) => Number(a.id_curso) - Number(b.id_curso)
-    );
-  }, [idMateriaAuto, materiasAuto]);
+  const relacionesAutoPendientes = useMemo(() => {
+    return itemAutoSeleccionado?.relacionesPendientes || [];
+  }, [itemAutoSeleccionado]);
 
   const agregarRelacion = () => {
     setRelaciones((prev) => [...prev, nuevaRelacionVacia()]);
@@ -614,6 +761,10 @@ const ModalCorrelativa = ({
       return "La materia seleccionada tiene que existir en dos o más cursos según cátedras.";
     }
 
+    if (relacionesAutoPendientes.length === 0) {
+      return "Esa cadena ya tiene todas sus correlativas creadas.";
+    }
+
     return "";
   };
 
@@ -624,7 +775,7 @@ const ModalCorrelativa = ({
     : "Manual";
 
   const resumenRelaciones = modo === "auto"
-    ? `${cursosAutoSeleccionados.length} curso${cursosAutoSeleccionados.length === 1 ? "" : "s"}`
+    ? `${relacionesAutoPendientes.length} pendiente${relacionesAutoPendientes.length === 1 ? "" : "s"}`
     : `${relaciones.length} relación${relaciones.length === 1 ? "" : "es"}`;
 
   const cursoAnteriorNombre = useMemo(() => {
@@ -642,11 +793,8 @@ const ModalCorrelativa = ({
   }, [materiasCursoAnterior, idMateriaAnterior]);
 
   const materiaAutoNombre = useMemo(() => {
-    const materia = materiasAuto.find(
-      (m) => String(m.id_materia) === String(idMateriaAuto)
-    );
-    return materia?.materia || "";
-  }, [materiasAuto, idMateriaAuto]);
+    return itemAutoSeleccionado?.etiqueta || itemAutoSeleccionado?.materia || "";
+  }, [itemAutoSeleccionado]);
 
   const resumenBase = modo === "auto"
     ? materiaAutoNombre || "Sin materia base"
@@ -671,7 +819,7 @@ const ModalCorrelativa = ({
 
       onSave({
         modo: "auto_por_materia",
-        id_materia: Number(idMateriaAuto),
+        id_materia: Number(itemAutoSeleccionado?.id_materia || idMateriaAuto),
         tipo: "anterior",
         activo: 1,
         bloquea_inscripcion: Number(autoBloqueaInscripcion),
@@ -1029,7 +1177,7 @@ const ModalCorrelativa = ({
 
                     {materiasAuto.map((m) => (
                       <option key={m.id_materia} value={m.id_materia}>
-                        {aMayusculas(m.materia)} ({m.cursos.length} cursos)
+                        {aMayusculas(m.etiqueta || m.materia)} ({m.relacionesPendientes.length} pendiente{m.relacionesPendientes.length === 1 ? "" : "s"})
                       </option>
                     ))}
                   </select>
@@ -1070,6 +1218,10 @@ const ModalCorrelativa = ({
                     Cargando materias desde cátedras para detectar en qué años
                     existe cada una...
                   </p>
+                ) : materiasAuto.length === 0 ? (
+                  <p>
+                    No quedan cadenas automáticas pendientes para generar. Las correlativas que ya existen se ocultan de este selector.
+                  </p>
                 ) : cursosAutoSeleccionados.length === 0 ? (
                   <p>
                     Seleccioná una materia y el sistema va a mostrar los años
@@ -1078,14 +1230,15 @@ const ModalCorrelativa = ({
                 ) : (
                   <>
                     <p>
-                      Se van a crear relaciones consecutivas para los cursos
-                      donde existe esa materia:
+                      Se van a crear solamente las relaciones pendientes de esta cadena:
                     </p>
 
                     <div className="auto-course-chain">
                       {cursosAutoSeleccionados.map((c, index) => (
-                        <React.Fragment key={c.id_curso}>
-                          <span>{aMayusculas(c.nombre_curso)}</span>
+                        <React.Fragment key={`${c.id_curso}-${c.materia || index}`}>
+                          <span title={aMayusculas(c.materia)}>
+                            {aMayusculas(c.nombre_curso)} · {aMayusculas(c.materia)}
+                          </span>
                           {index < cursosAutoSeleccionados.length - 1 && (
                             <b>→</b>
                           )}
@@ -1094,8 +1247,7 @@ const ModalCorrelativa = ({
                     </div>
 
                     <small>
-                      Ejemplo: 1° → 2°, 2° → 3°, 3° → 4°. No tenés que cargar
-                      una por una.
+                      Pendientes a guardar: {relacionesAutoPendientes.length}. Las que ya existen no aparecen para volver a generarlas.
                     </small>
                   </>
                 )}
