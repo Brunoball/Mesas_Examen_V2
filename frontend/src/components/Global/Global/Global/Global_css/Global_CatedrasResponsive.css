@@ -1,0 +1,412 @@
+/* =========================================================
+   CÁTEDRAS — RESPONSIVE GLOBAL
+   Replica el comportamiento responsive de Docentes.
+   Solo afecta tablets y celulares; la vista monitor queda en
+   Catedras.css sin modificar su layout principal.
+   ========================================================= */
+
+@media (max-width: 1200px) {
+  .catedras-card__head {
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .catedras-card__headLeft {
+    align-items: stretch;
+  }
+
+  .catedras-headFilters {
+    justify-content: flex-end;
+  }
+
+  .catedras-searchFilter {
+    min-width: 220px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .catedras-page.mov-page {
+    height: auto;
+    min-height: calc(100dvh - 90px);
+    padding: 14px;
+    overflow: auto;
+  }
+
+  .catedras-card.mov-card {
+    height: auto;
+    min-height: calc(100dvh - 118px);
+  }
+
+  .catedras-card__head {
+    padding: 14px;
+    flex-direction: column;
+  }
+
+  .catedras-card__headLeft {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .catedras-titleBox {
+    min-width: 0;
+  }
+
+  .catedras-headFilters {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: end;
+    gap: 12px;
+  }
+
+  .catedras-filterTabs,
+  .catedras-selectFilter,
+  .catedras-searchFilter,
+  .catedras-actionsHead,
+  .catedras-actionsHead .mov-btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .catedras-filterSelect,
+  .catedras-searchInput,
+  .cc-input.catedras-searchInput {
+    min-width: 0;
+  }
+
+  .catedras-divTable.global-divTable {
+    max-height: calc(100vh - 382px);
+    min-height: 0;
+  }
+
+  .catedras-table-wrap.mov-tableWrap {
+    max-height: calc(100vh - 382px);
+    min-height: 420px;
+    overflow: auto;
+  }
+
+  .catedras-table-wrap .mov-gridBody--relative {
+    height: auto;
+    min-height: 420px;
+  }
+
+  .catedras-footer {
+    padding: 10px 14px;
+    gap: 10px 14px;
+  }
+}
+
+@media (max-width: 860px) {
+  .catedras-headFilters {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 820px) {
+  .catedras-page.mov-page {
+    height: calc(100dvh - 70px);
+    min-height: 0;
+    max-height: calc(100dvh - 70px);
+    padding: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .catedras-card.mov-card {
+    height: 100%;
+    min-height: 0;
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .catedras-section-title {
+    font-size: 14px;
+  }
+
+  .catedras-filterSelect,
+  .catedras-searchInput,
+  .cc-input.catedras-searchInput {
+    height: 42px;
+  }
+
+  .catedras-actionsHead {
+    justify-content: stretch;
+  }
+
+  .catedras-actionsHead .mov-btn {
+    min-height: 42px;
+  }
+
+  .catedras-divTable.global-divTable {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow: hidden;
+  }
+
+  .catedras-card__head,
+  .catedras-footer {
+    flex: 0 0 auto;
+  }
+
+  .catedras-table-wrap.mov-tableWrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .catedras-table-wrap .mov-gridBody--relative {
+    min-width: 0;
+    min-height: 260px;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 12px 12px;
+    background: color-mix(in srgb, var(--balto-bg) 64%, #fff);
+  }
+
+  .catedras-gridHead {
+    display: none !important;
+  }
+
+  .catedras-gridRow.global-divTable__row {
+    grid-template-columns: 1fr !important;
+    min-width: 0 !important;
+    width: 100%;
+    border: 1px solid color-mix(in srgb, var(--mov-border) 74%, #fff);
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: var(--mov-shadow-sm);
+  }
+
+  .catedras-gridRow .mov-gridCell {
+    min-height: 0;
+    width: 100%;
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: minmax(104px, 42%) minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    white-space: normal;
+    text-align: left;
+    justify-content: stretch;
+    border-bottom: 1px solid color-mix(in srgb, var(--mov-border) 58%, #fff);
+  }
+
+  .catedras-gridRow .mov-gridCell:last-child {
+    border-bottom: 0;
+  }
+
+  .catedras-gridRow .mov-gridCell::before {
+    content: attr(data-label);
+    min-width: 0;
+    color: var(--mov-muted);
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    justify-self: start;
+    text-align: left;
+  }
+
+  .catedras-gridRow .mov-gridCell > :not(.mov-actionsInline) {
+    justify-self: end;
+    text-align: right;
+  }
+
+  .catedras-gridRow .mov-gridCell.is-center,
+  .catedras-gridRow .mov-gridCell--actions {
+    justify-content: stretch;
+    text-align: left;
+  }
+
+  .catedras-gridRow .mov-gridCell--actions {
+    overflow: visible;
+  }
+
+  .catedras-gridRow .mov-actionsInline {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+
+  .catedras-materia,
+  .catedras-docente,
+  .catedras-sin-docente,
+  .catedras-gridRow .mov-ellipsissss {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+
+  .catedras-gridRow .mov-chip,
+  .catedras-gridRow .catedras-sin-docente {
+    width: fit-content;
+    max-width: 100%;
+    height: auto;
+    min-height: 24px;
+    justify-self: end;
+    text-align: center;
+  }
+
+  .catedras-gridRow .mov-row--skeleton .mov-gridCell::before,
+  .mov-row--skeleton.catedras-gridRow .mov-gridCell::before {
+    display: none;
+  }
+
+  .mov-row--skeleton.catedras-gridRow .mov-gridCell {
+    grid-template-columns: 1fr;
+    min-height: 44px;
+  }
+
+  .catedras-emptyState {
+    min-height: 180px;
+    border-radius: 14px;
+    background: #fff;
+    margin: 10px 12px 12px;
+  }
+
+  .catedras-footer {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px;
+  }
+
+  .catedras-footer > span:first-child {
+    display: none !important;
+  }
+
+  .catedras-pagination {
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .catedras-pageBtn {
+    flex: 1 1 120px;
+  }
+}
+
+@media (max-width: 620px) {
+  .catedras-page.mov-page {
+    padding: 10px;
+  }
+
+  .catedras-card.mov-card {
+    border-radius: 12px;
+  }
+
+  .catedras-card__head {
+    padding: 12px;
+  }
+
+  .catedras-card__hint {
+    font-size: 11px;
+  }
+
+  .catedras-filterSelect,
+  .catedras-searchInput,
+  .cc-input.catedras-searchInput {
+    min-width: 0;
+    height: 42px;
+  }
+
+  .catedras-filterTabs__label {
+    left: 12px;
+    font-size: 10px;
+  }
+
+  .catedras-table-wrap .mov-gridBody--relative {
+    gap: 9px;
+    padding: 9px;
+  }
+
+  .catedras-gridRow .mov-gridCell {
+    grid-template-columns: minmax(98px, 42%) minmax(0, 1fr);
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .catedras-gridRow .mov-gridCell::before {
+    font-size: 10px;
+  }
+
+  .catedras-gridRow .mov-chip,
+  .catedras-gridRow .catedras-sin-docente {
+    justify-self: end;
+  }
+
+  .catedras-gridRow .mov-actionsInline {
+    justify-content: flex-end;
+  }
+
+  .catedras-icon-btn {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    min-height: 30px !important;
+  }
+
+  .catedras-footer {
+    font-size: 11px;
+  }
+
+  .catedras-pagination {
+    justify-content: stretch;
+  }
+
+  .catedras-pagination > span {
+    order: -1;
+    width: 100%;
+    text-align: center;
+  }
+
+  .catedras-pageBtn {
+    height: 34px;
+  }
+}
+
+@media (max-width: 460px) {
+  .catedras-page.mov-page {
+    height: calc(100dvh - 75px);
+    max-height: calc(100dvh - 75px);
+    padding: 8px;
+  }
+
+  .catedras-card__head {
+    gap: 10px;
+  }
+
+  .catedras-section-title {
+    font-size: 13px;
+  }
+
+  .catedras-actionsHead .mov-btn {
+    justify-content: center;
+    font-size: 13px;
+  }
+
+  .catedras-table-wrap .mov-gridBody--relative {
+    padding: 8px;
+  }
+
+  .catedras-gridRow .mov-gridCell {
+    grid-template-columns: minmax(92px, 44%) minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .catedras-gridRow.global-divTable__row {
+    border-radius: 12px;
+  }
+}

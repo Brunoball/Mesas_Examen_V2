@@ -4379,3 +4379,272 @@
     max-width:none !important;
   }
 }
+
+/* =========================================================
+   MESAS — skeleton estático sin efecto de carga
+   ========================================================= */
+.mesas-staticSkeleton{
+  display:block;
+  width:100%;
+  height:12px;
+  border-radius:999px;
+  background:linear-gradient(90deg, rgba(58,46,43,.07) 0%, rgba(196,139,59,.18) 52%, rgba(58,46,43,.07) 100%);
+  background-size:100% 100%;
+  animation:none !important;
+  transform:none !important;
+  box-shadow:none !important;
+}
+
+.mesas-loadingSkeleton{
+  display:block;
+  width:100%;
+}
+
+.mesas-loadingSkeleton > .mesas-pdf-sheet + .mesas-pdf-sheet{
+  margin-top:16px;
+}
+
+.mesas-pdf-sheet--skeleton{
+  pointer-events:none;
+  user-select:none;
+}
+
+.mesas-pdf-skeletonHeader{
+  min-height:66px;
+}
+
+.mesas-pdf-skeletonBrandText{
+  width:min(320px, 42vw);
+  display:grid;
+  gap:8px;
+}
+
+.mesas-pdf-skeletonMeta{
+  min-width:160px;
+  align-items:flex-end;
+}
+
+.mesas-pdf-skeletonMeta .mesas-staticSkeleton{
+  margin-left:auto;
+}
+
+.mesas-staticSkeleton--logo{
+  width:31px;
+  height:31px;
+  border-radius:9px;
+  flex:0 0 31px;
+}
+
+.mesas-staticSkeleton--title{ width:78%; height:15px; }
+.mesas-staticSkeleton--subtitle{ width:46%; height:10px; }
+.mesas-staticSkeleton--meta{ width:132px; height:10px; }
+.mesas-staticSkeleton--metaStrong{ width:104px; height:12px; }
+.mesas-staticSkeleton--wide{ width:88%; }
+.mesas-staticSkeleton--medium{ width:66%; }
+.mesas-staticSkeleton--short{ width:48%; }
+.mesas-staticSkeleton--mini{ width:34%; }
+.mesas-staticSkeleton--dni{ width:72%; margin:0 auto; }
+.mesas-staticSkeleton--nota{ width:32px; height:28px; margin:0 auto; border-radius:10px; }
+.mesas-staticSkeleton--icon{ width:32px; height:32px; border-radius:10px; }
+.mesas-staticSkeleton--kpiIcon{ width:42px; height:42px; border-radius:14px; flex:0 0 42px; }
+.mesas-staticSkeleton--kpiLabel{ width:74px; height:10px; }
+.mesas-staticSkeleton--kpiValue{ width:52px; height:21px; border-radius:9px; }
+.mesas-staticSkeleton--kpiSmall{ width:94px; height:9px; }
+.mesas-staticSkeleton--sectionTitle{ width:220px; height:18px; border-radius:10px; }
+
+.mesas-pdf-skeletonTableWrap{
+  min-height:190px;
+}
+
+.mesas-pdf-skeletonTable{
+  display:block !important;
+}
+
+.mesas-pdf-skeletonHeadCell .mesas-staticSkeleton{
+  height:9px;
+  opacity:.82;
+}
+
+.mesas-pdf-skeletonHeadCell--hora .mesas-staticSkeleton,
+.mesas-pdf-skeletonHeadCell--dni .mesas-staticSkeleton,
+.mesas-pdf-skeletonHeadCell--curso .mesas-staticSkeleton,
+.mesas-pdf-skeletonHeadCell--nota .mesas-staticSkeleton{
+  width:58%;
+  margin:0 auto;
+}
+
+.mesas-pdf-skeletonCell{
+  min-height:42px;
+  align-items:center;
+}
+
+.mesas-pdf-skeletonCell .mesas-staticSkeleton + .mesas-staticSkeleton{
+  margin-top:8px;
+}
+
+.mesas-pdf-skeletonCell--hora{
+  align-items:center;
+  justify-content:center;
+}
+
+.mesas-pdf-skeletonCell--hora .mesas-staticSkeleton{
+  margin-left:auto;
+  margin-right:auto;
+}
+
+.mesas-pdf-skeletonActions{
+  justify-content:flex-end;
+  gap:8px;
+}
+
+.mesas-historial-kpi--skeleton{
+  pointer-events:none;
+}
+
+.mesas-historial-kpi--skeleton .mesas-historial-kpiBody{
+  width:100%;
+  gap:8px;
+}
+
+.mesas-historial-section--skeleton{
+  pointer-events:none;
+}
+
+.mesas-historial-gridRow--skeleton .mov-gridCell{
+  align-items:center;
+}
+
+.mesas-historial-detalleSkeleton{
+  display:grid;
+  gap:8px;
+  width:100%;
+  padding:12px;
+  border:1px solid color-mix(in srgb, var(--mov-border, #D6E2F3) 72%, #fff);
+  border-radius:14px;
+  background:#fff;
+}
+
+.mesas-historial-detalleSkeleton__row{
+  display:grid;
+  grid-template-columns:minmax(150px, 1fr) minmax(110px, .7fr) minmax(70px, .35fr);
+  gap:12px;
+  min-height:38px;
+  align-items:center;
+  padding:9px 10px;
+  border:1px solid color-mix(in srgb, var(--mov-border, #D6E2F3) 62%, #fff);
+  border-radius:12px;
+  background:color-mix(in srgb, var(--balto-bg, #FDFBF7) 52%, #fff);
+}
+
+/* Apaga el movimiento de todos los skeleton existentes dentro de Mesas. */
+.mesas-page .ag-num-skeleton-line,
+.mesas-page .flechas-skeleton-line,
+.mesas-page .mas-skeleton-line,
+.mesas-page .editar-mesa-skeleton-line,
+.mesas-page .persona-skeleton-line,
+.ag-num-skeleton-line,
+.flechas-skeleton-line,
+.mas-skeleton-line,
+.editar-mesa-skeleton-line,
+.persona-skeleton-line{
+  animation:none !important;
+  background-position:center !important;
+  background-size:100% 100% !important;
+}
+
+@media (max-width:720px){
+  .mesas-pdf-skeletonHeader{
+    align-items:flex-start;
+  }
+
+  .mesas-pdf-skeletonBrandText{
+    width:100%;
+  }
+
+  .mesas-pdf-skeletonMeta{
+    width:100%;
+    min-width:0;
+    align-items:flex-start;
+  }
+
+  .mesas-pdf-skeletonMeta .mesas-staticSkeleton{
+    margin-left:0;
+  }
+
+  .mesas-historial-detalleSkeleton__row{
+    grid-template-columns:1fr;
+  }
+}
+
+
+/* =========================================================
+   MESAS — quitar scroll horizontal durante skeleton
+   ========================================================= */
+.mesas-pdf-view--skeleton,
+.mesas-pdf-view--historial:has(.mesas-historial-skeleton){
+  overflow-x:hidden !important;
+}
+
+.mesas-pdf-view--skeleton .mesas-loadingSkeleton,
+.mesas-historial-skeleton{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  overflow-x:hidden !important;
+  box-sizing:border-box;
+}
+
+.mesas-pdf-view--skeleton .mesas-loadingSkeleton *,
+.mesas-historial-skeleton *{
+  box-sizing:border-box;
+  min-width:0;
+}
+
+.mesas-pdf-view--skeleton .mesas-pdf-sheet--skeleton{
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0 !important;
+  overflow:hidden !important;
+}
+
+.mesas-pdf-view--skeleton .mesas-pdf-skeletonTableWrap,
+.mesas-card-pdf-fijo .mesas-pdf-view--skeleton .mesas-pdf-skeletonTableWrap,
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-view--skeleton .mesas-pdf-skeletonTableWrap{
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0 !important;
+  overflow-x:hidden !important;
+  overflow-y:visible !important;
+}
+
+.mesas-pdf-view--skeleton .mesas-pdf-skeletonTable,
+.mesas-pdf-view--skeleton .mesas-pdf-divTable,
+.mesas-card-pdf-fijo .mesas-pdf-view--skeleton .mesas-pdf-divTable,
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-view--skeleton .mesas-pdf-divTable,
+.mesas-card-pdf-fijo .mesas-pdf-view--skeleton .mesas-pdf-table.mesas-pdf-divTable,
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-view--skeleton .mesas-pdf-table.mesas-pdf-divTable{
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0 !important;
+}
+
+.mesas-pdf-view--skeleton .mesas-pdf-gridHead,
+.mesas-pdf-view--skeleton .mesas-pdf-gridBody{
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0 !important;
+}
+
+.mesas-historial-skeleton .mesas-historial-divTable,
+.mesas-historial-skeleton .mesas-historial-tableWrap,
+.mesas-historial-skeleton .mov-gridBody,
+.mesas-historial-skeleton .mov-gridTable,
+.mesas-historial-skeleton .global-divTable,
+.mesas-historial-skeleton .global-divTable__wrap,
+.mesas-historial-skeleton .global-divTable__body,
+.mesas-historial-skeleton .global-divTable__row{
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0 !important;
+  overflow-x:hidden !important;
+}

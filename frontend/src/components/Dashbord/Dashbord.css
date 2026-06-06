@@ -57,6 +57,7 @@
 
 .dashbord-header__title {
   min-width: 0;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -276,6 +277,7 @@
   min-height: 0;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: 96px;
   gap: 10px;
 }
 
@@ -286,7 +288,8 @@
 .dashbord-card {
   position: relative;
   min-width: 0;
-  min-height: 92px;
+  height: 96px;
+  min-height: 96px;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -346,6 +349,7 @@
   position: relative;
   z-index: 1;
   min-width: 0;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -841,5 +845,145 @@
 .dashbord-footer a:hover {
   text-decoration: underline;
 }
+
+/* Skeleton estático: mantiene las cajas fijas sin efecto/animación de carga */
+.dashbord-layout--loading .dashbord-card,
+.dashbord-layout--loading .dashbord-panel {
+  pointer-events: none;
+}
+
+.dashbord-skeletonText {
+  display: block !important;
+  min-height: 1em;
+  border-radius: 999px;
+  color: transparent !important;
+  background: linear-gradient(
+    90deg,
+    rgba(58, 46, 43, 0.075) 0%,
+    rgba(196, 139, 59, 0.18) 45%,
+    rgba(58, 46, 43, 0.075) 100%
+  );
+  background-size: 100% 100%;
+  box-shadow: none !important;
+  overflow: hidden;
+}
+
+.dashbord-skeletonText svg,
+.dashbord-skeletonText i {
+  display: none !important;
+}
+
+.dashbord-chip.is-loading {
+  min-width: 104px;
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.dashbord-chip--wide.is-loading {
+  min-width: 190px;
+}
+
+.dashbord-skeletonText--chip {
+  width: 70px;
+  height: 13px;
+}
+
+.dashbord-skeletonText--chipWide {
+  width: 148px;
+  height: 13px;
+}
+
+.dashbord-card.is-loading .dashbord-card__icon {
+  color: rgba(196, 139, 59, 0.38);
+  background: rgba(196, 139, 59, 0.075);
+}
+
+.dashbord-skeletonText--cardTitle {
+  width: min(148px, 82%);
+  height: 11px;
+  margin-bottom: 4px;
+}
+
+.dashbord-skeletonText--cardValue {
+  width: 76px;
+  height: 28px;
+  margin: 2px 0 4px;
+}
+
+.dashbord-skeletonText--cardSmall {
+  width: min(132px, 74%);
+  height: 12px;
+}
+
+.dashbord-skeletonText--panelText {
+  width: min(420px, 100%);
+  height: 13px;
+  margin-top: 6px;
+}
+
+.dashbord-skeletonText--legend {
+  width: 78px;
+  height: 12px;
+}
+
+.dashbord-skeletonText--axis {
+  width: 32px;
+  height: 12px;
+}
+
+.dashbord-skeletonText--date {
+  width: 42px;
+  height: 12px;
+}
+
+.dashbord-panel__headContent {
+  width: 100%;
+  min-width: 0;
+}
+
+.dashbord-skeletonText--review {
+  width: 128px;
+  height: 32px;
+  min-height: 32px;
+  border-color: transparent !important;
+}
+
+.dashbord-progressItem {
+  min-height: 74px;
+}
+
+.dashbord-skeletonText--progressLabel {
+  width: min(210px, 72%);
+  height: 14px;
+}
+
+.dashbord-skeletonText--progressValue {
+  width: 44px;
+  height: 14px;
+}
+
+.dashbord-progressTrack--loading {
+  background: rgba(58, 46, 43, 0.07);
+}
+
+.dashbord-progressTrack--loading span,
+.dashbord-stackBar--skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(196, 139, 59, 0.22),
+    rgba(196, 139, 59, 0.46),
+    rgba(196, 139, 59, 0.22)
+  );
+  background-size: 100% 100%;
+}
+
+.dashbord-chart--loading .dashbord-chart__bars {
+  overflow: hidden;
+}
+
+.dashbord-stackBar--skeleton {
+  min-height: 24px;
+  border-radius: 10px 10px 4px 4px;
+}
+
 
 /* Responsive del Dashboard: ver ../Global/Global_css/Global_DashbordResponsive.css */

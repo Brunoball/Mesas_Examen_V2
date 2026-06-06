@@ -6,7 +6,6 @@ import {
   faChartLine,
   faCheckCircle,
   faCircleExclamation,
-  faSpinner,
   faTriangleExclamation,
   faClock,
   faUsers,
@@ -64,19 +63,161 @@ function getErrorMessage(error, fallback) {
   return error?.data?.mensaje || error?.message || fallback;
 }
 
-function StatCard({ item }) {
+const SKELETON_CARDS = [
+  { key: "sk-inscriptos", className: "is-total" },
+  { key: "sk-aprobados", className: "is-approved" },
+  { key: "sk-ausentes", className: "is-absent" },
+  { key: "sk-desaprobados", className: "is-failed" },
+];
+
+function SkeletonLine({ className = "" }) {
+  return <span className={`estadSkeletonLine ${className}`} aria-hidden="true">&nbsp;</span>;
+}
+
+function StatCard({ item, loading = false }) {
   return (
-    <article className={`estadCard ${item.className || ""}`}>
+    <article className={`estadCard ${item.className || ""} ${loading ? "is-loading" : ""}`}>
       <div className="estadCard__icon" aria-hidden="true">
-        <FontAwesomeIcon icon={item.icon} />
+        {!loading && item.icon ? <FontAwesomeIcon icon={item.icon} /> : null}
       </div>
 
       <div className="estadCard__body">
-        <span className="estadCard__label">{item.label}</span>
-        <strong className="estadCard__value">{formatNumber(item.value)}</strong>
-        <span className="estadCard__detail">{item.detail}</span>
+        {loading ? (
+          <>
+            <SkeletonLine className="estadSkeletonLine--cardLabel" />
+            <SkeletonLine className="estadSkeletonLine--cardValue" />
+            <SkeletonLine className="estadSkeletonLine--cardDetail" />
+          </>
+        ) : (
+          <>
+            <span className="estadCard__label">{item.label}</span>
+            <strong className="estadCard__value">{formatNumber(item.value)}</strong>
+            <span className="estadCard__detail">{item.detail}</span>
+          </>
+        )}
       </div>
     </article>
+  );
+}
+
+function SelectionInfoSkeleton() {
+  return (
+    <div className="estadSelectionInfo is-loading" aria-hidden="true">
+      <SkeletonLine className="estadSkeletonLine--selectionTitle" />
+      <SkeletonLine className="estadSkeletonLine--selectionMeta" />
+    </div>
+  );
+}
+
+function EstadPanelHeadSkeleton({ icon = false }) {
+  return (
+    <div className="estadPanel__head estadPanel__head--skeleton" aria-hidden="true">
+      <div>
+        <SkeletonLine className="estadSkeletonLine--panelTitle" />
+        <SkeletonLine className="estadSkeletonLine--panelSubtitle" />
+      </div>
+      {icon ? <span className="estadSkeletonIcon" /> : null}
+    </div>
+  );
+}
+
+function DonutSkeleton() {
+  return (
+    <div className="estadDonutWrap estadDonutWrap--skeleton" aria-hidden="true">
+      <div className="estadDonut estadDonut--skeleton">
+        <div className="estadDonut__center">
+          <SkeletonLine className="estadSkeletonLine--donutValue" />
+          <SkeletonLine className="estadSkeletonLine--donutText" />
+        </div>
+      </div>
+
+      <div className="estadLegend">
+        {[0, 1, 2].map((item) => (
+          <div className="estadLegend__item estadLegend__item--skeleton" key={item}>
+            <span className="estadLegend__dot" aria-hidden="true" />
+            <SkeletonLine className="estadSkeletonLine--legendLabel" />
+            <SkeletonLine className="estadSkeletonLine--legendValue" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BarsSkeleton() {
+  return (
+    <div className="estadBars estadBars--skeleton" aria-hidden="true">
+      {[0, 1, 2].map((item) => (
+        <div className="estadBarRow estadBarRow--skeleton" key={item}>
+          <div className="estadBarRow__top">
+            <SkeletonLine className="estadSkeletonLine--barLabel" />
+            <SkeletonLine className="estadSkeletonLine--barValue" />
+          </div>
+          <div className="estadBarRow__track estadBarRow__track--skeleton">
+            <span />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TablaSkeleton() {
+  return (
+    <div className="estadMiniTable estadMiniTable--skeleton" aria-hidden="true">
+      <div className="estadMiniTable__header" role="row">
+        {[0, 1, 2, 3, 4].map((item) => (
+          <SkeletonLine className="estadSkeletonLine--tableHead" key={item} />
+        ))}
+      </div>
+
+      {[0, 1, 2].map((row) => (
+        <div className="estadMiniTable__row" role="row" key={row}>
+          <span className="estadMiniTable__main" role="cell">
+            <SkeletonLine className="estadSkeletonLine--tableMain" />
+            <span className="estadMiniTable__bar estadMiniTable__bar--skeleton" aria-hidden="true">
+              <i />
+            </span>
+          </span>
+          {[0, 1, 2, 3].map((cell) => (
+            <SkeletonLine className="estadSkeletonLine--tableCell" role="cell" key={cell} />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EstadisticasSkeleton() {
+  return (
+    <>
+      <div className="estadCardsGrid" aria-hidden="true">
+        {SKELETON_CARDS.map((item) => (
+          <StatCard item={item} loading key={item.key} />
+        ))}
+      </div>
+
+      <div className="estadChartsGrid" aria-hidden="true">
+        <article className="estadPanel estadPanel--donut estadPanel--skeleton">
+          <EstadPanelHeadSkeleton icon />
+          <DonutSkeleton />
+        </article>
+
+        <article className="estadPanel estadPanel--skeleton">
+          <EstadPanelHeadSkeleton icon />
+          <BarsSkeleton />
+        </article>
+      </div>
+
+      <div className="estadDetailsGrid" aria-hidden="true">
+        {[0, 1].map((item) => (
+          <article className="estadPanel estadPanel--skeleton" key={item}>
+            <EstadPanelHeadSkeleton />
+            <TablaSkeleton />
+          </article>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -293,53 +434,58 @@ function Estadisticas() {
     [totales]
   );
 
+  const esperandoResumen = !loadingOpciones && opciones.length > 0 && Boolean(idSeleccionado) && !resumen && !error;
+  const mostrandoSkeleton = loadingOpciones || loadingResumen || esperandoResumen;
+
   const contenido = (
-    <section className="estadisticasPage">
+    <section className="estadisticasPage" aria-busy={mostrandoSkeleton}>
       <header className="estadHero">
         <div className="estadHero__icon" aria-hidden="true">
           <FontAwesomeIcon icon={faChartLine} />
         </div>
 
         <div className="estadHero__text">
-          <p className="estadHero__eyebrow">Módulo de cierre</p>
           <h1>Estadísticas de mesas</h1>
           <span>
             Resumen por historial guardado: inscriptos, aprobados, ausentes y desaprobados.
           </span>
         </div>
 
-        <button
-          type="button"
-          className="estadHero__refresh"
-          onClick={cargarOpciones}
-          disabled={loadingOpciones || loadingResumen}
-          title="Actualizar estadísticas"
-        >
-          {loadingOpciones ? <FontAwesomeIcon icon={faSpinner} spin /> : "Actualizar"}
-        </button>
+        <label className={`estadSelectBox estadHero__selectBox ${loadingOpciones ? "is-loading" : ""}`}>
+          {loadingOpciones ? (
+            <>
+              <SkeletonLine className="estadSkeletonLine--selectLabel" />
+              <span className="estadSelectSkeletonControl" aria-hidden="true">
+                <SkeletonLine className="estadSkeletonLine--selectControl" />
+              </span>
+            </>
+          ) : (
+            <>
+              <span>Seleccionar mesa de examen</span>
+              <select
+                value={idSeleccionado}
+                onChange={(e) => setIdSeleccionado(e.target.value)}
+                disabled={opciones.length === 0}
+              >
+                {opciones.length === 0 ? (
+                  <option value="">No hay historiales guardados</option>
+                ) : (
+                  opciones.map((opcion) => (
+                    <option value={opcion.id_armado_historial} key={opcion.id_armado_historial}>
+                      {opcion.label || opcion.periodo || opcion.codigo_armado}
+                    </option>
+                  ))
+                )}
+              </select>
+            </>
+          )}
+        </label>
       </header>
 
-      <div className="estadControls">
-        <label className="estadSelectBox">
-          <span>Seleccionar mesa de examen</span>
-          <select
-            value={idSeleccionado}
-            onChange={(e) => setIdSeleccionado(e.target.value)}
-            disabled={loadingOpciones || opciones.length === 0}
-          >
-            {opciones.length === 0 ? (
-              <option value="">No hay historiales guardados</option>
-            ) : (
-              opciones.map((opcion) => (
-                <option value={opcion.id_armado_historial} key={opcion.id_armado_historial}>
-                  {opcion.label || opcion.periodo || opcion.codigo_armado}
-                </option>
-              ))
-            )}
-          </select>
-        </label>
-
-        {armadoSeleccionado && (
+      <div className="estadisticasPage__scroll">
+        {mostrandoSkeleton ? (
+          <SelectionInfoSkeleton />
+        ) : armadoSeleccionado ? (
           <div className="estadSelectionInfo">
             <span>
               <FontAwesomeIcon icon={faCalendarDays} /> {armadoSeleccionado.periodo || armadoSeleccionado.label}
@@ -348,24 +494,18 @@ function Estadisticas() {
               {armadoSeleccionado.fecha_inicio_texto || "-"} a {armadoSeleccionado.fecha_fin_texto || "-"} · Guardado {armadoSeleccionado.creado_en_texto || "-"}
             </small>
           </div>
-        )}
-      </div>
+        ) : null}
 
-      {error && (
+      {error && !mostrandoSkeleton && (
         <div className="estadAlert" role="alert">
           <FontAwesomeIcon icon={faTriangleExclamation} />
           <span>{error}</span>
         </div>
       )}
 
-      {(loadingOpciones || loadingResumen) && (
-        <div className="estadLoading">
-          <FontAwesomeIcon icon={faSpinner} spin />
-          <span>Cargando estadísticas...</span>
-        </div>
-      )}
+      {mostrandoSkeleton && <EstadisticasSkeleton />}
 
-      {!loadingOpciones && !loadingResumen && opciones.length === 0 && !error && (
+      {!mostrandoSkeleton && opciones.length === 0 && !error && (
         <div className="estadEmpty">
           <FontAwesomeIcon icon={faCircleExclamation} />
           <h2>No hay historiales para graficar</h2>
@@ -375,7 +515,7 @@ function Estadisticas() {
         </div>
       )}
 
-      {!loadingOpciones && !loadingResumen && resumen && (
+      {!mostrandoSkeleton && resumen && (
         <>
           <div className="estadCardsGrid">
             {cards.map((item) => (
@@ -444,6 +584,7 @@ function Estadisticas() {
           </div>
         </>
       )}
+      </div>
     </section>
   );
 

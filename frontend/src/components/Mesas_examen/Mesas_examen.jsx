@@ -730,6 +730,139 @@ const PdfGridHead = () => (
   </div>
 );
 
+const MesasSkeletonLine = ({ className = "" }) => (
+  <span className={["mesas-staticSkeleton", className].filter(Boolean).join(" ")} aria-hidden="true" />
+);
+
+const MesasPdfSkeletonCard = ({ rows = 4 }) => (
+  <article className="mesas-pdf-sheet mesas-pdf-sheet--skeleton" aria-hidden="true">
+    <header className="mesas-pdf-header mesas-pdf-skeletonHeader">
+      <div className="mesas-pdf-brand mesas-pdf-skeletonBrand">
+        <span className="mesas-staticSkeleton mesas-staticSkeleton--logo" />
+        <div className="mesas-pdf-skeletonBrandText">
+          <MesasSkeletonLine className="mesas-staticSkeleton--title" />
+          <MesasSkeletonLine className="mesas-staticSkeleton--subtitle" />
+        </div>
+      </div>
+
+      <div className="mesas-pdf-meta mesas-pdf-skeletonMeta">
+        <MesasSkeletonLine className="mesas-staticSkeleton--meta" />
+        <MesasSkeletonLine className="mesas-staticSkeleton--metaStrong" />
+      </div>
+    </header>
+
+    <div className="mesas-pdf-table-wrap mesas-pdf-skeletonTableWrap">
+      <div className="mesas-pdf-table mesas-pdf-divTable mesas-pdf-skeletonTable" role="presentation">
+        <div className="mesas-pdf-gridHead" style={{ gridTemplateColumns: PDF_GRID_COLS }}>
+          {["hora", "materia", "estudiante", "dni", "curso", "nota", "docente"].map((col) => (
+            <div key={col} className={`mesas-pdf-headCell mesas-pdf-skeletonHeadCell mesas-pdf-skeletonHeadCell--${col}`}>
+              <MesasSkeletonLine />
+            </div>
+          ))}
+        </div>
+
+        <div className="mesas-pdf-gridBody mesas-pdf-skeletonGridBody" style={{ gridTemplateColumns: PDF_GRID_COLS }}>
+          {Array.from({ length: rows }).map((_, rowIndex) => (
+            <React.Fragment key={`mesas-skeleton-row-${rowIndex}`}>
+              {rowIndex === 0 && (
+                <div className="mesas-pdf-cell pdf-hora-cell mesas-pdf-skeletonCell mesas-pdf-skeletonCell--hora" style={{ gridRow: `span ${rows}` }}>
+                  <MesasSkeletonLine className="mesas-staticSkeleton--short" />
+                  <MesasSkeletonLine className="mesas-staticSkeleton--mini" />
+                  <MesasSkeletonLine className="mesas-staticSkeleton--short" />
+                </div>
+              )}
+
+              {rowIndex === 0 && (
+                <div className="mesas-pdf-cell pdf-materia-line-cell mesas-pdf-skeletonCell" style={{ gridRow: `span ${rows}` }}>
+                  <MesasSkeletonLine className="mesas-staticSkeleton--wide" />
+                  <MesasSkeletonLine className="mesas-staticSkeleton--medium" />
+                </div>
+              )}
+
+              <div className="mesas-pdf-cell pdf-estudiante-cell mesas-pdf-skeletonCell">
+                <MesasSkeletonLine className="mesas-staticSkeleton--wide" />
+              </div>
+              <div className="mesas-pdf-cell pdf-dni-cell mesas-pdf-skeletonCell">
+                <MesasSkeletonLine className="mesas-staticSkeleton--dni" />
+              </div>
+              <div className="mesas-pdf-cell pdf-curso-cell mesas-pdf-skeletonCell">
+                <MesasSkeletonLine className="mesas-staticSkeleton--mini" />
+              </div>
+              <div className="mesas-pdf-cell pdf-nota-cell mesas-pdf-skeletonCell">
+                <MesasSkeletonLine className="mesas-staticSkeleton--nota" />
+              </div>
+
+              {rowIndex === 0 && (
+                <div className="mesas-pdf-cell pdf-docente-line-cell mesas-pdf-skeletonCell" style={{ gridRow: `span ${rows}` }}>
+                  <MesasSkeletonLine className="mesas-staticSkeleton--wide" />
+                  <MesasSkeletonLine className="mesas-staticSkeleton--medium" />
+                </div>
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    <footer className="mesas-pdf-actions mesas-pdf-skeletonActions">
+      <span className="mesas-staticSkeleton mesas-staticSkeleton--icon" />
+      <span className="mesas-staticSkeleton mesas-staticSkeleton--icon" />
+    </footer>
+  </article>
+);
+
+const MesasPdfLoadingSkeleton = () => (
+  <div className="mesas-loadingSkeleton" role="status" aria-live="polite" aria-label="Cargando mesas">
+    <MesasPdfSkeletonCard rows={4} />
+    <MesasPdfSkeletonCard rows={3} />
+    <MesasPdfSkeletonCard rows={4} />
+  </div>
+);
+
+const MesasHistorialLoadingSkeleton = () => (
+  <div className="mesas-historial-skeleton" role="status" aria-live="polite" aria-label="Cargando historial">
+    <section className="mesas-historial-section mov-card mov-card--table mesas-historial-section--skeleton" aria-hidden="true">
+      <div className="mesas-historial-sectionTitle">
+        <MesasSkeletonLine className="mesas-staticSkeleton--sectionTitle" />
+      </div>
+      <div className="mesas-historial-divTable global-divTable">
+        <div className="mov-gridTable mov-gridTable--head global-divTable__head mesas-historial-gridHead" style={{ gridTemplateColumns: HISTORIAL_ARMADOS_GRID_COLS }}>
+          {Array.from({ length: HISTORIAL_ARMADOS_COLUMNS.length }).map((_, index) => (
+            <div key={`historial-head-skeleton-${index}`} className="mov-gridCell mov-gridCell--head">
+              <MesasSkeletonLine />
+            </div>
+          ))}
+        </div>
+        <div className="mesas-historial-tableWrap mov-tableWrap global-divTable__wrap">
+          <div className="mov-gridBody global-divTable__body mesas-historial-gridBody">
+            {Array.from({ length: 5 }).map((_, rowIndex) => (
+              <div key={`historial-row-skeleton-${rowIndex}`} className="mov-gridTable mov-gridTable--row global-divTable__row mesas-historial-gridRow mesas-historial-gridRow--skeleton" style={{ gridTemplateColumns: HISTORIAL_ARMADOS_GRID_COLS }}>
+                {Array.from({ length: HISTORIAL_ARMADOS_COLUMNS.length }).map((_, cellIndex) => (
+                  <div key={`historial-cell-skeleton-${rowIndex}-${cellIndex}`} className="mov-gridCell">
+                    <MesasSkeletonLine className={cellIndex === 2 ? "mesas-staticSkeleton--wide" : ""} />
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+);
+
+const MesasHistorialDetalleSkeleton = () => (
+  <div className="mesas-historial-detalleSkeleton" role="status" aria-live="polite" aria-label="Cargando detalle">
+    {Array.from({ length: 5 }).map((_, index) => (
+      <div key={`detalle-skeleton-${index}`} className="mesas-historial-detalleSkeleton__row">
+        <MesasSkeletonLine className="mesas-staticSkeleton--wide" />
+        <MesasSkeletonLine className="mesas-staticSkeleton--medium" />
+        <MesasSkeletonLine className="mesas-staticSkeleton--short" />
+      </div>
+    ))}
+  </div>
+);
+
 const MesaPdfCard = ({
   grupo,
   esNoAgrupada = false,
@@ -932,6 +1065,7 @@ const HistorialMesasPanel = ({ historial, busqueda = "", terminosBusqueda = [] }
     const nota = String(item?.nota ?? "").trim();
     return nota !== "" && Number(item?.nota) > 0;
   });
+  const historialEstaCargando = !!historial?.cargando;
   const filasHistorialRefs = useRef({});
   const hayBusquedaHistorial = String(busqueda || "").trim() !== "";
 
@@ -946,7 +1080,7 @@ const HistorialMesasPanel = ({ historial, busqueda = "", terminosBusqueda = [] }
   }, []);
 
   useEffect(() => {
-    if (!hayBusquedaHistorial || historial?.cargando) return undefined;
+    if (!hayBusquedaHistorial || historialEstaCargando) return undefined;
 
     const clavePrimerResultado = armados[0]?.id_armado_historial
       ? `armado-${armados[0].id_armado_historial}`
@@ -964,7 +1098,7 @@ const HistorialMesasPanel = ({ historial, busqueda = "", terminosBusqueda = [] }
     }, 140);
 
     return () => window.clearTimeout(timer);
-  }, [armados, detalleFilas, hayBusquedaHistorial, historial?.cargando, resultados]);
+  }, [armados, detalleFilas, hayBusquedaHistorial, historialEstaCargando, resultados]);
 
   const totalAprobadas = resumen.total_aprobadas ?? resultados.filter((item) => Number(item.aprobado) === 1).length;
   const totalDesaprobadas = resumen.total_desaprobadas ?? resultados.filter((item) => Number(item.aprobado) !== 1).length;
@@ -1012,19 +1146,26 @@ const HistorialMesasPanel = ({ historial, busqueda = "", terminosBusqueda = [] }
               <FontAwesomeIcon icon={tarjeta.icono} />
             </div>
             <div className="mesas-historial-kpiBody">
-              <span>{tarjeta.titulo}</span>
-              <strong>{Number(tarjeta.valor || 0).toLocaleString("es-AR")}</strong>
-              <small>{tarjeta.detalle}</small>
+              {historialEstaCargando ? (
+                <>
+                  <MesasSkeletonLine className="mesas-staticSkeleton--kpiLabel" />
+                  <MesasSkeletonLine className="mesas-staticSkeleton--kpiValue" />
+                  <MesasSkeletonLine className="mesas-staticSkeleton--kpiSmall" />
+                </>
+              ) : (
+                <>
+                  <span>{tarjeta.titulo}</span>
+                  <strong>{Number(tarjeta.valor || 0).toLocaleString("es-AR")}</strong>
+                  <small>{tarjeta.detalle}</small>
+                </>
+              )}
             </div>
           </article>
         ))}
       </div>
 
-      {historial?.cargando ? (
-        <div className="cc-emptyState mesas-empty mesas-pdf-empty">
-          <FontAwesomeIcon icon={faSpinner} spin />
-          <div className="cc-emptyText">Cargando historial...</div>
-        </div>
+      {historialEstaCargando ? (
+        <MesasHistorialLoadingSkeleton />
       ) : (
         <>
           <section className="mesas-historial-section mov-card mov-card--table">
@@ -1109,10 +1250,7 @@ const HistorialMesasPanel = ({ historial, busqueda = "", terminosBusqueda = [] }
               </div>
 
               {historial?.cargandoDetalle ? (
-                <div className="cc-emptyState mesas-empty mesas-historial-empty">
-                  <FontAwesomeIcon icon={faSpinner} spin />
-                  <div className="cc-emptyText">Cargando detalle...</div>
-                </div>
+                <MesasHistorialDetalleSkeleton />
               ) : (
                 <>
                   <div className="mesas-historial-armadoMeta" aria-label="Resumen del armado histórico">
@@ -2083,14 +2221,11 @@ const MesasExamen = () => {
           </div>
         )}
 
-        <div className={`mesas-pdf-view ${tab === "historial" ? "mesas-pdf-view--historial" : ""}`}>
+        <div className={["mesas-pdf-view", tab === "historial" ? "mesas-pdf-view--historial" : "", tab !== "historial" && cargando ? "mesas-pdf-view--skeleton" : ""].filter(Boolean).join(" ")}>
           {tab === "historial" ? (
             <HistorialMesasPanel historial={historial} busqueda={busqueda} terminosBusqueda={terminosBusqueda} />
           ) : cargando ? (
-            <div className="cc-emptyState mesas-empty mesas-pdf-empty">
-              <FontAwesomeIcon icon={faSpinner} spin />
-              <div className="cc-emptyText">Cargando mesas...</div>
-            </div>
+            <MesasPdfLoadingSkeleton />
           ) : mesasFiltradas.length === 0 ? (
             <div className="cc-emptyState mesas-empty mesas-pdf-empty">
               <div className="cc-emptyText">

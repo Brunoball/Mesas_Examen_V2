@@ -598,7 +598,7 @@ function usePrevias() {
 }
 
 const PREVIAS_GRID_COLS = '1.35fr .5fr 2fr .5fr .5fr .5fr .9fr';
-const PREVIAS_BAJAS_GRID_COLS = '1.22fr .45fr 1.65fr .48fr .48fr .58fr 1.12fr .84fr';
+const PREVIAS_BAJAS_GRID_COLS = '1.22fr .7fr 1.65fr .48fr .48fr .58fr 1.12fr .84fr';
 const SKELETON_ROWS = 8;
 
 const PREVIAS_COLUMNS = [
@@ -664,6 +664,40 @@ function fechaBajaTexto(value) {
   if (!match) return text;
 
   return `${match[3]}/${match[2]}/${match[1]}`;
+}
+
+function separarMotivoBaja(value) {
+  const original = String(value ?? '').trim();
+  if (!original) return { motivo: '—', nota: '' };
+
+  const notaMatch = original.match(/(?:^|[\s·•,;()\[\]_-])nota\b(?:\s+de)?\s*[:=]?\s*([0-9]+(?:[,.][0-9]+)?|[a-záéíóúñ]+)/i);
+  const nota = notaMatch ? String(notaMatch[1]).trim().toLocaleUpperCase('es-AR') : '';
+  const esAprobadoEnMesa = /aprob(?:ad[oa]|ó)\s+en\s+mesa/i.test(original);
+
+  const motivo = notaMatch
+    ? esAprobadoEnMesa
+      ? 'Aprobado en mesa'
+      : original
+          .replace(/(?:^|[\s·•,;()\[\]_-])nota\b(?:\s+de)?\s*[:=]?\s*([0-9]+(?:[,.][0-9]+)?|[a-záéíóúñ]+)/i, ' ')
+          .replace(/\b(?:con|de|con\s+la|con\s+el)\s*$/i, '')
+          .replace(/[\s·•,;()\[\]_-]+$/g, '')
+          .replace(/^[\s·•,;()\[\]_-]+/g, '')
+          .replace(/\s{2,}/g, ' ')
+          .trim()
+    : original;
+
+  return { motivo: motivo || original, nota };
+}
+
+function renderMotivoBaja(value) {
+  const { motivo, nota } = separarMotivoBaja(value);
+
+  return (
+    <div className="previas-motivo-baja-cell" title={safeText(value)}>
+      <strong>{safeText(motivo)}</strong>
+      {nota ? <small>Nota: {nota}</small> : null}
+    </div>
+  );
 }
 
 function alignClass(align) {
@@ -1193,7 +1227,7 @@ export default function Previas() {
                           </div>
 
                           <div className="mov-gridCell" role="cell" data-label="Motivo baja" title={safeText(item.motivo_baja)}>
-                            <span className="previas-motivo-baja-cell">{safeText(item.motivo_baja)}</span>
+                            {renderMotivoBaja(item.motivo_baja)}
                           </div>
                         </>
                       ) : (

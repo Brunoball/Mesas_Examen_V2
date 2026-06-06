@@ -656,3 +656,17 @@
 .mas-modal-panel.is-loading{
   min-height:620px;
 }
+
+
+/* Skeleton sin scroll horizontal */
+.mas-tabla-wrap-skeleton{
+  overflow-x:hidden !important;
+}
+
+.mas-tabla-wrap-skeleton .mas-tabla,
+.mas-tabla-wrap-skeleton .mas-div-table,
+.mas-tabla-wrap-skeleton .mas-grid-row{
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0 !important;
+}

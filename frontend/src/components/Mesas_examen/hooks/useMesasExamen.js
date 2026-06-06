@@ -302,9 +302,12 @@ export const useMesasExamen = ({ onToast } = {}) => {
   const [historialArmados, setHistorialArmados] = useState([]);
   const [historialResumen, setHistorialResumen] = useState(null);
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
+  const [historialPrimeraCargaPendiente, setHistorialPrimeraCargaPendiente] = useState(true);
   const [errorHistorial, setErrorHistorial] = useState("");
   const [historialDetalleArmado, setHistorialDetalleArmado] = useState(null);
   const [cargandoDetalleHistorial, setCargandoDetalleHistorial] = useState(false);
+  const historialCargadoRef = useRef(false);
+  const historialPrimeraCargaPendienteRef = useRef(true);
 
   const resumenArmadoTimerRef = useRef(null);
 
@@ -427,8 +430,13 @@ export const useMesasExamen = ({ onToast } = {}) => {
     }
   }, []);
 
-  const cargarHistorial = useCallback(async (busquedaHistorial = "") => {
-    setCargandoHistorial(true);
+  const cargarHistorial = useCallback(async (busquedaHistorial = "", { mostrarSkeleton = true } = {}) => {
+    const debeMostrarSkeleton = mostrarSkeleton && !historialCargadoRef.current && historialPrimeraCargaPendienteRef.current;
+
+    if (debeMostrarSkeleton) {
+      setCargandoHistorial(true);
+    }
+
     setErrorHistorial("");
 
     try {
@@ -437,15 +445,27 @@ export const useMesasExamen = ({ onToast } = {}) => {
       setHistorialResultados(Array.isArray(data.resultados) ? data.resultados : []);
       setHistorialArmados(Array.isArray(data.armados) ? data.armados : []);
       setHistorialResumen(data.resumen || null);
+      historialCargadoRef.current = true;
       return data;
     } catch (err) {
       setErrorHistorial(err.message || "Error al cargar el historial de mesas.");
-      setHistorialResultados([]);
-      setHistorialArmados([]);
-      setHistorialResumen(null);
+
+      if (!historialCargadoRef.current) {
+        setHistorialResultados([]);
+        setHistorialArmados([]);
+        setHistorialResumen(null);
+      }
+
       return null;
     } finally {
-      setCargandoHistorial(false);
+      if (historialPrimeraCargaPendienteRef.current) {
+        historialPrimeraCargaPendienteRef.current = false;
+        setHistorialPrimeraCargaPendiente(false);
+      }
+
+      if (debeMostrarSkeleton) {
+        setCargandoHistorial(false);
+      }
     }
   }, []);
 
@@ -1592,8 +1612,15 @@ export const useMesasExamen = ({ onToast } = {}) => {
   useEffect(() => {
     if (tab !== "historial") return;
 
+    const esPrimeraCargaHistorial = !historialCargadoRef.current && historialPrimeraCargaPendienteRef.current;
+
+    if (esPrimeraCargaHistorial) {
+      cargarHistorial(busqueda, { mostrarSkeleton: true });
+      return;
+    }
+
     const timer = window.setTimeout(() => {
-      cargarHistorial(busqueda);
+      cargarHistorial(busqueda, { mostrarSkeleton: false });
     }, 250);
 
     return () => window.clearTimeout(timer);
@@ -1753,7 +1780,7 @@ export const useMesasExamen = ({ onToast } = {}) => {
       armados: historialArmados,
       resumen: historialResumen,
       detalleArmado: historialDetalleArmado,
-      cargando: cargandoHistorial,
+      cargando: cargandoHistorial || (tab === "historial" && historialPrimeraCargaPendiente),
       cargandoDetalle: cargandoDetalleHistorial,
       error: errorHistorial,
       cargar: () => cargarHistorial(busqueda),

@@ -19,6 +19,8 @@ export default function TextoExpandibleGlobal({
   textClassName = '',
   buttonClassName = '',
   modalCloseLabel = 'Cerrar',
+  modalContent = null,
+  modalContentClassName = '',
 }) {
   const textRef = useRef(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
@@ -86,6 +88,8 @@ export default function TextoExpandibleGlobal({
         title={title}
         subtitle={subtitle}
         content={text}
+        contentNode={modalContent}
+        contentClassName={modalContentClassName}
         closeLabel={modalCloseLabel}
         onClose={() => setModalOpen(false)}
       />

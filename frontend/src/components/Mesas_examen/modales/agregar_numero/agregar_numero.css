@@ -712,3 +712,17 @@
   width:88%;
 }
 
+
+
+/* Skeleton sin scroll horizontal */
+.ag-num-table-wrap-skeleton{
+  overflow-x:hidden !important;
+}
+
+.ag-num-table-wrap-skeleton .ag-num-table,
+.ag-num-table-wrap-skeleton .ag-num-div-table,
+.ag-num-table-wrap-skeleton .ag-num-grid-row{
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0 !important;
+}

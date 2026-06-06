@@ -1,0 +1,98 @@
+/* =========================================================
+   GLOBAL DIV TABLE — estructura visual tipo Ventas
+   Solo estilos reutilizables. No agrega componentes React.
+   ========================================================= */
+
+.global-divTable{
+  display:flex;
+  flex-direction:column;
+  width:100%;
+  min-height:0;
+  flex:1;
+}
+
+.global-divTable__head,
+.global-divTable__row{
+
+  min-width:100%;
+}
+
+.global-divTable__wrap{
+  width:100%;
+}
+
+.global-divTable__body{
+  min-width:100%;
+}
+
+.mov-skeletonWrap,
+.mov-skeletonMore{
+  display:flex;
+  flex-direction:column;
+  width:100%;
+}
+
+.mov-row--skeleton{
+  pointer-events:none;
+}
+
+.mov-row--skeleton .mov-gridCell{
+  min-height:67px;
+}
+
+.mov-skeletonBar{
+  display:block;
+  width:60%;
+  height:10px;
+  border-radius:999px;
+  background:color-mix(in srgb, var(--balto-ink) 8%, #fff);
+  position:relative;
+  overflow:hidden;
+}
+
+.mov-skeletonBar::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  transform:translateX(-120%);
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent);
+  animation:globalDivTableShimmer 1.15s infinite;
+}
+
+.mov-skelActions{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+}
+
+.mov-skelIcon{
+  width:26px;
+  height:24px;
+  border-radius:8px;
+  border:1px solid color-mix(in srgb, var(--mov-border) 70%, #fff);
+  background:color-mix(in srgb, var(--balto-ink) 8%, #fff);
+  position:relative;
+  overflow:hidden;
+}
+
+.mov-skelIcon::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  transform:translateX(-120%);
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent);
+  animation:globalDivTableShimmer 1.15s infinite;
+}
+
+@keyframes globalDivTableShimmer{
+  0%{ transform:translateX(-120%); }
+  100%{ transform:translateX(120%); }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .mov-skeletonBar::after,
+  .mov-skelIcon::after{
+    animation:none !important;
+  }
+}

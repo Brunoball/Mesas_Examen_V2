@@ -1026,3 +1026,17 @@
   overscroll-behavior:none;
   touch-action:none;
 }
+
+
+/* Skeleton sin scroll horizontal */
+.persona-table-wrap-skeleton{
+  overflow-x:hidden !important;
+}
+
+.persona-table-wrap-skeleton .persona-table,
+.persona-table-wrap-skeleton .persona-div-table,
+.persona-table-wrap-skeleton .persona-grid-row{
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0 !important;
+}

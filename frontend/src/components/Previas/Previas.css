@@ -238,15 +238,8 @@
    Tabla visual tipo Docentes — usando DIV grid
 ========================= */
 
-.previas-table-wrap .mov-gridBody--relative{
-  height:calc(100vh - 292px);
-  min-width:1240px;
-}
 
-.previas-gridHead,
-.previas-gridRow{
-  min-width:1240px;
-}
+
 
 .previas-name-cell,
 .previas-materia-cell{
@@ -286,6 +279,15 @@
 }
 
 .previas-motivo-baja-cell{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:2px;
+  min-width:0;
+  width:100%;
+}
+
+.previas-motivo-baja-cell strong{
   display:block;
   min-width:0;
   overflow:hidden;
@@ -295,6 +297,17 @@
   font-size:12px;
   font-weight:560;
   text-transform:uppercase;
+}
+
+.previas-motivo-baja-cell small{
+  display:block;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:var(--balto-action);
+  font-size:11px;
+  font-weight:520;
 }
 
 .previas-icon-btn{

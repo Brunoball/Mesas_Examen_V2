@@ -22,6 +22,8 @@ export default function ModalContenidoGlobal({
   title = 'Detalle',
   subtitle = '',
   content = '',
+  contentNode = null,
+  contentClassName = '',
   closeLabel = 'Cerrar',
   icon = faCircleInfo,
   onClose,
@@ -94,7 +96,9 @@ export default function ModalContenidoGlobal({
         </header>
 
         <div className="ginfo-body">
-          <div className="ginfo-content">{textoSeguro(content)}</div>
+          <div className={`ginfo-content ${contentClassName}`.trim()}>
+            {contentNode ?? textoSeguro(content)}
+          </div>
         </div>
 
         <footer className="ginfo-footer">

@@ -33,12 +33,33 @@ const maximoGrafico = (items) => {
   return Math.max(1, Math.ceil(max / 10) * 10);
 };
 
-function LoadingState() {
+function SkeletonChart() {
   return (
-    <div className="dashbord-state dashbord-state--loading">
-      <FontAwesomeIcon icon={faRotateRight} spin />
-      <strong>Cargando dashboard...</strong>
-      <span>Obteniendo resumen general del sistema.</span>
+    <div className="dashbord-chart dashbord-chart--loading" aria-hidden="true">
+      <div className="dashbord-chart__axis">
+        {[1, 2, 3, 4, 5].map((item) => (
+          <span key={item} className="dashbord-skeletonText dashbord-skeletonText--axis">&nbsp;</span>
+        ))}
+      </div>
+
+      <div className="dashbord-chart__plot">
+        <div className="dashbord-chart__grid" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+          <span />
+          <span />
+        </div>
+
+        <div className="dashbord-chart__bars">
+          {[72, 48, 84, 58, 66, 38, 76, 52].map((alto, index) => (
+            <div className="dashbord-chart__item" key={index}>
+              <div className="dashbord-stackBar dashbord-stackBar--skeleton" style={{ height: `${alto}%` }} />
+              <strong className="dashbord-skeletonText dashbord-skeletonText--date">&nbsp;</strong>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -171,20 +192,24 @@ function Dashbord() {
         </div>
 
         <div className="dashbord-header__tools" aria-label="Acciones y periodo del dashboard">
-          <span className="dashbord-chip">
-            <FontAwesomeIcon icon={faCalendarDays} />
-            Año {anioActual}
+          <span className={`dashbord-chip ${loading ? "is-loading" : ""}`}>
+            {loading ? (
+              <span className="dashbord-skeletonText dashbord-skeletonText--chip">&nbsp;</span>
+            ) : (
+              <>
+                <FontAwesomeIcon icon={faCalendarDays} />
+                Año {anioActual}
+              </>
+            )}
           </span>
-          <span className="dashbord-chip dashbord-chip--wide" title={rangoArmado}>
-            {rangoArmado}
+          <span className={`dashbord-chip dashbord-chip--wide ${loading ? "is-loading" : ""}`} title={loading ? "" : rangoArmado}>
+            {loading ? <span className="dashbord-skeletonText dashbord-skeletonText--chipWide">&nbsp;</span> : rangoArmado}
           </span>
 
         </div>
       </header>
 
-      {loading ? (
-        <LoadingState />
-      ) : error ? (
+      {error && !loading ? (
         <div className="dashbord-state">
           <FontAwesomeIcon icon={faRotateRight} />
           <strong>Dashboard sin datos disponibles</strong>
@@ -194,21 +219,27 @@ function Dashbord() {
           </button>
         </div>
       ) : (
-        <div className="dashbord-layout">
+        <div className={`dashbord-layout ${loading ? "dashbord-layout--loading" : ""}`} aria-busy={loading}>
           <section className="dashbord-cards dashbord-cards--top" aria-label="Indicadores principales">
             {cards.map((card) => (
               <article
                 key={card.key}
-                className={`dashbord-card ${card.alert ? "dashbord-card--alert" : ""}`}
+                className={`dashbord-card ${card.alert ? "dashbord-card--alert" : ""} ${loading ? "is-loading" : ""}`}
               >
                 <div className="dashbord-card__icon">
                   <FontAwesomeIcon icon={card.icon} />
                 </div>
 
                 <div className="dashbord-card__body">
-                  <span className="dashbord-card__title">{card.title}</span>
-                  <strong>{numero(card.value)}</strong>
-                  <small>{card.subtitle}</small>
+                  <span className={`dashbord-card__title ${loading ? "dashbord-skeletonText dashbord-skeletonText--cardTitle" : ""}`}>
+                    {loading ? " " : card.title}
+                  </span>
+                  <strong className={loading ? "dashbord-skeletonText dashbord-skeletonText--cardValue" : ""}>
+                    {loading ? " " : numero(card.value)}
+                  </strong>
+                  <small className={loading ? "dashbord-skeletonText dashbord-skeletonText--cardSmall" : ""}>
+                    {loading ? " " : card.subtitle}
+                  </small>
                 </div>
               </article>
             ))}
@@ -219,17 +250,21 @@ function Dashbord() {
               <div className="dashbord-panel__head dashbord-panel__head--chart">
                 <div>
                   <h2>Armado por fecha</h2>
-                  <p>Distribución diaria de grupos, números generados y previas sin agrupar.</p>
+                  <p className={loading ? "dashbord-skeletonText dashbord-skeletonText--panelText" : ""}>
+                    {loading ? " " : "Distribución diaria de grupos, números generados y previas sin agrupar."}
+                  </p>
                 </div>
 
-                <div className="dashbord-legend" aria-label="Referencias del gráfico">
-                  <span><i className="is-primary" /> Grupos</span>
-                  <span><i className="is-secondary" /> Números</span>
-                  <span><i className="is-alert" /> Sin agrupar</span>
+                <div className={`dashbord-legend ${loading ? "is-loading" : ""}`} aria-label="Referencias del gráfico">
+                  <span className={loading ? "dashbord-skeletonText dashbord-skeletonText--legend" : ""}>{loading ? " " : <><i className="is-primary" /> Grupos</>}</span>
+                  <span className={loading ? "dashbord-skeletonText dashbord-skeletonText--legend" : ""}>{loading ? " " : <><i className="is-secondary" /> Números</>}</span>
+                  <span className={loading ? "dashbord-skeletonText dashbord-skeletonText--legend" : ""}>{loading ? " " : <><i className="is-alert" /> Sin agrupar</>}</span>
                 </div>
               </div>
 
-              {graficoDias.length === 0 ? (
+              {loading ? (
+                <SkeletonChart />
+              ) : graficoDias.length === 0 ? (
                 <EmptyChart />
               ) : (
                 <div className="dashbord-chart" aria-label="Gráfico de mesas por día">
@@ -301,12 +336,23 @@ function Dashbord() {
 
               <article className="dashbord-panel dashbord-panel--progress">
                 <div className="dashbord-panel__head dashbord-panel__head--progress">
-                  <div style={{width:"100%"}}>
-                    <div className="header-dashboars"><h2>Estado del armado</h2>  <span className={`dashbord-reviewChip ${pendientes > 0 ? "is-alert" : "is-ok"}`}>
-                    <FontAwesomeIcon icon={pendientes > 0 ? faTriangleExclamation : faCheckCircle} />
-                    {texto(estadoArmado.titulo, "Sin información")}
-                  </span></div>
-                    <p>{texto(estadoArmado.detalle, "-")}</p>
+                  <div className="dashbord-panel__headContent">
+                    <div className="header-dashboars">
+                      <h2>Estado del armado</h2>
+                      <span className={`dashbord-reviewChip ${pendientes > 0 ? "is-alert" : "is-ok"} ${loading ? "dashbord-skeletonText dashbord-skeletonText--review" : ""}`}>
+                        {loading ? (
+                          " "
+                        ) : (
+                          <>
+                            <FontAwesomeIcon icon={pendientes > 0 ? faTriangleExclamation : faCheckCircle} />
+                            {texto(estadoArmado.titulo, "Sin información")}
+                          </>
+                        )}
+                      </span>
+                    </div>
+                    <p className={loading ? "dashbord-skeletonText dashbord-skeletonText--panelText" : ""}>
+                      {loading ? " " : texto(estadoArmado.detalle, "-")}
+                    </p>
                   </div>
 
                  
@@ -319,14 +365,22 @@ function Dashbord() {
                     return (
                       <div key={item.key} className="dashbord-progressItem">
                         <div className="dashbord-progressItem__top">
-                          <span>
-                            <FontAwesomeIcon icon={item.icon} />
-                            {item.label}
+                          <span className={loading ? "dashbord-skeletonText dashbord-skeletonText--progressLabel" : ""}>
+                            {loading ? (
+                              " "
+                            ) : (
+                              <>
+                                <FontAwesomeIcon icon={item.icon} />
+                                {item.label}
+                              </>
+                            )}
                           </span>
-                          <strong>{numero(item.value)}%</strong>
+                          <strong className={loading ? "dashbord-skeletonText dashbord-skeletonText--progressValue" : ""}>
+                            {loading ? " " : `${numero(item.value)}%`}
+                          </strong>
                         </div>
-                        <div className="dashbord-progressTrack" aria-hidden="true">
-                          <span style={{ width: `${porcentaje}%` }} />
+                        <div className={`dashbord-progressTrack ${loading ? "dashbord-progressTrack--loading" : ""}`} aria-hidden="true">
+                          <span style={{ width: loading ? "64%" : `${porcentaje}%` }} />
                         </div>
                       </div>
                     );
