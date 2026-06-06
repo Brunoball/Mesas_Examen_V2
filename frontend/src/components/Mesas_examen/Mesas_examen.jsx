@@ -11,6 +11,7 @@ import {
   faTriangleExclamation,
   faCheck,
   faCheckCircle,
+  faCircleExclamation,
   faChartLine,
   faEdit,
   faTimes,
@@ -1055,6 +1056,18 @@ const HistorialDescripcionExpandible = ({ value, title = "Descripción completa"
   />
 );
 
+const MesasEmptyState = ({ title, description }) => (
+  <div className="cc-emptyState mesas-empty mesas-pdf-empty mesas-emptyStatePro">
+    <span className="mesas-emptyStatePro__icon" aria-hidden="true">
+      <FontAwesomeIcon icon={faCircleExclamation} />
+    </span>
+    <div className="mesas-emptyStatePro__content">
+      <h2>{title}</h2>
+      <p>{description}</p>
+    </div>
+  </div>
+);
+
 const HistorialMesasPanel = ({ historial, busqueda = "", terminosBusqueda = [] }) => {
   const resultados = Array.isArray(historial?.resultados) ? historial.resultados : [];
   const armados = Array.isArray(historial?.armados) ? historial.armados : [];
@@ -1967,6 +1980,34 @@ const MesasExamen = () => {
     }
   }, [datosInstitucionales, exportandoHistorial, historial, mostrarToastGlobal]);
 
+  const emptyStateMesas = useMemo(() => {
+    if (hayFiltrosMesasActivos) {
+      return {
+        title: "No hay mesas para mostrar",
+        description: "No se encontraron mesas para la fecha y el turno seleccionados. Probá cambiando los filtros.",
+      };
+    }
+
+    if (hayBusquedaActiva) {
+      return {
+        title: "Sin coincidencias",
+        description: `No se encontraron mesas que coincidan con “${String(busqueda || "").trim()}”.`,
+      };
+    }
+
+    if (tab === "no-agrupadas") {
+      return {
+        title: "No hay números pendientes",
+        description: "Cuando existan previas sin agrupar, van a aparecer en esta pestaña para poder revisarlas.",
+      };
+    }
+
+    return {
+      title: "No hay mesas generadas",
+      description: "Presioná Crear Mesas para generar el armado y visualizar los grupos finales en esta sección.",
+    };
+  }, [busqueda, hayBusquedaActiva, hayFiltrosMesasActivos, tab]);
+
   const contenido = (
     <div className="mesas-page mov-page">
       <section
@@ -2221,23 +2262,16 @@ const MesasExamen = () => {
           </div>
         )}
 
-        <div className={["mesas-pdf-view", tab === "historial" ? "mesas-pdf-view--historial" : "", tab !== "historial" && cargando ? "mesas-pdf-view--skeleton" : ""].filter(Boolean).join(" ")}>
+        <div className={["mesas-pdf-view", tab === "historial" ? "mesas-pdf-view--historial" : "", tab !== "historial" && cargando ? "mesas-pdf-view--skeleton" : "", tab !== "historial" && !cargando && mesasFiltradas.length === 0 ? "mesas-pdf-view--empty" : ""].filter(Boolean).join(" ")}>
           {tab === "historial" ? (
             <HistorialMesasPanel historial={historial} busqueda={busqueda} terminosBusqueda={terminosBusqueda} />
           ) : cargando ? (
             <MesasPdfLoadingSkeleton />
           ) : mesasFiltradas.length === 0 ? (
-            <div className="cc-emptyState mesas-empty mesas-pdf-empty">
-              <div className="cc-emptyText">
-                {hayFiltrosMesasActivos
-                  ? "No hay mesas para la fecha y turno seleccionados."
-                  : busqueda
-                    ? "No se encontraron mesas que coincidan con la búsqueda."
-                    : tab === "no-agrupadas"
-                      ? "No hay números pendientes sin agrupar para mostrar."
-                      : "No hay grupos finales cargados. Presioná Crear Mesas para generar el armado."}
-              </div>
-            </div>
+            <MesasEmptyState
+              title={emptyStateMesas.title}
+              description={emptyStateMesas.description}
+            />
           ) : (
             mesasFiltradas.map((item) => {
               const idTarjeta = obtenerIdGrupo(item);
