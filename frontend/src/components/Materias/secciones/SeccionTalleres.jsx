@@ -33,6 +33,64 @@ function alignClass(align) {
   return "";
 }
 
+function separarCatedrasIncluidas(value) {
+  const texto = safeText(value);
+  if (texto === "—") return [];
+
+  return texto
+    .split(/\s*(?:\||;|\n|,)\s*/g)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function renderCatedrasIncluidasModal(item) {
+  const catedras = separarCatedrasIncluidas(item?.materias);
+  const total = Number(item?.cantidad_materias || catedras.length || 0);
+  const estadoActivo = Number(item?.activo) === 1;
+  const contexto = `${safeText(item?.curso)} · ${safeText(item?.division)}`;
+
+  return (
+    <div className="materias-tallerDetalle">
+      <div className="materias-tallerDetalle__head">
+        <span>Taller</span>
+        <strong>{formatearNombreTaller(item?.taller)}</strong>
+        <small>{contexto}</small>
+      </div>
+
+      <div className="materias-tallerDetalle__summary" aria-label="Resumen del taller">
+        <div className="materias-tallerDetalle__summaryItem">
+          <span>Cátedras</span>
+          <strong>{total}</strong>
+        </div>
+        <div className="materias-tallerDetalle__summaryItem">
+          <span>Estado</span>
+          <strong className={estadoActivo ? "is-active" : "is-inactive"}>
+            {estadoActivo ? "ACTIVO" : "INACTIVO"}
+          </strong>
+        </div>
+      </div>
+
+      {catedras.length > 0 ? (
+        <div className="materias-tallerDetalle__list">
+          {catedras.map((catedra, index) => (
+            <div key={`${catedra}-${index}`} className="materias-tallerDetalle__item">
+              <div className="materias-tallerDetalle__number" aria-hidden="true">
+                {String(index + 1).padStart(2, "0")}
+              </div>
+              <div className="materias-tallerDetalle__main">
+                <span>Cátedra incluida</span>
+                <strong>{catedra}</strong>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="materias-tallerDetalle__empty">No hay cátedras cargadas para este taller.</div>
+      )}
+    </div>
+  );
+}
+
 function renderSkeletonRow(index) {
   return (
     <div
@@ -156,6 +214,8 @@ const SeccionTalleres = ({
                         title="Cátedras incluidas"
                         subtitle={formatearNombreTaller(t.taller)}
                         textClassName="mov-ellipsissss"
+                        modalContent={renderCatedrasIncluidasModal(t)}
+                        modalContentClassName="ginfo-content--materiasTalleres"
                       />
                     </div>
                     <div className="mov-gridCell is-center" role="cell" data-label="Estado">

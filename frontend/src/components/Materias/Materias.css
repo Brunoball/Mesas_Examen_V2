@@ -768,3 +768,155 @@
 .materias-modal-overlay.gm-modalOverlay{
   z-index:999999 !important;
 }
+
+/* =========================
+   Detalle completo de Cátedras incluidas
+   Modal abierto desde el icono de información en Materias · Talleres.
+========================= */
+.materias-tallerDetalle{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.materias-tallerDetalle__head{
+  padding:13px 14px;
+  border:1px solid rgba(196,139,59,.16);
+  border-radius:14px;
+  background:linear-gradient(180deg, rgba(196,139,59,.07), rgba(255,255,255,.92));
+  box-shadow:0 8px 24px -20px rgba(58,46,43,.25);
+}
+
+.materias-tallerDetalle__head span,
+.materias-tallerDetalle__summaryItem span,
+.materias-tallerDetalle__main span{
+  display:block;
+  margin-bottom:4px;
+  color:color-mix(in srgb, var(--balto-action) 78%, #000);
+  font-size:10px;
+  font-weight:780;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  line-height:1.15;
+}
+
+.materias-tallerDetalle__head strong{
+  display:block;
+  color:var(--balto-ink);
+  font-size:14px;
+  font-weight:680;
+  line-height:1.25;
+}
+
+.materias-tallerDetalle__head small{
+  display:block;
+  margin-top:4px;
+  color:color-mix(in srgb, var(--balto-text) 82%, #000);
+  font-size:12px;
+  font-weight:500;
+  line-height:1.3;
+}
+
+.materias-tallerDetalle__summary{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:10px;
+}
+
+.materias-tallerDetalle__summaryItem{
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid rgba(58,46,43,.09);
+  background:#fff;
+  box-shadow:0 8px 22px -19px rgba(58,46,43,.25);
+}
+
+.materias-tallerDetalle__summaryItem strong{
+  display:block;
+  color:var(--balto-ink);
+  font-size:16px;
+  font-weight:680;
+  line-height:1.2;
+}
+
+.materias-tallerDetalle__summaryItem strong.is-active{
+  color:#16864a;
+}
+
+.materias-tallerDetalle__summaryItem strong.is-inactive{
+  color:#786661;
+}
+
+.materias-tallerDetalle__list{
+  display:grid;
+  gap:10px;
+}
+
+.materias-tallerDetalle__item{
+  display:grid;
+  grid-template-columns:auto minmax(0, 1fr);
+  align-items:center;
+  gap:12px;
+  padding:12px;
+  border:1px solid rgba(58,46,43,.10);
+  border-left:4px solid #0055BB;
+  border-radius:14px;
+  background:#fff;
+  box-shadow:0 8px 22px -18px rgba(58,46,43,.28);
+}
+
+.materias-tallerDetalle__number{
+  width:36px;
+  height:36px;
+  border-radius:12px;
+  display:grid;
+  place-items:center;
+  background:color-mix(in srgb, var(--balto-bg) 74%, #fff);
+  border:1px solid rgba(58,46,43,.08);
+  color:color-mix(in srgb, var(--balto-text) 78%, #000);
+  font-size:11px;
+  font-weight:780;
+  letter-spacing:.04em;
+}
+
+.materias-tallerDetalle__main{
+  min-width:0;
+}
+
+.materias-tallerDetalle__main strong{
+  display:block;
+  color:color-mix(in srgb, var(--balto-text) 84%, #000);
+  font-size:14px;
+  font-weight:560;
+  line-height:1.3;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.materias-tallerDetalle__empty{
+  padding:14px;
+  border-radius:14px;
+  border:1px dashed rgba(58,46,43,.18);
+  background:color-mix(in srgb, var(--balto-bg) 70%, #fff);
+  color:color-mix(in srgb, var(--balto-text) 82%, #000);
+  font-size:13px;
+  font-weight:540;
+  text-align:center;
+}
+
+.ginfo-content.ginfo-content--materiasTalleres{
+  min-height:0;
+  max-height:58dvh;
+  padding:12px;
+  background:linear-gradient(180deg, #fff 0%, color-mix(in srgb, var(--balto-bg) 72%, #fff) 100%);
+  color:var(--balto-text);
+  font-weight:500;
+  white-space:normal;
+}
+
+@media (max-width:620px){
+  .materias-tallerDetalle__summary{
+    grid-template-columns:1fr;
+  }
+}
+
