@@ -3,7 +3,7 @@ import { configuracionFormularioApi } from "../api/configuracionFormularioApi";
 import BASE_URL from "../../../../config/config";
 
 export const HORAS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
-export const MINUTOS = ["00", "15", "30", "45"];
+export const MINUTOS = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"));
 
 const TITULO_DEFAULT = "Mesas Examen Abril 2026";
 const MENSAJE_CERRADO_DEFAULT = "La inscripción está cerrada. Consultá Secretaría.";
