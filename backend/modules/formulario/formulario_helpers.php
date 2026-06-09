@@ -618,6 +618,405 @@ if (!function_exists('formulario_email_config')) {
     }
 }
 
+
+if (!function_exists('formulario_correlativa_clave_materia_curso')) {
+    function formulario_correlativa_clave_materia_curso(int $idMateria, int $idCurso): string
+    {
+        return $idMateria . '|' . $idCurso;
+    }
+}
+
+if (!function_exists('formulario_correlativa_buscar_camino')) {
+    function formulario_correlativa_buscar_camino(array $grafo, string $origen, string $destino): ?array
+    {
+        if ($origen === $destino) {
+            return null;
+        }
+
+        $cola = [[$origen, []]];
+        $visitados = [$origen => true];
+
+        while (count($cola) > 0) {
+            [$actual, $camino] = array_shift($cola);
+            $vecinos = $grafo[$actual] ?? [];
+
+            foreach ($vecinos as $siguiente => $_) {
+                $siguiente = (string)$siguiente;
+                if (isset($visitados[$siguiente])) {
+                    continue;
+                }
+
+                $nuevoCamino = array_merge($camino, [[$actual, $siguiente]]);
+
+                if ($siguiente === $destino) {
+                    return $nuevoCamino;
+                }
+
+                $visitados[$siguiente] = true;
+                $cola[] = [$siguiente, $nuevoCamino];
+            }
+        }
+
+        return null;
+    }
+}
+
+if (!function_exists('formulario_obtener_grafo_correlativas')) {
+    function formulario_obtener_grafo_correlativas(PDO $pdo, string $columnaBloqueo = 'bloquea_inscripcion'): array
+    {
+        if (!formulario_tabla_existe($pdo, 'materias_correlativas')) {
+            return ['grafo' => [], 'equivalentes' => [], 'orden_edge' => []];
+        }
+
+        $columnaBloqueo = in_array($columnaBloqueo, ['bloquea_inscripcion', 'bloquea_armado'], true)
+            ? $columnaBloqueo
+            : 'bloquea_inscripcion';
+
+        if (function_exists('formulario_columna_existe') && !formulario_columna_existe($pdo, 'materias_correlativas', $columnaBloqueo)) {
+            return ['grafo' => [], 'equivalentes' => [], 'orden_edge' => []];
+        }
+
+        $stmt = $pdo->query("
+            SELECT
+                id_materia,
+                id_curso,
+                id_materia_relacionada,
+                id_curso_relacionada,
+                tipo,
+                COALESCE(orden, 999999) AS orden
+            FROM materias_correlativas
+            WHERE activo = 1
+              AND {$columnaBloqueo} = 1
+              AND tipo IN ('anterior', 'posterior', 'equivalente')
+            ORDER BY COALESCE(orden, 999999) ASC, id_materia_correlativa ASC
+        ");
+
+        $relaciones = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $grafo = [];
+        $equivalentes = [];
+        $ordenEdge = [];
+
+        foreach ($relaciones as $rel) {
+            $idMateriaA = (int)($rel['id_materia'] ?? 0);
+            $idCursoA = (int)($rel['id_curso'] ?? 0);
+            $idMateriaB = (int)($rel['id_materia_relacionada'] ?? 0);
+            $idCursoB = (int)($rel['id_curso_relacionada'] ?? 0);
+            $tipo = (string)($rel['tipo'] ?? 'anterior');
+            $orden = (int)($rel['orden'] ?? 999999);
+
+            if ($idMateriaA <= 0 || $idCursoA <= 0 || $idMateriaB <= 0 || $idCursoB <= 0) {
+                continue;
+            }
+
+            $claveA = formulario_correlativa_clave_materia_curso($idMateriaA, $idCursoA);
+            $claveB = formulario_correlativa_clave_materia_curso($idMateriaB, $idCursoB);
+
+            if ($claveA === $claveB) {
+                continue;
+            }
+
+            if ($tipo === 'equivalente') {
+                $equivalentes[$claveA][$claveB] = true;
+                $equivalentes[$claveB][$claveA] = true;
+                continue;
+            }
+
+            /*
+             * Mismo criterio fuerte que usa el armado de mesas:
+             * si los cursos son distintos, el curso menor siempre es anterior.
+             * Esto evita que DIGITAL IV quede habilitada/ordenada antes que DIGITAL II
+             * aunque la relación se haya cargado desde otra pantalla o venga de una cadena.
+             */
+            if ($idCursoA !== $idCursoB) {
+                $anterior = $idCursoA < $idCursoB ? $claveA : $claveB;
+                $posterior = $idCursoA < $idCursoB ? $claveB : $claveA;
+            } elseif ($tipo === 'posterior') {
+                $anterior = $claveB;
+                $posterior = $claveA;
+            } else {
+                $anterior = $claveA;
+                $posterior = $claveB;
+            }
+
+            if (!isset($grafo[$anterior])) {
+                $grafo[$anterior] = [];
+            }
+
+            $grafo[$anterior][$posterior] = true;
+            $edgeKey = $anterior . '>' . $posterior;
+            $ordenEdge[$edgeKey] = min((int)($ordenEdge[$edgeKey] ?? 999999), $orden);
+        }
+
+        return ['grafo' => $grafo, 'equivalentes' => $equivalentes, 'orden_edge' => $ordenEdge];
+    }
+}
+
+if (!function_exists('formulario_aplicar_correlativas')) {
+    function formulario_aplicar_correlativas(PDO $pdo, array $materias): array
+    {
+        if (count($materias) < 2) {
+            return [$materias, []];
+        }
+
+        $porClave = [];
+        $porNodo = [];
+
+        foreach ($materias as $idx => $m) {
+            $clave = (string)($m['clave_unica'] ?? (((int)($m['id_materia'] ?? 0)) . '_' . ((int)($m['curso_id'] ?? 0)) . '_' . ((int)($m['division_id'] ?? 0))));
+            $materias[$idx]['clave_unica'] = $clave;
+            $porClave[$clave] = $idx;
+
+            $nodo = formulario_correlativa_clave_materia_curso((int)($m['id_materia'] ?? 0), (int)($m['curso_id'] ?? 0));
+            $porNodo[$nodo][] = $clave;
+
+            $materias[$idx]['es_correlativa'] = false;
+            $materias[$idx]['correlativa_orden'] = null;
+            $materias[$idx]['correlativa_total'] = null;
+            $materias[$idx]['correlativas_anteriores'] = [];
+            $materias[$idx]['correlativas_anteriores_pendientes'] = [];
+            $materias[$idx]['requiere_correlativa_anterior'] = false;
+            $materias[$idx]['bloqueada_por_correlativa'] = false;
+            $materias[$idx]['mensaje_correlativa'] = null;
+        }
+
+        $datosGrafo = formulario_obtener_grafo_correlativas($pdo, 'bloquea_inscripcion');
+        $grafo = $datosGrafo['grafo'] ?? [];
+        $equivalentes = $datosGrafo['equivalentes'] ?? [];
+
+        if (count($grafo) === 0 && count($equivalentes) === 0) {
+            return [$materias, []];
+        }
+
+        $anterioresPorClave = [];
+        $grafoVisual = [];
+
+        foreach (array_keys($porClave) as $clave) {
+            $anterioresPorClave[$clave] = [];
+            $grafoVisual[$clave] = [];
+        }
+
+        $nodos = array_keys($porNodo);
+        $totalNodos = count($nodos);
+
+        for ($i = 0; $i < $totalNodos; $i++) {
+            for ($j = $i + 1; $j < $totalNodos; $j++) {
+                $nodoA = (string)$nodos[$i];
+                $nodoB = (string)$nodos[$j];
+
+                if ($nodoA === $nodoB) {
+                    continue;
+                }
+
+                $caminoAB = formulario_correlativa_buscar_camino($grafo, $nodoA, $nodoB);
+                $caminoBA = formulario_correlativa_buscar_camino($grafo, $nodoB, $nodoA);
+                $esEquivalente = isset($equivalentes[$nodoA][$nodoB]) || isset($equivalentes[$nodoB][$nodoA]);
+
+                if ($caminoAB !== null && $caminoBA === null) {
+                    $anteriores = $porNodo[$nodoA] ?? [];
+                    $posteriores = $porNodo[$nodoB] ?? [];
+                } elseif ($caminoBA !== null && $caminoAB === null) {
+                    $anteriores = $porNodo[$nodoB] ?? [];
+                    $posteriores = $porNodo[$nodoA] ?? [];
+                } elseif ($esEquivalente) {
+                    $clavesA = $porNodo[$nodoA] ?? [];
+                    $clavesB = $porNodo[$nodoB] ?? [];
+                    foreach ($clavesA as $claveA) {
+                        foreach ($clavesB as $claveB) {
+                            $grafoVisual[$claveA][$claveB] = true;
+                            $grafoVisual[$claveB][$claveA] = true;
+                        }
+                    }
+                    continue;
+                } else {
+                    continue;
+                }
+
+                foreach ($posteriores as $posteriorClave) {
+                    foreach ($anteriores as $anteriorClave) {
+                        if ($posteriorClave === $anteriorClave) {
+                            continue;
+                        }
+
+                        $anterioresPorClave[$posteriorClave][$anteriorClave] = true;
+                        $grafoVisual[$anteriorClave][$posteriorClave] = true;
+                        $grafoVisual[$posteriorClave][$anteriorClave] = true;
+                    }
+                }
+            }
+        }
+
+        $visitados = [];
+        $componentes = [];
+
+        foreach (array_keys($grafoVisual) as $claveInicio) {
+            if (isset($visitados[$claveInicio])) {
+                continue;
+            }
+
+            $stack = [$claveInicio];
+            $visitados[$claveInicio] = true;
+            $comp = [];
+
+            while ($stack) {
+                $clave = array_pop($stack);
+                $comp[] = $clave;
+
+                foreach (array_keys($grafoVisual[$clave] ?? []) as $vecino) {
+                    if (!isset($visitados[$vecino])) {
+                        $visitados[$vecino] = true;
+                        $stack[] = $vecino;
+                    }
+                }
+            }
+
+            if (count($comp) >= 2) {
+                $componentes[] = $comp;
+            }
+        }
+
+        $compararCorrelativas = static function (string $claveA, string $claveB) use (&$materias, &$porClave, &$anterioresPorClave): int {
+            if (isset($anterioresPorClave[$claveB][$claveA])) {
+                return -1;
+            }
+            if (isset($anterioresPorClave[$claveA][$claveB])) {
+                return 1;
+            }
+
+            $a = $materias[$porClave[$claveA]];
+            $b = $materias[$porClave[$claveB]];
+
+            $curso = ((int)($a['curso_id'] ?? 0)) <=> ((int)($b['curso_id'] ?? 0));
+            if ($curso !== 0) {
+                return $curso;
+            }
+
+            $division = ((int)($a['division_id'] ?? 0)) <=> ((int)($b['division_id'] ?? 0));
+            if ($division !== 0) {
+                return $division;
+            }
+
+            return strcasecmp((string)($a['materia'] ?? ''), (string)($b['materia'] ?? ''));
+        };
+
+        $resumen = [];
+        $nroGrupo = 1;
+
+        foreach ($componentes as $comp) {
+            usort($comp, $compararCorrelativas);
+            $total = count($comp);
+
+            foreach ($comp as $orden => $clave) {
+                $idx = $porClave[$clave];
+                $anteriores = array_values(array_keys($anterioresPorClave[$clave] ?? []));
+                usort($anteriores, $compararCorrelativas);
+
+                $pendientes = array_values(array_filter($anteriores, static function (string $claveAnterior) use (&$materias, &$porClave): bool {
+                    $idxAnterior = $porClave[$claveAnterior] ?? null;
+                    if ($idxAnterior === null) {
+                        return true;
+                    }
+                    return (int)($materias[$idxAnterior]['inscripcion'] ?? 0) !== 1;
+                }));
+
+                $materias[$idx]['es_correlativa'] = true;
+                $materias[$idx]['correlativa_orden'] = $orden + 1;
+                $materias[$idx]['correlativa_total'] = $total;
+                $materias[$idx]['correlativas_anteriores'] = $anteriores;
+                $materias[$idx]['correlativas_anteriores_pendientes'] = $pendientes;
+                $materias[$idx]['requiere_correlativa_anterior'] = count($anteriores) > 0;
+                $materias[$idx]['bloqueada_por_correlativa'] = count($pendientes) > 0;
+
+                if (count($pendientes) > 0) {
+                    $nombresPendientes = array_values(array_map(static function (string $claveAnterior) use (&$materias, &$porClave): string {
+                        $idxAnterior = $porClave[$claveAnterior] ?? null;
+                        if ($idxAnterior === null) {
+                            return 'correlativa anterior';
+                        }
+                        return (string)($materias[$idxAnterior]['materia'] ?? 'correlativa anterior');
+                    }, $pendientes));
+
+                    $materias[$idx]['mensaje_correlativa'] = 'Primero debe inscribirse a ' . implode(', ', $nombresPendientes) . '.';
+                }
+            }
+
+            $resumen[] = [
+                'correlativa' => $nroGrupo++,
+                'materias' => array_map(static function (string $clave) use (&$materias, &$porClave): array {
+                    $m = $materias[$porClave[$clave]];
+                    return [
+                        'clave_unica' => $m['clave_unica'],
+                        'id_materia' => $m['id_materia'],
+                        'materia' => $m['materia'],
+                        'curso_id' => $m['curso_id'],
+                        'division_id' => $m['division_id'],
+                        'curso' => $m['curso'] ?? null,
+                        'division' => $m['division'] ?? null,
+                        'inscripcion' => (int)($m['inscripcion'] ?? 0),
+                        'correlativas_anteriores' => $m['correlativas_anteriores'] ?? [],
+                        'requiere_correlativa_anterior' => (bool)($m['requiere_correlativa_anterior'] ?? false),
+                        'bloqueada_por_correlativa' => (bool)($m['bloqueada_por_correlativa'] ?? false),
+                    ];
+                }, $comp),
+            ];
+        }
+
+        return [$materias, $resumen];
+    }
+}
+
+if (!function_exists('formulario_obtener_previas_condicion3_para_dni')) {
+    function formulario_obtener_previas_condicion3_para_dni(PDO $pdo, string $dni): array
+    {
+        $sql = "
+            SELECT
+                p.id_previa,
+                p.dni,
+                p.alumno,
+                p.id_materia,
+                p.materia_id_curso,
+                p.materia_id_division,
+                p.id_condicion,
+                CASE WHEN COALESCE(p.inscripcion, 0) = 1 THEN 1 ELSE 0 END AS inscripcion,
+                p.anio,
+                m.materia,
+                c_mat.nombre_curso AS curso,
+                d_mat.nombre_division AS division
+            FROM previas p
+            INNER JOIN materias m ON m.id_materia = p.id_materia
+            LEFT JOIN curso c_mat ON c_mat.id_curso = p.materia_id_curso
+            LEFT JOIN division d_mat ON d_mat.id_division = p.materia_id_division
+            WHERE p.dni = :dni
+              AND p.id_condicion = 3
+              AND p.activo = 1
+            ORDER BY p.materia_id_curso ASC, p.materia_id_division ASC, m.materia ASC
+        ";
+
+        $st = $pdo->prepare($sql);
+        $st->execute([':dni' => $dni]);
+
+        return array_map(static function (array $row): array {
+            $idMateria = (int)$row['id_materia'];
+            $idCurso = (int)$row['materia_id_curso'];
+            $idDivision = (int)$row['materia_id_division'];
+
+            return [
+                'id_previa' => (int)$row['id_previa'],
+                'id_materia' => $idMateria,
+                'curso_id' => $idCurso,
+                'division_id' => $idDivision,
+                'id_condicion' => (int)$row['id_condicion'],
+                'materia' => (string)$row['materia'],
+                'curso' => (string)($row['curso'] ?? ''),
+                'division' => (string)($row['division'] ?? ''),
+                'alumno' => (string)$row['alumno'],
+                'anio' => (int)$row['anio'],
+                'inscripcion' => (int)$row['inscripcion'],
+                'clave_unica' => $idMateria . '_' . $idCurso . '_' . $idDivision,
+            ];
+        }, $st->fetchAll(PDO::FETCH_ASSOC));
+    }
+}
+
 if (!function_exists('formulario_ip_cliente')) {
     function formulario_ip_cliente(): string
     {

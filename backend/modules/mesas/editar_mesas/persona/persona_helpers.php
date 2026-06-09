@@ -136,8 +136,12 @@ function mesas_editar_persona_obtener_previas_numero(PDO $pdo, int $numeroMesa):
         $previa['prioridad'] = (int)($previa['prioridad'] ?? 0);
         $previa['id_taller'] = $previa['id_taller'] !== null ? (int)$previa['id_taller'] : null;
         $previa['id_area'] = $previa['id_area'] !== null ? (int)$previa['id_area'] : null;
-        $previa['curso'] = trim((string)(($previa['curso_alumno'] ?? '') . ' ' . ($previa['division_alumno'] ?? '')));
-        $previa['curso_materia_texto'] = trim((string)(($previa['curso_materia'] ?? '') . ' ' . ($previa['division_materia'] ?? '')));
+        $cursoAlumnoTexto = trim((string)(($previa['curso_alumno'] ?? '') . ' ' . ($previa['division_alumno'] ?? '')));
+        $cursoMateriaTexto = trim((string)(($previa['curso_materia'] ?? '') . ' ' . ($previa['division_materia'] ?? '')));
+        $previa['curso_alumno_texto'] = $cursoAlumnoTexto;
+        $previa['curso_materia_texto'] = $cursoMateriaTexto;
+        // En edición, cuando el modal dice "Curso" debe mostrar curso/división de la materia previa, no el curso actual del alumno.
+        $previa['curso'] = $cursoMateriaTexto !== '' ? $cursoMateriaTexto : $cursoAlumnoTexto;
     }
     unset($previa);
 
@@ -154,13 +158,16 @@ function mesas_editar_persona_obtener_filas_previa_en_numero(PDO $pdo, int $nume
     $stmt = $pdo->prepare(''
         . 'SELECT '
         . '    me.id_mesa, me.numero_mesa, me.id_previa, me.id_docente, me.id_catedra, me.tipo_mesa, me.prioridad, '
-        . '    p.dni, p.alumno, COALESCE(cat.id_materia, p.id_materia) AS id_materia, '
-        . '    COALESCE(cat.id_curso, p.materia_id_curso) AS id_curso, '
-        . '    mat.materia, doc.docente '
+        . '    p.dni, p.alumno, p.id_materia AS id_materia, '
+        . '    p.materia_id_curso AS id_curso, p.materia_id_division AS id_division, '
+        . '    mat.materia, doc.docente, '
+        . '    cm.nombre_curso AS curso_materia, dm.nombre_division AS division_materia '
         . 'FROM mesas me '
         . 'INNER JOIN previas p ON p.id_previa = me.id_previa '
         . 'LEFT JOIN catedras cat ON cat.id_catedra = me.id_catedra '
-        . 'LEFT JOIN materias mat ON mat.id_materia = COALESCE(cat.id_materia, p.id_materia) '
+        . 'LEFT JOIN materias mat ON mat.id_materia = p.id_materia '
+        . 'LEFT JOIN curso cm ON cm.id_curso = p.materia_id_curso '
+        . 'LEFT JOIN division dm ON dm.id_division = p.materia_id_division '
         . 'LEFT JOIN docentes doc ON doc.id_docente = me.id_docente '
         . 'WHERE me.numero_mesa = ? AND me.id_previa = ? '
         . 'ORDER BY me.id_mesa ASC'
@@ -391,8 +398,9 @@ function mesas_editar_persona_armar_detalle_movimiento_destino(array $filas, int
     $docente = trim((string)($modeloDestino['docente'] ?? ('Docente ' . $idDocente)));
 
     $detalle = [
-        // Se excluye el número origen porque la previa sale de ahí, y el número destino porque entra dentro de ese mismo número.
-        // Esto evita confundir el movimiento individual de una previa con el movimiento completo del número de mesa.
+        // Se informan origen y destino como contexto del movimiento.
+        // La validación de correlativas excluye solo la previa movida por id_previa,
+        // así también controla correlativas que queden en el origen o ya existan en el destino.
         'numeros' => array_values(array_unique([$numeroOrigen, $numeroDestino])),
         'ids_mesa' => [],
         'ids_previa' => $idPrevia > 0 ? [$idPrevia] : [],
@@ -410,9 +418,12 @@ function mesas_editar_persona_armar_detalle_movimiento_destino(array $filas, int
         'docente' => $docente,
         'dni' => $dni,
         'alumno' => $alumno,
-        'id_materia' => (int)($modeloDestino['id_materia'] ?? 0),
-        'id_curso' => (int)($modeloDestino['id_curso'] ?? 0),
-        'materia' => trim((string)($modeloDestino['materia'] ?? '')),
+        // Para validar correlativas se usa la materia real de la previa (previas.id_materia + materia_id_curso),
+        // no la cátedra modelo del número destino. Si no, una previa de 2° podía moverse
+        // después de su correlativa posterior porque el destino era otra materia del área.
+        'id_materia' => (int)($filaBase['id_materia'] ?? 0),
+        'id_curso' => (int)($filaBase['id_curso'] ?? 0),
+        'materia' => trim((string)($filaBase['materia'] ?? '')),
         'tipo_mesa' => (string)($modeloDestino['tipo_mesa'] ?? 'simple'),
         'prioridad' => (int)($modeloDestino['prioridad'] ?? 0),
     ];

@@ -601,3 +601,46 @@
   background:rgba(34,173,92,.10) !important;
   color:#0f8f56 !important;
 }
+
+.previas-profesor-cell{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  min-width:0;
+  width:100%;
+}
+
+.previas-profesor-cell strong{
+  display:block;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:var(--balto-ink);
+  font-size:12px;
+  font-weight:560;
+}
+
+.previas-profesor-cell small{
+  display:block;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:var(--balto-action);
+  font-size:11px;
+  font-weight:520;
+}
+
+.previas-icon-print{
+  border-color:rgba(63,120,190,.30) !important;
+  color:#2b6cb0 !important;
+  background:#fff !important;
+}
+
+.previas-icon-print:hover{
+  border-color:rgba(63,120,190,.46) !important;
+  background:rgba(63,120,190,.10) !important;
+  color:#1f5f9f !important;
+}
+

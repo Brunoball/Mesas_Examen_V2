@@ -6,6 +6,7 @@ import {
   faEdit,
   faSpinner,
   faPlus,
+  faPrint,
   faSearch,
   faTimes,
   faTrash,
@@ -597,14 +598,15 @@ function usePrevias() {
   };
 }
 
-const PREVIAS_GRID_COLS = '1.35fr .5fr 2fr .5fr .5fr .5fr .9fr';
-const PREVIAS_BAJAS_GRID_COLS = '1.22fr .7fr 1.65fr .48fr .48fr .58fr 1.12fr .84fr';
+const PREVIAS_GRID_COLS = '1.28fr .48fr 1.55fr 1.05fr .48fr .48fr .48fr .95fr';
+const PREVIAS_BAJAS_GRID_COLS = '1.12fr .58fr 1.35fr .95fr .48fr .48fr .56fr 1fr .8fr';
 const SKELETON_ROWS = 8;
 
 const PREVIAS_COLUMNS = [
   { key: 'alumno', label: 'Alumno', strong: true },
   { key: 'dni', label: 'DNI', align: 'center'},
   { key: 'materia', label: 'Materia' },
+  { key: 'profesor', label: 'Profe' },
   { key: 'condicion', label: 'Condición', align: 'center' },
   { key: 'curso', label: 'Curso', align: 'center' },
   { key: 'inscripcion', label: 'Inscripción', align: 'center' },
@@ -615,6 +617,7 @@ const PREVIAS_BAJAS_COLUMNS = [
   { key: 'alumno', label: 'Alumno', strong: true },
   { key: 'dni', label: 'DNI', align: 'center' },
   { key: 'materia', label: 'Materia' },
+  { key: 'profesor', label: 'Profe' },
   { key: 'condicion', label: 'Condición', align: 'center' },
   { key: 'curso', label: 'Curso', align: 'center' },
   { key: 'fecha_baja', label: 'Fecha baja', align: 'center' },
@@ -622,12 +625,14 @@ const PREVIAS_BAJAS_COLUMNS = [
   { key: 'acciones', label: 'Acciones', align: 'center', actions: true },
 ];
 
-const SKELETON_WIDTHS = ['72%', '52%', '68%', '42%', '38%', '46%', '44%'];
+const SKELETON_WIDTHS = ['72%', '52%', '68%', '58%', '42%', '38%', '46%', '44%'];
 
 const PREVIAS_EXPORT_COLUMNS = [
   { label: 'Alumno', value: (item) => safeText(item.alumno) },
   { label: 'DNI', value: (item) => safeText(item.dni) },
   { label: 'Materia', value: (item) => safeText(item.materia) },
+  { label: 'Profesor', value: (item) => safeText(item.profesor) },
+  { label: 'Cargo profesor', value: (item) => safeText(item.profesor_cargo) },
   { label: 'Condición', value: (item) => safeText(item.condicion) },
   { label: 'Curso materia', value: (item) => safeText(item.curso_materia) },
   { label: 'Curso actual', value: (item) => safeText(item.curso_cursando) },
@@ -639,6 +644,8 @@ const PREVIAS_BAJAS_EXPORT_COLUMNS = [
   { label: 'Alumno', value: (item) => safeText(item.alumno) },
   { label: 'DNI', value: (item) => safeText(item.dni) },
   { label: 'Materia', value: (item) => safeText(item.materia) },
+  { label: 'Profesor', value: (item) => safeText(item.profesor) },
+  { label: 'Cargo profesor', value: (item) => safeText(item.profesor_cargo) },
   { label: 'Condición', value: (item) => safeText(item.condicion) },
   { label: 'Curso materia', value: (item) => safeText(item.curso_materia) },
   { label: 'Curso actual', value: (item) => safeText(item.curso_cursando) },
@@ -698,6 +705,268 @@ function renderMotivoBaja(value) {
       {nota ? <small>Nota: {nota}</small> : null}
     </div>
   );
+}
+
+function valorPlano(value, fallback = '—') {
+  const text = String(value ?? '').trim();
+  return text || fallback;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function fechaHoyTexto() {
+  try {
+    return new Date().toLocaleDateString('es-AR');
+  } catch (_) {
+    return '';
+  }
+}
+
+function textoProfesor(item = {}) {
+  const profesor = valorPlano(item.profesor, 'Sin docente asignado');
+  const cargo = String(item.profesor_cargo || '').trim();
+  if (!cargo || profesor === 'Sin docente asignado') return profesor;
+  return `${profesor} (${cargo})`;
+}
+
+function normalizarDniPermiso(value) {
+  return String(value ?? '').replace(/\D+/g, '');
+}
+
+function formatearDniPermiso(value) {
+  const dni = normalizarDniPermiso(value);
+  if (!dni) return valorPlano(value);
+  return dni.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function fechaLargaSanFrancisco() {
+  const meses = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
+  const fecha = new Date();
+  return `SAN FRANCISCO, ${fecha.getDate()} de ${meses[fecha.getMonth()]} de ${fecha.getFullYear()}.`;
+}
+
+function turnoExamenTexto(item = {}) {
+  const directo = String(item.turno_examen || item.turno || item.periodo_examen || '').trim();
+  if (directo) return directo.toLocaleUpperCase('es-AR');
+  return `JULIO/${new Date().getFullYear()}`;
+}
+
+function cursoLectivoTexto(item = {}) {
+  const curso = valorPlano(item.curso_cursando, '').trim();
+  const cicloLectivo = String(item.ciclo_lectivo || item.anio_lectivo || new Date().getFullYear()).trim();
+  if (curso && cicloLectivo) return `${curso}/${cicloLectivo}`;
+  return curso || cicloLectivo || '—';
+}
+
+function materiaPermisoTexto(item = {}) {
+  const materia = valorPlano(item.materia, '—');
+  const cursoMateria = String(item.curso_materia || '').trim();
+  return cursoMateria ? `${materia} (${cursoMateria})` : materia;
+}
+
+function claveAlumnoPermiso(item = {}) {
+  const dni = normalizarDniPermiso(item.dni);
+  if (dni) return `dni-${dni}`;
+  return `alumno-${String(item.alumno || '').trim().toLocaleUpperCase('es-AR')}`;
+}
+
+function agruparPermisosPorAlumno(items = []) {
+  const grupos = new Map();
+
+  (Array.isArray(items) ? items : []).filter(Boolean).forEach((item) => {
+    const clave = claveAlumnoPermiso(item);
+    if (!grupos.has(clave)) {
+      grupos.set(clave, {
+        alumno: item,
+        materias: [],
+        vistos: new Set(),
+      });
+    }
+
+    const grupo = grupos.get(clave);
+    const claveMateria = [
+      item.id_previa,
+      item.id_materia,
+      item.materia,
+      item.curso_materia,
+      item.anio,
+    ].map((parte) => String(parte ?? '').trim()).join('|');
+
+    if (!grupo.vistos.has(claveMateria)) {
+      grupo.vistos.add(claveMateria);
+      grupo.materias.push(item);
+    }
+  });
+
+  return Array.from(grupos.values()).map((grupo) => ({
+    alumno: grupo.alumno,
+    materias: grupo.materias,
+  }));
+}
+
+function crearFilasMateriasPermiso(materias = []) {
+  const filas = [...materias];
+  const minimoFilas = Math.max(8, filas.length);
+  while (filas.length < minimoFilas) filas.push(null);
+
+  return filas.map((item, index) => `
+    <tr>
+      <td class="permiso-num">${index + 1}</td>
+      <td class="permiso-asignatura">${item ? escapeHtml(materiaPermisoTexto(item)) : '&nbsp;'}</td>
+      <td class="permiso-docente">${item ? escapeHtml(textoProfesor(item)) : '&nbsp;'}</td>
+      <td class="permiso-fecha">&nbsp;</td>
+      <td class="permiso-calif">&nbsp;</td>
+      <td class="permiso-firma">&nbsp;</td>
+    </tr>
+  `).join('');
+}
+
+function crearHtmlPermisosExamen(items = []) {
+  const grupos = agruparPermisosPorAlumno(items);
+  const fecha = fechaLargaSanFrancisco();
+
+  const permisos = grupos.map((grupo, index) => {
+    const alumno = grupo.alumno || {};
+    const materias = grupo.materias || [];
+    const condicion = valorPlano(alumno.condicion, 'PREVIA').toLocaleUpperCase('es-AR');
+
+    return `
+      <section class="permiso">
+        <header class="permiso-header">
+          <h1>PERMISO DE EXAMEN IPET N° 50 "ING. EMILIO F. OLMOS"</h1>
+          <div class="permiso-topline">
+            <div>Condición <strong>${escapeHtml(condicion)}</strong></div>
+            <div>Permiso de Examen N° <span class="linea-corta"></span></div>
+          </div>
+        </header>
+
+        <p class="permiso-texto">
+          Conste por la presente que el alumno <strong>${escapeHtml(valorPlano(alumno.alumno))}</strong>
+          está habilitado para rendir en el Turno <strong>${escapeHtml(turnoExamenTexto(alumno))}</strong>,
+          las asignaturas que se indican a continuación:
+        </p>
+
+        <table class="permiso-tabla" aria-label="Asignaturas del permiso de examen">
+          <thead>
+            <tr>
+              <th>N°</th>
+              <th>ASIGNATURAS</th>
+              <th>DOCENTE</th>
+              <th>FECHA</th>
+              <th>CALIF.</th>
+              <th>F. PRESID.</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${crearFilasMateriasPermiso(materias)}
+          </tbody>
+        </table>
+
+        <div class="permiso-lugar">${escapeHtml(fecha)}</div>
+
+        <div class="permiso-secretaria">
+          <span></span>
+          <strong>Firma manuscrita del Secretario</strong>
+        </div>
+
+        <div class="permiso-notas">
+          <strong>NOTA:</strong>
+          <ol>
+            <li>Para poder rendir examen, el alumno deberá presentar a la mesa examinadora este permiso y su Documento de Identidad.</li>
+            <li>Los exámenes escritos deben ser hechos con tinta.</li>
+          </ol>
+        </div>
+
+        <footer class="permiso-footer">
+          <div><span>Documento:</span> <strong>DNI - ${escapeHtml(formatearDniPermiso(alumno.dni))}</strong></div>
+          <div><span>Curso-C.Lec.:</span> <strong>${escapeHtml(cursoLectivoTexto(alumno))}</strong></div>
+        </footer>
+      </section>
+      ${index < grupos.length - 1 ? '<div class="salto"></div>' : ''}
+    `;
+  }).join('');
+
+  return `<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Permiso de examen</title>
+  <style>
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:#fff;color:#111}
+    body{font-family:"Courier New", Courier, monospace;font-size:12px;line-height:1.25}
+    .permiso{width:190mm;min-height:277mm;margin:0 auto;padding:14mm 13mm 10mm;background:#fff;position:relative}
+    .permiso-header{text-align:right;margin-bottom:10mm}
+    .permiso-header h1{margin:0;font-size:15px;font-weight:700;letter-spacing:.01em;text-transform:uppercase}
+    .permiso-topline{display:flex;justify-content:space-between;gap:10mm;margin-top:5mm;text-align:left;font-size:13px}
+    .permiso-topline strong{letter-spacing:.04em}
+    .linea-corta{display:inline-block;width:28mm;border-bottom:1px solid #111;transform:translateY(-2px)}
+    .permiso-texto{margin:0 0 7mm;text-align:left;font-size:13px;max-width:166mm}
+    .permiso-texto strong{font-weight:700;letter-spacing:.02em}
+    .permiso-tabla{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:4mm;font-size:11px}
+    .permiso-tabla th{padding:0 3px 2mm;text-align:center;font-weight:700;border-bottom:1px dashed #111}
+    .permiso-tabla td{height:9mm;padding:1mm 3px;border-bottom:1px solid #222;vertical-align:middle}
+    .permiso-tabla th:nth-child(1),.permiso-num{width:9mm;text-align:center}
+    .permiso-tabla th:nth-child(2),.permiso-asignatura{width:54mm;text-align:left}
+    .permiso-tabla th:nth-child(3),.permiso-docente{width:48mm;text-align:left}
+    .permiso-tabla th:nth-child(4),.permiso-fecha{width:25mm;text-align:center}
+    .permiso-tabla th:nth-child(5),.permiso-calif{width:17mm;text-align:center}
+    .permiso-tabla th:nth-child(6),.permiso-firma{width:27mm;text-align:center}
+    .permiso-lugar{margin-top:8mm;font-size:13px;text-align:left;text-transform:uppercase}
+    .permiso-secretaria{width:70mm;margin:14mm 0 0 auto;text-align:center;font-size:11px}
+    .permiso-secretaria span{display:block;height:1px;border-top:1px dotted #111;margin-bottom:2mm}
+    .permiso-secretaria strong{font-weight:400}
+    .permiso-notas{margin-top:8mm;font-size:10px;max-width:155mm}
+    .permiso-notas strong{display:block;margin-bottom:1mm}
+    .permiso-notas ol{margin:0;padding-left:8mm}
+    .permiso-notas li{margin:1mm 0}
+    .permiso-footer{position:absolute;left:13mm;right:13mm;bottom:10mm;border-top:1px dashed #111;padding-top:2mm;font-size:13px;text-transform:uppercase}
+    .permiso-footer div{margin:1mm 0}
+    .permiso-footer span{display:inline-block;min-width:30mm}
+    .salto{break-after:page;page-break-after:always;height:0}
+    @media print{
+      body{background:#fff}
+      .permiso{width:100%;min-height:277mm;margin:0;padding:12mm 12mm 9mm}
+      .permiso-footer{left:12mm;right:12mm;bottom:9mm}
+      @page{size:A4 portrait;margin:8mm}
+    }
+  </style>
+</head>
+<body>${permisos}</body>
+</html>`;
+}
+
+function imprimirPermisosExamen(items = [], ventanaExistente = null) {
+  const registros = (Array.isArray(items) ? items : []).filter(Boolean);
+  if (registros.length === 0) return false;
+
+  const ventana = ventanaExistente || window.open('', '_blank');
+  if (!ventana) return false;
+
+  ventana.document.open();
+  ventana.document.write(crearHtmlPermisosExamen(registros));
+  ventana.document.close();
+
+  ventana.setTimeout(() => {
+    ventana.focus();
+    ventana.print();
+  }, 350);
+
+  return true;
+}
+
+function escribirMensajeVentanaImpresion(ventana, mensaje) {
+  if (!ventana) return;
+  ventana.document.open();
+  ventana.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8" /><title>Permiso de examen</title></head><body style="font-family:Arial, Helvetica, sans-serif;padding:24px;color:#2f2522;">${escapeHtml(mensaje)}</body></html>`);
+  ventana.document.close();
 }
 
 function alignClass(align) {
@@ -789,6 +1058,46 @@ export default function Previas() {
   function abrirImportarDesdeExportar() {
     setModalExportar(false);
     setModalImportar(true);
+  }
+
+  async function imprimirPermisoIndividual(item) {
+    const ventana = window.open('', '_blank');
+    if (!ventana) {
+      mostrarMensaje('error', 'No se pudo abrir la ventana de impresión. Revisá que el navegador no bloquee ventanas emergentes.');
+      return;
+    }
+
+    escribirMensajeVentanaImpresion(ventana, 'Preparando permiso de examen del alumno...');
+
+    const dni = normalizarDniPermiso(item?.dni);
+    let materiasAlumno = [];
+
+    try {
+      if (dni) {
+        const res = await previasApi.listarTodos(1, { inscripcion: 1, dni });
+        materiasAlumno = (Array.isArray(res?.data) ? res.data : []).filter((registro) => (
+          Number(registro?.inscripcion || 0) === 1 && normalizarDniPermiso(registro?.dni) === dni
+        ));
+      }
+    } catch (e) {
+      console.error('No se pudieron obtener todas las materias inscriptas del alumno:', e);
+    }
+
+    if (materiasAlumno.length === 0 && dni) {
+      materiasAlumno = (Array.isArray(previas) ? previas : []).filter((registro) => (
+        Number(registro?.inscripcion || 0) === 1 && normalizarDniPermiso(registro?.dni) === dni
+      ));
+    }
+
+    if (materiasAlumno.length === 0) {
+      materiasAlumno = [item];
+    }
+
+    const pudoImprimir = imprimirPermisosExamen(materiasAlumno, ventana);
+    if (!pudoImprimir) {
+      escribirMensajeVentanaImpresion(ventana, 'No se pudo preparar el permiso de examen.');
+      mostrarMensaje('error', 'No se pudo preparar la impresión del permiso.');
+    }
   }
 
   function abrirCrear() {
@@ -1148,6 +1457,7 @@ export default function Previas() {
               onClick={() => setModalExportar(true)}
             />
 
+
             <button type="button" className="mov-btn mov-btn--primary" onClick={abrirCrear}>
               <FontAwesomeIcon icon={faPlus} /> Agregar previa
             </button>
@@ -1208,6 +1518,13 @@ export default function Previas() {
                         </div>
                       </div>
 
+                      <div className="mov-gridCell" role="cell" data-label="Profe" title={textoProfesor(item)}>
+                        <div className="previas-profesor-cell">
+                          <strong>{safeText(item.profesor)}</strong>
+                          <small>{safeText(item.profesor_cargo)}</small>
+                        </div>
+                      </div>
+
                       <div className="mov-gridCell is-center" role="cell" data-label="Condición">
                         <span className="mov-chip previas-badge">{safeText(item.condicion)}</span>
                       </div>
@@ -1265,9 +1582,14 @@ export default function Previas() {
                           )}
 
                           {vista === 'inscriptos' ? (
-                            <button type="button" className="mov-iconBtn mov-iconBtn--danger previas-icon-btn previas-icon-danger" onClick={() => abrirConfirmar('quitar_inscripcion', item)} title="Borrar inscripción">
-                              <FontAwesomeIcon icon={faTrash} />
-                            </button>
+                            <>
+                              <button type="button" className="mov-iconBtn previas-icon-btn previas-icon-print" onClick={() => imprimirPermisoIndividual(item)} title="Imprimir permiso de examen">
+                                <FontAwesomeIcon icon={faPrint} />
+                              </button>
+                              <button type="button" className="mov-iconBtn mov-iconBtn--danger previas-icon-btn previas-icon-danger" onClick={() => abrirConfirmar('quitar_inscripcion', item)} title="Borrar inscripción">
+                                <FontAwesomeIcon icon={faTrash} />
+                              </button>
+                            </>
                           ) : (
                             <button type="button" className="mov-iconBtn mov-iconBtn--danger previas-icon-btn previas-icon-danger" onClick={() => abrirConfirmar('eliminar', item)} title="Eliminar previa">
                               <FontAwesomeIcon icon={faTrash} />

@@ -181,8 +181,9 @@ function form_buscar_previas(): void
     }
 }
 
-function formulario_aplicar_correlativas(PDO $pdo, array $materias): array
-{
+if (!function_exists('formulario_aplicar_correlativas')) {
+    function formulario_aplicar_correlativas(PDO $pdo, array $materias): array
+    {
     if (count($materias) < 2) {
         return [$materias, []];
     }
@@ -321,7 +322,8 @@ function formulario_aplicar_correlativas(PDO $pdo, array $materias): array
         ];
     }
 
-    return [$materias, $resumen];
+        return [$materias, $resumen];
+    }
 }
 
 if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {

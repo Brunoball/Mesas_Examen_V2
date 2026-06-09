@@ -75,6 +75,17 @@ function estadisticas_formatear_fecha(?string $fecha): string
     return $dt ? $dt->format('d/m/Y') : '-';
 }
 
+function estadisticas_ejecutar(PDO $pdo, string $sql, array $params = []): PDOStatement
+{
+    $stmt = $pdo->prepare($sql);
+    if (!$stmt) {
+        throw new RuntimeException('No se pudo preparar la consulta de estadísticas.');
+    }
+
+    $stmt->execute($params);
+    return $stmt;
+}
+
 function estadisticas_base_deduplicada_sql(string $whereExtra = ''): string
 {
     $where = trim($whereExtra);
@@ -102,11 +113,236 @@ function estadisticas_base_deduplicada_sql(string $whereExtra = ''): string
     ";
 }
 
+function estadisticas_base_actual_deduplicada_sql(string $whereExtra = ''): string
+{
+    $whereParts = ['m.id_previa IS NOT NULL'];
+    $whereExtra = trim($whereExtra);
+    if ($whereExtra !== '') {
+        $whereParts[] = $whereExtra;
+    }
+    $where = 'WHERE ' . implode(' AND ', $whereParts);
+
+    return "
+        SELECT
+            'actual' AS id_armado_historial,
+            COALESCE(CAST(m.id_previa AS CHAR), CONCAT('MESA-', m.id_mesa)) AS clave_previa,
+            MIN(m.fecha_mesa) AS fecha_mesa,
+            MAX(m.fecha_mesa) AS fecha_mesa_fin,
+            MIN(m.numero_mesa) AS numero_mesa,
+            MIN(g.numero_grupo) AS numero_grupo,
+            MIN(NULLIF(TRIM(COALESCE(m.tipo_mesa, '')), '')) AS tipo_mesa,
+            MIN(m.creado_en) AS creado_en,
+            MAX(CASE WHEN p.nota IS NOT NULL AND p.nota >= 7 THEN 1 ELSE 0 END) AS es_aprobado,
+            MAX(CASE WHEN p.nota IS NOT NULL AND p.nota > 0 AND p.nota < 7 THEN 1 ELSE 0 END) AS es_desaprobado,
+            MAX(CASE WHEN p.nota IS NOT NULL AND p.nota > 0 THEN 1 ELSE 0 END) AS tiene_nota
+        FROM mesas m
+        LEFT JOIN previas p ON p.id_previa = m.id_previa
+        LEFT JOIN mesas_grupos g ON g.numero_mesa = m.numero_mesa
+        {$where}
+        GROUP BY
+            COALESCE(CAST(m.id_previa AS CHAR), CONCAT('MESA-', m.id_mesa))
+    ";
+}
+
+function estadisticas_normalizar_opcion(array $opcion, bool $esActual = false): array
+{
+    $opcion['origen'] = $esActual ? 'actual' : 'historial';
+    $opcion['id_armado_historial'] = $esActual
+        ? 'actual'
+        : (int)($opcion['id_armado_historial'] ?? 0);
+
+    $opcion['total_mesas'] = (int)($opcion['total_mesas'] ?? 0);
+    $opcion['total_previas'] = (int)($opcion['total_previas'] ?? 0);
+    $opcion['total_grupos'] = (int)($opcion['total_grupos'] ?? 0);
+    $opcion['total_no_agrupadas'] = (int)($opcion['total_no_agrupadas'] ?? 0);
+    $opcion['total_inscriptos'] = (int)($opcion['total_inscriptos'] ?? 0);
+    $opcion['total_aprobados'] = (int)($opcion['total_aprobados'] ?? 0);
+    $opcion['total_desaprobados'] = (int)($opcion['total_desaprobados'] ?? 0);
+    $opcion['total_ausentes'] = (int)($opcion['total_ausentes'] ?? 0);
+
+    $periodoBase = estadisticas_periodo_texto(
+        $opcion['fecha_inicio'] ?? null,
+        $opcion['fecha_fin'] ?? null,
+        $opcion['creado_en'] ?? null
+    );
+
+    $opcion['periodo_base'] = $periodoBase;
+    $opcion['periodo'] = $esActual ? ('ARMADO ACTUAL · ' . $periodoBase) : $periodoBase;
+    $opcion['label'] = $opcion['periodo'];
+    $opcion['fecha_inicio_texto'] = estadisticas_formatear_fecha($opcion['fecha_inicio'] ?? null);
+    $opcion['fecha_fin_texto'] = estadisticas_formatear_fecha($opcion['fecha_fin'] ?? null);
+
+    if ($esActual && empty($opcion['creado_en_texto'])) {
+        $opcion['creado_en_texto'] = 'Armado actual';
+    }
+
+    return $opcion;
+}
+
+function estadisticas_obtener_opcion_armado_actual(PDO $pdo): ?array
+{
+    $baseActual = estadisticas_base_actual_deduplicada_sql();
+
+    $sql = "
+        SELECT
+            'actual' AS id_armado_historial,
+            'ARMADO-ACTUAL' AS codigo_armado,
+            'armado_actual' AS motivo,
+            COUNT(DISTINCT b.numero_mesa) AS total_mesas,
+            COUNT(b.clave_previa) AS total_previas,
+            COUNT(DISTINCT b.numero_grupo) AS total_grupos,
+            (SELECT COUNT(*) FROM mesas_no_agrupadas) AS total_no_agrupadas,
+            MIN(b.creado_en) AS creado_en,
+            DATE_FORMAT(MIN(b.creado_en), '%d/%m/%Y %H:%i') AS creado_en_texto,
+            MIN(b.fecha_mesa) AS fecha_inicio,
+            MAX(b.fecha_mesa_fin) AS fecha_fin,
+            COUNT(b.clave_previa) AS total_inscriptos,
+            COALESCE(SUM(b.es_aprobado), 0) AS total_aprobados,
+            COALESCE(SUM(b.es_desaprobado), 0) AS total_desaprobados,
+            COALESCE(SUM(CASE WHEN b.tiene_nota = 0 THEN 1 ELSE 0 END), 0) AS total_ausentes
+        FROM ({$baseActual}) b
+        HAVING COUNT(b.clave_previa) > 0
+    ";
+
+    $stmt = $pdo->query($sql);
+    $opcion = $stmt ? $stmt->fetch(PDO::FETCH_ASSOC) : false;
+
+    return $opcion ? estadisticas_normalizar_opcion($opcion, true) : null;
+}
+
+function estadisticas_obtener_meta_armado_actual(PDO $pdo): ?array
+{
+    $baseActual = estadisticas_base_actual_deduplicada_sql();
+
+    $sql = "
+        SELECT
+            'actual' AS id_armado_historial,
+            'ARMADO-ACTUAL' AS codigo_armado,
+            'armado_actual' AS motivo,
+            COUNT(DISTINCT b.numero_mesa) AS total_mesas,
+            COUNT(b.clave_previa) AS total_previas,
+            COUNT(DISTINCT b.numero_grupo) AS total_grupos,
+            (SELECT COUNT(*) FROM mesas_no_agrupadas) AS total_no_agrupadas,
+            MIN(b.creado_en) AS creado_en,
+            DATE_FORMAT(MIN(b.creado_en), '%d/%m/%Y %H:%i') AS creado_en_texto,
+            MIN(b.fecha_mesa) AS fecha_inicio,
+            MAX(b.fecha_mesa_fin) AS fecha_fin
+        FROM ({$baseActual}) b
+        HAVING COUNT(b.clave_previa) > 0
+    ";
+
+    $stmt = $pdo->query($sql);
+    $armado = $stmt ? $stmt->fetch(PDO::FETCH_ASSOC) : false;
+
+    return $armado ? estadisticas_normalizar_opcion($armado, true) : null;
+}
+
+function estadisticas_responder_resumen(PDO $pdo, array $armado, string $base, array $params = []): void
+{
+    $stmtResumen = estadisticas_ejecutar($pdo, "
+        SELECT
+            COUNT(*) AS inscriptos,
+            COALESCE(SUM(es_aprobado), 0) AS aprobados,
+            COALESCE(SUM(es_desaprobado), 0) AS desaprobados,
+            COALESCE(SUM(CASE WHEN tiene_nota = 0 THEN 1 ELSE 0 END), 0) AS ausentes
+        FROM ({$base}) b
+    ", $params);
+    $resumen = $stmtResumen->fetch(PDO::FETCH_ASSOC) ?: [];
+
+    $totales = [
+        'inscriptos' => (int)($resumen['inscriptos'] ?? 0),
+        'aprobados' => (int)($resumen['aprobados'] ?? 0),
+        'ausentes' => (int)($resumen['ausentes'] ?? 0),
+        'desaprobados' => (int)($resumen['desaprobados'] ?? 0),
+    ];
+
+    $inscriptos = max(0, $totales['inscriptos']);
+    $totales['porcentajes'] = [
+        'aprobados' => $inscriptos > 0 ? round(($totales['aprobados'] * 100) / $inscriptos, 1) : 0,
+        'ausentes' => $inscriptos > 0 ? round(($totales['ausentes'] * 100) / $inscriptos, 1) : 0,
+        'desaprobados' => $inscriptos > 0 ? round(($totales['desaprobados'] * 100) / $inscriptos, 1) : 0,
+    ];
+
+    $stmtFechas = estadisticas_ejecutar($pdo, "
+        SELECT
+            b.fecha_mesa,
+            DATE_FORMAT(b.fecha_mesa, '%d/%m/%Y') AS fecha_mesa_texto,
+            COUNT(*) AS inscriptos,
+            COALESCE(SUM(b.es_aprobado), 0) AS aprobados,
+            COALESCE(SUM(b.es_desaprobado), 0) AS desaprobados,
+            COALESCE(SUM(CASE WHEN b.tiene_nota = 0 THEN 1 ELSE 0 END), 0) AS ausentes
+        FROM ({$base}) b
+        GROUP BY b.fecha_mesa
+        ORDER BY b.fecha_mesa IS NULL ASC, b.fecha_mesa ASC
+    ", $params);
+    $porFechas = $stmtFechas->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    foreach ($porFechas as &$fecha) {
+        $fecha['label'] = $fecha['fecha_mesa_texto'] ?: 'Sin fecha';
+        $fecha['inscriptos'] = (int)($fecha['inscriptos'] ?? 0);
+        $fecha['aprobados'] = (int)($fecha['aprobados'] ?? 0);
+        $fecha['ausentes'] = (int)($fecha['ausentes'] ?? 0);
+        $fecha['desaprobados'] = (int)($fecha['desaprobados'] ?? 0);
+    }
+    unset($fecha);
+
+    $stmtTipos = estadisticas_ejecutar($pdo, "
+        SELECT
+            COALESCE(NULLIF(TRIM(b.tipo_mesa), ''), 'simple') AS tipo_mesa,
+            COUNT(*) AS inscriptos,
+            COALESCE(SUM(b.es_aprobado), 0) AS aprobados,
+            COALESCE(SUM(b.es_desaprobado), 0) AS desaprobados,
+            COALESCE(SUM(CASE WHEN b.tiene_nota = 0 THEN 1 ELSE 0 END), 0) AS ausentes
+        FROM ({$base}) b
+        GROUP BY COALESCE(NULLIF(TRIM(b.tipo_mesa), ''), 'simple')
+        ORDER BY inscriptos DESC, tipo_mesa ASC
+    ", $params);
+    $porTipo = $stmtTipos->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    foreach ($porTipo as &$tipo) {
+        $tipoMesa = strtolower(trim((string)($tipo['tipo_mesa'] ?? 'simple')));
+        $tipo['tipo_mesa'] = $tipoMesa;
+        if ($tipoMesa === 'taller') {
+            $tipo['label'] = 'Taller';
+        } elseif ($tipoMesa === 'correlativa') {
+            $tipo['label'] = 'Correlativa';
+        } else {
+            $tipo['label'] = 'Simple';
+        }
+        $tipo['inscriptos'] = (int)($tipo['inscriptos'] ?? 0);
+        $tipo['aprobados'] = (int)($tipo['aprobados'] ?? 0);
+        $tipo['ausentes'] = (int)($tipo['ausentes'] ?? 0);
+        $tipo['desaprobados'] = (int)($tipo['desaprobados'] ?? 0);
+    }
+    unset($tipo);
+
+    json_response([
+        'exito' => true,
+        'data' => [
+            'armado' => $armado,
+            'totales' => $totales,
+            'por_estado' => [
+                ['key' => 'aprobados', 'label' => 'Aprobados', 'valor' => $totales['aprobados'], 'porcentaje' => $totales['porcentajes']['aprobados']],
+                ['key' => 'ausentes', 'label' => 'Ausentes', 'valor' => $totales['ausentes'], 'porcentaje' => $totales['porcentajes']['ausentes']],
+                ['key' => 'desaprobados', 'label' => 'Desaprobados', 'valor' => $totales['desaprobados'], 'porcentaje' => $totales['porcentajes']['desaprobados']],
+            ],
+            'por_fechas' => $porFechas,
+            'por_tipo' => $porTipo,
+        ],
+    ]);
+}
+
 function estadisticas_mesas_opciones(): void
 {
     try {
         $pdo = db();
         mesas_historial_asegurar_tablas($pdo);
+
+        $opciones = [];
+        $armadoActual = estadisticas_obtener_opcion_armado_actual($pdo);
+        if ($armadoActual) {
+            $opciones[] = $armadoActual;
+        }
 
         $base = estadisticas_base_deduplicada_sql();
 
@@ -142,28 +378,11 @@ function estadisticas_mesas_opciones(): void
         ";
 
         $stmt = $pdo->query($sql);
-        $opciones = $stmt ? ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: []) : [];
+        $historiales = $stmt ? ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: []) : [];
 
-        foreach ($opciones as &$opcion) {
-            $opcion['id_armado_historial'] = (int)$opcion['id_armado_historial'];
-            $opcion['total_mesas'] = (int)($opcion['total_mesas'] ?? 0);
-            $opcion['total_previas'] = (int)($opcion['total_previas'] ?? 0);
-            $opcion['total_grupos'] = (int)($opcion['total_grupos'] ?? 0);
-            $opcion['total_no_agrupadas'] = (int)($opcion['total_no_agrupadas'] ?? 0);
-            $opcion['total_inscriptos'] = (int)($opcion['total_inscriptos'] ?? 0);
-            $opcion['total_aprobados'] = (int)($opcion['total_aprobados'] ?? 0);
-            $opcion['total_desaprobados'] = (int)($opcion['total_desaprobados'] ?? 0);
-            $opcion['total_ausentes'] = (int)($opcion['total_ausentes'] ?? 0);
-            $opcion['periodo'] = estadisticas_periodo_texto(
-                $opcion['fecha_inicio'] ?? null,
-                $opcion['fecha_fin'] ?? null,
-                $opcion['creado_en'] ?? null
-            );
-            $opcion['label'] = $opcion['periodo'];
-            $opcion['fecha_inicio_texto'] = estadisticas_formatear_fecha($opcion['fecha_inicio'] ?? null);
-            $opcion['fecha_fin_texto'] = estadisticas_formatear_fecha($opcion['fecha_fin'] ?? null);
+        foreach ($historiales as $historial) {
+            $opciones[] = estadisticas_normalizar_opcion($historial, false);
         }
-        unset($opcion);
 
         json_response([
             'exito' => true,
@@ -191,13 +410,31 @@ function estadisticas_mesas_resumen(): void
         $pdo = db();
         mesas_historial_asegurar_tablas($pdo);
 
-        $idArmado = is_numeric($_GET['id_armado_historial'] ?? null) ? (int)$_GET['id_armado_historial'] : 0;
+        $idParam = trim((string)($_GET['id_armado_historial'] ?? ''));
+        if ($idParam === '') {
+            json_response(['exito' => false, 'mensaje' => 'Seleccioná una mesa de examen válida.'], 422);
+            return;
+        }
+
+        if (strtolower($idParam) === 'actual') {
+            $armado = estadisticas_obtener_meta_armado_actual($pdo);
+            if (!$armado) {
+                json_response(['exito' => false, 'mensaje' => 'No hay mesas armadas actualmente para graficar.'], 404);
+                return;
+            }
+
+            $baseActual = estadisticas_base_actual_deduplicada_sql();
+            estadisticas_responder_resumen($pdo, $armado, $baseActual);
+            return;
+        }
+
+        $idArmado = is_numeric($idParam) ? (int)$idParam : 0;
         if ($idArmado <= 0) {
             json_response(['exito' => false, 'mensaje' => 'Seleccioná una mesa de examen válida.'], 422);
             return;
         }
 
-        $stmtArmado = $pdo->prepare("
+        $stmtArmado = estadisticas_ejecutar($pdo, "
             SELECT
                 a.id_armado_historial,
                 a.codigo_armado,
@@ -223,8 +460,7 @@ function estadisticas_mesas_resumen(): void
                 a.total_no_agrupadas,
                 a.creado_en
             LIMIT 1
-        ");
-        $stmtArmado->execute([':id' => $idArmado]);
+        ", [':id' => $idArmado]);
         $armado = $stmtArmado->fetch(PDO::FETCH_ASSOC);
 
         if (!$armado) {
@@ -232,115 +468,9 @@ function estadisticas_mesas_resumen(): void
             return;
         }
 
+        $armado = estadisticas_normalizar_opcion($armado, false);
         $base = estadisticas_base_deduplicada_sql('d.id_armado_historial = :id_armado');
-
-        $stmtResumen = $pdo->prepare("
-            SELECT
-                COUNT(*) AS inscriptos,
-                COALESCE(SUM(es_aprobado), 0) AS aprobados,
-                COALESCE(SUM(es_desaprobado), 0) AS desaprobados,
-                COALESCE(SUM(CASE WHEN tiene_nota = 0 THEN 1 ELSE 0 END), 0) AS ausentes
-            FROM ({$base}) b
-        ");
-        $stmtResumen->execute([':id_armado' => $idArmado]);
-        $resumen = $stmtResumen->fetch(PDO::FETCH_ASSOC) ?: [];
-
-        $totales = [
-            'inscriptos' => (int)($resumen['inscriptos'] ?? 0),
-            'aprobados' => (int)($resumen['aprobados'] ?? 0),
-            'ausentes' => (int)($resumen['ausentes'] ?? 0),
-            'desaprobados' => (int)($resumen['desaprobados'] ?? 0),
-        ];
-
-        $inscriptos = max(0, $totales['inscriptos']);
-        $totales['porcentajes'] = [
-            'aprobados' => $inscriptos > 0 ? round(($totales['aprobados'] * 100) / $inscriptos, 1) : 0,
-            'ausentes' => $inscriptos > 0 ? round(($totales['ausentes'] * 100) / $inscriptos, 1) : 0,
-            'desaprobados' => $inscriptos > 0 ? round(($totales['desaprobados'] * 100) / $inscriptos, 1) : 0,
-        ];
-
-        $stmtFechas = $pdo->prepare("
-            SELECT
-                b.fecha_mesa,
-                DATE_FORMAT(b.fecha_mesa, '%d/%m/%Y') AS fecha_mesa_texto,
-                COUNT(*) AS inscriptos,
-                COALESCE(SUM(b.es_aprobado), 0) AS aprobados,
-                COALESCE(SUM(b.es_desaprobado), 0) AS desaprobados,
-                COALESCE(SUM(CASE WHEN b.tiene_nota = 0 THEN 1 ELSE 0 END), 0) AS ausentes
-            FROM ({$base}) b
-            GROUP BY b.fecha_mesa
-            ORDER BY b.fecha_mesa IS NULL ASC, b.fecha_mesa ASC
-        ");
-        $stmtFechas->execute([':id_armado' => $idArmado]);
-        $porFechas = $stmtFechas->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-        foreach ($porFechas as &$fecha) {
-            $fecha['label'] = $fecha['fecha_mesa_texto'] ?: 'Sin fecha';
-            $fecha['inscriptos'] = (int)($fecha['inscriptos'] ?? 0);
-            $fecha['aprobados'] = (int)($fecha['aprobados'] ?? 0);
-            $fecha['ausentes'] = (int)($fecha['ausentes'] ?? 0);
-            $fecha['desaprobados'] = (int)($fecha['desaprobados'] ?? 0);
-        }
-        unset($fecha);
-
-        $stmtTipos = $pdo->prepare("
-            SELECT
-                COALESCE(NULLIF(TRIM(b.tipo_mesa), ''), 'simple') AS tipo_mesa,
-                COUNT(*) AS inscriptos,
-                COALESCE(SUM(b.es_aprobado), 0) AS aprobados,
-                COALESCE(SUM(b.es_desaprobado), 0) AS desaprobados,
-                COALESCE(SUM(CASE WHEN b.tiene_nota = 0 THEN 1 ELSE 0 END), 0) AS ausentes
-            FROM ({$base}) b
-            GROUP BY COALESCE(NULLIF(TRIM(b.tipo_mesa), ''), 'simple')
-            ORDER BY inscriptos DESC, tipo_mesa ASC
-        ");
-        $stmtTipos->execute([':id_armado' => $idArmado]);
-        $porTipo = $stmtTipos->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-        foreach ($porTipo as &$tipo) {
-            $tipoMesa = strtolower(trim((string)($tipo['tipo_mesa'] ?? 'simple')));
-            $tipo['tipo_mesa'] = $tipoMesa;
-            if ($tipoMesa === 'taller') {
-                $tipo['label'] = 'Taller';
-            } elseif ($tipoMesa === 'correlativa') {
-                $tipo['label'] = 'Correlativa';
-            } else {
-                $tipo['label'] = 'Simple';
-            }
-            $tipo['inscriptos'] = (int)($tipo['inscriptos'] ?? 0);
-            $tipo['aprobados'] = (int)($tipo['aprobados'] ?? 0);
-            $tipo['ausentes'] = (int)($tipo['ausentes'] ?? 0);
-            $tipo['desaprobados'] = (int)($tipo['desaprobados'] ?? 0);
-        }
-        unset($tipo);
-
-        $armado['id_armado_historial'] = (int)$armado['id_armado_historial'];
-        $armado['total_mesas'] = (int)($armado['total_mesas'] ?? 0);
-        $armado['total_previas'] = (int)($armado['total_previas'] ?? 0);
-        $armado['total_grupos'] = (int)($armado['total_grupos'] ?? 0);
-        $armado['total_no_agrupadas'] = (int)($armado['total_no_agrupadas'] ?? 0);
-        $armado['periodo'] = estadisticas_periodo_texto(
-            $armado['fecha_inicio'] ?? null,
-            $armado['fecha_fin'] ?? null,
-            $armado['creado_en'] ?? null
-        );
-        $armado['fecha_inicio_texto'] = estadisticas_formatear_fecha($armado['fecha_inicio'] ?? null);
-        $armado['fecha_fin_texto'] = estadisticas_formatear_fecha($armado['fecha_fin'] ?? null);
-
-        json_response([
-            'exito' => true,
-            'data' => [
-                'armado' => $armado,
-                'totales' => $totales,
-                'por_estado' => [
-                    ['key' => 'aprobados', 'label' => 'Aprobados', 'valor' => $totales['aprobados'], 'porcentaje' => $totales['porcentajes']['aprobados']],
-                    ['key' => 'ausentes', 'label' => 'Ausentes', 'valor' => $totales['ausentes'], 'porcentaje' => $totales['porcentajes']['ausentes']],
-                    ['key' => 'desaprobados', 'label' => 'Desaprobados', 'valor' => $totales['desaprobados'], 'porcentaje' => $totales['porcentajes']['desaprobados']],
-                ],
-                'por_fechas' => $porFechas,
-                'por_tipo' => $porTipo,
-            ],
-        ]);
+        estadisticas_responder_resumen($pdo, $armado, $base, [':id_armado' => $idArmado]);
     } catch (Throwable $e) {
         if (function_exists('log_error')) {
             log_error($e, 'estadisticas_mesas_resumen');

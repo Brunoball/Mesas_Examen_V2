@@ -109,11 +109,15 @@ function form_registrar_inscripcion(): void
                     continue;
                 }
 
+                $idMateriaRow = (int)$row['id_materia'];
+                $idCursoRow = (int)$row['materia_id_curso'];
+                $idDivisionRow = (int)$row['materia_id_division'];
+
                 $materiasValidas[] = [
                     'id_previa' => (int)$row['id_previa'],
-                    'id_materia' => (int)$row['id_materia'],
-                    'curso_id' => (int)$row['materia_id_curso'],
-                    'division_id' => (int)$row['materia_id_division'],
+                    'id_materia' => $idMateriaRow,
+                    'curso_id' => $idCursoRow,
+                    'division_id' => $idDivisionRow,
                     'id_condicion' => (int)$row['id_condicion'],
                     'materia' => (string)$row['materia'],
                     'curso' => (string)($row['curso'] ?? ''),
@@ -121,6 +125,7 @@ function form_registrar_inscripcion(): void
                     'alumno' => (string)$row['alumno'],
                     'anio' => (int)$row['anio'],
                     'inscripcion' => (int)$row['inscripcion'],
+                    'clave_unica' => $idMateriaRow . '_' . $idCursoRow . '_' . $idDivisionRow,
                 ];
             } else {
                 $materiasFaltantes[] = $m;
@@ -133,6 +138,103 @@ function form_registrar_inscripcion(): void
                 'exito' => false,
                 'mensaje' => 'Algunas materias no corresponden a previas activas para ese DNI.',
                 'materias_faltantes' => $materiasFaltantes,
+                'tenant' => formulario_tenant_info(),
+            ], 200);
+        }
+
+        // Validación fuerte de correlativas para el formulario público.
+        // No alcanza con validar solo las materias enviadas: si el alumno intenta
+        // inscribirse únicamente a una posterior (ej. DIGITAL IV), también se debe
+        // mirar el resto de sus previas activas para detectar la cadena completa
+        // (ej. DIGITAL II -> DIGITAL III -> DIGITAL IV, aunque DIGITAL III no esté pendiente).
+        $todasMateriasAlumno = formulario_obtener_previas_condicion3_para_dni($pdo, $dni);
+        [$todasMateriasConCorrelativas] = formulario_aplicar_correlativas($pdo, $todasMateriasAlumno);
+
+        $seleccionadasPorClave = [];
+        foreach ($materiasValidas as $m) {
+            $seleccionadasPorClave[(string)$m['clave_unica']] = true;
+        }
+
+        $todasPorClave = [];
+        foreach ($todasMateriasConCorrelativas as $m) {
+            $todasPorClave[(string)$m['clave_unica']] = $m;
+        }
+
+        $bloqueosCorrelativas = [];
+        foreach ($todasMateriasConCorrelativas as $m) {
+            $clavePosterior = (string)$m['clave_unica'];
+            if (!isset($seleccionadasPorClave[$clavePosterior])) {
+                continue;
+            }
+
+            $anteriores = $m['correlativas_anteriores'] ?? [];
+            if (!is_array($anteriores) || count($anteriores) === 0) {
+                continue;
+            }
+
+            foreach ($anteriores as $claveAnterior) {
+                $claveAnterior = (string)$claveAnterior;
+                $anterior = $todasPorClave[$claveAnterior] ?? null;
+
+                if (!$anterior) {
+                    continue;
+                }
+
+                $anteriorYaInscripta = (int)($anterior['inscripcion'] ?? 0) === 1;
+
+                // Regla estricta del formulario: la anterior debe quedar confirmada
+                // primero. No alcanza con seleccionar anterior y posterior en el
+                // mismo envío, porque la posterior debe habilitarse recién después.
+                if ($anteriorYaInscripta) {
+                    continue;
+                }
+
+                if (!isset($bloqueosCorrelativas[$clavePosterior])) {
+                    $bloqueosCorrelativas[$clavePosterior] = [
+                        'materia' => (string)($m['materia'] ?? 'Materia posterior'),
+                        'curso' => (string)($m['curso'] ?? ''),
+                        'division' => (string)($m['division'] ?? ''),
+                        'anteriores' => [],
+                    ];
+                }
+
+                $bloqueosCorrelativas[$clavePosterior]['anteriores'][] = [
+                    'materia' => (string)($anterior['materia'] ?? 'Correlativa anterior'),
+                    'curso' => (string)($anterior['curso'] ?? ''),
+                    'division' => (string)($anterior['division'] ?? ''),
+                    'clave_unica' => $claveAnterior,
+                ];
+            }
+        }
+
+        if (count($bloqueosCorrelativas) > 0) {
+            $pdo->rollBack();
+
+            $mensajes = [];
+            foreach ($bloqueosCorrelativas as $bloqueo) {
+                $anterioresTxt = implode(', ', array_values(array_unique(array_map(static function (array $a): string {
+                    $detalle = trim((string)$a['materia']);
+                    $curso = trim((string)($a['curso'] ?? ''));
+                    $division = trim((string)($a['division'] ?? ''));
+                    $cursoDivision = trim($curso . ($division !== '' ? ' ' . $division : ''));
+                    return $cursoDivision !== '' ? $detalle . ' (' . $cursoDivision . ')' : $detalle;
+                }, $bloqueo['anteriores']))));
+
+                $posteriorTxt = trim((string)$bloqueo['materia']);
+                $cursoPosterior = trim((string)($bloqueo['curso'] ?? ''));
+                $divisionPosterior = trim((string)($bloqueo['division'] ?? ''));
+                $cursoDivisionPosterior = trim($cursoPosterior . ($divisionPosterior !== '' ? ' ' . $divisionPosterior : ''));
+                if ($cursoDivisionPosterior !== '') {
+                    $posteriorTxt .= ' (' . $cursoDivisionPosterior . ')';
+                }
+
+                $mensajes[] = $posteriorTxt . ' requiere primero ' . $anterioresTxt;
+            }
+
+            formulario_json([
+                'exito' => false,
+                'mensaje' => 'Hay materias correlativas que deben respetar el orden de inscripción. Primero confirmá la materia anterior y después volvé a inscribirte a la posterior. ' . implode('. ', $mensajes) . '.',
+                'correlativas_bloqueadas' => array_values($bloqueosCorrelativas),
                 'tenant' => formulario_tenant_info(),
             ], 200);
         }

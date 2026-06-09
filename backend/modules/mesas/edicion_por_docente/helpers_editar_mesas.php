@@ -776,7 +776,7 @@ function mesas_editar_docentes_obtener_no_agrupada_hidratada(PDO $pdo, ?int $idN
                 'docente' => $filaDetalle['docente'] ?? '',
                 'curso_alumno' => $filaDetalle['curso_alumno'] ?? '',
                 'division_alumno' => $filaDetalle['division_alumno'] ?? '',
-                'curso' => trim((string)(($filaDetalle['curso_alumno'] ?? '') . ' ' . ($filaDetalle['division_alumno'] ?? ''))),
+                'curso' => trim((string)(($filaDetalle['curso_materia'] ?? '') . ' ' . ($filaDetalle['division_materia'] ?? ''))),
                 'curso_materia' => $filaDetalle['curso_materia'] ?? '',
                 'division_materia' => $filaDetalle['division_materia'] ?? '',
                 'condicion' => $filaDetalle['condicion'] ?? '',
@@ -1029,14 +1029,14 @@ function mesas_editar_docentes_obtener_detalle_numeros(PDO $pdo, array $numeros)
         . "    me.prioridad,\n"
         . "    p.dni,\n"
         . "    p.alumno,\n"
-        . "    COALESCE(cat.id_materia, p.id_materia) AS id_materia,\n"
-        . "    COALESCE(cat.id_curso, p.materia_id_curso) AS id_curso,\n"
+        . "    p.id_materia AS id_materia,\n"
+        . "    p.materia_id_curso AS id_curso,\n"
         . "    mat.materia,\n"
         . "    doc.docente\n"
         . "FROM mesas me\n"
         . "LEFT JOIN previas p ON p.id_previa = me.id_previa\n"
         . "LEFT JOIN catedras cat ON cat.id_catedra = me.id_catedra\n"
-        . "LEFT JOIN materias mat ON mat.id_materia = COALESCE(cat.id_materia, p.id_materia)\n"
+        . "LEFT JOIN materias mat ON mat.id_materia = p.id_materia\n"
         . "LEFT JOIN docentes doc ON doc.id_docente = me.id_docente\n"
         . "WHERE me.numero_mesa IN ({$placeholders})\n"
         . "ORDER BY me.numero_mesa ASC, me.id_mesa ASC"
@@ -1577,13 +1577,29 @@ function mesas_editar_docentes_validar_alumnos(PDO $pdo, array $detalle, string 
 
 function mesas_editar_docentes_obtener_otras_previas_mismos_alumnos(PDO $pdo, array $detalle): array
 {
-    $dnis = array_keys($detalle['dnis']);
+    $dnis = array_keys($detalle['dnis'] ?? []);
     if (count($dnis) === 0) {
         return [];
     }
 
+    $idsPrevias = [];
+    foreach (($detalle['ids_previa'] ?? []) as $idPrevia) {
+        $idPrevia = (int)$idPrevia;
+        if ($idPrevia > 0) {
+            $idsPrevias[$idPrevia] = $idPrevia;
+        }
+    }
+    $idsPrevias = array_values($idsPrevias);
+
     $phDnis = implode(',', array_fill(0, count($dnis), '?'));
-    $phNumeros = implode(',', array_fill(0, count($detalle['numeros']), '?'));
+    $whereExcluirPrevias = '';
+    $params = $dnis;
+
+    if (count($idsPrevias) > 0) {
+        $phPrevias = implode(',', array_fill(0, count($idsPrevias), '?'));
+        $whereExcluirPrevias = "  AND (me.id_previa IS NULL OR me.id_previa NOT IN ({$phPrevias}))\n";
+        $params = array_merge($params, $idsPrevias);
+    }
 
     $stmt = $pdo->prepare(""
         . "SELECT\n"
@@ -1593,20 +1609,19 @@ function mesas_editar_docentes_obtener_otras_previas_mismos_alumnos(PDO $pdo, ar
         . "    me.id_turno,\n"
         . "    p.dni,\n"
         . "    p.alumno,\n"
-        . "    COALESCE(cat.id_materia, p.id_materia) AS id_materia,\n"
-        . "    COALESCE(cat.id_curso, p.materia_id_curso) AS id_curso,\n"
+        . "    p.id_materia AS id_materia,\n"
+        . "    p.materia_id_curso AS id_curso,\n"
         . "    mat.materia\n"
         . "FROM mesas me\n"
         . "INNER JOIN previas p ON p.id_previa = me.id_previa\n"
-        . "LEFT JOIN catedras cat ON cat.id_catedra = me.id_catedra\n"
-        . "LEFT JOIN materias mat ON mat.id_materia = COALESCE(cat.id_materia, p.id_materia)\n"
+        . "LEFT JOIN materias mat ON mat.id_materia = p.id_materia\n"
         . "WHERE p.dni IN ({$phDnis})\n"
-        . "  AND me.numero_mesa NOT IN ({$phNumeros})\n"
+        . $whereExcluirPrevias
         . "  AND me.fecha_mesa IS NOT NULL\n"
         . "  AND me.id_turno IS NOT NULL\n"
         . "ORDER BY p.dni ASC, me.fecha_mesa ASC, me.id_turno ASC"
     );
-    $stmt->execute(array_merge($dnis, $detalle['numeros']));
+    $stmt->execute($params);
 
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
@@ -1639,75 +1654,178 @@ function mesas_editar_docentes_validar_correlativas(PDO $pdo, array $detalle, st
     $correlativas = isset($contexto['correlativas']) && is_array($contexto['correlativas'])
         ? $contexto['correlativas']
         : mesas_editar_docentes_obtener_correlativas($pdo);
+
     if (count($correlativas) === 0) {
         return $errores;
+    }
+
+    $claveMateriaCurso = static function (array $registro): string {
+        $idMateria = (int)($registro['id_materia'] ?? 0);
+        $idCurso = (int)($registro['id_curso'] ?? 0);
+
+        return $idMateria . '|' . $idCurso;
+    };
+
+    $registroValido = static function (array $registro): bool {
+        return trim((string)($registro['dni'] ?? '')) !== ''
+            && (int)($registro['id_materia'] ?? 0) > 0
+            && (int)($registro['id_curso'] ?? 0) > 0;
+    };
+
+    $grafo = [];
+
+    foreach ($correlativas as $corr) {
+        $idMateriaA = (int)($corr['id_materia'] ?? 0);
+        $idCursoA = (int)($corr['id_curso'] ?? 0);
+        $idMateriaB = (int)($corr['id_materia_relacionada'] ?? 0);
+        $idCursoB = (int)($corr['id_curso_relacionada'] ?? 0);
+        $tipo = (string)($corr['tipo'] ?? '');
+
+        if ($idMateriaA <= 0 || $idCursoA <= 0 || $idMateriaB <= 0 || $idCursoB <= 0) {
+            continue;
+        }
+
+        $claveA = $idMateriaA . '|' . $idCursoA;
+        $claveB = $idMateriaB . '|' . $idCursoB;
+
+        if ($claveA === $claveB || $tipo === 'equivalente') {
+            continue;
+        }
+
+        // Misma regla del armado: si los cursos difieren, el curso menor siempre es anterior.
+        // Si no se puede decidir por curso, se respeta el sentido operativo usado por el armado.
+        if ($idCursoA !== $idCursoB) {
+            $desde = $idCursoA < $idCursoB ? $claveA : $claveB;
+            $hacia = $idCursoA < $idCursoB ? $claveB : $claveA;
+        } elseif ($tipo === 'posterior') {
+            $desde = $claveB;
+            $hacia = $claveA;
+        } else {
+            $desde = $claveA;
+            $hacia = $claveB;
+        }
+
+        if (!isset($grafo[$desde])) {
+            $grafo[$desde] = [];
+        }
+        $grafo[$desde][$hacia] = true;
+    }
+
+    if (count($grafo) === 0) {
+        return $errores;
+    }
+
+    $hayCamino = static function (string $origen, string $destino) use (&$grafo): bool {
+        if ($origen === $destino) {
+            return false;
+        }
+
+        $cola = [$origen];
+        $visitados = [$origen => true];
+
+        while (count($cola) > 0) {
+            $actual = array_shift($cola);
+            foreach (($grafo[$actual] ?? []) as $siguiente => $_) {
+                $siguiente = (string)$siguiente;
+                if ($siguiente === $destino) {
+                    return true;
+                }
+                if (isset($visitados[$siguiente])) {
+                    continue;
+                }
+                $visitados[$siguiente] = true;
+                $cola[] = $siguiente;
+            }
+        }
+
+        return false;
+    };
+
+    $nombreRegistro = static function (array $registro, string $fallback): string {
+        $materia = trim((string)($registro['materia'] ?? ''));
+        return $materia !== '' ? $materia : $fallback;
+    };
+
+    $agregarErrorOrden = static function (array $anterior, array $posterior) use (&$errores, $nombreRegistro): void {
+        $alumno = trim((string)($anterior['alumno'] ?? ''));
+        if ($alumno === '') {
+            $alumno = trim((string)($posterior['alumno'] ?? ''));
+        }
+        if ($alumno === '') {
+            $alumno = trim((string)($anterior['dni'] ?? $posterior['dni'] ?? ''));
+        }
+
+        $errores[] = 'Correlativa: ' . ($alumno !== '' ? $alumno : 'el alumno')
+            . ' debe rendir ' . $nombreRegistro($anterior, 'la correlativa anterior')
+            . ' antes de ' . $nombreRegistro($posterior, 'la correlativa posterior') . '.';
+    };
+
+    $indiceDestino = mesas_editar_docentes_fecha_a_indice_slot($fechaMesa, $idTurno);
+    $actuales = array_values(array_filter($detalle['registros'] ?? [], $registroValido));
+
+    // Validación interna: si al agregar un número quedan anterior y posterior dentro
+    // del mismo grupo/fecha/turno, se bloquea porque no existe orden posible en el mismo slot.
+    $totalActuales = count($actuales);
+    for ($i = 0; $i < $totalActuales; $i++) {
+        for ($j = $i + 1; $j < $totalActuales; $j++) {
+            $a = $actuales[$i];
+            $b = $actuales[$j];
+
+            if ((string)($a['dni'] ?? '') !== (string)($b['dni'] ?? '')) {
+                continue;
+            }
+
+            if ((int)($a['id_previa'] ?? 0) > 0 && (int)($a['id_previa'] ?? 0) === (int)($b['id_previa'] ?? 0)) {
+                continue;
+            }
+
+            $claveA = $claveMateriaCurso($a);
+            $claveB = $claveMateriaCurso($b);
+
+            if ($hayCamino($claveA, $claveB)) {
+                $agregarErrorOrden($a, $b);
+            } elseif ($hayCamino($claveB, $claveA)) {
+                $agregarErrorOrden($b, $a);
+            }
+        }
     }
 
     $otras = isset($contexto['otras_previas']) && is_array($contexto['otras_previas'])
         ? $contexto['otras_previas']
         : mesas_editar_docentes_obtener_otras_previas_mismos_alumnos($pdo, $detalle);
-    if (count($otras) === 0) {
-        return $errores;
-    }
 
-    $indiceDestino = mesas_editar_docentes_fecha_a_indice_slot($fechaMesa, $idTurno);
-
-    foreach ($detalle['registros'] as $actual) {
-        if (($actual['dni'] ?? '') === '' || (int)($actual['id_materia'] ?? 0) <= 0 || (int)($actual['id_curso'] ?? 0) <= 0) {
-            continue;
-        }
+    foreach ($actuales as $actual) {
+        $claveActual = $claveMateriaCurso($actual);
 
         foreach ($otras as $otra) {
-            if ((string)$otra['dni'] !== (string)$actual['dni']) {
+            if (!$registroValido($otra)) {
                 continue;
             }
 
+            if ((string)($otra['dni'] ?? '') !== (string)($actual['dni'] ?? '')) {
+                continue;
+            }
+
+            if ((int)($actual['id_previa'] ?? 0) > 0 && (int)($actual['id_previa'] ?? 0) === (int)($otra['id_previa'] ?? 0)) {
+                continue;
+            }
+
+            $claveOtra = $claveMateriaCurso($otra);
             $indiceOtra = mesas_editar_docentes_fecha_a_indice_slot((string)$otra['fecha_mesa'], (int)$otra['id_turno']);
 
-            foreach ($correlativas as $corr) {
-                $idMateria = (int)$corr['id_materia'];
-                $idCurso = (int)$corr['id_curso'];
-                $idMateriaRel = (int)$corr['id_materia_relacionada'];
-                $idCursoRel = (int)$corr['id_curso_relacionada'];
-                $tipo = (string)$corr['tipo'];
+            if ($hayCamino($claveActual, $claveOtra) && $indiceDestino >= $indiceOtra) {
+                $agregarErrorOrden($actual, $otra);
+            }
 
-                if ($tipo === 'anterior') {
-                    // id_materia/id_curso es la materia posterior; id_materia_relacionada/id_curso_relacionada es la anterior.
-                    if (mesas_editar_docentes_registro_coincide_materia_curso($actual, $idMateria, $idCurso)
-                        && mesas_editar_docentes_registro_coincide_materia_curso($otra, $idMateriaRel, $idCursoRel)
-                        && $indiceDestino <= $indiceOtra
-                    ) {
-                        $errores[] = 'Correlativa: ' . ($actual['alumno'] ?: $actual['dni']) . ' debe rendir ' . ($otra['materia'] ?: 'la correlativa anterior') . ' antes de ' . ($actual['materia'] ?: 'esta materia') . '.';
-                    }
-
-                    if (mesas_editar_docentes_registro_coincide_materia_curso($actual, $idMateriaRel, $idCursoRel)
-                        && mesas_editar_docentes_registro_coincide_materia_curso($otra, $idMateria, $idCurso)
-                        && $indiceDestino >= $indiceOtra
-                    ) {
-                        $errores[] = 'Correlativa: ' . ($actual['alumno'] ?: $actual['dni']) . ' debe rendir ' . ($actual['materia'] ?: 'esta materia') . ' antes de ' . ($otra['materia'] ?: 'la correlativa posterior') . '.';
-                    }
-                } elseif ($tipo === 'posterior') {
-                    // id_materia_relacionada/id_curso_relacionada es la posterior.
-                    if (mesas_editar_docentes_registro_coincide_materia_curso($actual, $idMateria, $idCurso)
-                        && mesas_editar_docentes_registro_coincide_materia_curso($otra, $idMateriaRel, $idCursoRel)
-                        && $indiceDestino >= $indiceOtra
-                    ) {
-                        $errores[] = 'Correlativa: ' . ($actual['alumno'] ?: $actual['dni']) . ' debe rendir ' . ($actual['materia'] ?: 'esta materia') . ' antes de ' . ($otra['materia'] ?: 'la correlativa posterior') . '.';
-                    }
-
-                    if (mesas_editar_docentes_registro_coincide_materia_curso($actual, $idMateriaRel, $idCursoRel)
-                        && mesas_editar_docentes_registro_coincide_materia_curso($otra, $idMateria, $idCurso)
-                        && $indiceDestino <= $indiceOtra
-                    ) {
-                        $errores[] = 'Correlativa: ' . ($actual['alumno'] ?: $actual['dni']) . ' debe rendir ' . ($otra['materia'] ?: 'la correlativa anterior') . ' antes de ' . ($actual['materia'] ?: 'esta materia') . '.';
-                    }
-                }
+            if ($hayCamino($claveOtra, $claveActual) && $indiceOtra >= $indiceDestino) {
+                $agregarErrorOrden($otra, $actual);
             }
         }
     }
 
     return array_values(array_unique($errores));
 }
+
 
 
 function mesas_editar_docentes_resumen_numero_para_grupo_unico(PDO $pdo, int $numeroMesa): ?array

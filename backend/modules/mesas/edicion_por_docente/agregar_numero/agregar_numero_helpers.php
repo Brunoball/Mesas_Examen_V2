@@ -602,8 +602,9 @@ function mesas_editar_docentes_agregar_numero_obtener_previas_sin_mesa(PDO $pdo,
 
 function mesas_editar_docentes_agregar_numero_normalizar_previa(array $previa, array $validacion): array
 {
-    $curso = trim((string)(($previa['curso_alumno'] ?? '') . ' ' . ($previa['division_alumno'] ?? '')));
+    $cursoAlumno = trim((string)(($previa['curso_alumno'] ?? '') . ' ' . ($previa['division_alumno'] ?? '')));
     $cursoMateria = trim((string)(($previa['curso_materia'] ?? '') . ' ' . ($previa['division_materia'] ?? '')));
+    $curso = $cursoMateria !== '' ? $cursoMateria : $cursoAlumno;
 
     return [
         'id_previa' => (int)$previa['id_previa'],

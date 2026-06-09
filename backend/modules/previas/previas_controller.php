@@ -84,7 +84,7 @@ function previas_columna_existe(PDO $pdo, string $tabla, string $columna): bool
         $stmt->execute([':columna' => $columna]);
         $cache[$key] = (bool)$stmt->fetch(PDO::FETCH_ASSOC);
     } catch (Throwable $e) {
-        $cache[$key] = true;
+        $cache[$key] = false;
     }
 
     return $cache[$key];
@@ -205,6 +205,95 @@ function previas_existe_catedra_materia(PDO $pdo, int $idCurso, int $idDivision,
     return (bool)$stmt->fetch(PDO::FETCH_ASSOC);
 }
 
+function previas_profesor_select_y_joins(PDO $pdo): array
+{
+    /*
+     * Esquema confirmado por mesas(33).sql:
+     * - catedras(id_catedra, id_curso, id_division, id_materia, id_docente, activo)
+     * - catedras_docentes(id_catedra_docente, id_catedra, id_docente, id_cargo, activo)
+     * - cargos(id_cargo, cargo)
+     * - docentes(id_docente, docente, activo)
+     *
+     * Regla pedida:
+     * - Si la cátedra tiene un solo docente activo, se muestra ese docente.
+     * - Si la cátedra tiene varios docentes activos, se prioriza el SUPLENTE.
+     * - Si no hubiera suplente, queda el primer docente activo de la cátedra.
+     */
+    return [
+        'select' => "
+            cat.id_catedra,
+            doc_prof.id_docente AS id_docente_profesor,
+            COALESCE(doc_prof.docente, '') AS profesor,
+            COALESCE(cargo_prof.cargo, '') AS profesor_cargo",
+        'joins' => "
+        LEFT JOIN catedras cat
+            ON cat.id_materia = p.id_materia
+           AND cat.id_curso = p.materia_id_curso
+           AND cat.id_division = p.materia_id_division
+           AND cat.activo = 1
+        LEFT JOIN catedras_docentes cd_prof
+            ON cd_prof.id_catedra_docente = (
+                SELECT cd2.id_catedra_docente
+                FROM catedras_docentes cd2
+                LEFT JOIN cargos cargo2
+                    ON cargo2.id_cargo = cd2.id_cargo
+                LEFT JOIN docentes doc2
+                    ON doc2.id_docente = cd2.id_docente
+                WHERE cd2.id_catedra = cat.id_catedra
+                  AND cd2.activo = 1
+                  AND COALESCE(doc2.activo, 1) = 1
+                ORDER BY
+                    CASE
+                        WHEN (
+                            SELECT COUNT(*)
+                            FROM catedras_docentes cd_count
+                            LEFT JOIN docentes doc_count
+                                ON doc_count.id_docente = cd_count.id_docente
+                            WHERE cd_count.id_catedra = cat.id_catedra
+                              AND cd_count.activo = 1
+                              AND COALESCE(doc_count.activo, 1) = 1
+                        ) <= 1 THEN 0
+                        WHEN cd2.id_cargo = 2
+                          OR UPPER(TRIM(COALESCE(cargo2.cargo, ''))) = 'SUPLENTE' THEN 0
+                        WHEN cd2.id_cargo = 1
+                          OR UPPER(TRIM(COALESCE(cargo2.cargo, ''))) = 'TITULAR' THEN 1
+                        ELSE 2
+                    END ASC,
+                    cd2.id_catedra_docente ASC
+                LIMIT 1
+            )
+        LEFT JOIN docentes doc_prof
+            ON doc_prof.id_docente = COALESCE(cd_prof.id_docente, cat.id_docente)
+           AND doc_prof.activo = 1
+        LEFT JOIN cargos cargo_prof
+            ON cargo_prof.id_cargo = cd_prof.id_cargo",
+    ];
+}
+
+function previas_profesor_busqueda_sql(PDO $pdo): string
+{
+    return "EXISTS (
+        SELECT 1
+        FROM catedras cat_bus
+        LEFT JOIN catedras_docentes cd_bus
+            ON cd_bus.id_catedra = cat_bus.id_catedra
+           AND cd_bus.activo = 1
+        LEFT JOIN docentes doc_bus
+            ON doc_bus.id_docente = COALESCE(cd_bus.id_docente, cat_bus.id_docente)
+           AND doc_bus.activo = 1
+        LEFT JOIN cargos cargo_bus
+            ON cargo_bus.id_cargo = cd_bus.id_cargo
+        WHERE cat_bus.id_materia = p.id_materia
+          AND cat_bus.id_curso = p.materia_id_curso
+          AND cat_bus.id_division = p.materia_id_division
+          AND cat_bus.activo = 1
+          AND (
+                CAST(COALESCE(doc_bus.docente, '') AS CHAR) LIKE :busqueda_profesor
+                OR CAST(COALESCE(cargo_bus.cargo, '') AS CHAR) LIKE :busqueda_profesor_cargo
+          )
+    )";
+}
+
 function previas_base_select(PDO $pdo): string
 {
     $nota = previas_select_columna($pdo, 'previas', 'p', 'nota', 'nota', 'NULL');
@@ -212,6 +301,7 @@ function previas_base_select(PDO $pdo): string
     $fechaBaja = previas_select_columna($pdo, 'previas', 'p', 'fecha_baja', 'fecha_baja', 'NULL');
     $motivoBaja = previas_select_columna($pdo, 'previas', 'p', 'motivo_baja', 'motivo_baja', 'NULL');
     $fechaCarga = previas_select_columna($pdo, 'previas', 'p', 'fecha_carga', 'fecha_carga', 'NULL');
+    $profesor = previas_profesor_select_y_joins($pdo);
 
     return "
         SELECT
@@ -228,6 +318,7 @@ function previas_base_select(PDO $pdo): string
             COALESCE(cur_materia.nombre_curso, '') AS materia_curso,
             p.materia_id_division,
             COALESCE(div_materia.nombre_division, '') AS materia_division,
+            {$profesor['select']},
             p.id_condicion,
             COALESCE(cond.condicion, '') AS condicion,
             {$nota},
@@ -248,6 +339,7 @@ function previas_base_select(PDO $pdo): string
         LEFT JOIN division div_cursando ON div_cursando.id_division = p.cursando_id_division
         LEFT JOIN curso cur_materia ON cur_materia.id_curso = p.materia_id_curso
         LEFT JOIN division div_materia ON div_materia.id_division = p.materia_id_division
+        {$profesor['joins']}
     ";
 }
 
@@ -391,6 +483,7 @@ function previas_listar(): void
     $idDivisionMateria = previas_int($_GET['materia_id_division'] ?? 0);
     $idCondicion = previas_int($_GET['id_condicion'] ?? 0);
     $anio = previas_int($_GET['anio'] ?? 0);
+    $dniExacto = preg_replace('/\D+/', '', (string)($_GET['dni'] ?? '')) ?? '';
     $filtroInscripcion = array_key_exists('inscripcion', $_GET) ? previas_int($_GET['inscripcion']) : null;
 
     $where = ['p.activo = :activo'];
@@ -414,6 +507,11 @@ function previas_listar(): void
     if ($anio > 0) {
         $where[] = 'p.anio = :anio';
         $params[':anio'] = $anio;
+    }
+
+    if ($dniExacto !== '') {
+        $where[] = "REPLACE(REPLACE(REPLACE(CAST(p.dni AS CHAR), '.', ''), '-', ''), ' ', '') = :dni_exacto";
+        $params[':dni_exacto'] = $dniExacto;
     }
 
     if ($filtroInscripcion !== null) {
@@ -449,6 +547,16 @@ function previas_listar(): void
             $placeholder = ':busqueda_' . $idx;
             $orBusqueda[] = "CAST({$campo} AS CHAR) LIKE {$placeholder}";
             $params[$placeholder] = '%' . $busqueda . '%';
+        }
+
+        $busquedaProfesorSql = previas_profesor_busqueda_sql($pdo);
+        if ($busquedaProfesorSql !== '') {
+            $orBusqueda[] = $busquedaProfesorSql;
+            $params[':busqueda_profesor'] = '%' . $busqueda . '%';
+
+            if (strpos($busquedaProfesorSql, ':busqueda_profesor_cargo') !== false) {
+                $params[':busqueda_profesor_cargo'] = '%' . $busqueda . '%';
+            }
         }
 
         $where[] = '(' . implode(' OR ', $orBusqueda) . ')';

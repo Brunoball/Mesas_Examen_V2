@@ -244,14 +244,14 @@ function mesas_editar_agregar_numero_validar_numero_en_grupo(PDO $pdo, int $nume
      *
      * Excepción pedida para el modal "Agregar número al grupo" > pestaña "Mesas no agrupadas":
      * - La mesa no agrupada puede ser de cualquier área.
-     * - La validación fuerte queda limitada a disponibilidad/bloqueo/choque de docentes
-     *   y choque de alumnos en el slot destino.
+     * - Se validan disponibilidad/bloqueo/choque de docentes, choque de alumnos
+     *   y correlativas directas o por cadena en el slot destino.
      * - No se usa la fecha/turno vieja de mesas_no_agrupadas para bloquear.
      */
     $ignorarArea = !empty($opciones['ignorar_area']);
     $soloDocenteAlumno = !empty($opciones['solo_docente_alumno']);
     $permitirTaller = !empty($opciones['permitir_taller']);
-    $ignorarCorrelativas = !empty($opciones['ignorar_correlativas']) || $soloDocenteAlumno;
+    $ignorarCorrelativas = !empty($opciones['ignorar_correlativas']);
 
     $numeroGrupo = (int)($grupoDestino['numero_grupo'] ?? 0);
     $fechaDestino = substr((string)($grupoDestino['fecha_mesa'] ?? ''), 0, 10);
@@ -319,6 +319,9 @@ function mesas_editar_agregar_numero_validar_numero_en_grupo(PDO $pdo, int $nume
                 'choques_docentes' => [$slotKey => []],
             ]));
             $errores = array_merge($errores, mesas_editar_agregar_numero_validar_choques_reales_slot($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
+            if (!$ignorarCorrelativas) {
+                $errores = array_merge($errores, mesas_editar_validar_correlativas($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
+            }
         } else {
             $errores = array_merge($errores, mesas_editar_validar_docentes($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
             $errores = array_merge($errores, mesas_editar_validar_alumnos($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
@@ -368,7 +371,6 @@ function mesas_editar_agregar_numero_obtener_no_agrupadas_disponibles(PDO $pdo, 
         'ignorar_area' => true,
         'solo_docente_alumno' => true,
         'permitir_taller' => true,
-        'ignorar_correlativas' => true,
     ];
 
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
@@ -675,7 +677,6 @@ function mesas_editar_agregar_numero_a_grupo(PDO $pdo, int $numeroGrupo, int $nu
         'ignorar_area' => true,
         'solo_docente_alumno' => true,
         'permitir_taller' => true,
-        'ignorar_correlativas' => true,
     ]);
     if (!$validacion['valido']) {
         return [

@@ -411,7 +411,7 @@ function Estadisticas() {
         value: totalInscriptos,
         icon: faUsers,
         className: "is-total",
-        detail: "Total del historial seleccionado",
+        detail: "Total del armado seleccionado",
       },
       ...ESTADOS.map((estado) => {
         const value = estado.key === "aprobados" ? aprobados : estado.key === "ausentes" ? ausentes : desaprobados;
@@ -447,7 +447,7 @@ function Estadisticas() {
         <div className="estadHero__text">
           <h1>Estadísticas de mesas</h1>
           <span>
-            Resumen por historial guardado: inscriptos, aprobados, ausentes y desaprobados.
+            Resumen del armado actual o del historial guardado: inscriptos, aprobados, ausentes y desaprobados.
           </span>
         </div>
 
@@ -468,7 +468,7 @@ function Estadisticas() {
                 disabled={opciones.length === 0}
               >
                 {opciones.length === 0 ? (
-                  <option value="">No hay historiales guardados</option>
+                  <option value="">No hay mesas armadas ni historiales</option>
                 ) : (
                   opciones.map((opcion) => (
                     <option value={opcion.id_armado_historial} key={opcion.id_armado_historial}>
@@ -491,7 +491,7 @@ function Estadisticas() {
               <FontAwesomeIcon icon={faCalendarDays} /> {armadoSeleccionado.periodo || armadoSeleccionado.label}
             </span>
             <small>
-              {armadoSeleccionado.fecha_inicio_texto || "-"} a {armadoSeleccionado.fecha_fin_texto || "-"} · Guardado {armadoSeleccionado.creado_en_texto || "-"}
+              {armadoSeleccionado.fecha_inicio_texto || "-"} a {armadoSeleccionado.fecha_fin_texto || "-"} · {armadoSeleccionado.origen === "actual" ? "Armado actual" : `Guardado ${armadoSeleccionado.creado_en_texto || "-"}`}
             </small>
           </div>
         ) : null}
@@ -508,9 +508,9 @@ function Estadisticas() {
       {!mostrandoSkeleton && opciones.length === 0 && !error && (
         <div className="estadEmpty">
           <FontAwesomeIcon icon={faCircleExclamation} />
-          <h2>No hay historiales para graficar</h2>
+          <h2>No hay mesas armadas ni historiales para graficar</h2>
           <p>
-            Las estadísticas aparecen cuando se guarda un armado en el historial de mesas.
+            Las estadísticas aparecen apenas hay mesas armadas. Si no hay armado actual, se muestran desde el historial guardado.
           </p>
         </div>
       )}
@@ -564,7 +564,7 @@ function Estadisticas() {
               <TablaSimple
                 rows={resumen?.por_fechas || []}
                 total={totalInscriptos}
-                emptyText="No hay fechas cargadas para este historial."
+                emptyText="No hay fechas cargadas para este armado."
               />
             </article>
 
@@ -572,7 +572,7 @@ function Estadisticas() {
               <div className="estadPanel__head">
                 <div>
                   <h2>Detalle por tipo</h2>
-                  <span>Simple, correlativa o taller, según el armado guardado.</span>
+                  <span>Simple, correlativa o taller, según el armado seleccionado.</span>
                 </div>
               </div>
               <TablaSimple
