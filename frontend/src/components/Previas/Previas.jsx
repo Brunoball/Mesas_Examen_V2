@@ -902,39 +902,39 @@ function crearHtmlPermisosExamen(items = []) {
     *{box-sizing:border-box}
     html,body{margin:0;padding:0;background:#fff;color:#111}
     body{font-family:"Courier New", Courier, monospace;font-size:12px;line-height:1.25}
-    .permiso{width:190mm;min-height:277mm;margin:0 auto;padding:14mm 13mm 10mm;background:#fff;position:relative}
-    .permiso-header{text-align:right;margin-bottom:10mm}
-    .permiso-header h1{margin:0;font-size:15px;font-weight:700;letter-spacing:.01em;text-transform:uppercase}
-    .permiso-topline{display:flex;justify-content:space-between;gap:10mm;margin-top:5mm;text-align:left;font-size:13px}
+    .permiso{width:190mm;min-height:277mm;margin:0 auto;padding:10mm 12mm;background:#fff;position:relative;border:2px solid #2f2522;overflow:hidden}
+    .permiso-header{text-align:center;margin-bottom:6mm;border-bottom:2px solid #2f2522;padding-bottom:4mm}
+    .permiso-header h1{margin:0;font-size:16px;font-weight:700;letter-spacing:.03em;text-transform:uppercase}
+    .permiso-topline{display:flex;justify-content:space-between;gap:8mm;margin-top:4mm;text-align:left;font-size:12px}
     .permiso-topline strong{letter-spacing:.04em}
     .linea-corta{display:inline-block;width:28mm;border-bottom:1px solid #111;transform:translateY(-2px)}
-    .permiso-texto{margin:0 0 7mm;text-align:left;font-size:13px;max-width:166mm}
+    .permiso-texto{margin:0 0 6mm;text-align:left;font-size:13px;line-height:1.5;max-width:100%}
     .permiso-texto strong{font-weight:700;letter-spacing:.02em}
-    .permiso-tabla{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:4mm;font-size:11px}
-    .permiso-tabla th{padding:0 3px 2mm;text-align:center;font-weight:700;border-bottom:1px dashed #111}
-    .permiso-tabla td{height:9mm;padding:1mm 3px;border-bottom:1px solid #222;vertical-align:middle}
-    .permiso-tabla th:nth-child(1),.permiso-num{width:9mm;text-align:center}
-    .permiso-tabla th:nth-child(2),.permiso-asignatura{width:54mm;text-align:left}
-    .permiso-tabla th:nth-child(3),.permiso-docente{width:48mm;text-align:left}
-    .permiso-tabla th:nth-child(4),.permiso-fecha{width:25mm;text-align:center}
-    .permiso-tabla th:nth-child(5),.permiso-calif{width:17mm;text-align:center}
-    .permiso-tabla th:nth-child(6),.permiso-firma{width:27mm;text-align:center}
-    .permiso-lugar{margin-top:8mm;font-size:13px;text-align:left;text-transform:uppercase}
-    .permiso-secretaria{width:70mm;margin:14mm 0 0 auto;text-align:center;font-size:11px}
+    .permiso-tabla{width:100%;max-width:100%;border-collapse:collapse;table-layout:fixed;margin-top:3mm;font-size:10.5px}
+    .permiso-tabla th{padding:1.5mm 1mm;border:1px solid #111;background:#f1f1f1;text-align:center;font-weight:700;white-space:nowrap}
+    .permiso-tabla td{height:8.5mm;padding:1mm 1.2mm;border:1px solid #111;vertical-align:middle;overflow:hidden;word-break:break-word}
+    .permiso-tabla th:nth-child(1),.permiso-num{width:8mm;text-align:center}
+    .permiso-tabla th:nth-child(2),.permiso-asignatura{width:50mm;text-align:left}
+    .permiso-tabla th:nth-child(3),.permiso-docente{width:44mm;text-align:left}
+    .permiso-tabla th:nth-child(4),.permiso-fecha{width:22mm;text-align:center}
+    .permiso-tabla th:nth-child(5),.permiso-calif{width:15mm;text-align:center}
+    .permiso-tabla th:nth-child(6),.permiso-firma{width:24mm;text-align:center}
+    .permiso-lugar{margin-top:6mm;font-size:12px;font-weight:700;text-transform:uppercase}
+    .permiso-secretaria{width:70mm;margin:12mm 0 0 auto;text-align:center;font-size:11px}
     .permiso-secretaria span{display:block;height:1px;border-top:1px dotted #111;margin-bottom:2mm}
     .permiso-secretaria strong{font-weight:400}
-    .permiso-notas{margin-top:8mm;font-size:10px;max-width:155mm}
+    .permiso-notas{margin-top:7mm;font-size:10px;border-top:1px solid #111;padding-top:2mm;max-width:100%}
     .permiso-notas strong{display:block;margin-bottom:1mm}
     .permiso-notas ol{margin:0;padding-left:8mm}
     .permiso-notas li{margin:1mm 0}
-    .permiso-footer{position:absolute;left:13mm;right:13mm;bottom:10mm;border-top:1px dashed #111;padding-top:2mm;font-size:13px;text-transform:uppercase}
+    .permiso-footer{position:absolute;left:12mm;right:12mm;bottom:8mm;border-top:2px solid #111;padding-top:2mm;font-size:12px;text-transform:uppercase}
     .permiso-footer div{margin:1mm 0}
     .permiso-footer span{display:inline-block;min-width:30mm}
     .salto{break-after:page;page-break-after:always;height:0}
     @media print{
       body{background:#fff}
-      .permiso{width:100%;min-height:277mm;margin:0;padding:12mm 12mm 9mm}
-      .permiso-footer{left:12mm;right:12mm;bottom:9mm}
+      .permiso{width:190mm;min-height:277mm;margin:0 auto;padding:10mm 12mm;border:2px solid #2f2522;overflow:hidden}
+      .permiso-footer{left:12mm;right:12mm;bottom:8mm}
       @page{size:A4 portrait;margin:8mm}
     }
   </style>
