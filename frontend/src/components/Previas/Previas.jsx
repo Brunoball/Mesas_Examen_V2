@@ -606,7 +606,7 @@ const PREVIAS_COLUMNS = [
   { key: 'alumno', label: 'Alumno', strong: true },
   { key: 'dni', label: 'DNI', align: 'center'},
   { key: 'materia', label: 'Materia' },
-  { key: 'profesor', label: 'Profe' },
+  { key: 'profesor', label: 'Docente' },
   { key: 'condicion', label: 'Condición', align: 'center' },
   { key: 'curso', label: 'Curso', align: 'center' },
   { key: 'inscripcion', label: 'Inscripción', align: 'center' },
