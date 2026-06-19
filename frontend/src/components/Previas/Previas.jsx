@@ -598,7 +598,7 @@ function usePrevias() {
   };
 }
 
-const PREVIAS_GRID_COLS = '1.28fr .48fr 1.55fr 1.05fr .48fr .48fr .48fr .95fr';
+const PREVIAS_GRID_COLS = '1.28fr .55fr 1.55fr 1.05fr .48fr .48fr .48fr .95fr';
 const PREVIAS_BAJAS_GRID_COLS = '1.12fr .58fr 1.35fr .95fr .48fr .48fr .56fr 1fr .8fr';
 const SKELETON_ROWS = 8;
 
@@ -617,7 +617,7 @@ const PREVIAS_BAJAS_COLUMNS = [
   { key: 'alumno', label: 'Alumno', strong: true },
   { key: 'dni', label: 'DNI', align: 'center' },
   { key: 'materia', label: 'Materia' },
-  { key: 'profesor', label: 'Profe' },
+  { key: 'profesor', label: 'Docente' },
   { key: 'condicion', label: 'Condición', align: 'center' },
   { key: 'curso', label: 'Curso', align: 'center' },
   { key: 'fecha_baja', label: 'Fecha baja', align: 'center' },
@@ -813,14 +813,14 @@ function agruparPermisosPorAlumno(items = []) {
 
 function crearFilasMateriasPermiso(materias = []) {
   const filas = [...materias];
-  const minimoFilas = Math.max(8, filas.length);
+  const minimoFilas = Math.max(6, filas.length);
   while (filas.length < minimoFilas) filas.push(null);
 
   return filas.map((item, index) => `
     <tr>
       <td class="permiso-num">${index + 1}</td>
       <td class="permiso-asignatura">${item ? escapeHtml(materiaPermisoTexto(item)) : '&nbsp;'}</td>
-      <td class="permiso-docente">${item ? escapeHtml(textoProfesor(item)) : '&nbsp;'}</td>
+      <td class="permiso-docente">&nbsp;</td>
       <td class="permiso-fecha">&nbsp;</td>
       <td class="permiso-calif">&nbsp;</td>
       <td class="permiso-firma">&nbsp;</td>
@@ -901,16 +901,16 @@ function crearHtmlPermisosExamen(items = []) {
   <style>
     *{box-sizing:border-box}
     html,body{margin:0;padding:0;background:#fff;color:#111}
-    body{font-family:"Courier New", Courier, monospace;font-size:12px;line-height:1.25}
-    .permiso{width:180mm;min-height:128mm;max-height:128mm;margin:0 auto 5mm;padding:6mm 9mm;background:#fff;position:relative;border:none;overflow:hidden;box-sizing:border-box;page-break-inside:avoid;break-inside:avoid}
+    body{font-family:"Courier New", Courier, monospace;font-size:16px;line-height:1.45}
+    .permiso{width:190mm;min-height:138mm;max-height:138mm;margin:0 auto 5mm;padding:7mm 10mm;background:#fff;position:relative;border:none;overflow:hidden;box-sizing:border-box;page-break-inside:avoid;break-inside:avoid}
     .permiso-header{text-align:center;margin-bottom:3mm;border-bottom:2px solid #2f2522;padding-bottom:2.5mm}
-    .permiso-header h1{margin:0;font-size:13px;font-weight:700;letter-spacing:.02em;text-transform:uppercase}
-    .permiso-topline{display:flex;justify-content:space-between;gap:6mm;margin-top:2.5mm;text-align:left;font-size:10px}
+    .permiso-header h1{margin:0;font-size:17px;font-weight:700;letter-spacing:.02em;text-transform:uppercase}
+    .permiso-topline{display:flex;justify-content:space-between;gap:6mm;margin-top:2.5mm;text-align:left;font-size:12px}
     .permiso-topline strong{letter-spacing:.04em}
-    .linea-corta{display:inline-block;width:28mm;border-bottom:1px solid #111;transform:translateY(-2px)}
-    .permiso-texto{margin:0 0 2.5mm;text-align:left;font-size:10.5px;line-height:1.35;max-width:100%}
+    .linea-corta{display:inline-block;width:28mm;border-bottom:1px solid #111;transform:none}
+    .permiso-texto{margin:0 0 2.5mm;text-align:left;font-size:11.5px;line-height:1.35;max-width:100%}
     .permiso-texto strong{font-weight:700;letter-spacing:.02em}
-    .permiso-tabla{width:100%;max-width:100%;border-collapse:collapse;table-layout:fixed;margin-top:2mm;font-size:8.8px}
+    .permiso-tabla{width:100%;max-width:100%;border-collapse:collapse;table-layout:fixed;margin-top:2mm;font-size:9.6px}
     .permiso-tabla th{padding:1mm;border:1px solid #111;background:#f1f1f1;text-align:center;font-weight:700;white-space:nowrap;line-height:1.05}
     .permiso-tabla td{height:4.8mm;padding:.8mm 1mm;border:1px solid #111;vertical-align:middle;overflow:hidden;word-break:break-word;line-height:1.05}
     .permiso-tabla th:nth-child(1),.permiso-num{width:8mm;text-align:center}
@@ -919,15 +919,15 @@ function crearHtmlPermisosExamen(items = []) {
     .permiso-tabla th:nth-child(4),.permiso-fecha{width:22mm;text-align:center}
     .permiso-tabla th:nth-child(5),.permiso-calif{width:15mm;text-align:center}
     .permiso-tabla th:nth-child(6),.permiso-firma{width:24mm;text-align:center}
-    .permiso-lugar{margin-top:2.5mm;font-size:10px;font-weight:700;text-transform:uppercase}
-    .permiso-secretaria{width:60mm;margin:4mm 0 0 auto;text-align:center;font-size:9px}
+    .permiso-lugar{margin-top:2.5mm;font-size:12px;font-weight:700;text-transform:uppercase}
+    .permiso-secretaria{width:60mm;margin:8mm 0 0 auto;text-align:center;font-size:10px}
     .permiso-secretaria span{display:block;height:1px;border-top:1px dotted #111;margin-bottom:2mm}
     .permiso-secretaria strong{font-weight:400}
-    .permiso-notas{margin-top:2mm;font-size:7.8px;border-top:1px solid #111;padding-top:1.2mm;max-width:100%;line-height:1.2}
+    .permiso-notas{margin-top:2mm;font-size:14px;border-top:1px solid #111;padding-top:1.2mm;max-width:100%;line-height:1.2}
     .permiso-notas strong{display:block;margin-bottom:1mm}
     .permiso-notas ol{margin:0;padding-left:8mm}
     .permiso-notas li{margin:1mm 0}
-    .permiso-footer{position:relative;left:auto;right:auto;bottom:auto;margin-top:2mm;padding-top:7mm;font-size:9px;text-transform:uppercase;line-height:1.2}
+    .permiso-footer{position:relative;left:auto;right:auto;bottom:auto;margin-top:2mm;padding-top:7mm;font-size:10px;text-transform:uppercase;line-height:1.2}
     .permiso-footer div{margin:1mm 0}
     .permiso-footer span{display:inline-block;min-width:30mm}
     .salto{break-after:page;page-break-after:always;height:0}
