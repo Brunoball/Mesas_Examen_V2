@@ -152,6 +152,7 @@ export default function ModalDocente({
   }, [guardando, mostrarTutorial, onCerrar]);
 
   const titulo = editando ? 'Editar docente' : 'Agregar docente';
+  const nombreDocenteTitulo = (docente || item?.docente || '').trim() || (editando ? 'Docente' : 'Nuevo docente');
 
   const diasSemana = useMemo(() => {
     return Array.isArray(catalogos?.dias_semana) && catalogos.dias_semana.length > 0
@@ -288,7 +289,14 @@ export default function ModalDocente({
             <FontAwesomeIcon icon={faUserTie} />
           </div>
           <div className="gm-modal__headText">
-            <h2 id="gm-docente-title">{titulo}</h2>
+            <h2 id="gm-docente-title" className="docentes-modal-titleWithName">
+              <span>{titulo}</span>
+              {editando && (
+                <span className="docentes-modal-nameChip" title={nombreDocenteTitulo}>
+                  {nombreDocenteTitulo}
+                </span>
+              )}
+            </h2>
             <p>{editando ? 'Actualizá la ficha del docente sin perder su organización.' : 'Cargá la ficha del docente y su disponibilidad en pasos claros.'}</p>
           </div>
           <button
@@ -499,7 +507,7 @@ export default function ModalDocente({
                   )}
 
                   {disponibilidades.length > 0 && (
-                    <div className="gm-scheduleList gd-scheduls">
+                    <div className="gm-scheduleList gd-scheduls gd-scheduls-indisponibliti">
                       {disponibilidades.map((bloque, index) => (
                         <article
                           className="gm-scheduleCard"

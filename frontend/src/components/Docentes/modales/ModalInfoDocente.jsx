@@ -123,7 +123,12 @@ export default function ModalInfoDocente({ item, onCerrar }) {
           </div>
 
           <div className="docentes-info-modal-headText">
-            <h2 id="docentes-info-title">Información del docente</h2>
+            <h2 id="docentes-info-title" className="docentes-modal-titleWithName">
+              <span>Información del docente</span>
+              <span className="docentes-modal-nameChip" title={item?.docente || 'Docente'}>
+                {item?.docente || 'Docente'}
+              </span>
+            </h2>
             <p>Datos únicos del docente, cargos por cátedra y disponibilidad cargada.</p>
           </div>
 
