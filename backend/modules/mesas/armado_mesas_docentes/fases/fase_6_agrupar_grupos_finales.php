@@ -13,7 +13,7 @@ declare(strict_types=1);
  * - Taller SIEMPRE va a mesas_grupos, pero queda solo con un unico numero_mesa.
  * - Simple y correlativa pueden mezclarse.
  * - Mesas normales/correlativas se agrupan de 2 a 4 numeros.
- * - Se agrupa si o si por misma fecha y mismo turno/disponibilidad docente; el area es solo criterio secundario.
+ * - Se agrupa si o si por misma fecha y mismo turno sin indisponibilidad docente; el area es solo criterio secundario.
  * - No se agrupan numeros que compartan alumnos.
  * - Se valida que los docentes estén disponibles en el día/turno del slot.
  */
@@ -236,7 +236,7 @@ function mesas_armado_docentes_grupos_finales_core(PDO $pdo, array $opciones = [
             'agrupacion_final_generada' => true,
             'reoptimizacion_ejecutada' => is_array($resultadoReoptimizacion),
             'estructura' => 'simple_sin_detalle',
-            'criterio' => 'mesas_grupos guarda una fila por numero_mesa usando numero_grupo repetido. Todo numero_mesa con prioridad 1/taller queda como grupo individual. Correlativas quedan como anclas de fecha/turno. Las simples funcionan como comodines y la fase 7 puede moverlas de fecha/turno para completar grupos compatibles de 2 a 4 por disponibilidad docente, sin choque de alumnos. El area solo suma score secundario para ordenar candidatos; no bloquea que se agrupen materias de areas distintas. Se permite compartir docente dentro de una misma salida no taller si el grupo final conserva al menos 2 docentes/personas distintas; talleres quedan como excepcion individual.',
+            'criterio' => 'mesas_grupos guarda una fila por numero_mesa usando numero_grupo repetido. Todo numero_mesa con prioridad 1/taller queda como grupo individual. Correlativas quedan como anclas de fecha/turno. Las simples funcionan como comodines y la fase 7 puede moverlas de fecha/turno para completar grupos compatibles de 2 a 4 sin indisponibilidad docente ni choque de alumnos. El area solo suma score secundario para ordenar candidatos; no bloquea que se agrupen materias de areas distintas. Se permite compartir docente dentro de una misma salida no taller si el grupo final conserva al menos 2 docentes/personas distintas; talleres quedan como excepcion individual.',
             'min_numeros_por_grupo' => $minNumeros,
             'max_numeros_por_grupo' => $maxNumeros,
             'total_numeros_leidos' => $totalNumeros,
@@ -614,7 +614,7 @@ function mesas_armado_docentes_grupos_motivo_invalido(array $numero, array $disp
         }
 
         if (mesas_armado_docentes_docente_no_disponible($disponibilidadDocentes, $idDocente, (string)$numero['fecha_mesa'], (int)$numero['id_turno'])) {
-            return 'docente_sin_disponibilidad_en_dia_turno';
+            return 'docente_con_indisponibilidad_en_dia_turno';
         }
     }
 

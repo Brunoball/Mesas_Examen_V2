@@ -35,7 +35,7 @@ const DOCENTES_COLUMNS = [
   { key: 'docente', label: 'Docente', strong: true },
   { key: 'cargo', label: 'Cargos por materia' },
   { key: 'catedras', label: 'Cátedras', align: 'center' },
-  { key: 'disponibilidad', label: 'Disponibilidad', align: 'center' },
+  { key: 'indisponibilidad', label: 'Indisponibilidad', align: 'center' },
   { key: 'observacion', label: 'Observación' },
   { key: 'acciones', label: 'Acciones', align: 'center', actions: true },
 ];
@@ -48,7 +48,7 @@ const DOCENTES_EXPORT_COLUMNS = [
   { label: 'Gmail', value: (item) => safeText(item.email || item.gmail) },
   { label: 'Cargos por materia', value: (item) => safeText(item.cargo) },
   { label: 'Cátedras', value: (item) => item.total_catedras || 0 },
-  { label: 'Disponibilidad', value: (item) => item.total_disponibilidades || 0 },
+  { label: 'Indisponibilidad', value: (item) => contarIndisponibilidades(item) },
   { label: 'Observación', value: (item) => safeText(item.observacion) },
   { label: 'ID docente', value: (item) => safeText(item.id_docente) },
 ];
@@ -62,6 +62,19 @@ function alignClass(align) {
   if (align === 'right') return 'is-right';
   if (align === 'center') return 'is-center';
   return '';
+}
+
+function contarIndisponibilidades(item) {
+  const totalNuevo = Number(item?.total_indisponibilidades);
+  if (Number.isFinite(totalNuevo)) return totalNuevo;
+
+  const totalLegacy = Number(item?.total_disponibilidades);
+  if (Number.isFinite(totalLegacy)) return totalLegacy;
+
+  if (Array.isArray(item?.indisponibilidades)) return item.indisponibilidades.length;
+  if (Array.isArray(item?.disponibilidades)) return item.disponibilidades.length;
+
+  return 0;
 }
 
 function normalizarTipoToast(tipo) {
@@ -431,9 +444,9 @@ export default function Docentes() {
                         <span className="mov-chip docentes-badge">{item.total_catedras || 0}</span>
                       </div>
 
-                      <div className="mov-gridCell is-center" role="cell" data-label="Disponibilidad">
+                      <div className="mov-gridCell is-center" role="cell" data-label="Indisponibilidad">
                         <span className="mov-chip mov-chip--neutral docentes-badge docentes-badge-soft">
-                          {item.total_disponibilidades || 0}
+                          {contarIndisponibilidades(item)}
                         </span>
                       </div>
 

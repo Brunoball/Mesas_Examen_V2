@@ -11,7 +11,7 @@ declare(strict_types=1);
  * - Usar mesas simples (prioridad 0) como comodines: se les puede mover fecha/turno
  *   para completar grupos existentes o formar grupos nuevos de 2 a 4 números.
  * - Nunca mezclar áreas, nunca mezclar talleres, y nunca generar choque de alumno y evitar choque docente salvo
- *   cuando el mismo docente toma mesas simples de la misma área dentro del mismo grupo, respetando disponibilidad docente positiva.
+ *   cuando el mismo docente toma mesas simples de la misma área dentro del mismo grupo, respetando indisponibilidades docentes.
  */
 function mesas_armado_fase_7_reoptimizar_no_agrupadas(): void
 {
@@ -2235,7 +2235,7 @@ function mesas_armado_reopt_quitar_donante_de_grupo_origen(
  *   Si comparte docente + area + slot, primero se intenta unir en el mismo grupo.
  *   Si el grupo no entra por maximo de numeros, se mueve una salida completa a otro slot.
  * - Un alumno nunca puede quedar en dos salidas distintas el mismo dia/turno, incluyendo no agrupadas.
- * - Las reubicaciones respetan disponibilidad docente y correlatividades anterior/posterior.
+ * - Las reubicaciones evitan indisponibilidades docentes y respetan correlatividades anterior/posterior.
  */
 function mesas_armado_reopt_blindar_choques_docente_alumno_salida(
     PDO $pdo,

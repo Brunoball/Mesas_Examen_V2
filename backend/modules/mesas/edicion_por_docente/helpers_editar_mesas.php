@@ -526,7 +526,7 @@ function mesas_editar_docentes_area_canonica_grupo(PDO $pdo, int $numeroGrupo): 
 
 function mesas_editar_docentes_normalizar_area_grupo(PDO $pdo, int $numeroGrupo): ?array
 {
-    // En el armado por disponibilidad docente el área NO define el grupo.
+    // En el armado por indisponibilidad docente el área NO define el grupo.
     // No normalizamos todas las filas al mismo área porque el grupo puede mezclar
     // Matemática, Sociales, Lengua, etc. siempre que coincida fecha/turno y disponibilidad.
     if (mesas_editar_docentes_es_armado_por_docentes($pdo)) {
@@ -1488,7 +1488,7 @@ function mesas_editar_docentes_validar_docentes(PDO $pdo, array $detalle, string
         }
 
         if (mesas_armado_docente_no_disponible($disponibilidad, $idDocente, $fechaMesa, $idTurno)) {
-            $errores[] = 'El docente ' . $nombreDocente . ' no tiene disponibilidad para esa fecha y turno.';
+            $errores[] = 'El docente ' . $nombreDocente . ' tiene una indisponibilidad cargada para esa fecha y turno.';
         }
     }
 

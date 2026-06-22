@@ -118,6 +118,11 @@ function nombreCargoEs(cargo, esperado) {
   return normalizar(obtenerNombreCargo(cargo)) === normalizar(esperado);
 }
 
+function esDocenteSinCargoCubierto(nombreDocente) {
+  const nombre = normalizar(nombreDocente);
+  return nombre === 'materia sin cargo cubierto' || nombre === 'sin cargo cubierto';
+}
+
 function normalizarAsignacionesIniciales(item) {
   const desdeBackend = Array.isArray(item?.docentes_asignados) ? item.docentes_asignados : [];
 
@@ -128,19 +133,25 @@ function normalizarAsignacionesIniciales(item) {
         docente: String(asignacion.docente || '').trim(),
         id_cargo: Number(asignacion.id_cargo || 0),
         cargo: String(asignacion.cargo || asignacion.cargo_docente || '').trim(),
+        llamado_mesa: Boolean(asignacion.llamado_mesa || asignacion.es_llamado || asignacion.llamado || asignacion.se_llama),
       }))
-      .filter((asignacion) => asignacion.id_docente > 0 && asignacion.id_cargo > 0);
+      .filter((asignacion) => (
+        asignacion.id_docente > 0
+        && asignacion.id_cargo > 0
+        && !esDocenteSinCargoCubierto(asignacion.docente)
+      ));
   }
 
   const idDocente = Number(item?.id_docente || 0);
   const idCargo = Number(item?.id_cargo || 0);
 
-  if (idDocente > 0 && idCargo > 0) {
+  if (idDocente > 0 && idCargo > 0 && !esDocenteSinCargoCubierto(item?.docente)) {
     return [{
       id_docente: idDocente,
       docente: String(item?.docente || '').trim(),
       id_cargo: idCargo,
       cargo: String(item?.cargo_docente || item?.cargo || '').trim(),
+      llamado_mesa: true,
     }];
   }
 
@@ -153,22 +164,67 @@ function textoAsignacion(asignacion) {
   return cargo ? `${docente} · ${cargo}` : docente;
 }
 
-function obtenerDocenteLlamado(asignaciones) {
+function obtenerDocenteLlamado(asignaciones, idDocenteLlamado = '') {
   if (!Array.isArray(asignaciones) || asignaciones.length === 0) return null;
 
-  const suplente = asignaciones.find((asignacion) => Number(asignacion.id_cargo) === 2 || normalizar(asignacion.cargo) === 'suplente');
+  const idLlamado = Number(idDocenteLlamado || 0);
+  if (idLlamado > 0) {
+    const asignacionElegida = asignaciones.find((asignacion) => Number(asignacion.id_docente) === idLlamado);
+    if (asignacionElegida) return asignacionElegida;
+  }
+
+  // Si todavía no se eligió manualmente, se llama al último agregado respetando la prioridad habitual.
+  const ordenInverso = [...asignaciones].reverse();
+  const suplente = ordenInverso.find((asignacion) => Number(asignacion.id_cargo) === 2 || normalizar(asignacion.cargo) === 'suplente');
   if (suplente) return suplente;
 
-  const titular = asignaciones.find((asignacion) => Number(asignacion.id_cargo) === 1 || normalizar(asignacion.cargo) === 'titular');
+  const titular = ordenInverso.find((asignacion) => Number(asignacion.id_cargo) === 1 || normalizar(asignacion.cargo) === 'titular');
   if (titular) return titular;
 
-  return asignaciones[0] || null;
+  return ordenInverso[0] || null;
+}
+
+function obtenerIdDocenteLlamadoInicial(asignaciones) {
+  const marcado = Array.isArray(asignaciones)
+    ? asignaciones.find((asignacion) => Boolean(asignacion.llamado_mesa))
+    : null;
+
+  if (marcado && Number(marcado.id_docente || 0) > 0) {
+    return String(marcado.id_docente);
+  }
+
+  const llamado = obtenerDocenteLlamado(asignaciones);
+  return llamado && Number(llamado.id_docente || 0) > 0 ? String(llamado.id_docente) : '';
+}
+
+function prioridadCargoAsignacion(asignacion) {
+  const cargo = normalizar(asignacion?.cargo);
+  if (Number(asignacion?.id_cargo) === 2 || cargo === 'suplente') return 0;
+  if (Number(asignacion?.id_cargo) === 1 || cargo === 'titular') return 1;
+  return 2;
+}
+
+function ordenarAsignacionesParaGuardar(asignaciones, idDocenteLlamado) {
+  const idLlamado = Number(idDocenteLlamado || 0);
+  return [...(Array.isArray(asignaciones) ? asignaciones : [])].sort((a, b) => {
+    const prioridadA = prioridadCargoAsignacion(a);
+    const prioridadB = prioridadCargoAsignacion(b);
+
+    if (prioridadA === prioridadB) {
+      if (Number(a.id_docente) === idLlamado) return 1;
+      if (Number(b.id_docente) === idLlamado) return -1;
+    }
+
+    return 0;
+  });
 }
 
 export default function ModalAsignarDocente({ item, docentes = [], cargos = [], onGuardar, onCerrar }) {
   const [asignaciones, setAsignaciones] = useState(() => normalizarAsignacionesIniciales(item));
+  const [idDocenteLlamado, setIdDocenteLlamado] = useState(() => obtenerIdDocenteLlamadoInicial(normalizarAsignacionesIniciales(item)));
   const [idDocente, setIdDocente] = useState('');
   const [idCargo, setIdCargo] = useState('');
+  const [idDocenteEditando, setIdDocenteEditando] = useState('');
   const [busqueda, setBusqueda] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
@@ -197,7 +253,7 @@ export default function ModalAsignarDocente({ item, docentes = [], cargos = [], 
   const listaCargos = useMemo(() => (Array.isArray(cargos) ? cargos : []), [cargos]);
 
   const docentesActivos = useMemo(() => (
-    listaDocentes.filter((docente) => docenteEstaActivo(docente))
+    listaDocentes.filter((docente) => docenteEstaActivo(docente) && !esDocenteSinCargoCubierto(obtenerNombreDocente(docente)))
   ), [listaDocentes]);
 
   const cargosActivos = useMemo(() => (
@@ -251,13 +307,44 @@ export default function ModalAsignarDocente({ item, docentes = [], cargos = [], 
     return seleccionadoEstaEnFiltro ? docentesFiltrados : [docenteSeleccionado, ...docentesFiltrados];
   }, [docenteSeleccionado, docentesFiltrados, idDocente]);
 
-  const docenteLlamado = useMemo(() => obtenerDocenteLlamado(asignaciones), [asignaciones]);
+  const docenteLlamado = useMemo(() => obtenerDocenteLlamado(asignaciones, idDocenteLlamado), [asignaciones, idDocenteLlamado]);
+  const estaEditandoAsignacion = Number(idDocenteEditando || 0) > 0;
+
+  useEffect(() => {
+    if (asignaciones.length === 0) {
+      if (idDocenteLlamado) setIdDocenteLlamado('');
+      return;
+    }
+
+    const existeLlamado = asignaciones.some((asignacion) => Number(asignacion.id_docente) === Number(idDocenteLlamado || 0));
+    if (!existeLlamado) {
+      setIdDocenteLlamado(obtenerIdDocenteLlamadoInicial(asignaciones));
+    }
+  }, [asignaciones, idDocenteLlamado]);
+
+  function limpiarEdicion() {
+    setIdDocente('');
+    setIdDocenteEditando('');
+    setBusqueda('');
+  }
+
+  function seleccionarAsignacionParaEditar(asignacion) {
+    if (guardando) return;
+
+    setError('');
+    setIdDocente(String(asignacion.id_docente || ''));
+    setIdCargo(String(asignacion.id_cargo || ''));
+    setIdDocenteEditando(String(asignacion.id_docente || ''));
+    setBusqueda('');
+  }
 
   function agregarAsignacion() {
     setError('');
 
     const idDocenteNumero = idDocente ? Number(idDocente) : 0;
     const idCargoNumero = idCargo ? Number(idCargo) : 0;
+    const idDocenteEditandoNumero = idDocenteEditando ? Number(idDocenteEditando) : 0;
+    const estaEditando = idDocenteEditandoNumero > 0;
 
     if (idDocenteNumero <= 0) {
       setError('Seleccioná un docente para agregarlo a la cátedra.');
@@ -269,36 +356,56 @@ export default function ModalAsignarDocente({ item, docentes = [], cargos = [], 
       return;
     }
 
-    if (asignaciones.some((asignacion) => Number(asignacion.id_docente) === idDocenteNumero)) {
+    if (asignaciones.some((asignacion) => (
+      Number(asignacion.id_docente) === idDocenteNumero
+      && Number(asignacion.id_docente) !== idDocenteEditandoNumero
+    ))) {
       setError('Ese docente ya está asignado en esta cátedra.');
       return;
     }
 
-    if (asignaciones.some((asignacion) => Number(asignacion.id_cargo) === idCargoNumero)) {
-      setError('Ese cargo ya está cargado en esta cátedra. Usá un cargo distinto.');
-      return;
-    }
 
     const nuevaAsignacion = {
       id_docente: idDocenteNumero,
       docente: docenteSeleccionado ? obtenerNombreDocente(docenteSeleccionado) : '',
       id_cargo: idCargoNumero,
       cargo: cargoSeleccionado ? obtenerNombreCargo(cargoSeleccionado) : '',
+      llamado_mesa: Number(idDocenteLlamado || 0) === idDocenteNumero,
     };
 
-    setAsignaciones((actual) => [...actual, nuevaAsignacion]);
-    setIdDocente('');
-    setBusqueda('');
+    setAsignaciones((actual) => (estaEditando
+      ? actual.map((asignacion) => (
+        Number(asignacion.id_docente) === idDocenteEditandoNumero ? nuevaAsignacion : asignacion
+      ))
+      : [...actual, nuevaAsignacion]
+    ));
+
+    if (asignaciones.length === 0 || Number(idDocenteLlamado || 0) === idDocenteEditandoNumero) {
+      setIdDocenteLlamado(String(idDocenteNumero));
+    }
+
+    limpiarEdicion();
   }
 
   function quitarAsignacion(idDocenteAsignacion) {
     setError('');
     setAsignaciones((actual) => actual.filter((asignacion) => Number(asignacion.id_docente) !== Number(idDocenteAsignacion)));
+
+    if (Number(idDocenteLlamado || 0) === Number(idDocenteAsignacion)) {
+      const restantes = asignaciones.filter((asignacion) => Number(asignacion.id_docente) !== Number(idDocenteAsignacion));
+      setIdDocenteLlamado(obtenerIdDocenteLlamadoInicial(restantes));
+    }
+
+    if (Number(idDocenteEditando || 0) === Number(idDocenteAsignacion)) {
+      limpiarEdicion();
+    }
   }
 
   function quitarTodos() {
     setError('');
     setAsignaciones([]);
+    setIdDocenteLlamado('');
+    limpiarEdicion();
   }
 
   async function handleSubmit(e) {
@@ -306,9 +413,10 @@ export default function ModalAsignarDocente({ item, docentes = [], cargos = [], 
     setError('');
     setGuardando(true);
 
-    const payload = asignaciones.map((asignacion) => ({
+    const payload = ordenarAsignacionesParaGuardar(asignaciones, idDocenteLlamado).map((asignacion) => ({
       id_docente: Number(asignacion.id_docente || 0),
       id_cargo: Number(asignacion.id_cargo || 0),
+      llamado_mesa: Number(asignacion.id_docente || 0) === Number(idDocenteLlamado || 0),
     }));
 
     try {
@@ -329,7 +437,7 @@ export default function ModalAsignarDocente({ item, docentes = [], cargos = [], 
   const cantidadFiltrada = Array.isArray(docentesFiltrados) ? docentesFiltrados.length : 0;
   const cursoDivision = `${item?.nombre_curso || 'Curso'} ${item?.nombre_division || ''}`.trim();
   const textoLlamado = docenteLlamado
-    ? `${textoAsignacion(docenteLlamado)}${normalizar(docenteLlamado.cargo) === 'suplente' ? ' · se prioriza por suplencia' : ''}`
+    ? `${textoAsignacion(docenteLlamado)}`
     : 'La cátedra quedará sin docente para llamar a mesa.';
 
   return createPortal(
@@ -399,10 +507,10 @@ export default function ModalAsignarDocente({ item, docentes = [], cargos = [], 
           <section className="gm-panel catedras-modal-panel">
             <div className="gm-panel__head gm-panel__head--split">
               <div>
-                <span className="gm-panel__eyebrow">Nueva asignación</span>
+                <span className="gm-panel__eyebrow">{estaEditandoAsignacion ? 'Editando asignación' : 'Nueva asignación'}</span>
                 <h3>
                   <FontAwesomeIcon icon={faUserCheck} />
-                  Seleccionar docente y cargo
+                  {estaEditandoAsignacion ? 'Modificar docente y cargo' : 'Seleccionar docente y cargo'}
                 </h3>
               </div>
               <span className="gm-panel__tag">{cantidadFiltrada} disponible{cantidadFiltrada === 1 ? '' : 's'}</span>
@@ -489,9 +597,21 @@ export default function ModalAsignarDocente({ item, docentes = [], cargos = [], 
                   onClick={agregarAsignacion}
                   disabled={guardando}
                 >
-                  <FontAwesomeIcon icon={faPlus} />
-                  Agregar
+                  <FontAwesomeIcon icon={estaEditandoAsignacion ? faSave : faPlus} />
+                  {estaEditandoAsignacion ? 'Actualizar' : 'Agregar'}
                 </button>
+
+                {estaEditandoAsignacion && (
+                  <button
+                    type="button"
+                    className="gm-btn gm-btn--ghost catedras-modal-cancelEditBtn"
+                    onClick={limpiarEdicion}
+                    disabled={guardando}
+                  >
+                    <FontAwesomeIcon icon={faTimes} />
+                    Cancelar edición
+                  </button>
+                )}
               </div>
             </div>
           </section>
@@ -507,7 +627,16 @@ export default function ModalAsignarDocente({ item, docentes = [], cargos = [], 
                     return (
                       <div
                         key={`${asignacion.id_docente}-${asignacion.id_cargo}`}
-                        className={`catedras-modal-asignacionItem ${esLlamado ? 'is-called' : ''}`}
+                        className={`catedras-modal-asignacionItem ${esLlamado ? 'is-called' : ''} ${Number(idDocenteEditando || 0) === Number(asignacion.id_docente) ? 'is-editing' : ''}`}
+                        role="button"
+                        tabIndex={guardando ? -1 : 0}
+                        title="Click para editar esta asignación"
+                        onClick={() => seleccionarAsignacionParaEditar(asignacion)}
+                        onKeyDown={(e) => {
+                          if (e.key !== 'Enter' && e.key !== ' ') return;
+                          e.preventDefault();
+                          seleccionarAsignacionParaEditar(asignacion);
+                        }}
                       >
                         <div className="catedras-modal-asignacionIcon" aria-hidden="true">
                           <FontAwesomeIcon icon={esLlamado ? faUserCheck : faUsers} />
@@ -516,15 +645,34 @@ export default function ModalAsignarDocente({ item, docentes = [], cargos = [], 
                           <strong title={asignacion.docente}>{asignacion.docente || `Docente #${asignacion.id_docente}`}</strong>
                           <span>{asignacion.cargo || 'Cargo sin nombre'}{esLlamado ? ' · llamado a mesa' : ''}</span>
                         </div>
-                        <button
-                          type="button"
-                          className="catedras-modal-asignacionRemove"
-                          onClick={() => quitarAsignacion(asignacion.id_docente)}
-                          title="Quitar asignación"
-                          disabled={guardando}
-                        >
-                          <FontAwesomeIcon icon={faTrash} />
-                        </button>
+                        <div className="catedras-modal-asignacionActions">
+                          <button
+                            type="button"
+                            className={`catedras-modal-callBtn ${esLlamado ? 'is-active' : ''}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIdDocenteLlamado(String(asignacion.id_docente || ''));
+                              setError('');
+                            }}
+                            title="Marcar como docente llamado a mesa"
+                            disabled={guardando || esLlamado}
+                          >
+                            <FontAwesomeIcon icon={faUserCheck} />
+                            {esLlamado ? 'Llamado' : 'Llamar'}
+                          </button>
+                          <button
+                            type="button"
+                            className="catedras-modal-asignacionRemove"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              quitarAsignacion(asignacion.id_docente);
+                            }}
+                            title="Quitar asignación"
+                            disabled={guardando}
+                          >
+                            <FontAwesomeIcon icon={faTrash} />
+                          </button>
+                        </div>
                       </div>
                     );
                   })}

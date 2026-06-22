@@ -26,6 +26,7 @@ const DIAS_SEMANA_DEFAULT = [
 ];
 
 const MAX_REGLAS_DISPONIBILIDAD = 5;
+const MIN_TURNOS_DIA_COMPLETO = 2;
 const TAB_FICHA = 'ficha';
 const TAB_ORGANIZACION = 'organizacion';
 
@@ -47,6 +48,101 @@ function normalizarDisponibilidad(bloque) {
   };
 }
 
+function fechaYmdDesdeDateUtc(fecha) {
+  const anio = fecha.getUTCFullYear();
+  const mes = String(fecha.getUTCMonth() + 1).padStart(2, '0');
+  const dia = String(fecha.getUTCDate()).padStart(2, '0');
+
+  return `${anio}-${mes}-${dia}`;
+}
+
+function parsearFechaYmd(fecha) {
+  const partes = String(fecha || '').split('-').map(Number);
+
+  if (partes.length !== 3 || partes.some((parte) => !Number.isInteger(parte))) {
+    return null;
+  }
+
+  const [anio, mes, dia] = partes;
+  const fechaUtc = new Date(Date.UTC(anio, mes - 1, dia));
+
+  if (
+    fechaUtc.getUTCFullYear() !== anio ||
+    fechaUtc.getUTCMonth() !== mes - 1 ||
+    fechaUtc.getUTCDate() !== dia
+  ) {
+    return null;
+  }
+
+  return fechaUtc;
+}
+
+function obtenerDiaSemanaDesdeFecha(fecha) {
+  const fechaUtc = parsearFechaYmd(fecha);
+  if (!fechaUtc) return '';
+
+  const dia = fechaUtc.getUTCDay(); // 0=domingo, 1=lunes ... 6=sábado
+  return dia >= 1 && dia <= 5 ? String(dia) : '';
+}
+
+function ajustarFechaAMismoSemana(fecha, idDiaSemana) {
+  const diaObjetivo = Number(idDiaSemana);
+  const fechaUtc = parsearFechaYmd(fecha);
+
+  if (!fechaUtc || !Number.isInteger(diaObjetivo) || diaObjetivo < 1 || diaObjetivo > 5) {
+    return fecha || '';
+  }
+
+  const diaActual = fechaUtc.getUTCDay() === 0 ? 7 : fechaUtc.getUTCDay();
+  fechaUtc.setUTCDate(fechaUtc.getUTCDate() + (diaObjetivo - diaActual));
+
+  return fechaYmdDesdeDateUtc(fechaUtc);
+}
+
+function compactarDisponibilidades(disponibilidades = []) {
+  const reglas = Array.isArray(disponibilidades)
+    ? disponibilidades.map(normalizarDisponibilidad)
+    : [];
+
+  const gruposDiaCompleto = new Map();
+
+  reglas.forEach((regla) => {
+    if (!regla.id_dia_semana) return;
+    const clave = `${regla.id_dia_semana}|${regla.fecha || ''}`;
+    const turnos = gruposDiaCompleto.get(clave) || new Set();
+    if (regla.id_turno) turnos.add(regla.id_turno);
+    gruposDiaCompleto.set(clave, turnos);
+  });
+
+  const clavesCompactadas = new Set();
+  const resultado = [];
+
+  reglas.forEach((regla) => {
+    if (!regla.id_dia_semana) {
+      resultado.push(regla);
+      return;
+    }
+
+    const clave = `${regla.id_dia_semana}|${regla.fecha || ''}`;
+    const turnos = gruposDiaCompleto.get(clave);
+
+    if (turnos && turnos.size >= MIN_TURNOS_DIA_COMPLETO) {
+      if (clavesCompactadas.has(clave)) return;
+      clavesCompactadas.add(clave);
+      resultado.push({
+        id_dia_semana: regla.id_dia_semana,
+        id_turno: '',
+        fecha: regla.fecha || '',
+      });
+      return;
+    }
+
+    resultado.push(regla);
+  });
+
+  return resultado;
+}
+
 function intentarAbrirSelectorFecha(e) {
   const input = e.currentTarget.querySelector('input');
   if (!input || input.disabled) return;
@@ -62,7 +158,7 @@ function reglaTieneDatos(bloque) {
 
 function reglaTieneConfiguracionValida(bloque) {
   if (!reglaTieneDatos(bloque)) return false;
-  if (bloque.id_turno || bloque.fecha) return true;
+  if (bloque.id_dia_semana || bloque.id_turno || bloque.fecha) return true;
   return false;
 }
 
@@ -87,9 +183,7 @@ function obtenerEstadoInicial(modo, item) {
     email: item?.email || item?.gmail || '',
     activo: Number(item?.activo ?? 1),
     comentarios: item?.comentarios || item?.comentario || item?.observacion || '',
-    disponibilidades: Array.isArray(item?.disponibilidades)
-      ? item.disponibilidades.map(normalizarDisponibilidad).slice(0, MAX_REGLAS_DISPONIBILIDAD)
-      : [],
+    disponibilidades: compactarDisponibilidades(item?.indisponibilidades || item?.disponibilidades).slice(0, MAX_REGLAS_DISPONIBILIDAD),
     mostrarTutorial: false,
     error: '',
   };
@@ -187,7 +281,33 @@ export default function ModalDocente({
 
   function actualizarDisponibilidad(index, campo, valor) {
     setDisponibilidades((prev) =>
-      prev.map((itemBloque, i) => i === index ? { ...itemBloque, [campo]: valor } : itemBloque)
+      prev.map((itemBloque, i) => {
+        if (i !== index) return itemBloque;
+
+        const bloqueActualizado = { ...itemBloque, [campo]: valor };
+
+        if (campo === 'id_dia_semana') {
+          const diaSeleccionado = Number(valor);
+
+          // Si la regla tenía una fecha puntual, el día y la fecha deben seguir
+          // representando el mismo bloque. Ej: viernes 24/07 -> miércoles 22/07.
+          if (bloqueActualizado.fecha && diaSeleccionado >= 1 && diaSeleccionado <= 5) {
+            bloqueActualizado.fecha = ajustarFechaAMismoSemana(bloqueActualizado.fecha, diaSeleccionado);
+          }
+        }
+
+        if (campo === 'fecha') {
+          const diaDesdeFecha = obtenerDiaSemanaDesdeFecha(valor);
+
+          // Al elegir una fecha puntual válida entre semana, se sincroniza el día
+          // para que el backend y el modal no vuelvan a mostrar un día distinto.
+          if (diaDesdeFecha) {
+            bloqueActualizado.id_dia_semana = diaDesdeFecha;
+          }
+        }
+
+        return bloqueActualizado;
+      })
     );
   }
 
@@ -221,7 +341,7 @@ export default function ModalDocente({
     const reglaInvalida = reglasConDatosActuales.find((bloque) => !reglaTieneConfiguracionValida(bloque));
     if (reglaInvalida) {
       setPestaniaActiva(TAB_ORGANIZACION);
-      mostrarToastError('Cada regla debe tener al menos un turno o una fecha. Los slots vacíos se ignoran.');
+      mostrarToastError('Cada regla de indisponibilidad debe tener al menos un día, un turno o una fecha. Los slots vacíos se ignoran.');
       return;
     }
 
@@ -252,7 +372,8 @@ export default function ModalDocente({
       comentarios: comentariosLimpios,
       comentario: comentariosLimpios,
       observacion: comentariosLimpios,
-      disponibilidades: disponibilidadesValidas,
+      disponibilidades: disponibilidadesValidas, // alias legacy para la tabla docentes_disponibilidad
+      indisponibilidades: disponibilidadesValidas,
     };
 
     setGuardando(true);
@@ -297,7 +418,7 @@ export default function ModalDocente({
                 </span>
               )}
             </h2>
-            <p>{editando ? 'Actualizá la ficha del docente sin perder su organización.' : 'Cargá la ficha del docente y su disponibilidad en pasos claros.'}</p>
+            <p>{editando ? 'Actualizá la ficha del docente sin perder sus reglas de indisponibilidad.' : 'Cargá la ficha del docente y marcá únicamente cuándo NO puede asistir.'}</p>
           </div>
           <button
             type="button"
@@ -345,7 +466,7 @@ export default function ModalDocente({
                 onClick={() => setPestaniaActiva(TAB_ORGANIZACION)}
               >
                 <FontAwesomeIcon icon={faCalendarDays} />
-                <span>Organización semanal</span>
+                <span>Indisponibilidad</span>
                 {disponibilidadesCompletas > 0 && (
                   <span className="gm-tab__badge">{disponibilidadesCompletas}</span>
                 )}
@@ -435,10 +556,6 @@ export default function ModalDocente({
                     </div>
                   </div>
 
-                  <div className="gm-alert gm-alert--info gm-alert--banner docentes-cargoInfoBox">
-                    <FontAwesomeIcon icon={faInfoCircle} />
-                    <span>El cargo ya no se carga en la ficha del docente. Ahora corresponde a cada cátedra/materia y se verá en el detalle del docente.</span>
-                  </div>
 
                   {/* Comentarios — fila completa */}
                   <div className="gm-formRow gm-formRow--full">
@@ -466,8 +583,8 @@ export default function ModalDocente({
               <section className="gm-panel gm-panel--schedule" id="gm-panel-organizacion" role="tabpanel" aria-labelledby="gm-tab-organizacion">
                 <div className="gm-panel__head gm-panel__head--split">
                   <div>
-                    <span className="gm-panel__eyebrow">Organización semanal</span>
-                    <h3><FontAwesomeIcon icon={faCalendarDays} /> Disponibilidad</h3>
+                    <span className="gm-panel__eyebrow">Indisponibilidad docente</span>
+                    <h3><FontAwesomeIcon icon={faCalendarDays} /> Días y turnos que NO puede asistir</h3>
                   </div>
                   <div className="gm-panel__actions">
                     <button
@@ -475,7 +592,7 @@ export default function ModalDocente({
                       className={`gm-iconBtn gm-iconBtn--help${mostrarTutorial ? ' is-active' : ''}`}
                       onClick={() => setMostrarTutorial((v) => !v)}
                       title={mostrarTutorial ? 'Cerrar ayuda' : 'Ver tutorial'}
-                      aria-label={mostrarTutorial ? 'Cerrar ayuda de disponibilidad' : 'Ver ayuda de disponibilidad'}
+                      aria-label={mostrarTutorial ? 'Cerrar ayuda de indisponibilidad' : 'Ver ayuda de indisponibilidad'}
                     >
                       <FontAwesomeIcon icon={faInfoCircle} />
                     </button>
@@ -491,9 +608,10 @@ export default function ModalDocente({
                 </div>
 
                 <div className="gm-panel__body">
+
                   <div className="gm-ruleCounter">
-                    <span>{disponibilidades.length}/{MAX_REGLAS_DISPONIBILIDAD} reglas creadas</span>
-                    <strong>Los slots vacíos se ignoran al guardar.</strong>
+                    <span>{disponibilidades.length}/{MAX_REGLAS_DISPONIBILIDAD} reglas de indisponibilidad creadas</span>
+                    <strong>Los slots vacíos se ignoran; no bloquean nada.</strong>
                   </div>
 
                   {disponibilidades.length === 0 && (
@@ -501,8 +619,8 @@ export default function ModalDocente({
                       <div className="gm-emptySchedule__icon">
                         <FontAwesomeIcon icon={faCalendarDays} />
                       </div>
-                      <strong>Sin reglas cargadas</strong>
-                      <span>Usá "Agregar regla" para definir hasta {MAX_REGLAS_DISPONIBILIDAD} indisponibilidades del docente.</span>
+                      <strong>Sin indisponibilidades cargadas</strong>
+                      <span>Usá "Agregar regla" únicamente para cargar cuándo el docente NO puede asistir. Si no cargás nada, queda disponible para cualquier fecha y turno habilitado.</span>
                     </div>
                   )}
 
@@ -518,8 +636,8 @@ export default function ModalDocente({
                               {String(index + 1).padStart(2, '0')}
                             </div>
                             <div>
-                              <strong>Regla de disponibilidad</strong>
-                              <span>Turno, fecha o combinación puntual</span>
+                              <strong>Regla de indisponibilidad</strong>
+                              <span>Bloquea día completo, turno semanal, fecha puntual o turno puntual</span>
                             </div>
                             <button
                               type="button"
@@ -620,25 +738,29 @@ export default function ModalDocente({
         {mostrarTutorial && (
           <ModalTutorialGlobal
             titulo="Cómo configurar indisponibilidades"
-            descripcion="Usá las reglas para indicar cuándo el docente no puede ser asignado."
+            descripcion="Cargá únicamente las fechas, días o turnos donde el docente NO puede asistir. Lo demás queda disponible."
             onCerrar={() => setMostrarTutorial(false)}
           >
             <ul className="gm-tutorialList">
               <li>
+                <strong>Solo Día</strong>
+                <span>elegí un día y dejá turno/fecha vacíos: no puede nunca ese día, ni mañana ni tarde.</span>
+              </li>
+              <li>
                 <strong>Solo Turno</strong>
-                <span>(dejar la fecha vacía): nunca puede en ese turno (máximo uno).</span>
+                <span>elegí un turno y dejá día/fecha vacíos: no puede nunca en ese turno, de lunes a viernes (máximo uno).</span>
               </li>
               <li>
                 <strong>Solo Fecha</strong>
-                <span>(dejar turno en blanco): no puede en todo ese día.</span>
+                <span>elegí una fecha y dejá turno vacío: no puede en todo ese día puntual; el día semanal se completa solo.</span>
               </li>
               <li>
                 <strong>Turno + Fecha</strong>
-                <span>no puede en ese turno ese día.</span>
+                <span>elegí fecha y turno: no puede únicamente en ese turno puntual.</span>
               </li>
               <li>
                 <strong>Hasta {MAX_REGLAS_DISPONIBILIDAD} reglas</strong>
-                <span>los slots vacíos se ignoran.</span>
+                <span>los slots vacíos se ignoran y no bloquean al docente.</span>
               </li>
             </ul>
           </ModalTutorialGlobal>

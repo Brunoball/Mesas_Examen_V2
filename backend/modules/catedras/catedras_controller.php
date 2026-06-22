@@ -18,6 +18,101 @@ function catedras_int($value): int
     return is_numeric($value) ? (int)$value : 0;
 }
 
+function catedras_docente_es_placeholder($value): bool
+{
+    $texto = strtoupper(trim((string)$value));
+    return $texto === 'MATERIA SIN CARGO CUBIERTO' || $texto === 'SIN CARGO CUBIERTO';
+}
+
+function catedras_sql_no_placeholder_docente(string $alias): string
+{
+    return "UPPER(TRIM(COALESCE({$alias}.docente, ''))) NOT IN ('MATERIA SIN CARGO CUBIERTO', 'SIN CARGO CUBIERTO')";
+}
+
+
+function catedras_columna_existe(PDO $pdo, string $tabla, string $columna): bool
+{
+    // Defensa: si el usuario todavía no ejecutó la migración o el motor no permite DDL
+    // desde el endpoint, no rompemos los GET de cátedras con un 500.
+    if (!preg_match('/^[a-zA-Z0-9_]+$/', $tabla) || !preg_match('/^[a-zA-Z0-9_]+$/', $columna)) {
+        return false;
+    }
+
+    try {
+        $stmt = $pdo->prepare("SHOW COLUMNS FROM `{$tabla}` LIKE :columna");
+        $stmt->execute([':columna' => $columna]);
+        return (bool)$stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        if (function_exists('log_error')) {
+            log_error($e, 'catedras_columna_existe');
+        }
+        return false;
+    }
+}
+
+function catedras_usar_columna_llamado_mesa(?bool $valor = null): bool
+{
+    static $usar = false;
+    if ($valor !== null) {
+        $usar = $valor;
+    }
+    return $usar;
+}
+
+/**
+ * Intenta habilitar la columna persistente llamado_mesa sin romper la pantalla.
+ * Si el ALTER falla, el sistema sigue funcionando usando catedras.id_docente
+ * como fuente del docente elegido para llamar.
+ */
+function catedras_asegurar_columna_llamado_mesa(PDO $pdo): bool
+{
+    try {
+        if (!catedras_columna_existe($pdo, 'catedras_docentes', 'llamado_mesa')) {
+            try {
+                $pdo->exec("ALTER TABLE catedras_docentes ADD COLUMN llamado_mesa TINYINT(1) NOT NULL DEFAULT 0 AFTER activo");
+            } catch (Throwable $e) {
+                if (function_exists('log_error')) {
+                    log_error($e, 'catedras_asegurar_columna_llamado_mesa_alter');
+                }
+            }
+        }
+
+        $existe = catedras_columna_existe($pdo, 'catedras_docentes', 'llamado_mesa');
+        catedras_usar_columna_llamado_mesa($existe);
+
+        if ($existe) {
+            // Migración suave: si ya había un docente efectivo guardado en catedras.id_docente,
+            // lo marcamos como llamado solamente cuando la cátedra todavía no tiene ninguna marca.
+            $pdo->exec("
+                UPDATE catedras_docentes cd
+                INNER JOIN catedras cat
+                    ON cat.id_catedra = cd.id_catedra
+                   AND cat.id_docente = cd.id_docente
+                LEFT JOIN (
+                    SELECT id_catedra
+                    FROM catedras_docentes
+                    WHERE activo = 1
+                      AND llamado_mesa = 1
+                    GROUP BY id_catedra
+                ) marcadas
+                    ON marcadas.id_catedra = cd.id_catedra
+                SET cd.llamado_mesa = 1
+                WHERE cd.activo = 1
+                  AND cat.id_docente IS NOT NULL
+                  AND marcadas.id_catedra IS NULL
+            ");
+        }
+
+        return $existe;
+    } catch (Throwable $e) {
+        if (function_exists('log_error')) {
+            log_error($e, 'catedras_asegurar_columna_llamado_mesa');
+        }
+        catedras_usar_columna_llamado_mesa(false);
+        return false;
+    }
+}
+
 function catedras_paginacion(): array
 {
     $pagina = max(1, catedras_int($_GET['pagina'] ?? 1));
@@ -30,10 +125,21 @@ function catedras_paginacion(): array
     ];
 }
 
-function catedras_docente_efectivo_order_sql(string $cdAlias = 'cd3', string $docAlias = 'd3', string $cargoAlias = 'cargo3'): string
+function catedras_docente_efectivo_order_sql(string $cdAlias = 'cd3', string $docAlias = 'd3', string $cargoAlias = 'cargo3', ?string $catAlias = null): string
 {
+    $prioridadManual = $catAlias !== null && trim($catAlias) !== ''
+        ? "WHEN {$docAlias}.activo = 1 AND {$docAlias}.id_docente IS NOT NULL AND {$cdAlias}.id_docente = {$catAlias}.id_docente THEN -1"
+        : '';
+
     return "
         CASE
+            WHEN {$docAlias}.activo = 1
+             AND {$docAlias}.id_docente IS NOT NULL
+             AND " . (catedras_usar_columna_llamado_mesa()
+                    ? "COALESCE({$cdAlias}.llamado_mesa, 0) = 1"
+                    : ($catAlias !== null && trim($catAlias) !== '' ? "{$cdAlias}.id_docente = {$catAlias}.id_docente" : "0 = 1")) . "
+            THEN -2
+            {$prioridadManual}
             WHEN {$docAlias}.activo = 1
              AND {$docAlias}.id_docente IS NOT NULL
              AND (
@@ -53,7 +159,7 @@ function catedras_docente_efectivo_order_sql(string $cdAlias = 'cd3', string $do
             THEN 2
             ELSE 3
         END ASC,
-        {$cdAlias}.id_catedra_docente ASC
+        {$cdAlias}.id_catedra_docente DESC
     ";
 }
 
@@ -66,7 +172,7 @@ function catedras_docente_efectivo_order_sql(string $cdAlias = 'cd3', string $do
  */
 function catedras_sql_join_docente_efectivo(string $catAlias = 'cat', string $cdAlias = 'cd_ef', string $docAlias = 'd_ef', string $cargoAlias = 'cargo_ef'): string
 {
-    $order = catedras_docente_efectivo_order_sql('cd3', 'd3', 'cargo3');
+    $order = catedras_docente_efectivo_order_sql('cd3', 'd3', 'cargo3', $catAlias);
 
     return "
         LEFT JOIN catedras_docentes {$cdAlias}
@@ -77,16 +183,20 @@ function catedras_sql_join_docente_efectivo(string $catAlias = 'cat', string $cd
                 FROM catedras_docentes cd3
                 LEFT JOIN docentes d3
                     ON d3.id_docente = cd3.id_docente
+                   AND d3.activo = 1
+                   AND " . catedras_sql_no_placeholder_docente('d3') . "
                 LEFT JOIN cargos cargo3
                     ON cargo3.id_cargo = cd3.id_cargo
                 WHERE cd3.id_catedra = {$catAlias}.id_catedra
                   AND cd3.activo = 1
+                  AND d3.id_docente IS NOT NULL
                 ORDER BY {$order}
                 LIMIT 1
            )
         LEFT JOIN docentes {$docAlias}
             ON {$docAlias}.id_docente = COALESCE({$cdAlias}.id_docente, {$catAlias}.id_docente)
            AND {$docAlias}.activo = 1
+           AND " . catedras_sql_no_placeholder_docente($docAlias) . "
         LEFT JOIN cargos {$cargoAlias}
             ON {$cargoAlias}.id_cargo = {$cdAlias}.id_cargo
     ";
@@ -121,6 +231,7 @@ function catedras_registrar_cambio_docente_en_mesas(PDO $pdo, int $idCatedra, ?i
 function catedras_catalogos(): void
 {
     $pdo = db();
+    catedras_asegurar_columna_llamado_mesa($pdo);
 
     try {
         $docentes = $pdo->query("
@@ -132,6 +243,7 @@ function catedras_catalogos(): void
                 d.activo
             FROM docentes d
             WHERE d.activo = 1
+              AND " . catedras_sql_no_placeholder_docente('d') . "
             ORDER BY d.docente ASC, d.id_docente ASC
         ")->fetchAll(PDO::FETCH_ASSOC);
 
@@ -189,8 +301,6 @@ function catedras_cargar_asignaciones_para_catedras(PDO $pdo, array $idsCatedras
     }
 
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
-    $order = catedras_docente_efectivo_order_sql('cd', 'd', 'cargo');
-
     $stmt = $pdo->prepare("
         SELECT
             cd.id_catedra,
@@ -200,16 +310,23 @@ function catedras_cargar_asignaciones_para_catedras(PDO $pdo, array $idsCatedras
             cd.id_cargo,
             cargo.cargo,
             cd.activo,
+            " . (catedras_asegurar_columna_llamado_mesa($pdo)
+                ? 'cd.llamado_mesa'
+                : 'CASE WHEN cat.id_docente = cd.id_docente THEN 1 ELSE 0 END') . " AS llamado_mesa,
+            cat.id_docente AS id_docente_llamado_guardado,
             cd.creado_en
         FROM catedras_docentes cd
+        INNER JOIN catedras cat
+            ON cat.id_catedra = cd.id_catedra
         INNER JOIN docentes d
             ON d.id_docente = cd.id_docente
            AND d.activo = 1
+           AND " . catedras_sql_no_placeholder_docente('d') . "
         LEFT JOIN cargos cargo
             ON cargo.id_cargo = cd.id_cargo
         WHERE cd.activo = 1
           AND cd.id_catedra IN ({$placeholders})
-        ORDER BY cd.id_catedra ASC, {$order}
+        ORDER BY cd.id_catedra ASC, cd.id_catedra_docente ASC
     ");
     $stmt->execute($ids);
 
@@ -228,10 +345,101 @@ function catedras_cargar_asignaciones_para_catedras(PDO $pdo, array $idsCatedras
             'cargo' => (string)($row['cargo'] ?? ''),
             'activo' => (int)$row['activo'],
             'creado_en' => $row['creado_en'] ?? null,
+            'id_docente_llamado_guardado' => $row['id_docente_llamado_guardado'] !== null ? (int)$row['id_docente_llamado_guardado'] : null,
+            'llamado_mesa' => !empty($row['llamado_mesa']),
         ];
     }
 
+    foreach ($porCatedra as $idCatedra => $asignaciones) {
+        $idDocenteGuardado = 0;
+        foreach ($asignaciones as $asignacion) {
+            $idDocenteGuardado = (int)($asignacion['id_docente_llamado_guardado'] ?? 0);
+            if ($idDocenteGuardado > 0) {
+                break;
+            }
+        }
+
+        $hayMarcadoReal = false;
+        foreach ($asignaciones as $asignacion) {
+            if (!empty($asignacion['llamado_mesa'])) {
+                $hayMarcadoReal = true;
+                break;
+            }
+        }
+
+        if (!$hayMarcadoReal && $idDocenteGuardado > 0) {
+            foreach ($porCatedra[$idCatedra] as $idx => $asignacion) {
+                $porCatedra[$idCatedra][$idx]['llamado_mesa'] = (int)$asignacion['id_docente'] === $idDocenteGuardado;
+            }
+        }
+
+        $llamado = catedras_obtener_docente_llamado_desde_asignaciones($porCatedra[$idCatedra]);
+        $idDocenteLlamado = $llamado ? (int)($llamado['id_docente'] ?? 0) : 0;
+
+        foreach ($porCatedra[$idCatedra] as $idx => $asignacion) {
+            $porCatedra[$idCatedra][$idx]['llamado_mesa'] = $idDocenteLlamado > 0 && (int)$asignacion['id_docente'] === $idDocenteLlamado;
+            unset($porCatedra[$idCatedra][$idx]['id_docente_llamado_guardado']);
+        }
+    }
+
     return $porCatedra;
+}
+
+
+function catedras_prioridad_asignacion_para_llamado(array $asignacion): int
+{
+    $idCargo = catedras_int($asignacion['id_cargo'] ?? 0);
+    $cargo = strtoupper(trim((string)($asignacion['cargo'] ?? '')));
+
+    if ($idCargo === 2 || $cargo === 'SUPLENTE') {
+        return 0;
+    }
+
+    if ($idCargo === 1 || $cargo === 'TITULAR') {
+        return 1;
+    }
+
+    return 2;
+}
+
+function catedras_obtener_docente_llamado_desde_asignaciones(array $asignaciones): ?array
+{
+    if (count($asignaciones) === 0) {
+        return null;
+    }
+
+    $marcada = null;
+    foreach ($asignaciones as $asignacion) {
+        if (!empty($asignacion['llamado_mesa'])) {
+            $marcada = $asignacion;
+        }
+    }
+
+    if ($marcada !== null) {
+        return $marcada;
+    }
+
+    $mejor = null;
+    foreach ($asignaciones as $asignacion) {
+        if ($mejor === null) {
+            $mejor = $asignacion;
+            continue;
+        }
+
+        $prioridadActual = catedras_prioridad_asignacion_para_llamado($asignacion);
+        $prioridadMejor = catedras_prioridad_asignacion_para_llamado($mejor);
+
+        if ($prioridadActual < $prioridadMejor) {
+            $mejor = $asignacion;
+            continue;
+        }
+
+        if ($prioridadActual === $prioridadMejor && (int)($asignacion['id_catedra_docente'] ?? 0) > (int)($mejor['id_catedra_docente'] ?? 0)) {
+            $mejor = $asignacion;
+        }
+    }
+
+    return $mejor;
 }
 
 function catedras_formatear_resumen_asignaciones(array $asignaciones): string
@@ -252,6 +460,7 @@ function catedras_formatear_resumen_asignaciones(array $asignaciones): string
 function catedras_listar(): void
 {
     $pdo = db();
+    catedras_asegurar_columna_llamado_mesa($pdo);
     $pag = catedras_paginacion();
 
     $busqueda = trim((string)($_GET['busqueda'] ?? ''));
@@ -278,7 +487,7 @@ function catedras_listar(): void
             EXISTS (
                 SELECT 1
                 FROM catedras_docentes cd_f
-                INNER JOIN docentes d_f ON d_f.id_docente = cd_f.id_docente AND d_f.activo = 1
+                INNER JOIN docentes d_f ON d_f.id_docente = cd_f.id_docente AND d_f.activo = 1 AND " . catedras_sql_no_placeholder_docente('d_f') . "
                 WHERE cd_f.id_catedra = cat.id_catedra
                   AND cd_f.activo = 1
                   AND cd_f.id_docente = :id_docente
@@ -294,11 +503,17 @@ function catedras_listar(): void
             NOT EXISTS (
                 SELECT 1
                 FROM catedras_docentes cd_sd
-                INNER JOIN docentes d_sd ON d_sd.id_docente = cd_sd.id_docente AND d_sd.activo = 1
+                INNER JOIN docentes d_sd ON d_sd.id_docente = cd_sd.id_docente AND d_sd.activo = 1 AND " . catedras_sql_no_placeholder_docente('d_sd') . "
                 WHERE cd_sd.id_catedra = cat.id_catedra
                   AND cd_sd.activo = 1
             )
-            AND cat.id_docente IS NULL
+            AND NOT EXISTS (
+                SELECT 1
+                FROM docentes d_legacy_sd
+                WHERE d_legacy_sd.id_docente = cat.id_docente
+                  AND d_legacy_sd.activo = 1
+                  AND " . catedras_sql_no_placeholder_docente('d_legacy_sd') . "
+            )
         )";
     }
 
@@ -312,7 +527,7 @@ function catedras_listar(): void
             "EXISTS (
                 SELECT 1
                 FROM catedras_docentes cd_b
-                INNER JOIN docentes d_b ON d_b.id_docente = cd_b.id_docente AND d_b.activo = 1
+                INNER JOIN docentes d_b ON d_b.id_docente = cd_b.id_docente AND d_b.activo = 1 AND " . catedras_sql_no_placeholder_docente('d_b') . "
                 LEFT JOIN cargos cargo_b ON cargo_b.id_cargo = cd_b.id_cargo
                 WHERE cd_b.id_catedra = cat.id_catedra
                   AND cd_b.activo = 1
@@ -440,7 +655,7 @@ function catedras_listar(): void
 
 function catedras_obtener_docente_efectivo_desde_relacion(PDO $pdo, int $idCatedra): ?array
 {
-    $order = catedras_docente_efectivo_order_sql('cd', 'd', 'cargo');
+    $order = catedras_docente_efectivo_order_sql('cd', 'd', 'cargo', 'cat');
     $stmt = $pdo->prepare("
         SELECT
             cd.id_docente,
@@ -448,9 +663,12 @@ function catedras_obtener_docente_efectivo_desde_relacion(PDO $pdo, int $idCated
             d.docente,
             cargo.cargo
         FROM catedras_docentes cd
+        INNER JOIN catedras cat
+            ON cat.id_catedra = cd.id_catedra
         INNER JOIN docentes d
             ON d.id_docente = cd.id_docente
            AND d.activo = 1
+           AND " . catedras_sql_no_placeholder_docente('d') . "
         LEFT JOIN cargos cargo
             ON cargo.id_cargo = cd.id_cargo
         WHERE cd.id_catedra = :id_catedra
@@ -477,6 +695,7 @@ function catedras_obtener_docente_efectivo_actual(PDO $pdo, int $idCatedra): ?in
         INNER JOIN docentes d
             ON d.id_docente = cat.id_docente
            AND d.activo = 1
+           AND " . catedras_sql_no_placeholder_docente('d') . "
         WHERE cat.id_catedra = :id_catedra
           AND cat.activo = 1
         LIMIT 1
@@ -500,6 +719,7 @@ function catedras_leer_asignaciones_desde_body(array $body): array
             $asignaciones[] = [
                 'id_docente' => catedras_int($fila['id_docente'] ?? 0),
                 'id_cargo' => catedras_int($fila['id_cargo'] ?? 0),
+                'llamado_mesa' => !empty($fila['llamado_mesa']),
             ];
         }
 
@@ -514,6 +734,7 @@ function catedras_leer_asignaciones_desde_body(array $body): array
         $asignaciones[] = [
             'id_docente' => $idDocente,
             'id_cargo' => $idCargo,
+            'llamado_mesa' => true,
         ];
     }
 
@@ -523,12 +744,12 @@ function catedras_leer_asignaciones_desde_body(array $body): array
 function catedras_validar_asignaciones(PDO $pdo, array $asignaciones): array
 {
     $resultado = [];
+    $orden = 0;
     $docentesUsados = [];
-    $cargosUsados = [];
-
     foreach ($asignaciones as $asignacion) {
         $idDocente = catedras_int($asignacion['id_docente'] ?? 0);
         $idCargo = catedras_int($asignacion['id_cargo'] ?? 0);
+        $orden++;
 
         if ($idDocente <= 0) {
             json_response([
@@ -550,17 +771,10 @@ function catedras_validar_asignaciones(PDO $pdo, array $asignaciones): array
                 'mensaje' => 'No podés repetir el mismo docente en una cátedra.',
             ], 422);
         }
-
-        if (isset($cargosUsados[$idCargo])) {
-            json_response([
-                'exito' => false,
-                'mensaje' => 'No podés repetir el mismo cargo en una cátedra. Usá un cargo distinto para cada docente.',
-            ], 422);
-        }
-
-        $stmtDoc = $pdo->prepare('SELECT id_docente FROM docentes WHERE id_docente = :id_docente AND activo = 1 LIMIT 1');
+        $stmtDoc = $pdo->prepare("SELECT id_docente, docente FROM docentes WHERE id_docente = :id_docente AND activo = 1 LIMIT 1");
         $stmtDoc->execute([':id_docente' => $idDocente]);
-        if (!$stmtDoc->fetch(PDO::FETCH_ASSOC)) {
+        $docenteValidado = $stmtDoc->fetch(PDO::FETCH_ASSOC);
+        if (!$docenteValidado || catedras_docente_es_placeholder($docenteValidado['docente'] ?? '')) {
             json_response([
                 'exito' => false,
                 'mensaje' => 'Uno de los docentes seleccionados no existe o está inactivo.',
@@ -577,10 +791,14 @@ function catedras_validar_asignaciones(PDO $pdo, array $asignaciones): array
         }
 
         $docentesUsados[$idDocente] = true;
-        $cargosUsados[$idCargo] = true;
         $resultado[] = [
             'id_docente' => $idDocente,
             'id_cargo' => $idCargo,
+            // IMPORTANTE: conservar solamente el docente que el usuario marcó como "Llamado".
+            // Antes se ponía true para todos y, al cambiar solo el llamado, podía no dispararse
+            // correctamente el aviso de cambio de docente en Mesas.
+            'llamado_mesa' => !empty($asignacion['llamado_mesa']),
+            '_orden' => $orden,
         ];
     }
 
@@ -590,6 +808,7 @@ function catedras_validar_asignaciones(PDO $pdo, array $asignaciones): array
 function catedras_asignar_docente(): void
 {
     $pdo = db();
+    catedras_asegurar_columna_llamado_mesa($pdo);
     $body = get_json_body();
 
     $idCatedra = catedras_int($body['id_catedra'] ?? 0);
@@ -625,30 +844,83 @@ function catedras_asignar_docente(): void
         $idDocenteAnterior = catedras_obtener_docente_efectivo_actual($pdo, $idCatedra);
         $asignaciones = catedras_validar_asignaciones($pdo, catedras_leer_asignaciones_desde_body($body));
 
+        // Defensa por si llega un frontend viejo o un payload sin llamado_mesa:
+        // marcamos automáticamente el docente que correspondería llamar por la regla normal.
+        if (count($asignaciones) > 0 && !array_reduce($asignaciones, static fn($carry, $item) => $carry || !empty($item['llamado_mesa']), false)) {
+            $fallback = catedras_obtener_docente_llamado_desde_asignaciones($asignaciones);
+            $idFallback = $fallback ? (int)($fallback['id_docente'] ?? 0) : 0;
+            foreach ($asignaciones as &$asignacionFallback) {
+                $asignacionFallback['llamado_mesa'] = $idFallback > 0 && (int)$asignacionFallback['id_docente'] === $idFallback;
+            }
+            unset($asignacionFallback);
+        }
+
         $stmtDelete = $pdo->prepare('DELETE FROM catedras_docentes WHERE id_catedra = :id_catedra');
         $stmtDelete->execute([':id_catedra' => $idCatedra]);
 
+        // Si se marcó un docente para llamar a mesa, lo guardamos al final dentro de su mismo cargo/prioridad.
+        // El armado usa catedras.id_docente como fuente principal y, como compatibilidad, también
+        // queda último en catedras_docentes dentro de su prioridad.
+        usort($asignaciones, static function (array $a, array $b): int {
+            $prioridadA = catedras_prioridad_asignacion_para_llamado($a);
+            $prioridadB = catedras_prioridad_asignacion_para_llamado($b);
+            if ($prioridadA !== $prioridadB) {
+                return $prioridadA <=> $prioridadB;
+            }
+
+            $llamadoA = !empty($a['llamado_mesa']);
+            $llamadoB = !empty($b['llamado_mesa']);
+            if ($llamadoA !== $llamadoB) {
+                return $llamadoA ? 1 : -1;
+            }
+
+            return (int)($a['_orden'] ?? 0) <=> (int)($b['_orden'] ?? 0);
+        });
+
         if (count($asignaciones) > 0) {
-            $stmtInsert = $pdo->prepare("
-                INSERT INTO catedras_docentes
-                    (id_catedra, id_docente, id_cargo, activo)
-                VALUES
-                    (:id_catedra, :id_docente, :id_cargo, 1)
-            ");
+            $usarColumnaLlamado = catedras_usar_columna_llamado_mesa();
+            if ($usarColumnaLlamado) {
+                $stmtInsert = $pdo->prepare("
+                    INSERT INTO catedras_docentes
+                        (id_catedra, id_docente, id_cargo, activo, llamado_mesa)
+                    VALUES
+                        (:id_catedra, :id_docente, :id_cargo, 1, :llamado_mesa)
+                ");
+            } else {
+                $stmtInsert = $pdo->prepare("
+                    INSERT INTO catedras_docentes
+                        (id_catedra, id_docente, id_cargo, activo)
+                    VALUES
+                        (:id_catedra, :id_docente, :id_cargo, 1)
+                ");
+            }
 
             foreach ($asignaciones as $asignacion) {
-                $stmtInsert->execute([
+                $paramsInsert = [
                     ':id_catedra' => $idCatedra,
                     ':id_docente' => (int)$asignacion['id_docente'],
                     ':id_cargo' => (int)$asignacion['id_cargo'],
-                ]);
+                ];
+                if ($usarColumnaLlamado) {
+                    $paramsInsert[':llamado_mesa'] = !empty($asignacion['llamado_mesa']) ? 1 : 0;
+                }
+                $stmtInsert->execute($paramsInsert);
+            }
+        }
+
+        $docenteMarcadoNuevo = null;
+        foreach ($asignaciones as $asignacion) {
+            if (!empty($asignacion['llamado_mesa']) && (int)$asignacion['id_docente'] > 0) {
+                $docenteMarcadoNuevo = (int)$asignacion['id_docente'];
             }
         }
 
         $docenteEfectivoNuevo = catedras_obtener_docente_efectivo_desde_relacion($pdo, $idCatedra);
-        $idDocenteNuevo = $docenteEfectivoNuevo && (int)$docenteEfectivoNuevo['id_docente'] > 0
-            ? (int)$docenteEfectivoNuevo['id_docente']
-            : null;
+        $idDocenteNuevo = $docenteMarcadoNuevo !== null
+            ? $docenteMarcadoNuevo
+            : ($docenteEfectivoNuevo && (int)$docenteEfectivoNuevo['id_docente'] > 0
+                ? (int)$docenteEfectivoNuevo['id_docente']
+                : null);
 
         // Compatibilidad: catedras.id_docente queda reflejando el docente efectivo/prioritario.
         // La fuente completa es catedras_docentes; esta columna ayuda a módulos viejos y reportes.

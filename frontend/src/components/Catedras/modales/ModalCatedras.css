@@ -243,12 +243,13 @@ overflow: visible !important;
 /* Múltiples docentes por cátedra */
 .catedras-modal-addGrid{
   display:grid;
-  grid-template-columns:minmax(0, 1.2fr) minmax(170px, .75fr) auto;
+  grid-template-columns:minmax(0, 1.2fr) minmax(170px, .75fr) auto auto;
   gap:10px;
   align-items:end;
 }
 
-.catedras-modal-addBtn{
+.catedras-modal-addBtn,
+.catedras-modal-cancelEditBtn{
   min-height:44px;
   white-space:nowrap;
 }
@@ -270,6 +271,25 @@ overflow: visible !important;
   gap:11px;
   align-items:center;
   box-shadow:0 12px 26px -24px rgba(58,46,43,.34);
+  cursor:pointer;
+  transition:background var(--gm-trans, 160ms ease), border-color var(--gm-trans, 160ms ease), transform var(--gm-trans, 160ms ease), box-shadow var(--gm-trans, 160ms ease);
+}
+
+.catedras-modal-asignacionItem:hover{
+  transform:translateY(-1px);
+  border-color:rgba(196,139,59,.28);
+  box-shadow:0 14px 30px -23px rgba(58,46,43,.38);
+}
+
+.catedras-modal-asignacionItem.is-editing{
+  border-color:color-mix(in srgb, var(--gm-action, #C48B3B) 48%, #fff);
+  background:color-mix(in srgb, var(--gm-action, #C48B3B) 8%, #fff);
+}
+
+.catedras-modal-asignacionItem.is-editing .catedras-modal-asignacionIcon{
+  background:color-mix(in srgb, var(--gm-action, #C48B3B) 13%, #fff);
+  border-color:color-mix(in srgb, var(--gm-action, #C48B3B) 28%, #fff);
+  color:var(--gm-action, #C48B3B);
 }
 
 .catedras-modal-asignacionItem.is-called{
@@ -319,6 +339,46 @@ overflow: visible !important;
   color:var(--gm-muted, #786661);
   font-size:11.5px;
   font-weight:660;
+}
+
+
+.catedras-modal-asignacionActions{
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+
+.catedras-modal-callBtn{
+  min-height:34px;
+  padding:0 11px;
+  border:1px solid color-mix(in srgb, var(--gm-success, #22AD5C) 22%, #fff);
+  border-radius:12px;
+  background:#fff;
+  color:var(--gm-success, #22AD5C);
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  font-size:11.5px;
+  font-weight:760;
+  transition:background var(--gm-trans, 160ms ease), transform var(--gm-trans, 160ms ease), border-color var(--gm-trans, 160ms ease), color var(--gm-trans, 160ms ease);
+}
+
+.catedras-modal-callBtn:hover:not(:disabled){
+  transform:translateY(-1px);
+  background:color-mix(in srgb, var(--gm-success, #22AD5C) 8%, #fff);
+  border-color:color-mix(in srgb, var(--gm-success, #22AD5C) 34%, #fff);
+}
+
+.catedras-modal-callBtn.is-active{
+  background:color-mix(in srgb, var(--gm-success, #22AD5C) 13%, #fff);
+  border-color:color-mix(in srgb, var(--gm-success, #22AD5C) 38%, #fff);
+}
+
+.catedras-modal-callBtn:disabled{
+  opacity:.72;
+  cursor:default;
 }
 
 .catedras-modal-asignacionRemove{
@@ -378,7 +438,8 @@ overflow: visible !important;
     align-items:stretch;
   }
 
-  .catedras-modal-addBtn{
+  .catedras-modal-addBtn,
+  .catedras-modal-cancelEditBtn{
     width:100%;
   }
 }

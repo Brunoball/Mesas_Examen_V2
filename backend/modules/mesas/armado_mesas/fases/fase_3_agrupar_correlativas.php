@@ -19,7 +19,7 @@ declare(strict_types=1);
 | - Compacta por area academica: intenta mandar mesas de la misma area al mismo slot.
 | - Las correlativas anteriores y las mesas con más alumnos toman los primeros slots disponibles.
 | - Las mesas chicas se ubican después, preferentemente en slots ya abiertos de su misma area.
-| - Respeta docentes_disponibilidad como disponibilidad positiva, manteniendo la compactacion por area.
+| - Respeta docentes_disponibilidad como indisponibilidad/bloqueo docente, manteniendo la compactacion por area.
 | - Evita choque docente, salvo cuando el mismo docente toma numeros de la misma area en el mismo slot.
 | - Evita que un mismo alumno esté en dos mesas en el mismo slot.
 | - Si una correlativa posterior depende de una anterior del mismo alumno,
@@ -306,12 +306,13 @@ function mesas_armado_normalizar_docente_desde_catedra(PDO $pdo): int
                   AND cd3.activo = 1
                 ORDER BY
                     CASE
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND cd3.id_docente = cat.id_docente THEN -1
                         WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
                         WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 1 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'TITULAR') THEN 1
                         WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 2
                         ELSE 3
                     END ASC,
-                    cd3.id_catedra_docente ASC
+                    cd3.id_catedra_docente DESC
                 LIMIT 1
            )
         INNER JOIN docentes doc
@@ -385,12 +386,13 @@ function mesas_armado_obtener_filas_para_validar(PDO $pdo): array
                   AND cd3.activo = 1
                 ORDER BY
                     CASE
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND cd3.id_docente = cat.id_docente THEN -1
                         WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
                         WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 1 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'TITULAR') THEN 1
                         WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 2
                         ELSE 3
                     END ASC,
-                    cd3.id_catedra_docente ASC
+                    cd3.id_catedra_docente DESC
                 LIMIT 1
            )
         LEFT JOIN materias mat
@@ -998,7 +1000,7 @@ function mesas_armado_calendarizar_grupos(
 
         if ($slotAsignado === null) {
             $observacionNoCalendarizada = mesas_armado_describir_sin_slot_por_disponibilidad_fuera_rango($grupo, $slots, $disponibilidadDocentes)
-                ?? 'No se encontró fecha/turno dentro del rango solicitado respetando disponibilidad docente, alumnos, correlativas y compactación por área.';
+                ?? 'No se encontró fecha/turno dentro del rango solicitado evitando indisponibilidades docentes, choques de alumnos, correlativas y compactación por área.';
 
             mesas_armado_marcar_grupo_observado(
                 $pdo,
@@ -1131,9 +1133,9 @@ function mesas_armado_calendarizar_grupos(
         'orden_aplicado' => [
             '1_prioridad_academica' => 'correlativa anterior/equivalente/posterior como prioridad de orden; no como tipo aislado obligatorio',
             '2_volumen' => 'mayor cantidad de alumnos y previas primero',
-            '3_restriccion_docente' => 'docentes con disponibilidad cargada primero',
+            '3_restriccion_docente' => 'docentes con indisponibilidades cargadas primero',
             '4_distribucion_balanceada' => 'misma area se reparte en slots suficientes para formar grupos de 2 a 4 sin concentrar todo al inicio',
-            '5_disponibilidad' => 'slot hábil donde el docente esté disponible por día de semana y turno; se evita choque de alumno y de docente, salvo mismo docente + misma área compatible para compactar números sin duplicar días.',
+            '5_disponibilidad' => 'slot hábil que no esté bloqueado por indisponibilidad docente; se evita choque de alumno y de docente, salvo mismo docente + misma área compatible para compactar números sin duplicar días.',
         ],
     ];
 }
@@ -1144,36 +1146,6 @@ function mesas_armado_describir_sin_slot_por_disponibilidad_fuera_rango(array $g
     if (count($slots) === 0) {
         return null;
     }
-
-    $slotsPermitidos = [];
-    $slotsPermitidosPorFecha = [];
-    foreach ($slots as $slot) {
-        $fecha = (string)($slot['fecha'] ?? $slot['fecha_mesa'] ?? '');
-        $idTurno = (int)($slot['id_turno'] ?? 0);
-        $diaSemana = function_exists('mesas_armado_dia_semana_desde_fecha')
-            ? mesas_armado_dia_semana_desde_fecha($fecha)
-            : null;
-
-        if ($diaSemana !== null && $idTurno > 0) {
-            $slotsPermitidos[$diaSemana . '|' . $idTurno] = true;
-        }
-
-        if (mesas_armado_fecha_valida($fecha) && $idTurno > 0) {
-            $slotsPermitidosPorFecha[$fecha . '|' . $idTurno] = true;
-        }
-    }
-
-    if (count($slotsPermitidos) === 0 && count($slotsPermitidosPorFecha) === 0) {
-        return null;
-    }
-
-    $dias = [
-        1 => 'lunes',
-        2 => 'martes',
-        3 => 'miércoles',
-        4 => 'jueves',
-        5 => 'viernes',
-    ];
 
     $nombreTurno = static function (int $idTurno): string {
         return match ($idTurno) {
@@ -1191,7 +1163,7 @@ function mesas_armado_describir_sin_slot_por_disponibilidad_fuera_rango(array $g
 
     $docentes = array_values($grupo['docentes'] ?? []);
     $nombres = array_values($grupo['docentes_nombres'] ?? []);
-    $docentesFuera = [];
+    $docentesBloqueados = [];
 
     foreach ($docentes as $idx => $idDocenteRaw) {
         $idDocente = (int)$idDocenteRaw;
@@ -1199,54 +1171,41 @@ function mesas_armado_describir_sin_slot_por_disponibilidad_fuera_rango(array $g
             continue;
         }
 
-        $tieneDisponibilidadEnRango = false;
-        $disponibilidadesTexto = [];
+        $tieneAlgunSlotHabil = false;
+        $bloqueosTexto = [];
 
-        foreach ($disponibilidadDocentes[$idDocente] as $registro) {
-            $diaRegistro = (int)($registro['dia_semana'] ?? 0);
-            $turnoRegistro = (int)($registro['id_turno'] ?? 0);
-            $fechaRegistro = trim((string)($registro['fecha'] ?? ''));
-            if ($turnoRegistro <= 0) {
+        foreach ($slots as $slot) {
+            $fecha = (string)($slot['fecha'] ?? $slot['fecha_mesa'] ?? '');
+            $idTurno = (int)($slot['id_turno'] ?? 0);
+
+            if (!mesas_armado_fecha_valida($fecha) || $idTurno <= 0) {
                 continue;
             }
 
-            if ($fechaRegistro !== '') {
-                if (isset($slotsPermitidosPorFecha[$fechaRegistro . '|' . $turnoRegistro])) {
-                    $tieneDisponibilidadEnRango = true;
-                }
-
-                $disponibilidadesTexto[$formatearFecha($fechaRegistro) . ' ' . $nombreTurno($turnoRegistro)] = true;
-                continue;
+            if (!mesas_armado_docente_no_disponible($disponibilidadDocentes, $idDocente, $fecha, $idTurno)) {
+                $tieneAlgunSlotHabil = true;
+                break;
             }
 
-            if ($diaRegistro <= 0) {
-                continue;
-            }
-
-            if (isset($slotsPermitidos[$diaRegistro . '|' . $turnoRegistro])) {
-                $tieneDisponibilidadEnRango = true;
-            }
-
-            $diaTexto = $dias[$diaRegistro] ?? ('día ' . $diaRegistro);
-            $disponibilidadesTexto[$diaTexto . ' ' . $nombreTurno($turnoRegistro)] = true;
+            $bloqueosTexto[$formatearFecha($fecha) . ' ' . $nombreTurno($idTurno)] = true;
         }
 
-        if (!$tieneDisponibilidadEnRango && count($disponibilidadesTexto) > 0) {
+        if (!$tieneAlgunSlotHabil && count($bloqueosTexto) > 0) {
             $nombre = trim((string)($nombres[$idx] ?? ''));
             if ($nombre === '') {
                 $nombre = 'Docente ' . $idDocente;
             }
 
-            $docentesFuera[] = $nombre . ' disponible solo: ' . implode(', ', array_keys($disponibilidadesTexto));
+            $docentesBloqueados[] = $nombre . ' no puede: ' . implode(', ', array_keys($bloqueosTexto));
         }
     }
 
-    if (count($docentesFuera) === 0) {
+    if (count($docentesBloqueados) === 0) {
         return null;
     }
 
     return mb_substr(
-        'Docente fuera del rango solicitado. ' . implode(' | ', $docentesFuera) . '. La mesa queda no agrupada.',
+        'Docente bloqueado por indisponibilidad dentro del rango solicitado. ' . implode(' | ', $docentesBloqueados) . '. La mesa queda no agrupada.',
         0,
         255,
         'UTF-8'

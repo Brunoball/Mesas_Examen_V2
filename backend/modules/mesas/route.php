@@ -37,7 +37,7 @@ function route_mesas_armado_actual_es_docentes(): bool
     try {
         $pdo = db();
 
-        // Primero se usa el detector específico de la edición por disponibilidad docente.
+        // Primero se usa el detector específico de la edición por indisponibilidad docente.
         // Ese helper mira tabla de rango + auditoría y evita caer por error en la edición por área
         // cuando el último armado fue por docentes pero la tabla quedó vieja/incompleta.
         if (function_exists('mesas_editar_docentes_es_armado_por_docentes')) {
@@ -114,7 +114,7 @@ function route_mesas(string $action): bool
 
         /*
          * Variante alternativa desde el modal:
-         * usa la carpeta armado_mesas_docentes y prioriza disponibilidad docente.
+         * usa la carpeta armado_mesas_docentes y evita indisponibilidad docente.
          * El armado por area anterior queda intacto en mesas_armado_crear.
          */
         case 'mesas_armado_crear_docentes':
@@ -137,7 +137,7 @@ function route_mesas(string $action): bool
         /*
          * Fase 3 real: valida todo el armado actual y asigna fecha/turno
          * por numero_mesa, respetando prioridad, correlativas, talleres,
-         * cantidad de alumnos, disponibilidad docente y choques de alumno/docente.
+         * cantidad de alumnos, indisponibilidad docente y choques de alumno/docente.
          */
         case 'mesas_armado_fase_3_correlativas':
         case 'mesas_armado_fase_3_agrupar_correlativas':
@@ -190,7 +190,7 @@ function route_mesas(string $action): bool
         case 'mesas_armado_fase_7_reoptimizar':
         case 'mesas_armado_reoptimizar_no_agrupadas':
         case 'mesas_armado_reoptimizar_grupos_finales':
-            // Si el armado vigente es por disponibilidad docente, la reoptimización manual
+            // Si el armado vigente es por indisponibilidad docente, la reoptimización manual
             // también debe usar el motor de docentes. Antes esta acción genérica caía en
             // la reoptimización por área y podía volver a aplicar criterios incorrectos.
             if (route_mesas_armado_actual_es_docentes() && function_exists('mesas_armado_docentes_fase_7_reoptimizar_no_agrupadas')) {

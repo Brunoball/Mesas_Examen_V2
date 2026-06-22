@@ -151,28 +151,19 @@ export function useCatedras() {
         .map((asignacion) => ({
           id_docente: Number(asignacion.id_docente || 0),
           id_cargo: Number(asignacion.id_cargo || 0),
+          llamado_mesa: Boolean(asignacion.llamado_mesa),
         }))
         .filter((asignacion) => asignacion.id_docente > 0 && asignacion.id_cargo > 0)
       : [];
 
     const docentesUsados = new Set();
-    const cargosUsados = new Set();
-
     for (const asignacion of docentesPayload) {
       if (docentesUsados.has(asignacion.id_docente)) {
         const msg = 'No podés repetir el mismo docente en una cátedra.';
         mostrarMensaje('error', msg);
         return { ok: false, mensaje: msg };
       }
-
-      if (cargosUsados.has(asignacion.id_cargo)) {
-        const msg = 'No podés repetir el mismo cargo en una cátedra.';
-        mostrarMensaje('error', msg);
-        return { ok: false, mensaje: msg };
-      }
-
       docentesUsados.add(asignacion.id_docente);
-      cargosUsados.add(asignacion.id_cargo);
     }
 
     try {

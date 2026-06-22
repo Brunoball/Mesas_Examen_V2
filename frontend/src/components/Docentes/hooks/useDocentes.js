@@ -95,7 +95,7 @@ export function useDocentes() {
       normalizar(item.email || item.gmail).includes(q) ||
       normalizar(item.cargo).includes(q) ||
       normalizar(item.observacion).includes(q) ||
-      normalizar(item.disponibilidad_resumen).includes(q) ||
+      normalizar(item.indisponibilidad_resumen || item.disponibilidad_resumen).includes(q) ||
       normalizar(item.ids_docentes_texto).includes(q)
     ));
   }, [docentesBase, busqueda]);

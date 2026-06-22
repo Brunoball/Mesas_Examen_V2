@@ -930,7 +930,7 @@ const ModalEditarMesa = ({
                     </button>
 
                     <div className="editar-mesa-no-agrupada-nota">
-                      El sistema valida antes de crear: disponibilidad docente, bloqueos, choques de alumnos,
+                      El sistema valida antes de crear: indisponibilidades docentes, bloqueos, choques de alumnos,
                       conflictos docentes reales y correlativas.
                     </div>
                   </div>

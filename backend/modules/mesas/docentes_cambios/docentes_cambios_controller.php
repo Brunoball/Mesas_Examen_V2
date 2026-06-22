@@ -64,6 +64,80 @@ function mesas_docentes_cambios_nombre_docente(PDO $pdo, ?int $idDocente): strin
 }
 
 
+function mesas_docentes_cambios_sql_no_placeholder_docente(string $alias): string
+{
+    return "UPPER(TRIM(COALESCE({$alias}.docente, ''))) NOT IN ('MATERIA SIN CARGO CUBIERTO', 'SIN CARGO CUBIERTO')";
+}
+
+function mesas_docentes_cambios_docente_actual_catedra(PDO $pdo, int $idCatedra): ?int
+{
+    if ($idCatedra <= 0) {
+        return null;
+    }
+
+    // Fuente principal: catedras.id_docente. En Cátedras se guarda ahí el docente marcado
+    // como "Llamado", aunque existan varios titulares o varios suplentes.
+    $stmtManual = $pdo->prepare("
+        SELECT cat.id_docente
+        FROM catedras cat
+        INNER JOIN docentes d
+            ON d.id_docente = cat.id_docente
+           AND d.activo = 1
+           AND " . mesas_docentes_cambios_sql_no_placeholder_docente('d') . "
+        WHERE cat.id_catedra = :id_catedra
+          AND cat.activo = 1
+          AND cat.id_docente IS NOT NULL
+          AND (
+                NOT EXISTS (
+                    SELECT 1
+                    FROM catedras_docentes cd_check
+                    WHERE cd_check.id_catedra = cat.id_catedra
+                      AND cd_check.activo = 1
+                )
+                OR EXISTS (
+                    SELECT 1
+                    FROM catedras_docentes cd_check
+                    WHERE cd_check.id_catedra = cat.id_catedra
+                      AND cd_check.id_docente = cat.id_docente
+                      AND cd_check.activo = 1
+                )
+          )
+        LIMIT 1
+    ");
+    $stmtManual->execute([':id_catedra' => $idCatedra]);
+    $idManual = $stmtManual->fetchColumn();
+    if ($idManual !== false && $idManual !== null && (int)$idManual > 0) {
+        return (int)$idManual;
+    }
+
+    // Respaldo para datos viejos: suplente primero, titular después, y dentro de iguales el último agregado.
+    $stmtRelacion = $pdo->prepare("
+        SELECT cd.id_docente
+        FROM catedras_docentes cd
+        INNER JOIN docentes d
+            ON d.id_docente = cd.id_docente
+           AND d.activo = 1
+           AND " . mesas_docentes_cambios_sql_no_placeholder_docente('d') . "
+        LEFT JOIN cargos cargo
+            ON cargo.id_cargo = cd.id_cargo
+        WHERE cd.id_catedra = :id_catedra
+          AND cd.activo = 1
+        ORDER BY
+            CASE
+                WHEN cd.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo.cargo, ''))) = 'SUPLENTE' THEN 0
+                WHEN cd.id_cargo = 1 OR UPPER(TRIM(COALESCE(cargo.cargo, ''))) = 'TITULAR' THEN 1
+                ELSE 2
+            END ASC,
+            cd.id_catedra_docente DESC
+        LIMIT 1
+    ");
+    $stmtRelacion->execute([':id_catedra' => $idCatedra]);
+    $idRelacion = $stmtRelacion->fetchColumn();
+
+    return $idRelacion !== false && $idRelacion !== null && (int)$idRelacion > 0 ? (int)$idRelacion : null;
+}
+
+
 /**
  * Elimina avisos pendientes cuando ya no hay diferencia real entre Mesas y Cátedras.
  *
@@ -98,8 +172,13 @@ function mesas_docentes_cambios_eliminar_pendiente_actual(PDO $pdo, int $idCated
  */
 function mesas_docentes_cambios_limpiar_pendientes_resueltos(PDO $pdo): int
 {
-    $sql = "
-        DELETE c
+    mesas_docentes_cambios_asegurar_tabla($pdo);
+
+    $stmt = $pdo->query("\n        SELECT
+            c.id_cambio,
+            c.id_catedra,
+            c.numero_mesa,
+            mesa_actual.id_docente_en_mesa
         FROM mesas_docente_cambios_pendientes c
         LEFT JOIN (
             SELECT
@@ -113,37 +192,33 @@ function mesas_docentes_cambios_limpiar_pendientes_resueltos(PDO $pdo): int
         ) mesa_actual
             ON mesa_actual.id_catedra = c.id_catedra
            AND mesa_actual.numero_mesa = c.numero_mesa
-        LEFT JOIN catedras cat
-            ON cat.id_catedra = c.id_catedra
-        LEFT JOIN catedras_docentes cd
-            ON cd.id_catedra = cat.id_catedra
-           AND cd.activo = 1
-           AND cd.id_catedra_docente = (
-                SELECT cd3.id_catedra_docente
-                FROM catedras_docentes cd3
-                LEFT JOIN docentes d3 ON d3.id_docente = cd3.id_docente
-                LEFT JOIN cargos cargo3 ON cargo3.id_cargo = cd3.id_cargo
-                WHERE cd3.id_catedra = cat.id_catedra
-                  AND cd3.activo = 1
-                ORDER BY
-                    CASE
-                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
-                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 1 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'TITULAR') THEN 1
-                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 2
-                        ELSE 3
-                    END ASC,
-                    cd3.id_catedra_docente ASC
-                LIMIT 1
-           )
         WHERE c.estado = 'pendiente'
-          AND (
-                mesa_actual.id_catedra IS NULL
-                OR COALESCE(mesa_actual.id_docente_en_mesa, 0) = COALESCE(cd.id_docente, cat.id_docente, 0)
-          )
-    ";
+    ");
 
-    $afectados = $pdo->exec($sql);
-    return is_int($afectados) ? $afectados : 0;
+    $pendientes = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    $stmtDelete = $pdo->prepare("\n        DELETE FROM mesas_docente_cambios_pendientes
+        WHERE id_cambio = :id_cambio
+          AND estado = 'pendiente'
+    ");
+
+    $borrados = 0;
+    foreach ($pendientes as $pendiente) {
+        $idCambio = (int)($pendiente['id_cambio'] ?? 0);
+        $idCatedra = (int)($pendiente['id_catedra'] ?? 0);
+        $idMesa = isset($pendiente['id_docente_en_mesa']) && $pendiente['id_docente_en_mesa'] !== null
+            ? (int)$pendiente['id_docente_en_mesa']
+            : null;
+        $idActual = mesas_docentes_cambios_docente_actual_catedra($pdo, $idCatedra);
+
+        // Si la mesa ya no existe, o ya coincide con el docente actualmente marcado para llamar,
+        // el aviso no corresponde más.
+        if ($idCambio > 0 && ($idMesa === null || $idMesa === $idActual)) {
+            $stmtDelete->execute([':id_cambio' => $idCambio]);
+            $borrados += $stmtDelete->rowCount();
+        }
+    }
+
+    return $borrados;
 }
 
 function mesas_docentes_cambios_debe_omitir_por_estado_previo(PDO $pdo, int $idCatedra, int $numeroMesa, ?int $idDocenteEnMesa, ?int $idDocenteNuevo): bool
@@ -283,18 +358,39 @@ function mesas_docentes_cambios_registrar_diferencias_actuales(PDO $pdo): int
 {
     mesas_docentes_cambios_asegurar_tabla($pdo);
 
-    $stmt = $pdo->query("\n        SELECT\n            me.id_catedra,\n            me.numero_mesa,\n            MIN(me.id_docente) AS id_docente_en_mesa,\n            COALESCE(cd.id_docente, cat.id_docente) AS id_docente_actual_catedra,\n            MIN(me.fecha_mesa) AS fecha_mesa,\n            MIN(me.id_turno) AS id_turno,\n            MIN(g.numero_grupo) AS numero_grupo,\n            MAX(m.materia) AS materia\n        FROM mesas me\n        INNER JOIN catedras cat ON cat.id_catedra = me.id_catedra\n        LEFT JOIN catedras_docentes cd\n            ON cd.id_catedra = cat.id_catedra\n           AND cd.activo = 1\n           AND cd.id_catedra_docente = (\n                SELECT cd3.id_catedra_docente\n                FROM catedras_docentes cd3\n                LEFT JOIN docentes d3 ON d3.id_docente = cd3.id_docente\n                LEFT JOIN cargos cargo3 ON cargo3.id_cargo = cd3.id_cargo\n                WHERE cd3.id_catedra = cat.id_catedra\n                  AND cd3.activo = 1\n                ORDER BY\n                    CASE\n                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0\n                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 1 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'TITULAR') THEN 1\n                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 2\n                        ELSE 3\n                    END ASC,\n                    cd3.id_catedra_docente ASC\n                LIMIT 1\n           )\n        LEFT JOIN mesas_grupos g ON g.numero_mesa = me.numero_mesa\n        LEFT JOIN materias m ON m.id_materia = cat.id_materia\n        WHERE me.id_catedra IS NOT NULL\n          AND me.numero_mesa IS NOT NULL\n          AND COALESCE(me.id_docente, 0) <> COALESCE(cd.id_docente, cat.id_docente, 0)\n        GROUP BY me.id_catedra, me.numero_mesa, COALESCE(cd.id_docente, cat.id_docente)\n        ORDER BY me.numero_mesa ASC\n    ");
+    $stmt = $pdo->query("\n        SELECT
+            me.id_catedra,
+            me.numero_mesa,
+            MIN(me.id_docente) AS id_docente_en_mesa,
+            MIN(me.fecha_mesa) AS fecha_mesa,
+            MIN(me.id_turno) AS id_turno,
+            MIN(g.numero_grupo) AS numero_grupo,
+            MAX(m.materia) AS materia
+        FROM mesas me
+        INNER JOIN catedras cat ON cat.id_catedra = me.id_catedra
+        LEFT JOIN mesas_grupos g ON g.numero_mesa = me.numero_mesa
+        LEFT JOIN materias m ON m.id_materia = cat.id_materia
+        WHERE me.id_catedra IS NOT NULL
+          AND me.numero_mesa IS NOT NULL
+        GROUP BY me.id_catedra, me.numero_mesa
+        ORDER BY me.numero_mesa ASC
+    ");
 
     $filas = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     $afectados = 0;
 
     foreach ($filas as $fila) {
+        $idCatedra = (int)($fila['id_catedra'] ?? 0);
+        $numeroMesa = (int)($fila['numero_mesa'] ?? 0);
         $idDocenteEnMesa = isset($fila['id_docente_en_mesa']) && $fila['id_docente_en_mesa'] !== null
             ? (int)$fila['id_docente_en_mesa']
             : null;
-        $idDocenteActual = isset($fila['id_docente_actual_catedra']) && $fila['id_docente_actual_catedra'] !== null
-            ? (int)$fila['id_docente_actual_catedra']
-            : null;
+        $idDocenteActual = mesas_docentes_cambios_docente_actual_catedra($pdo, $idCatedra);
+
+        if ($numeroMesa <= 0 || $idDocenteEnMesa === $idDocenteActual) {
+            mesas_docentes_cambios_eliminar_pendiente_actual($pdo, $idCatedra, $numeroMesa);
+            continue;
+        }
 
         $afectados += mesas_docentes_cambios_guardar_pendiente(
             $pdo,

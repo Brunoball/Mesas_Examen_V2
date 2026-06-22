@@ -67,6 +67,7 @@ export const catedrasApi = {
       ? docentes.map((asignacion) => ({
         id_docente: Number(asignacion.id_docente || 0),
         id_cargo: Number(asignacion.id_cargo || 0),
+        llamado_mesa: Boolean(asignacion.llamado_mesa),
       }))
       : [];
 

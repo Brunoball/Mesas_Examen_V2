@@ -58,9 +58,9 @@ export default function ModalInfoDocente({ item, onCerrar }) {
     return Array.from(mapa.values());
   }, [catedras]);
 
-  const disponibilidades = Array.isArray(item?.disponibilidades)
-    ? item.disponibilidades
-    : [];
+  const disponibilidades = Array.isArray(item?.indisponibilidades)
+    ? item.indisponibilidades
+    : (Array.isArray(item?.disponibilidades) ? item.disponibilidades : []);
 
   const estaActivo = Number(item?.activo) === 1;
   const idDocente = item?.id_docente || item?.ids_docentes_texto || '—';
@@ -129,7 +129,7 @@ export default function ModalInfoDocente({ item, onCerrar }) {
                 {item?.docente || 'Docente'}
               </span>
             </h2>
-            <p>Datos únicos del docente, cargos por cátedra y disponibilidad cargada.</p>
+            <p>Datos únicos del docente, cargos por cátedra e indisponibilidades cargadas.</p>
           </div>
 
           <button
@@ -222,9 +222,9 @@ export default function ModalInfoDocente({ item, onCerrar }) {
               </div>
 
               <div className="docentes-info-card__body">
-                <span>Días disponibles</span>
+                <span>Indisponibilidades</span>
                 <strong>{disponibilidades.length}</strong>
-                <small>Reglas cargadas</small>
+                <small>Cuándo NO puede asistir</small>
               </div>
             </div>
           </div>
@@ -287,13 +287,13 @@ export default function ModalInfoDocente({ item, onCerrar }) {
           <section className="docentes-info-section">
             <h3>
               <FontAwesomeIcon icon={faCalendarDays} />
-              Días y turnos que asiste
+              Indisponibilidad: días y turnos que NO asiste
             </h3>
 
             <div className="docentes-bloques-lista">
               {disponibilidades.length === 0 && (
                 <div className="docentes-empty-small">
-                  Sin disponibilidad cargada.
+                  Sin indisponibilidad cargada. Puede asistir en cualquier fecha y turno habilitado.
                 </div>
               )}
 

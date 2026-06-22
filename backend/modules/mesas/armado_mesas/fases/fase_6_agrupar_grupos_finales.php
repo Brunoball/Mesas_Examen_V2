@@ -616,7 +616,7 @@ function mesas_armado_grupos_motivo_invalido(array $numero, array $disponibilida
         }
 
         if (mesas_armado_docente_no_disponible($disponibilidadDocentes, $idDocente, (string)$numero['fecha_mesa'], (int)$numero['id_turno'])) {
-            return 'docente_sin_disponibilidad_en_dia_turno';
+            return 'docente_con_indisponibilidad_en_dia_turno';
         }
     }
 

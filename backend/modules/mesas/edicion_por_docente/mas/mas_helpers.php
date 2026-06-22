@@ -302,7 +302,7 @@ function mesas_editar_docentes_mas_obtener_previa_base(PDO $pdo, int $idPrevia):
 function mesas_editar_docentes_mas_obtener_previas_base_por_area(PDO $pdo, int $idArea, ?int $idDocente = null, int $limite = 250): array
 {
     // En armado por área, el listado respeta el área del número destino.
-    // En armado por disponibilidad docente, el área deja de ser restricción dura:
+    // En armado por indisponibilidad docente, el área deja de ser restricción dura:
     // se listan por docente y después se validan disponibilidad/choques/correlativas.
     $filtrarArea = mesas_editar_docentes_debe_respetar_area($pdo) && $idArea > 0;
     $joinArea = $filtrarArea

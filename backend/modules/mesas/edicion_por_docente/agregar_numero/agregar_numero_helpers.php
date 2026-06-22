@@ -236,7 +236,7 @@ function mesas_editar_docentes_agregar_numero_validar_numero_en_grupo(PDO $pdo, 
     $errores = [];
     $advertencias = [];
 
-    // En el armado por disponibilidad docente el área es secundaria: no bloquea.
+    // En el armado por indisponibilidad docente el área es secundaria: no bloquea.
     // En el armado por área sí se respeta como restricción dura.
     $validarSoloChoquesSlot = !empty($opciones['solo_choques_slot']);
     $esArmadoDocentes = mesas_editar_docentes_es_armado_por_docentes($pdo);
@@ -303,7 +303,7 @@ function mesas_editar_docentes_agregar_numero_validar_numero_en_grupo(PDO $pdo, 
 
         // Siempre se validan reglas duras: disponibilidad/bloqueos/choques de docentes,
         // choque de alumnos por DNI y correlatividades. Lo único variable es el área:
-        // por disponibilidad docente se ignora; por área se respeta arriba.
+        // en el armado por indisponibilidad docente se ignora; por área se respeta arriba.
         $errores = array_merge($errores, mesas_editar_docentes_validar_docentes($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
         $errores = array_merge($errores, mesas_editar_docentes_validar_alumnos($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
         $errores = array_merge($errores, mesas_editar_docentes_validar_correlativas($pdo, $detalleFinal, $fechaDestino, $idTurnoDestino));
@@ -504,7 +504,7 @@ function mesas_editar_docentes_agregar_numero_validar_previa_para_slot(PDO $pdo,
         if (mesas_editar_docentes_debe_respetar_area($pdo)) {
             $errores[] = 'La previa no pertenece al área del grupo seleccionado.';
         } else {
-            $advertencias[] = 'La previa pertenece a otra área, pero se permite porque el armado actual es por disponibilidad docente.';
+            $advertencias[] = 'La previa pertenece a otra área, pero se permite porque el armado actual es por indisponibilidad docente.';
         }
     }
 
@@ -544,7 +544,7 @@ function mesas_editar_docentes_agregar_numero_validar_previa_para_slot(PDO $pdo,
         // se siguen detectando choques con cualquier número del grupo o de otros grupos:
         // - si el docente ya está en ese día/turno, no aparece;
         // - si el alumno ya rinde en ese día/turno, no aparece;
-        // - si el docente no tiene disponibilidad para ese día/turno, no aparece.
+        // - si el docente tiene indisponibilidad cargada para ese día/turno, no aparece.
         $detalle = mesas_editar_docentes_agregar_numero_detalle_previa($previa, $numeroValidacion);
         $errores = array_merge($errores, mesas_editar_docentes_validar_docentes($pdo, $detalle, $fechaDestino, $idTurnoDestino));
         $errores = array_merge($errores, mesas_editar_docentes_validar_alumnos($pdo, $detalle, $fechaDestino, $idTurnoDestino));
@@ -563,7 +563,7 @@ function mesas_editar_docentes_agregar_numero_obtener_previas_sin_mesa(PDO $pdo,
 {
     // Antes se hacía LIMIT antes de validar. Eso podía dejar afuera previas nuevas
     // aunque fueran válidas, simplemente porque quedaban después de las primeras 300
-    // filas ordenadas por alumno. En edición por disponibilidad docente se escanean
+    // filas ordenadas por alumno. En edición por indisponibilidad docente se escanean
     // todas las previas sueltas y recién después se corta la salida.
     $limite = max(1, min(3000, $limite));
 

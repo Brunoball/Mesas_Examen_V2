@@ -1325,7 +1325,7 @@ function mesas_editar_validar_docentes(PDO $pdo, array $detalle, string $fechaMe
         }
 
         if (mesas_armado_docente_no_disponible($disponibilidad, $idDocente, $fechaMesa, $idTurno)) {
-            $errores[] = 'El docente ' . $nombreDocente . ' no tiene disponibilidad para esa fecha y turno.';
+            $errores[] = 'El docente ' . $nombreDocente . ' tiene una indisponibilidad cargada para esa fecha y turno.';
         }
     }
 

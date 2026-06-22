@@ -16,10 +16,10 @@ declare(strict_types=1);
 | - Taller se maneja como mesa especial y nunca se mezcla dentro del mismo numero_mesa.
 | - Correlativa NO es mesa especial aislada: se trata como mesa normal con prioridad académica.
 | - Asigna fecha/turno a TODOS los numeros posibles, no deja normales en NULL por comodidad.
-| - Prioriza disponibilidad docente: las áreas solo ayudan a ordenar de forma secundaria.
+| - Prioriza la ausencia de bloqueos docentes: las áreas solo ayudan a ordenar de forma secundaria.
 | - Las correlativas anteriores y las mesas con más alumnos toman los primeros slots disponibles.
 | - Las mesas chicas se ubican después, preferentemente en slots ya abiertos donde sus docentes puedan asistir.
-| - Respeta docentes_disponibilidad como disponibilidad positiva; el área no bloquea el slot.
+| - Respeta docentes_disponibilidad como indisponibilidad/bloqueo docente; el área no bloquea el slot.
 | - Evita que el mismo docente quede en salidas separadas; puede compartir slot si luego se consolida en una misma salida compatible.
 | - Evita que un mismo alumno esté en dos mesas en el mismo slot.
 | - Si una correlativa posterior depende de una anterior del mismo alumno,
@@ -306,12 +306,13 @@ function mesas_armado_docentes_normalizar_docente_desde_catedra(PDO $pdo): int
                   AND cd3.activo = 1
                 ORDER BY
                     CASE
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND cd3.id_docente = cat.id_docente THEN -1
                         WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
                         WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 1 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'TITULAR') THEN 1
                         WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 2
                         ELSE 3
                     END ASC,
-                    cd3.id_catedra_docente ASC
+                    cd3.id_catedra_docente DESC
                 LIMIT 1
            )
         INNER JOIN docentes doc
@@ -385,12 +386,13 @@ function mesas_armado_docentes_obtener_filas_para_validar(PDO $pdo): array
                   AND cd3.activo = 1
                 ORDER BY
                     CASE
+                        WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND cd3.id_docente = cat.id_docente THEN -1
                         WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 2 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'SUPLENTE') THEN 0
                         WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL AND (cd3.id_cargo = 1 OR UPPER(TRIM(COALESCE(cargo3.cargo, ''))) = 'TITULAR') THEN 1
                         WHEN d3.activo = 1 AND d3.id_docente IS NOT NULL THEN 2
                         ELSE 3
                     END ASC,
-                    cd3.id_catedra_docente ASC
+                    cd3.id_catedra_docente DESC
                 LIMIT 1
            )
         LEFT JOIN materias mat
@@ -998,7 +1000,7 @@ function mesas_armado_docentes_calendarizar_grupos(
 
         if ($slotAsignado === null) {
             $observacionNoCalendarizada = mesas_armado_docentes_describir_sin_slot_por_disponibilidad_fuera_rango($grupo, $slots, $disponibilidadDocentes)
-                ?? 'No se encontró fecha/turno dentro del rango solicitado respetando disponibilidad docente, alumnos y correlativas.';
+                ?? 'No se encontró fecha/turno dentro del rango solicitado evitando indisponibilidades docentes, choques de alumnos y correlativas.';
 
             mesas_armado_docentes_marcar_grupo_observado(
                 $pdo,
@@ -1123,14 +1125,14 @@ function mesas_armado_docentes_calendarizar_grupos(
         'plan_distribucion_slots' => $planDistribucion,
         'criterio_profesional' => [
             'fecha_turno_en_mesas' => 'La fecha_mesa/id_turno cargada en mesas es la propuesta operativa del numero_mesa. En mesas_grupos solo se deben unir numeros que ya comparten ese mismo slot, salvo que una reoptimización los mueva juntos.',
-            'distribucion' => 'El armado por disponibilidad docente primero evalúa slots compatibles con los docentes y usa el área como criterio secundario para repartir y compactar sin saturar un solo día/turno.',
+            'distribucion' => 'El armado por indisponibilidad docente primero descarta los slots bloqueados por los docentes y usa el área como criterio secundario para repartir y compactar sin saturar un solo día/turno.',
             'compactacion' => 'La compactación por área sigue existiendo como preferencia secundaria: ayuda a formar grupos de 2 a 4 cuando no rompe disponibilidad, correlativas ni choques.',
-            'prioridad' => 'Correlativa anterior, correlativas, talleres y docentes con disponibilidad explícita se procesan antes para reservar los slots más restrictivos.',
+            'prioridad' => 'Correlativa anterior, correlativas, talleres y docentes con indisponibilidades cargadas se procesan antes para reservar los slots más restrictivos.',
             'taller' => 'Taller sigue siendo especial: no se mezcla dentro del mismo numero_mesa, pero puede compartir fecha/turno con otros numeros si no chocan docentes ni alumnos.',
         ],
         'orden_aplicado' => [
             '1_prioridad_academica' => 'correlativa anterior/equivalente/posterior como prioridad de orden; no como tipo aislado obligatorio',
-            '2_restriccion_docente' => 'docentes con disponibilidad cargada primero y elección inicial de slots compatibles por día/turno',
+            '2_restriccion_docente' => 'docentes con indisponibilidades cargadas primero y elección inicial de slots no bloqueados por día/turno',
             '3_volumen' => 'mayor cantidad de alumnos y previas primero cuando la restricción docente ya fue considerada',
             '4_area_secundaria' => 'el área solo ordena de forma secundaria; no impide mezclar materias si los docentes pueden el mismo día/turno',
             '5_compatibilidad' => 'sin choque de DNI/alumno ni correlativa posterior antes de anterior; el mismo docente solo comparte slot en casos simples compatibles de la misma área.',
@@ -1144,36 +1146,6 @@ function mesas_armado_docentes_describir_sin_slot_por_disponibilidad_fuera_rango
     if (count($slots) === 0) {
         return null;
     }
-
-    $slotsPermitidos = [];
-    $slotsPermitidosPorFecha = [];
-    foreach ($slots as $slot) {
-        $fecha = (string)($slot['fecha'] ?? $slot['fecha_mesa'] ?? '');
-        $idTurno = (int)($slot['id_turno'] ?? 0);
-        $diaSemana = function_exists('mesas_armado_docentes_dia_semana_desde_fecha')
-            ? mesas_armado_docentes_dia_semana_desde_fecha($fecha)
-            : null;
-
-        if ($diaSemana !== null && $idTurno > 0) {
-            $slotsPermitidos[$diaSemana . '|' . $idTurno] = true;
-        }
-
-        if (mesas_armado_docentes_fecha_valida($fecha) && $idTurno > 0) {
-            $slotsPermitidosPorFecha[$fecha . '|' . $idTurno] = true;
-        }
-    }
-
-    if (count($slotsPermitidos) === 0 && count($slotsPermitidosPorFecha) === 0) {
-        return null;
-    }
-
-    $dias = [
-        1 => 'lunes',
-        2 => 'martes',
-        3 => 'miércoles',
-        4 => 'jueves',
-        5 => 'viernes',
-    ];
 
     $nombreTurno = static function (int $idTurno): string {
         return match ($idTurno) {
@@ -1191,7 +1163,7 @@ function mesas_armado_docentes_describir_sin_slot_por_disponibilidad_fuera_rango
 
     $docentes = array_values($grupo['docentes'] ?? []);
     $nombres = array_values($grupo['docentes_nombres'] ?? []);
-    $docentesFuera = [];
+    $docentesBloqueados = [];
 
     foreach ($docentes as $idx => $idDocenteRaw) {
         $idDocente = (int)$idDocenteRaw;
@@ -1199,54 +1171,41 @@ function mesas_armado_docentes_describir_sin_slot_por_disponibilidad_fuera_rango
             continue;
         }
 
-        $tieneDisponibilidadEnRango = false;
-        $disponibilidadesTexto = [];
+        $tieneAlgunSlotHabil = false;
+        $bloqueosTexto = [];
 
-        foreach ($disponibilidadDocentes[$idDocente] as $registro) {
-            $diaRegistro = (int)($registro['dia_semana'] ?? 0);
-            $turnoRegistro = (int)($registro['id_turno'] ?? 0);
-            $fechaRegistro = trim((string)($registro['fecha'] ?? ''));
-            if ($turnoRegistro <= 0) {
+        foreach ($slots as $slot) {
+            $fecha = (string)($slot['fecha'] ?? $slot['fecha_mesa'] ?? '');
+            $idTurno = (int)($slot['id_turno'] ?? 0);
+
+            if (!mesas_armado_docentes_fecha_valida($fecha) || $idTurno <= 0) {
                 continue;
             }
 
-            if ($fechaRegistro !== '') {
-                if (isset($slotsPermitidosPorFecha[$fechaRegistro . '|' . $turnoRegistro])) {
-                    $tieneDisponibilidadEnRango = true;
-                }
-
-                $disponibilidadesTexto[$formatearFecha($fechaRegistro) . ' ' . $nombreTurno($turnoRegistro)] = true;
-                continue;
+            if (!mesas_armado_docentes_docente_no_disponible($disponibilidadDocentes, $idDocente, $fecha, $idTurno)) {
+                $tieneAlgunSlotHabil = true;
+                break;
             }
 
-            if ($diaRegistro <= 0) {
-                continue;
-            }
-
-            if (isset($slotsPermitidos[$diaRegistro . '|' . $turnoRegistro])) {
-                $tieneDisponibilidadEnRango = true;
-            }
-
-            $diaTexto = $dias[$diaRegistro] ?? ('día ' . $diaRegistro);
-            $disponibilidadesTexto[$diaTexto . ' ' . $nombreTurno($turnoRegistro)] = true;
+            $bloqueosTexto[$formatearFecha($fecha) . ' ' . $nombreTurno($idTurno)] = true;
         }
 
-        if (!$tieneDisponibilidadEnRango && count($disponibilidadesTexto) > 0) {
+        if (!$tieneAlgunSlotHabil && count($bloqueosTexto) > 0) {
             $nombre = trim((string)($nombres[$idx] ?? ''));
             if ($nombre === '') {
                 $nombre = 'Docente ' . $idDocente;
             }
 
-            $docentesFuera[] = $nombre . ' disponible solo: ' . implode(', ', array_keys($disponibilidadesTexto));
+            $docentesBloqueados[] = $nombre . ' no puede: ' . implode(', ', array_keys($bloqueosTexto));
         }
     }
 
-    if (count($docentesFuera) === 0) {
+    if (count($docentesBloqueados) === 0) {
         return null;
     }
 
     return mb_substr(
-        'Docente fuera del rango solicitado. ' . implode(' | ', $docentesFuera) . '. La mesa queda no agrupada.',
+        'Docente bloqueado por indisponibilidad dentro del rango solicitado. ' . implode(' | ', $docentesBloqueados) . '. La mesa queda no agrupada.',
         0,
         255,
         'UTF-8'
@@ -1494,7 +1453,7 @@ function mesas_armado_docentes_indices_slots_para_grupo(
 
         return [
             $scoreDisponibilidadA[0], // primero: que todos los docentes puedan ese día/turno
-            $scoreDisponibilidadA[1], // segundo: disponibilidad explícita real del docente
+            $scoreDisponibilidadA[1], // segundo: docente con reglas de indisponibilidad cargadas
             $aCargaSlot,              // tercero: carga general del slot, no el área
             $aEnPlan,                 // área/plan queda como criterio secundario
             $aBucketSaturado,
@@ -1587,7 +1546,7 @@ function mesas_armado_docentes_slot_respeta_correlativas(array $grupo, int $slot
 function mesas_armado_docentes_grupo_permite_compartir_docente_en_slot(array $grupo): bool
 {
     /*
-     * En el armado por disponibilidad docente el área no bloquea.
+     * En el armado por indisponibilidad docente el área no bloquea.
      * Un docente puede tener más de un número en el mismo día/turno si no es taller
      * y luego la fase de grupos/blindaje lo consolida en una misma salida compatible.
      */

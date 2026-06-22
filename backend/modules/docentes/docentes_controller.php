@@ -132,6 +132,31 @@ function docentes_dia_semana_desde_fecha(string $fecha): int
     return ($dia >= 1 && $dia <= 5) ? $dia : 0;
 }
 
+function docentes_ajustar_fecha_a_dia_semana(string $fecha, int $diaObjetivo): ?string
+{
+    if ($diaObjetivo < 1 || $diaObjetivo > 5) {
+        return null;
+    }
+
+    $dt = DateTime::createFromFormat('Y-m-d', $fecha);
+
+    if (!$dt || $dt->format('Y-m-d') !== $fecha) {
+        return null;
+    }
+
+    // Si una fecha puntual ya existe y el usuario cambia el día semanal,
+    // se mueve la fecha al mismo lunes-viernes de esa semana.
+    // Ejemplo: viernes 2026-07-24 + miércoles => 2026-07-22.
+    $diaActual = (int)$dt->format('N');
+    $delta = $diaObjetivo - $diaActual;
+
+    if ($delta !== 0) {
+        $dt->modify(($delta > 0 ? '+' : '') . $delta . ' days');
+    }
+
+    return $dt->format('Y-m-d');
+}
+
 function docentes_obtener_turnos_activos(PDO $pdo): array
 {
     $stmt = $pdo->query("
@@ -148,6 +173,247 @@ function docentes_validar_dia_semana($dia): int
 {
     $dia = docentes_int($dia);
     return ($dia >= 1 && $dia <= 5) ? $dia : 0;
+}
+
+
+function docentes_nombre_dia_semana(int $diaSemana): string
+{
+    switch ($diaSemana) {
+        case 1:
+            return 'LUNES';
+        case 2:
+            return 'MARTES';
+        case 3:
+            return 'MIÉRCOLES';
+        case 4:
+            return 'JUEVES';
+        case 5:
+            return 'VIERNES';
+        default:
+            return '';
+    }
+}
+
+function docentes_normalizar_disponibilidad_fila(array $fila): array
+{
+    $diaSemana = docentes_validar_dia_semana($fila['id_dia_semana'] ?? $fila['dia_semana'] ?? null);
+    $idTurno = docentes_int($fila['id_turno'] ?? 0);
+    $fecha = trim((string)($fila['fecha'] ?? ''));
+
+    return [
+        'id_disponibilidad' => docentes_int($fila['id_disponibilidad'] ?? 0) ?: null,
+        'id_dia_semana' => $diaSemana ?: null,
+        'dia_semana' => trim((string)($fila['dia_semana_nombre'] ?? $fila['dia_semana_texto'] ?? '')) ?: docentes_nombre_dia_semana($diaSemana),
+        'id_turno' => $idTurno ?: null,
+        'turno' => trim((string)($fila['turno'] ?? '')),
+        'fecha' => $fecha !== '' ? $fecha : null,
+    ];
+}
+
+function docentes_disponibilidades_desde_firmas(?string $firmas): array
+{
+    $firmas = trim((string)$firmas);
+
+    if ($firmas === '') {
+        return [];
+    }
+
+    $filas = [];
+
+    foreach (explode(';', $firmas) as $firma) {
+        $firma = trim($firma);
+        if ($firma === '') {
+            continue;
+        }
+
+        $partes = explode('|', $firma);
+        if (count($partes) < 4) {
+            continue;
+        }
+
+        [$idDisponibilidad, $diaSemana, $idTurno, $fecha] = $partes;
+
+        $filas[] = docentes_normalizar_disponibilidad_fila([
+            'id_disponibilidad' => $idDisponibilidad,
+            'id_dia_semana' => $diaSemana,
+            'id_turno' => $idTurno,
+            'fecha' => $fecha !== '' ? $fecha : null,
+        ]);
+    }
+
+    return $filas;
+}
+
+function docentes_compactar_disponibilidades(array $disponibilidades, array $turnosActivos): array
+{
+    $turnosActivos = array_values(array_unique(array_filter(array_map('intval', $turnosActivos))));
+    sort($turnosActivos);
+
+    $filas = [];
+
+    foreach ($disponibilidades as $fila) {
+        if (!is_array($fila)) {
+            continue;
+        }
+
+        $normalizada = docentes_normalizar_disponibilidad_fila($fila);
+
+        if (!$normalizada['id_dia_semana']) {
+            continue;
+        }
+
+        $filas[] = $normalizada;
+    }
+
+    if (!$filas) {
+        return [];
+    }
+
+    $usadas = [];
+    $resultado = [];
+
+    // Una regla de día completo se guarda físicamente como una fila por turno
+    // para que el armado pueda trabajar por slot exacto. Para mostrar y contar,
+    // esas filas deben volver a compactarse como UNA sola disponibilidad.
+    $porDiaFecha = [];
+    foreach ($filas as $idx => $fila) {
+        $clave = ((int)$fila['id_dia_semana']) . '|' . ($fila['fecha'] ?? '');
+        $porDiaFecha[$clave][] = $idx;
+    }
+
+    foreach ($porDiaFecha as $indices) {
+        $turnosGrupo = [];
+        foreach ($indices as $idx) {
+            $turno = (int)($filas[$idx]['id_turno'] ?? 0);
+            if ($turno > 0) {
+                $turnosGrupo[] = $turno;
+            }
+        }
+
+        $turnosGrupo = array_values(array_unique($turnosGrupo));
+        sort($turnosGrupo);
+
+        $cubreDiaCompleto = $turnosActivos
+            ? count(array_intersect($turnosActivos, $turnosGrupo)) >= count($turnosActivos)
+            : count($turnosGrupo) > 1;
+
+        if (!$cubreDiaCompleto || count($indices) <= 1) {
+            continue;
+        }
+
+        $base = $filas[$indices[0]];
+        $base['id_disponibilidad'] = $base['id_disponibilidad'] ?? null;
+        $base['id_turno'] = null;
+        $base['turno'] = 'DÍA COMPLETO';
+        $base['es_dia_completo'] = true;
+
+        $resultado[] = $base;
+        foreach ($indices as $idx) {
+            $usadas[$idx] = true;
+        }
+    }
+
+    // Una regla de "solo turno" se guarda como lunes-viernes para ese turno.
+    // Si aparece exactamente así, se cuenta como una regla lógica y no como 5.
+    $diasHabiles = [1, 2, 3, 4, 5];
+    $porTurnoSinFecha = [];
+    foreach ($filas as $idx => $fila) {
+        if (isset($usadas[$idx]) || ($fila['fecha'] ?? null)) {
+            continue;
+        }
+
+        $turno = (int)($fila['id_turno'] ?? 0);
+        if ($turno <= 0) {
+            continue;
+        }
+
+        $porTurnoSinFecha[$turno][] = $idx;
+    }
+
+    foreach ($porTurnoSinFecha as $turno => $indices) {
+        $diasGrupo = [];
+        foreach ($indices as $idx) {
+            $diasGrupo[] = (int)$filas[$idx]['id_dia_semana'];
+        }
+
+        $diasGrupo = array_values(array_unique($diasGrupo));
+        sort($diasGrupo);
+
+        if ($diasGrupo !== $diasHabiles || count($indices) < 5) {
+            continue;
+        }
+
+        $base = $filas[$indices[0]];
+        $base['id_disponibilidad'] = $base['id_disponibilidad'] ?? null;
+        $base['id_dia_semana'] = null;
+        $base['dia_semana'] = 'LUNES A VIERNES';
+        $base['es_turno_semanal'] = true;
+
+        $resultado[] = $base;
+        foreach ($indices as $idx) {
+            $usadas[$idx] = true;
+        }
+    }
+
+    foreach ($filas as $idx => $fila) {
+        if (!isset($usadas[$idx])) {
+            $resultado[] = $fila;
+        }
+    }
+
+    usort($resultado, static function (array $a, array $b): int {
+        return [
+            (int)($a['id_dia_semana'] ?? 0),
+            (string)($a['fecha'] ?? ''),
+            (int)($a['id_turno'] ?? 0),
+        ] <=> [
+            (int)($b['id_dia_semana'] ?? 0),
+            (string)($b['fecha'] ?? ''),
+            (int)($b['id_turno'] ?? 0),
+        ];
+    });
+
+    return array_values($resultado);
+}
+
+function docentes_contar_disponibilidades_logicas(array $disponibilidades, array $turnosActivos): int
+{
+    return count(docentes_compactar_disponibilidades($disponibilidades, $turnosActivos));
+}
+
+function docentes_resumir_indisponibilidades(array $indisponibilidades): string
+{
+    if (!$indisponibilidades) {
+        return 'Sin indisponibilidades cargadas';
+    }
+
+    $partes = [];
+
+    foreach ($indisponibilidades as $bloque) {
+        if (!is_array($bloque)) {
+            continue;
+        }
+
+        $dia = trim((string)($bloque['dia_semana'] ?? ''));
+        $turno = trim((string)($bloque['turno'] ?? ''));
+        $fecha = trim((string)($bloque['fecha'] ?? ''));
+
+        if ($fecha !== '') {
+            $textoFecha = date('d/m/Y', strtotime($fecha));
+            $partes[] = $textoFecha . ($turno !== '' && $turno !== 'DÍA COMPLETO' ? ' ' . $turno : ' día completo');
+            continue;
+        }
+
+        if ($dia !== '' && $turno !== '') {
+            $partes[] = $dia . ' ' . $turno;
+        } elseif ($dia !== '') {
+            $partes[] = $dia . ' día completo';
+        } elseif ($turno !== '') {
+            $partes[] = 'LUNES A VIERNES ' . $turno;
+        }
+    }
+
+    return $partes ? implode(' · ', $partes) : 'Sin indisponibilidades cargadas';
 }
 
 function docentes_catalogo_dias_semana(): array
@@ -207,7 +473,24 @@ function docentes_listar(): void
 
         $whereSql = implode(' AND ', $where);
 
-        $sql = "\n            SELECT\n                d.id_docente,\n                d.id_docente AS ids_docentes_texto,\n                d.docente,\n                d.dni,\n                d.email,\n                d.activo,\n                COALESCE(d.motivo, '') AS observacion,\n                d.fecha_carga AS fecha_registro,\n                COALESCE(\n                    GROUP_CONCAT(DISTINCT cargo.cargo ORDER BY cargo.cargo SEPARATOR ', '),\n                    ''\n                ) AS cargo,\n                COUNT(DISTINCT cat.id_catedra) AS total_catedras,\n                COUNT(DISTINCT disp.id_disponibilidad) AS total_disponibilidades\n            FROM docentes d\n            LEFT JOIN catedras_docentes cd\n                ON cd.id_docente = d.id_docente\n               AND cd.activo = 1\n            LEFT JOIN catedras cat\n                ON cat.id_catedra = cd.id_catedra\n               AND cat.activo = 1\n            LEFT JOIN materias m\n                ON m.id_materia = cat.id_materia\n            LEFT JOIN cargos cargo\n                ON cargo.id_cargo = cd.id_cargo\n            LEFT JOIN docentes_disponibilidad disp\n                ON disp.id_docente = d.id_docente\n            WHERE {$whereSql}\n            GROUP BY\n                d.id_docente,\n                d.docente,\n                d.dni,\n                d.email,\n                d.activo,\n                d.motivo,\n                d.fecha_carga\n            ORDER BY d.docente ASC, d.id_docente ASC\n        ";
+        $sql = "\n            SELECT\n                d.id_docente,\n                d.id_docente AS ids_docentes_texto,\n                d.docente,\n                d.dni,\n                d.email,\n                d.activo,\n                COALESCE(d.motivo, '') AS observacion,\n                d.fecha_carga AS fecha_registro,\n                COALESCE(\n                    GROUP_CONCAT(DISTINCT cargo.cargo ORDER BY cargo.cargo SEPARATOR ', '),\n                    ''\n                ) AS cargo,\n                COUNT(DISTINCT cat.id_catedra) AS total_catedras,\n                COALESCE(
+                    GROUP_CONCAT(
+                        DISTINCT CASE
+                            WHEN disp.id_disponibilidad IS NULL THEN NULL
+                            ELSE CONCAT(
+                                disp.id_disponibilidad,
+                                '|',
+                                disp.dia_semana,
+                                '|',
+                                disp.id_turno,
+                                '|',
+                                COALESCE(DATE_FORMAT(disp.fecha, '%Y-%m-%d'), '')
+                            )
+                        END
+                        SEPARATOR ';'
+                    ),
+                    ''
+                ) AS disponibilidades_firmas\n            FROM docentes d\n            LEFT JOIN catedras_docentes cd\n                ON cd.id_docente = d.id_docente\n               AND cd.activo = 1\n            LEFT JOIN catedras cat\n                ON cat.id_catedra = cd.id_catedra\n               AND cat.activo = 1\n            LEFT JOIN materias m\n                ON m.id_materia = cat.id_materia\n            LEFT JOIN cargos cargo\n                ON cargo.id_cargo = cd.id_cargo\n            LEFT JOIN docentes_disponibilidad disp\n                ON disp.id_docente = d.id_docente\n            WHERE {$whereSql}\n            GROUP BY\n                d.id_docente,\n                d.docente,\n                d.dni,\n                d.email,\n                d.activo,\n                d.motivo,\n                d.fecha_carga\n            ORDER BY d.docente ASC, d.id_docente ASC\n        ";
 
         $stmt = $pdo->prepare($sql);
 
@@ -217,6 +500,7 @@ function docentes_listar(): void
 
         $stmt->execute();
         $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $turnosActivos = docentes_obtener_turnos_activos($pdo);
 
         foreach ($filas as &$fila) {
             $fila['id_docente'] = (int)$fila['id_docente'];
@@ -228,8 +512,14 @@ function docentes_listar(): void
             $fila['gmail'] = $fila['email'];
             $fila['cargo'] = trim((string)($fila['cargo'] ?? '')) ?: 'Sin cátedras asignadas';
             $fila['total_catedras'] = (int)($fila['total_catedras'] ?? 0);
-            $fila['total_disponibilidades'] = (int)($fila['total_disponibilidades'] ?? 0);
-            $fila['total_indisponibilidades'] = 0;
+            $disponibilidadesResumen = docentes_disponibilidades_desde_firmas($fila['disponibilidades_firmas'] ?? '');
+            $indisponibilidadesLogicas = docentes_compactar_disponibilidades($disponibilidadesResumen, $turnosActivos);
+            $totalReglasIndisponibilidad = count($indisponibilidadesLogicas);
+            $fila['total_disponibilidades'] = $totalReglasIndisponibilidad; // alias legacy: la tabla ahora se interpreta como indisponibilidad
+            $fila['total_indisponibilidades'] = $totalReglasIndisponibilidad;
+            $fila['disponibilidad_resumen'] = docentes_resumir_indisponibilidades($indisponibilidadesLogicas); // alias legacy
+            $fila['indisponibilidad_resumen'] = docentes_resumir_indisponibilidades($indisponibilidadesLogicas);
+            unset($fila['disponibilidades_firmas']);
         }
         unset($fila);
 
@@ -306,16 +596,21 @@ function docentes_obtener(): void
         $stmtCatedras->execute([':id_docente' => $idDocente]);
         $catedras = $stmtCatedras->fetchAll(PDO::FETCH_ASSOC);
 
-        $stmtDisponibilidades = $pdo->prepare("\n            SELECT\n                disp.id_disponibilidad,\n                disp.dia_semana AS id_dia_semana,\n                CASE disp.dia_semana\n                    WHEN 1 THEN 'LUNES'\n                    WHEN 2 THEN 'MARTES'\n                    WHEN 3 THEN 'MIÉRCOLES'\n                    WHEN 4 THEN 'JUEVES'\n                    WHEN 5 THEN 'VIERNES'\n                    ELSE ''\n                END AS dia_semana,\n                disp.id_turno,\n                COALESCE(t.turno, '') AS turno,\n                disp.fecha\n            FROM docentes_disponibilidad disp\n            INNER JOIN turnos t\n                ON t.id_turno = disp.id_turno\n            WHERE disp.id_docente = :id_docente\n            ORDER BY\n                disp.dia_semana ASC,\n                t.id_turno ASC,\n                disp.fecha ASC\n        ");
+        $stmtDisponibilidades = $pdo->prepare("\n            SELECT\n                disp.id_disponibilidad,\n                disp.dia_semana AS id_dia_semana,\n                CASE disp.dia_semana\n                    WHEN 1 THEN 'LUNES'\n                    WHEN 2 THEN 'MARTES'\n                    WHEN 3 THEN 'MIÉRCOLES'\n                    WHEN 4 THEN 'JUEVES'\n                    WHEN 5 THEN 'VIERNES'\n                    ELSE ''\n                END AS dia_semana,\n                disp.id_turno,\n                COALESCE(t.turno, '') AS turno,\n                disp.fecha\n            FROM docentes_disponibilidad disp\n            LEFT JOIN turnos t\n                ON t.id_turno = disp.id_turno\n            WHERE disp.id_docente = :id_docente\n            ORDER BY\n                disp.dia_semana ASC,\n                t.id_turno ASC,\n                disp.fecha ASC\n        ");
 
         $stmtDisponibilidades->execute([':id_docente' => $idDocente]);
         $disponibilidades = $stmtDisponibilidades->fetchAll(PDO::FETCH_ASSOC);
+        $turnosActivos = docentes_obtener_turnos_activos($pdo);
+        $disponibilidadesLogicas = docentes_compactar_disponibilidades($disponibilidades, $turnosActivos);
 
         $docente['catedras'] = $catedras;
-        $docente['disponibilidades'] = $disponibilidades;
+        $docente['disponibilidades'] = $disponibilidadesLogicas; // alias legacy: reglas de indisponibilidad
+        $docente['indisponibilidades'] = $disponibilidadesLogicas;
+        $docente['disponibilidad_resumen'] = docentes_resumir_indisponibilidades($disponibilidadesLogicas); // alias legacy
+        $docente['indisponibilidad_resumen'] = docentes_resumir_indisponibilidades($disponibilidadesLogicas);
         $docente['total_catedras'] = count($catedras);
-        $docente['total_disponibilidades'] = count($disponibilidades);
-        $docente['total_indisponibilidades'] = 0;
+        $docente['total_disponibilidades'] = count($disponibilidadesLogicas);
+        $docente['total_indisponibilidades'] = count($disponibilidadesLogicas);
 
         json_response([
             'exito' => true,
@@ -353,22 +648,36 @@ function docentes_guardar_disponibilidades(PDO $pdo, int $idDocente, array $disp
         $diaSemana = docentes_validar_dia_semana($bloque['id_dia_semana'] ?? $bloque['dia_semana'] ?? null);
         $idTurno = docentes_int($bloque['id_turno'] ?? 0);
 
-        // Si hay fecha puntual, el día semanal real se calcula desde esa fecha.
-        // Esto evita que el frontend mande fecha sin día y el backend descarte la regla.
+        // Si hay fecha puntual, día y fecha deben quedar sincronizados.
+        // Cuando el usuario cambia el día de una regla con fecha, el frontend mueve
+        // la fecha al mismo día de esa semana; este respaldo hace lo mismo aunque
+        // llegue un cliente viejo con día y fecha desfasados.
         if ($fecha !== null) {
             $diaDesdeFecha = docentes_dia_semana_desde_fecha($fecha);
             if ($diaDesdeFecha <= 0) {
                 throw new InvalidArgumentException('La fecha puntual debe caer entre lunes y viernes.');
             }
-            $diaSemana = $diaDesdeFecha;
+
+            if ($diaSemana > 0 && $diaSemana !== $diaDesdeFecha) {
+                $fechaAjustada = docentes_ajustar_fecha_a_dia_semana($fecha, $diaSemana);
+
+                if ($fechaAjustada === null || docentes_dia_semana_desde_fecha($fechaAjustada) !== $diaSemana) {
+                    throw new InvalidArgumentException('No se pudo sincronizar la fecha puntual con el día seleccionado.');
+                }
+
+                $fecha = $fechaAjustada;
+            } else {
+                $diaSemana = $diaDesdeFecha;
+            }
         }
 
         $turnosParaGuardar = [];
 
         if ($idTurno > 0) {
             $turnosParaGuardar = [$idTurno];
-        } elseif ($fecha !== null) {
-            // Fecha sin turno: se guarda para todos los turnos activos de esa fecha.
+        } elseif ($fecha !== null || $diaSemana > 0) {
+            // Día o fecha sin turno: se guarda como día completo
+            // creando un registro por cada turno activo (MAÑANA y TARDE).
             $turnosParaGuardar = $turnosActivos;
         }
 
@@ -427,7 +736,9 @@ function docentes_guardar(): void
     $email = docentes_normalizar_email($body['email'] ?? $body['gmail'] ?? '');
     $observacion = trim((string)($body['observacion'] ?? $body['comentarios'] ?? $body['comentario'] ?? $body['motivo'] ?? ''));
     $activo = docentes_int($body['activo'] ?? 1) === 0 ? 0 : 1;
-    $disponibilidades = is_array($body['disponibilidades'] ?? null) ? $body['disponibilidades'] : [];
+    $disponibilidades = is_array($body['indisponibilidades'] ?? null)
+        ? $body['indisponibilidades']
+        : (is_array($body['disponibilidades'] ?? null) ? $body['disponibilidades'] : []);
 
     if ($docente === '') {
         json_response([

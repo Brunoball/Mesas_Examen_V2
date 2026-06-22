@@ -266,7 +266,7 @@ function mesas_editar_docentes_flechas_validar_destino(PDO $pdo, int $numeroMesa
     }
 
     if (count($errores) === 0) {
-        // En edición por disponibilidad docente se valida el estado FINAL del grupo,
+        // En edición por indisponibilidad docente se valida el estado FINAL del grupo,
         // no solo el número origen. Así, si el docente ya está dentro del grupo destino,
         // no se toma como choque falso; se controla disponibilidad, alumnos y correlativas
         // sobre el conjunto real que quedaría después del movimiento.

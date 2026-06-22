@@ -11,7 +11,7 @@ declare(strict_types=1);
  * - Usar mesas simples (prioridad 0) como comodines: se les puede mover fecha/turno
  *   para completar grupos existentes o formar grupos nuevos de 2 a 4 números.
  * - Nunca mezclar talleres, nunca generar choque de alumno y evitar que un docente quede en dos salidas separadas del mismo slot.
- * - Las áreas NO bloquean agrupación: en este armado manda la disponibilidad docente; el área solo ordena candidatos como criterio secundario.
+ * - Las áreas NO bloquean agrupación: en este armado manda la indisponibilidad docente cargada; el área solo ordena candidatos como criterio secundario.
  */
 function mesas_armado_docentes_fase_7_reoptimizar_no_agrupadas(): void
 {
@@ -511,7 +511,7 @@ function mesas_armado_docentes_reopt_es_ancla_prioritaria(array $numero): bool
 function mesas_armado_docentes_reopt_area_compatible(array $numero, ?int $idArea): bool
 {
     /*
-     * Armado por disponibilidad docente:
+     * Armado por indisponibilidad docente:
      * el área NO es una restricción dura. Se conserva esta función por compatibilidad
      * con llamadas existentes, pero siempre permite mezclar áreas distintas.
      * Las reglas duras son: mismo slot viable para los docentes, sin choque de alumno,
@@ -1907,7 +1907,7 @@ function mesas_armado_docentes_reopt_aplicar_reemplazo_en_grupo_lleno(
         (int)$pendienteEnGrupo['prioridad'],
         (int)$pendienteEnGrupo['cantidad_alumnos'],
         $estado,
-        'Reoptimizada profunda: reemplazo en grupo lleno para juntar mismo slot/disponibilidad docente sin quedar con un solo evaluador.',
+        'Reoptimizada profunda: reemplazo en grupo lleno para juntar mismo slot sin bloqueo docente sin quedar con un solo evaluador.',
     ]);
 
     mesas_armado_docentes_reopt_eliminar_pendientes($pdo, [(int)$pendienteEnGrupo['numero_mesa']]);
@@ -2240,7 +2240,7 @@ function mesas_armado_docentes_reopt_quitar_donante_de_grupo_origen(
  *   Si comparte docente + area + slot, primero se intenta unir en el mismo grupo.
  *   Si el grupo no entra por maximo de numeros, se mueve una salida completa a otro slot.
  * - Un alumno nunca puede quedar en dos salidas distintas el mismo dia/turno, incluyendo no agrupadas.
- * - Las reubicaciones respetan disponibilidad docente y correlatividades anterior/posterior.
+ * - Las reubicaciones evitan indisponibilidades docentes y respetan correlatividades anterior/posterior.
  */
 function mesas_armado_docentes_reopt_blindar_choques_docente_alumno_salida(
     PDO $pdo,

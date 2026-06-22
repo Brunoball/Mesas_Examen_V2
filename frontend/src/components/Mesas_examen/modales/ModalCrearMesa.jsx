@@ -417,8 +417,8 @@ const ModalCrearMesa = ({
                   <FontAwesomeIcon icon={faCheck} />
                 </span>
                 <div>
-                  <strong>Armado por disponibilidad docente</strong>
-                  <span>Prioriza días/turnos disponibles del docente y usa el área como criterio secundario.</span>
+                  <strong>Armado por indisponibilidad docente</strong>
+                  <span>Evita los días/turnos bloqueados del docente y usa el área como criterio secundario.</span>
                 </div>
               </label>
             </div>
