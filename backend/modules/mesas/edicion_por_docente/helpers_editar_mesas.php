@@ -1878,7 +1878,7 @@ function mesas_editar_docentes_validar_fecha_en_rango_armado(PDO $pdo, string $f
     $fin = (string)$rango['fecha_fin'];
 
     if ($fechaMesa < $inicio || $fechaMesa > $fin) {
-        return ['La fecha seleccionada está fuera de los días definidos para este armado de mesas (' . $inicio . ' a ' . $fin . ').'];
+        return ['La fecha seleccionada está fuera del rango original del armado (' . $inicio . ' a ' . $fin . '), pero se permite en edición manual si no genera choques.'];
     }
 
     return [];
@@ -1903,7 +1903,14 @@ function mesas_editar_docentes_validar_programacion_completa(PDO $pdo, string $t
 
     $esSlotActual = mesas_editar_docentes_es_slot_actual($contexto, $fechaMesa, $idTurno);
 
-    $errores = array_merge($errores, mesas_editar_docentes_validar_fecha_en_rango_armado($pdo, $fechaMesa, $contexto));
+    // En edición manual se permite mover una mesa fuera del rango original del armado.
+    // El rango queda solo como advertencia informativa; los bloqueos reales siguen siendo
+    // indisponibilidad docente, bloqueos, choques de alumnos/docentes y correlativas.
+    $advertencias = array_values(array_unique(array_merge(
+        $advertencias,
+        mesas_editar_docentes_validar_fecha_en_rango_armado($pdo, $fechaMesa, $contexto)
+    )));
+
     $errores = array_merge($errores, mesas_editar_docentes_validar_docentes($pdo, $detalle, $fechaMesa, $idTurno, $contexto));
     $errores = array_merge($errores, mesas_editar_docentes_validar_alumnos($pdo, $detalle, $fechaMesa, $idTurno, $contexto));
     $errores = array_merge($errores, mesas_editar_docentes_validar_correlativas($pdo, $detalle, $fechaMesa, $idTurno, $contexto));
@@ -1974,44 +1981,10 @@ function mesas_editar_docentes_rango_fechas_para_slots(PDO $pdo, array $data, ?a
         [$inicioSolicitado, $finSolicitado] = [$finSolicitado, $inicioSolicitado];
     }
 
-    $rangoArmado = mesas_editar_docentes_rango_armado_confiable(
-        $pdo,
-        function_exists('mesas_armado_rango_obtener_actual') ? mesas_armado_rango_obtener_actual($pdo) : null
-    );
-
-    if (is_array($rangoArmado)
-        && !empty($rangoArmado['fecha_inicio'])
-        && !empty($rangoArmado['fecha_fin'])
-        && function_exists('mesas_armado_rango_intersectar')
-    ) {
-        $interseccion = mesas_armado_rango_intersectar(
-            $inicioSolicitado,
-            $finSolicitado,
-            (string)$rangoArmado['fecha_inicio'],
-            (string)$rangoArmado['fecha_fin']
-        );
-
-        if ($interseccion !== null) {
-            return [$interseccion[0], $interseccion[1]];
-        }
-
-        // Si el usuario está mirando el mes real de la mesa, no devolvemos un rango viejo
-        // de auditoría/tabla porque eso hace que el calendario muestre "sin fechas" aunque
-        // la mesa ya esté armada en ese mes. Se devuelve el mes solicitado y la validación
-        // posterior marca cada día como válido o bloqueado según restricciones reales.
-        $fechaGrupo = mesas_editar_docentes_parametro_texto($grupo['fecha_mesa'] ?? null);
-        if ($fechaGrupo !== '' && $fechaGrupo >= $inicioSolicitado && $fechaGrupo <= $finSolicitado) {
-            return [$inicioSolicitado, $finSolicitado];
-        }
-
-        $inicioArmado = (string)$rangoArmado['fecha_inicio'];
-        $finArmado = (string)$rangoArmado['fecha_fin'];
-        if ($finArmado < $inicioArmado) {
-            [$inicioArmado, $finArmado] = [$finArmado, $inicioArmado];
-        }
-        return [$inicioArmado, $finArmado];
-    }
-
+    // En edición manual el calendario debe analizar el mes solicitado completo,
+    // aunque el armado original se haya creado para un rango corto de días.
+    // La restricción por rango de armado ya no recorta los slots: solo se valida
+    // que no haya indisponibilidades, bloqueos, choques reales ni correlativas.
     return [$inicioSolicitado, $finSolicitado];
 }
 
