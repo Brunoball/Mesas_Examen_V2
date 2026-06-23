@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faChalkboardTeacher,
+  faCircleInfo,
   faPlus,
   faSave,
   faSearch,
@@ -13,6 +14,7 @@ import {
   faUsers,
 } from '@fortawesome/free-solid-svg-icons';
 import '../../Global/Global_css/Global_Modals.css';
+import ModalContenidoGlobal from '../../Global/Modales/ModalContenidoGlobal.jsx';
 import './ModalCatedras.css';
 
 function normalizar(texto) {
@@ -228,6 +230,7 @@ export default function ModalAsignarDocente({ item, docentes = [], cargos = [], 
   const [busqueda, setBusqueda] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
+  const [modalDetalleResumen, setModalDetalleResumen] = useState(null);
 
   useEffect(() => {
     const overflowAnterior = document.body.style.overflow;
@@ -238,6 +241,11 @@ export default function ModalAsignarDocente({ item, docentes = [], cargos = [], 
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation?.();
+      if (modalDetalleResumen) {
+        setModalDetalleResumen(null);
+        return;
+      }
+
       onCerrar?.();
     };
 
@@ -247,7 +255,7 @@ export default function ModalAsignarDocente({ item, docentes = [], cargos = [], 
       document.body.style.overflow = overflowAnterior;
       document.removeEventListener('keydown', handleKeyDown, true);
     };
-  }, [onCerrar]);
+  }, [onCerrar, modalDetalleResumen]);
 
   const listaDocentes = useMemo(() => (Array.isArray(docentes) ? docentes : []), [docentes]);
   const listaCargos = useMemo(() => (Array.isArray(cargos) ? cargos : []), [cargos]);
@@ -440,6 +448,87 @@ export default function ModalAsignarDocente({ item, docentes = [], cargos = [], 
     ? `${textoAsignacion(docenteLlamado)}`
     : 'La cátedra quedará sin docente para llamar a mesa.';
 
+
+  const detalleDocentesActuales = (
+    <div className="catedras-modal-detalleResumen">
+      <div className="catedras-modal-detalleResumen__head">
+        <span>Cátedra</span>
+        <strong>{item?.materia || '—'}</strong>
+        <small>{cursoDivision}</small>
+      </div>
+
+      {asignaciones.length > 0 ? (
+        <div className="catedras-modal-detalleResumen__list">
+          {asignaciones.map((asignacion, index) => {
+            const esLlamado = docenteLlamado && Number(docenteLlamado.id_docente) === Number(asignacion.id_docente);
+
+            return (
+              <div
+                key={`detalle-${asignacion.id_docente}-${asignacion.id_cargo}-${index}`}
+                className={`catedras-modal-detalleResumen__item ${esLlamado ? 'is-called' : ''}`}
+              >
+                <div className="catedras-modal-detalleResumen__number" aria-hidden="true">
+                  {String(index + 1).padStart(2, '0')}
+                </div>
+                <div className="catedras-modal-detalleResumen__text">
+                  <span>Docente</span>
+                  <strong>{asignacion.docente || `Docente #${asignacion.id_docente}`}</strong>
+                  <small>{asignacion.cargo || 'Cargo sin nombre'}{esLlamado ? ' · se llamará a mesa' : ''}</small>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="catedras-modal-detalleResumen__empty">Todavía no hay docentes asignados a esta cátedra.</div>
+      )}
+    </div>
+  );
+
+  const detalleDocenteLlamado = (
+    <div className="catedras-modal-detalleResumen">
+      <div className="catedras-modal-detalleResumen__head">
+        <span>Se llamará a mesa</span>
+        <strong>{docenteLlamado ? textoAsignacion(docenteLlamado) : 'Sin docente definido'}</strong>
+        <small>{item?.materia || '—'} · {cursoDivision}</small>
+      </div>
+
+      {docenteLlamado ? (
+        <div className="catedras-modal-detalleResumen__list">
+          <div className="catedras-modal-detalleResumen__item is-called">
+            <div className="catedras-modal-detalleResumen__number" aria-hidden="true">01</div>
+            <div className="catedras-modal-detalleResumen__text">
+              <span>Docente seleccionado para mesa</span>
+              <strong>{docenteLlamado.docente || `Docente #${docenteLlamado.id_docente}`}</strong>
+              <small>{docenteLlamado.cargo || 'Cargo sin nombre'}</small>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="catedras-modal-detalleResumen__empty">La cátedra quedará sin docente para llamar a mesa.</div>
+      )}
+    </div>
+  );
+
+  function abrirDetalleResumen(tipo) {
+    if (tipo === 'docentes') {
+      setModalDetalleResumen({
+        title: 'Docentes actuales',
+        subtitle: `${cursoDivision} — ${item?.materia || 'Materia sin nombre'}`,
+        content: docenteActual,
+        contentNode: detalleDocentesActuales,
+      });
+      return;
+    }
+
+    setModalDetalleResumen({
+      title: 'Se llamará a mesa',
+      subtitle: `${cursoDivision} — ${item?.materia || 'Materia sin nombre'}`,
+      content: textoLlamado,
+      contentNode: detalleDocenteLlamado,
+    });
+  }
+
   return createPortal(
     <div
       className="gm-modalOverlay catedras-modalOverlay"
@@ -494,13 +583,37 @@ export default function ModalAsignarDocente({ item, docentes = [], cargos = [], 
             </div>
 
             <div className={`catedras-modal-summaryItem ${asignaciones.length > 0 ? 'is-active' : 'is-empty'}`}>
-              <span>Docentes actuales</span>
-              <strong title={docenteActual}>{docenteActual}</strong>
+              <span className="catedras-modal-summaryItem__label">Docentes actuales</span>
+              <div className="catedras-modal-summaryItem__valueWrap">
+                <strong title={docenteActual}>{docenteActual}</strong>
+                <button
+                  type="button"
+                  className="catedras-modal-summaryInfoBtn"
+                  onClick={() => abrirDetalleResumen('docentes')}
+                  aria-label="Ver docentes actuales completos"
+                  title="Ver docentes actuales completos"
+                >
+                  <FontAwesomeIcon icon={faCircleInfo} />
+                  <span></span>
+                </button>
+              </div>
             </div>
 
             <div className={`catedras-modal-summaryItem ${docenteLlamado ? 'is-active' : 'is-empty'}`}>
-              <span>Se llamará a mesa</span>
-              <strong title={textoLlamado}>{textoLlamado}</strong>
+              <span className="catedras-modal-summaryItem__label">Se llamará a mesa</span>
+              <div className="catedras-modal-summaryItem__valueWrap">
+                <strong title={textoLlamado}>{textoLlamado}</strong>
+                <button
+                  type="button"
+                  className="catedras-modal-summaryInfoBtn"
+                  onClick={() => abrirDetalleResumen('mesa')}
+                  aria-label="Ver docente llamado a mesa completo"
+                  title="Ver docente llamado a mesa completo"
+                >
+                  <FontAwesomeIcon icon={faCircleInfo} />
+                  <span></span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -708,6 +821,17 @@ export default function ModalAsignarDocente({ item, docentes = [], cargos = [], 
             </button>
           </div>
         </div>
+
+        <ModalContenidoGlobal
+          open={Boolean(modalDetalleResumen)}
+          title={modalDetalleResumen?.title || 'Detalle'}
+          subtitle={modalDetalleResumen?.subtitle || ''}
+          content={modalDetalleResumen?.content || ''}
+          contentNode={modalDetalleResumen?.contentNode || null}
+          contentClassName="ginfo-content--catedrasResumen"
+          closeLabel="Cerrar"
+          onClose={() => setModalDetalleResumen(null)}
+        />
       </form>
     </div>,
     document.body

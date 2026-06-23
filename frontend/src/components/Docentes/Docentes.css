@@ -380,7 +380,7 @@ background:rgba(196,139,59,.07);
   color:var(--balto-ink);
 }
 .gd-scheduls-indisponibliti{
-  max-height:calc(100vh - 390px) !important;
+  max-height:calc(100vh - 400px) !important;
 }
 .docentes-modal-header p{
   margin:5px 0 0;
