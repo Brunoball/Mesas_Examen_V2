@@ -695,6 +695,75 @@ function mesas_editar_rango_fechas_existentes_armado(PDO $pdo): ?array
     }
 }
 
+function mesas_editar_fechas_activas_armado(PDO $pdo, ?string $fechaInicio = null, ?string $fechaFin = null): array
+{
+    try {
+        $where = ['fecha_mesa IS NOT NULL'];
+        $params = [];
+
+        $fechaInicio = trim((string)$fechaInicio);
+        $fechaFin = trim((string)$fechaFin);
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaInicio)) {
+            $where[] = 'fecha_mesa >= ?';
+            $params[] = $fechaInicio;
+        }
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaFin)) {
+            $where[] = 'fecha_mesa <= ?';
+            $params[] = $fechaFin;
+        }
+
+        $sql = "
+            SELECT DISTINCT fecha_mesa
+            FROM (
+                SELECT fecha_mesa FROM mesas_grupos WHERE fecha_mesa IS NOT NULL
+                UNION
+                SELECT fecha_mesa FROM mesas_no_agrupadas WHERE fecha_mesa IS NOT NULL
+                UNION
+                SELECT fecha_mesa FROM mesas WHERE fecha_mesa IS NOT NULL
+            ) fechas_armado
+            WHERE " . implode(' AND ', $where) . "
+            ORDER BY fecha_mesa ASC
+        ";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+
+        $fechas = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $fecha) {
+            $fecha = trim((string)$fecha);
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
+                $fechas[$fecha] = true;
+            }
+        }
+
+        return $fechas;
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
+function mesas_editar_fecha_activa_armado(PDO $pdo, string $fechaMesa, array $contexto = []): bool
+{
+    $fechaMesa = trim($fechaMesa);
+    if ($fechaMesa === '') {
+        return false;
+    }
+
+    if (isset($contexto['fechas_activas']) && is_array($contexto['fechas_activas'])) {
+        return !empty($contexto['fechas_activas'][$fechaMesa]);
+    }
+
+    $fechas = mesas_editar_fechas_activas_armado($pdo, $fechaMesa, $fechaMesa);
+    return !empty($fechas[$fechaMesa]);
+}
+
+function mesas_editar_tipo_permite_crear_dia_nuevo(string $tipo): bool
+{
+    return $tipo === 'no_agrupada';
+}
+
 function mesas_editar_rango_contiene_fecha(?array $rango, ?string $fecha): bool
 {
     $fecha = trim((string)$fecha);
@@ -1740,9 +1809,16 @@ function mesas_editar_validar_programacion_completa(PDO $pdo, string $tipo, arra
 
     $esSlotActual = mesas_editar_es_slot_actual($contexto, $fechaMesa, $idTurno);
 
-    // En edición manual se permite mover una mesa fuera del rango original del armado.
-    // El rango queda solo como advertencia informativa; los bloqueos reales siguen siendo
-    // indisponibilidad docente, bloqueos, choques de alumnos/docentes y correlativas.
+    // El rango original ya no se usa para abrir todos los días del mes.
+    // Para mesas agrupadas solo se puede mover a días que ya tienen mesas asignadas.
+    // La excepción es una mesa no agrupada: puede crear un nuevo día si no genera choques.
+    if (!$esSlotActual
+        && !mesas_editar_tipo_permite_crear_dia_nuevo($tipo)
+        && !mesas_editar_fecha_activa_armado($pdo, $fechaMesa, $contexto)
+    ) {
+        $errores[] = 'La fecha seleccionada no corresponde a un día de mesas ya creado. Para agregar un día nuevo, primero mové una mesa no agrupada a esa fecha.';
+    }
+
     $advertencias = array_values(array_unique(array_merge(
         $advertencias,
         mesas_editar_validar_fecha_en_rango_armado($pdo, $fechaMesa, $contexto)
@@ -1847,6 +1923,16 @@ function mesas_editar_construir_slots_validos(PDO $pdo, string $tipo, array $dat
         $contexto['rango_armado'] = $rangoArmado;
     }
 
+    $fechasActivas = mesas_editar_fechas_activas_armado($pdo, $fechaInicio, $fechaFin);
+    if (isset($contexto['slot_actual']['fecha_mesa'])) {
+        $fechaActual = trim((string)$contexto['slot_actual']['fecha_mesa']);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaActual)) {
+            $fechasActivas[$fechaActual] = true;
+        }
+    }
+    $contexto['fechas_activas'] = $fechasActivas;
+    $permiteCrearDiaNuevo = mesas_editar_tipo_permite_crear_dia_nuevo($tipo);
+
     $slots = [];
     $totalValidos = 0;
 
@@ -1862,6 +1948,27 @@ function mesas_editar_construir_slots_validos(PDO $pdo, string $tipo, array $dat
             $rango = mesas_editar_horario_rango_por_turno((string)$turno['turno']);
             $hora = $rango['default'] . ':00';
 
+            $fechaActiva = !empty($fechasActivas[$fechaYmd]);
+            $esSlotActual = mesas_editar_es_slot_actual($contexto, $fechaYmd, $idTurno);
+
+            if (!$permiteCrearDiaNuevo && !$fechaActiva && !$esSlotActual) {
+                $slots[] = [
+                    'fecha_mesa' => $fechaYmd,
+                    'id_turno' => $idTurno,
+                    'turno' => $turno['turno'],
+                    'hora_sugerida' => $hora,
+                    'valido' => false,
+                    'es_actual' => false,
+                    'es_dia_activo' => false,
+                    'es_dia_nuevo' => false,
+                    'errores' => ['Día sin mesas creadas/asignadas. Primero creá ese día desde una mesa no agrupada.'],
+                    'advertencias' => [],
+                    'errores_ignorados_slot_actual' => [],
+                    'rango_horario' => $rango,
+                ];
+                continue;
+            }
+
             try {
                 $validacion = mesas_editar_validar_programacion_completa($pdo, $tipo, $data, $fechaYmd, $idTurno, $hora, $turno, $contexto);
                 $valido = (bool)$validacion['valido'];
@@ -1876,6 +1983,8 @@ function mesas_editar_construir_slots_validos(PDO $pdo, string $tipo, array $dat
                     'hora_sugerida' => $hora,
                     'valido' => $valido,
                     'es_actual' => (bool)($validacion['es_slot_actual'] ?? false),
+                    'es_dia_activo' => $fechaActiva,
+                    'es_dia_nuevo' => !$fechaActiva,
                     'errores' => $validacion['errores'],
                     'advertencias' => $validacion['advertencias'] ?? [],
                     'errores_ignorados_slot_actual' => $validacion['errores_ignorados_slot_actual'] ?? [],
@@ -1889,6 +1998,8 @@ function mesas_editar_construir_slots_validos(PDO $pdo, string $tipo, array $dat
                     'hora_sugerida' => $hora,
                     'valido' => false,
                     'es_actual' => false,
+                    'es_dia_activo' => $fechaActiva ?? false,
+                    'es_dia_nuevo' => !($fechaActiva ?? false),
                     'errores' => [$e->getMessage()],
                     'advertencias' => [],
                     'errores_ignorados_slot_actual' => [],

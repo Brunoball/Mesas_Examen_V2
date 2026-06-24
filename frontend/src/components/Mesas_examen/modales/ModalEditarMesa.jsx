@@ -350,7 +350,7 @@ const CalendarMesa = ({ fechaSeleccionada, idTurno, slotsDisponibles = [], carga
               ? "Validando disponibilidad..."
               : disponible
                 ? (turnoActualDisponible ? "Fecha y turno disponible" : "Fecha disponible en otro turno. Al seleccionarla se ajusta el turno automáticamente.")
-                : (erroresDia.length > 0 ? erroresDia : ["Día sin turnos compatibles para esta mesa"]).join(" | ");
+                : (erroresDia.length > 0 ? erroresDia : ["Día sin mesas creadas/asignadas o sin turnos compatibles para esta mesa"]).join(" | ");
 
           return (
             <button
@@ -859,7 +859,7 @@ const ModalEditarMesa = ({
                   <div className="editar-mesa-disponibilidad-error">
                     {erroresSlotSeleccionado.length > 0
                       ? `El horario actual no está habilitado: ${erroresSlotSeleccionado.join(" | ")}`
-                      : "No hay fechas/turnos válidos en este mes para esta mesa según las validaciones actuales."}
+                      : "No hay fechas/turnos válidos en este mes para esta mesa. Las mesas agrupadas solo pueden moverse a días ya creados; las no agrupadas pueden crear un nuevo día si no generan choques."}
                   </div>
                 )}
 
