@@ -725,6 +725,27 @@ const altoMinimoTexto = (texto, width, size, font = "F1", maxLines = 6) => {
   return Math.max(TABLE.minRowHeight, (lineas.length * TABLE.bodyLineHeight) + (TABLE.paddingY * 2));
 };
 
+const altoMinimoHoraStack = (grupo) => {
+  const stack = obtenerFechaStack(grupo).filter(Boolean);
+  const lineHeightHora = 9.2;
+  const altoTextoHora = stack.length * lineHeightHora;
+
+  // Cuando una mesa tiene muy pocas filas, la celda de Hora ocupa poca altura
+  // y el bloque vertical de fecha/turno/hora puede invadir la siguiente tabla.
+  // Este mínimo reserva espacio real para esas 5 líneas antes de dibujar.
+  return Math.max(TABLE.minRowHeight, altoTextoHora + (TABLE.paddingY * 2) + 3);
+};
+
+const repartirAltoFaltante = (alturas, requerido) => {
+  const actual = alturas.reduce((total, item) => total + item, 0);
+  if (actual >= requerido || alturas.length === 0) return;
+
+  const faltantePorFila = (requerido - actual) / alturas.length;
+  for (let i = 0; i < alturas.length; i += 1) {
+    alturas[i] += faltantePorFila;
+  }
+};
+
 const ajustarAlturasPorSpan = (alturas, spans, keyWidth, size) => {
   spans.forEach((span) => {
     const requerido = altoMinimoTexto(span.valor, keyWidth, size, "F2");
@@ -751,6 +772,7 @@ const prepararBloqueTabla = (grupo, filas) => {
 
   ajustarAlturasPorSpan(alturas, spansMateria, columnas[1].width, TABLE.strongSize);
   ajustarAlturasPorSpan(alturas, spansDocente, columnas[6].width, TABLE.strongSize);
+  repartirAltoFaltante(alturas, altoMinimoHoraStack(grupo));
 
   const altoCuerpo = alturas.reduce((total, item) => total + item, 0);
   return {

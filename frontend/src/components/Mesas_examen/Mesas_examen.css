@@ -4748,3 +4748,27 @@
   }
 }
 
+
+/* =========================================================
+   FIX PDF MESAS - altura minima real para columna Hora
+   Evita que fecha/turno/hora se superpongan en mesas con pocas filas.
+========================================================= */
+.mesas-card-pdf-fijo .mesas-pdf-cell.pdf-hora-cell,
+.mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-cell.pdf-hora-cell{
+  min-height:78px !important;
+  overflow:hidden !important;
+}
+
+.mesas-card-pdf-fijo .pdf-hora-stack,
+.mesas-shell-card.mesas-card-pdf-fijo .pdf-hora-stack{
+  min-height:auto !important;
+  padding-block:4px;
+  box-sizing:border-box;
+}
+
+@media print{
+  .mesas-card-pdf-fijo .mesas-pdf-cell.pdf-hora-cell,
+  .mesas-shell-card.mesas-card-pdf-fijo .mesas-pdf-cell.pdf-hora-cell{
+    min-height:78px !important;
+  }
+}
