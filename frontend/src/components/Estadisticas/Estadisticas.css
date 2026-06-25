@@ -1117,3 +1117,41 @@
     width:56%;
   }
 }
+
+/* Interacciones para abrir el detalle de previas */
+.estadCard.is-clickable,
+.estadBarRow.is-clickable,
+.estadMiniTable__row.is-clickable{
+  cursor:pointer;
+}
+
+.estadCard.is-clickable:focus-visible,
+.estadBarRow.is-clickable:focus-visible,
+.estadMiniTable__row.is-clickable:focus-visible{
+  outline:3px solid rgba(196, 139, 59, .32);
+  outline-offset:3px;
+}
+
+.estadCard.is-clickable:hover{
+  border-color:rgba(196, 139, 59, .40);
+}
+
+.estadBarRow.is-clickable{
+  transition:transform var(--estad-trans), box-shadow var(--estad-trans), border-color var(--estad-trans), background var(--estad-trans);
+}
+
+.estadBarRow.is-clickable:hover{
+  transform:translateY(-1px);
+  border-color:rgba(196, 139, 59, .30);
+  background:#FDFBF7;
+  box-shadow:0 8px 18px rgba(58, 46, 43, .07);
+}
+
+.estadMiniTable__row.is-clickable{
+  transition:background var(--estad-trans), box-shadow var(--estad-trans);
+}
+
+.estadMiniTable__row.is-clickable:hover{
+  background:rgba(196, 139, 59, .075);
+  box-shadow:inset 4px 0 0 rgba(196, 139, 59, .58);
+}

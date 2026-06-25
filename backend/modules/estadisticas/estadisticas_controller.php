@@ -237,6 +237,41 @@ function estadisticas_obtener_meta_armado_actual(PDO $pdo): ?array
     return $armado ? estadisticas_normalizar_opcion($armado, true) : null;
 }
 
+function estadisticas_obtener_armado_historial(PDO $pdo, int $idArmado): ?array
+{
+    $stmtArmado = estadisticas_ejecutar($pdo, "
+        SELECT
+            a.id_armado_historial,
+            a.codigo_armado,
+            a.motivo,
+            a.total_mesas,
+            a.total_previas,
+            a.total_grupos,
+            a.total_no_agrupadas,
+            a.creado_en,
+            DATE_FORMAT(a.creado_en, '%d/%m/%Y %H:%i') AS creado_en_texto,
+            MIN(d.fecha_mesa) AS fecha_inicio,
+            MAX(d.fecha_mesa) AS fecha_fin
+        FROM historial_mesas_armados a
+        LEFT JOIN historial_mesas_detalle d ON d.id_armado_historial = a.id_armado_historial
+        WHERE a.id_armado_historial = :id
+        GROUP BY
+            a.id_armado_historial,
+            a.codigo_armado,
+            a.motivo,
+            a.total_mesas,
+            a.total_previas,
+            a.total_grupos,
+            a.total_no_agrupadas,
+            a.creado_en
+        LIMIT 1
+    ", [':id' => $idArmado]);
+
+    $armado = $stmtArmado->fetch(PDO::FETCH_ASSOC);
+    return $armado ? estadisticas_normalizar_opcion($armado, false) : null;
+}
+
+
 function estadisticas_responder_resumen(PDO $pdo, array $armado, string $base, array $params = []): void
 {
     $stmtResumen = estadisticas_ejecutar($pdo, "
@@ -331,6 +366,7 @@ function estadisticas_responder_resumen(PDO $pdo, array $armado, string $base, a
         ],
     ]);
 }
+
 
 function estadisticas_mesas_opciones(): void
 {
@@ -434,41 +470,12 @@ function estadisticas_mesas_resumen(): void
             return;
         }
 
-        $stmtArmado = estadisticas_ejecutar($pdo, "
-            SELECT
-                a.id_armado_historial,
-                a.codigo_armado,
-                a.motivo,
-                a.total_mesas,
-                a.total_previas,
-                a.total_grupos,
-                a.total_no_agrupadas,
-                a.creado_en,
-                DATE_FORMAT(a.creado_en, '%d/%m/%Y %H:%i') AS creado_en_texto,
-                MIN(d.fecha_mesa) AS fecha_inicio,
-                MAX(d.fecha_mesa) AS fecha_fin
-            FROM historial_mesas_armados a
-            LEFT JOIN historial_mesas_detalle d ON d.id_armado_historial = a.id_armado_historial
-            WHERE a.id_armado_historial = :id
-            GROUP BY
-                a.id_armado_historial,
-                a.codigo_armado,
-                a.motivo,
-                a.total_mesas,
-                a.total_previas,
-                a.total_grupos,
-                a.total_no_agrupadas,
-                a.creado_en
-            LIMIT 1
-        ", [':id' => $idArmado]);
-        $armado = $stmtArmado->fetch(PDO::FETCH_ASSOC);
+        $armado = estadisticas_obtener_armado_historial($pdo, $idArmado);
 
         if (!$armado) {
             json_response(['exito' => false, 'mensaje' => 'No se encontró el historial seleccionado.'], 404);
             return;
         }
-
-        $armado = estadisticas_normalizar_opcion($armado, false);
         $base = estadisticas_base_deduplicada_sql('d.id_armado_historial = :id_armado');
         estadisticas_responder_resumen($pdo, $armado, $base, [':id_armado' => $idArmado]);
     } catch (Throwable $e) {

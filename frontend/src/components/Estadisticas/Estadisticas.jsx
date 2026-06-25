@@ -16,6 +16,7 @@ import "../Global/Global_css/roots.css";
 import "../Global/Global_css/Global_Section.css";
 import Principal, { MesasShellContext } from "../Principal/Principal";
 import { apiGet } from "../_shared/api/apiClient";
+import ModalDetallePrevias from "./modales/ModalDetallePrevias";
 import "./Estadisticas.css";
 
 const ESTADOS = [
@@ -74,9 +75,26 @@ function SkeletonLine({ className = "" }) {
   return <span className={`estadSkeletonLine ${className}`} aria-hidden="true">&nbsp;</span>;
 }
 
-function StatCard({ item, loading = false }) {
+function StatCard({ item, loading = false, onClick }) {
+  const clickable = !loading && typeof onClick === "function";
+
+  const handleKeyDown = (event) => {
+    if (!clickable) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onClick();
+    }
+  };
+
   return (
-    <article className={`estadCard ${item.className || ""} ${loading ? "is-loading" : ""}`}>
+    <article
+      className={`estadCard ${item.className || ""} ${loading ? "is-loading" : ""} ${clickable ? "is-clickable" : ""}`}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={clickable ? onClick : undefined}
+      onKeyDown={handleKeyDown}
+      title={clickable ? "Ver previas que conforman esta estadística" : undefined}
+    >
       <div className="estadCard__icon" aria-hidden="true">
         {!loading && item.icon ? <FontAwesomeIcon icon={item.icon} /> : null}
       </div>
@@ -271,12 +289,28 @@ function DonutChart({ data, total }) {
   );
 }
 
-function BarraEstado({ estado, total }) {
+function BarraEstado({ estado, total, onClick }) {
   const value = toNumber(estado.valor);
   const porcentaje = percent(value, total);
+  const clickable = typeof onClick === "function";
+
+  const handleKeyDown = (event) => {
+    if (!clickable) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onClick();
+    }
+  };
 
   return (
-    <div className={`estadBarRow is-${estado.key}`}>
+    <div
+      className={`estadBarRow is-${estado.key} ${clickable ? "is-clickable" : ""}`}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={clickable ? onClick : undefined}
+      onKeyDown={handleKeyDown}
+      title={clickable ? "Ver previas de este estado" : undefined}
+    >
       <div className="estadBarRow__top">
         <span>{estado.label}</span>
         <strong>{formatNumber(value)} · {porcentaje}%</strong>
@@ -288,7 +322,22 @@ function BarraEstado({ estado, total }) {
   );
 }
 
-function TablaSimple({ rows, total, emptyText }) {
+function tituloDetalleEstado(key, label) {
+  if (key === "inscriptos") return "Todas las previas inscriptas";
+  if (key === "aprobados") return "Previas aprobadas";
+  if (key === "ausentes") return "Previas ausentes";
+  if (key === "desaprobados") return "Previas desaprobadas";
+  return `Previas ${String(label || "").toLowerCase()}`;
+}
+
+function tituloDetalleTipo(row) {
+  const tipo = String(row?.tipo_mesa || "simple").toLowerCase();
+  if (tipo === "taller") return "Previas de taller";
+  if (tipo === "correlativa") return "Previas correlativas";
+  return "Previas simples";
+}
+
+function TablaSimple({ rows, total, emptyText, onRowClick }) {
   if (!rows?.length) {
     return <div className="estadEmptyMini">{emptyText}</div>;
   }
@@ -307,9 +356,26 @@ function TablaSimple({ rows, total, emptyText }) {
         const key = `${row.label || row.tipo_mesa || row.fecha_mesa || "fila"}-${index}`;
         const inscriptos = toNumber(row.inscriptos);
         const ancho = total > 0 ? Math.max(4, percent(inscriptos, total)) : 0;
+        const clickable = typeof onRowClick === "function";
+
+        const handleKeyDown = (event) => {
+          if (!clickable) return;
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onRowClick(row);
+          }
+        };
 
         return (
-          <div className="estadMiniTable__row" role="row" key={key}>
+          <div
+            className={`estadMiniTable__row ${clickable ? "is-clickable" : ""}`}
+            role={clickable ? "button" : "row"}
+            tabIndex={clickable ? 0 : undefined}
+            key={key}
+            onClick={clickable ? () => onRowClick(row) : undefined}
+            onKeyDown={handleKeyDown}
+            title={clickable ? "Ver previas que conforman esta fila" : undefined}
+          >
             <span className="estadMiniTable__main" role="cell" title={row.label || "-"}>
               {row.label || "-"}
               <span className="estadMiniTable__bar" aria-hidden="true">
@@ -335,6 +401,10 @@ function Estadisticas() {
   const [loadingOpciones, setLoadingOpciones] = useState(true);
   const [loadingResumen, setLoadingResumen] = useState(false);
   const [error, setError] = useState("");
+  const [modalDetalle, setModalDetalle] = useState({ abierto: false, titulo: "", subtitulo: "", filtro: null });
+  const [detallePrevias, setDetallePrevias] = useState([]);
+  const [loadingDetalle, setLoadingDetalle] = useState(false);
+  const [errorDetalle, setErrorDetalle] = useState("");
 
   const cargarOpciones = useCallback(async () => {
     setLoadingOpciones(true);
@@ -380,6 +450,41 @@ function Estadisticas() {
       setLoadingResumen(false);
     }
   }, []);
+
+  const cerrarDetalle = useCallback(() => {
+    setModalDetalle({ abierto: false, titulo: "", subtitulo: "", filtro: null });
+    setDetallePrevias([]);
+    setErrorDetalle("");
+    setLoadingDetalle(false);
+  }, []);
+
+  const abrirDetalle = useCallback(
+    async ({ dimension, value = "", titulo, subtitulo }) => {
+      const id = String(idSeleccionado || "").trim();
+      if (!id) return;
+
+      const filtro = { dimension, value };
+      setModalDetalle({ abierto: true, titulo, subtitulo, filtro });
+      setDetallePrevias([]);
+      setErrorDetalle("");
+      setLoadingDetalle(true);
+
+      try {
+        const response = await apiGet("estadisticas_mesas_detalle", {
+          id_armado_historial: id,
+          dimension,
+          value,
+        });
+        setDetallePrevias(Array.isArray(response?.data?.previas) ? response.data.previas : []);
+      } catch (err) {
+        setErrorDetalle(getErrorMessage(err, "No se pudo cargar el detalle de previas."));
+        setDetallePrevias([]);
+      } finally {
+        setLoadingDetalle(false);
+      }
+    },
+    [idSeleccionado]
+  );
 
   useEffect(() => {
     cargarOpciones();
@@ -519,7 +624,18 @@ function Estadisticas() {
         <>
           <div className="estadCardsGrid">
             {cards.map((item) => (
-              <StatCard item={item} key={item.key} />
+              <StatCard
+                item={item}
+                key={item.key}
+                onClick={() =>
+                  abrirDetalle({
+                    dimension: "estado",
+                    value: item.key,
+                    titulo: tituloDetalleEstado(item.key, item.label),
+                    subtitulo: armadoSeleccionado?.periodo || armadoSeleccionado?.label || "Mesa seleccionada",
+                  })
+                }
+              />
             ))}
           </div>
 
@@ -547,7 +663,19 @@ function Estadisticas() {
 
               <div className="estadBars">
                 {estadosGrafico.map((estado) => (
-                  <BarraEstado estado={estado} total={totalInscriptos} key={estado.key} />
+                  <BarraEstado
+                    estado={estado}
+                    total={totalInscriptos}
+                    key={estado.key}
+                    onClick={() =>
+                      abrirDetalle({
+                        dimension: "estado",
+                        value: estado.key,
+                        titulo: tituloDetalleEstado(estado.key, estado.label),
+                        subtitulo: armadoSeleccionado?.periodo || armadoSeleccionado?.label || "Mesa seleccionada",
+                      })
+                    }
+                  />
                 ))}
               </div>
             </article>
@@ -565,6 +693,14 @@ function Estadisticas() {
                 rows={resumen?.por_fechas || []}
                 total={totalInscriptos}
                 emptyText="No hay fechas cargadas para este armado."
+                onRowClick={(row) =>
+                  abrirDetalle({
+                    dimension: "fecha",
+                    value: row.fecha_mesa || "__sin_fecha__",
+                    titulo: `Previas del ${row.label || "día seleccionado"}`,
+                    subtitulo: armadoSeleccionado?.periodo || armadoSeleccionado?.label || "Mesa seleccionada",
+                  })
+                }
               />
             </article>
 
@@ -579,12 +715,31 @@ function Estadisticas() {
                 rows={resumen?.por_tipo || []}
                 total={totalInscriptos}
                 emptyText="No hay tipos de mesa para mostrar."
+                onRowClick={(row) =>
+                  abrirDetalle({
+                    dimension: "tipo",
+                    value: row.tipo_mesa || "simple",
+                    titulo: tituloDetalleTipo(row),
+                    subtitulo: "Detalle por tipo de mesa para comprobar el armado",
+                  })
+                }
               />
             </article>
           </div>
         </>
       )}
       </div>
+
+      <ModalDetallePrevias
+        abierto={modalDetalle.abierto}
+        titulo={modalDetalle.titulo}
+        subtitulo={modalDetalle.subtitulo}
+        filtro={modalDetalle.filtro}
+        previas={detallePrevias}
+        loading={loadingDetalle}
+        error={errorDetalle}
+        onClose={cerrarDetalle}
+      />
     </section>
   );
 
