@@ -1004,6 +1004,291 @@ function previas_fetch_materias_inscripcion(PDO $pdo, int $idPrevia, bool $soloN
     return ['principal' => $principal, 'materias' => $materias];
 }
 
+
+function previas_dni_normalizado($value): string
+{
+    return preg_replace('/\D+/', '', (string)$value) ?? '';
+}
+
+function previas_triple_materia_key($idMateria, $idCurso, $idDivision): string
+{
+    return ((int)$idMateria) . '|' . ((int)$idCurso) . '|' . ((int)$idDivision);
+}
+
+function previas_fetch_registros_permiso_examen(PDO $pdo, int $idPrevia): array
+{
+    if ($idPrevia <= 0) {
+        return ['principal' => null, 'materias' => []];
+    }
+
+    $stPrincipal = $pdo->prepare("SELECT id_previa, dni, alumno FROM previas WHERE id_previa = :id_previa AND activo = 1 LIMIT 1");
+    $stPrincipal->execute([':id_previa' => $idPrevia]);
+    $principal = $stPrincipal->fetch(PDO::FETCH_ASSOC) ?: null;
+
+    if (!$principal) {
+        return ['principal' => null, 'materias' => []];
+    }
+
+    $dni = previas_dni_normalizado($principal['dni'] ?? '');
+    if ($dni === '') {
+        return ['principal' => $principal, 'materias' => []];
+    }
+
+    $sql = "
+        SELECT
+            p.id_previa,
+            CONCAT('previa-', p.id_previa) AS permiso_key,
+            p.dni,
+            p.alumno,
+            p.cursando_id_curso,
+            COALESCE(cur_cursando.nombre_curso, '') AS cursando_curso,
+            p.cursando_id_division,
+            COALESCE(div_cursando.nombre_division, '') AS cursando_division,
+            p.id_materia,
+            COALESCE(mat.materia, '') AS materia,
+            p.materia_id_curso,
+            COALESCE(cur_materia.nombre_curso, '') AS materia_curso,
+            p.materia_id_division,
+            COALESCE(div_materia.nombre_division, '') AS materia_division,
+            p.id_condicion,
+            COALESCE(cond.condicion, '') AS condicion,
+            COALESCE(p.inscripcion, 0) AS inscripcion,
+            p.activo,
+            p.anio,
+            TRIM(CONCAT(COALESCE(cur_materia.nombre_curso, ''), ' ', COALESCE(div_materia.nombre_division, ''))) AS curso_materia,
+            TRIM(CONCAT(COALESCE(cur_cursando.nombre_curso, ''), ' ', COALESCE(div_cursando.nombre_division, ''))) AS curso_cursando,
+            0 AS es_taller,
+            NULL AS id_taller,
+            NULL AS taller
+        FROM previas p
+        LEFT JOIN materias mat ON mat.id_materia = p.id_materia
+        LEFT JOIN condicion cond ON cond.id_condicion = p.id_condicion
+        LEFT JOIN curso cur_cursando ON cur_cursando.id_curso = p.cursando_id_curso
+        LEFT JOIN division div_cursando ON div_cursando.id_division = p.cursando_id_division
+        LEFT JOIN curso cur_materia ON cur_materia.id_curso = p.materia_id_curso
+        LEFT JOIN division div_materia ON div_materia.id_division = p.materia_id_division
+        WHERE REPLACE(REPLACE(REPLACE(CAST(p.dni AS CHAR), '.', ''), '-', ''), ' ', '') = :dni
+          AND p.activo = 1
+          AND COALESCE(p.inscripcion, 0) = 1
+        ORDER BY p.alumno ASC, cur_materia.id_curso ASC, div_materia.id_division ASC, mat.materia ASC, p.anio ASC
+    ";
+
+    $st = $pdo->prepare($sql);
+    $st->execute([':dni' => $dni]);
+    $materias = $st->fetchAll(PDO::FETCH_ASSOC);
+
+    return ['principal' => $principal, 'materias' => $materias];
+}
+
+function previas_expandir_materias_permiso_talleres(PDO $pdo, array $materias): array
+{
+    if (count($materias) === 0) {
+        return [];
+    }
+
+    if (!previas_tabla_existe($pdo, 'talleres') || !previas_tabla_existe($pdo, 'talleres_materias') || !previas_tabla_existe($pdo, 'catedras')) {
+        return $materias;
+    }
+
+    $triples = [];
+    foreach ($materias as $materia) {
+        $idMateria = (int)($materia['id_materia'] ?? 0);
+        $idCurso = (int)($materia['materia_id_curso'] ?? 0);
+        $idDivision = (int)($materia['materia_id_division'] ?? 0);
+        if ($idMateria <= 0 || $idCurso <= 0 || $idDivision <= 0) {
+            continue;
+        }
+        $triples[previas_triple_materia_key($idMateria, $idCurso, $idDivision)] = [$idMateria, $idCurso, $idDivision];
+    }
+
+    if (count($triples) === 0) {
+        return $materias;
+    }
+
+    $or = [];
+    $params = [];
+    $idx = 0;
+    foreach ($triples as $triple) {
+        [$idMateria, $idCurso, $idDivision] = $triple;
+        $pm = ':m' . $idx;
+        $pc = ':c' . $idx;
+        $pd = ':d' . $idx;
+        $or[] = "(c.id_materia = {$pm} AND c.id_curso = {$pc} AND c.id_division = {$pd})";
+        $params[$pm] = $idMateria;
+        $params[$pc] = $idCurso;
+        $params[$pd] = $idDivision;
+        $idx++;
+    }
+
+    $sqlTalleres = "
+        SELECT
+            c.id_materia,
+            c.id_curso,
+            c.id_division,
+            t.id_taller,
+            t.taller
+        FROM catedras c
+        INNER JOIN talleres_materias tm ON tm.id_catedra = c.id_catedra AND tm.activo = 1
+        INNER JOIN talleres t ON t.id_taller = tm.id_taller AND t.activo = 1
+        WHERE c.activo = 1
+          AND (" . implode(' OR ', $or) . ")
+        ORDER BY t.id_taller ASC
+    ";
+
+    $stTalleres = $pdo->prepare($sqlTalleres);
+    foreach ($params as $key => $value) {
+        $stTalleres->bindValue($key, $value, PDO::PARAM_INT);
+    }
+    $stTalleres->execute();
+
+    $talleresPorTriple = [];
+    $idsTalleres = [];
+    foreach ($stTalleres->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $key = previas_triple_materia_key($row['id_materia'] ?? 0, $row['id_curso'] ?? 0, $row['id_division'] ?? 0);
+        $idTaller = (int)($row['id_taller'] ?? 0);
+        if ($idTaller <= 0) {
+            continue;
+        }
+        $talleresPorTriple[$key][$idTaller] = [
+            'id_taller' => $idTaller,
+            'taller' => (string)($row['taller'] ?? ''),
+        ];
+        $idsTalleres[$idTaller] = $idTaller;
+    }
+
+    if (count($idsTalleres) === 0) {
+        return $materias;
+    }
+
+    [$phTalleres, $paramsTalleres] = previas_placeholders_ids(array_values($idsTalleres), ':taller');
+    $sqlComponentes = "
+        SELECT
+            t.id_taller,
+            t.taller,
+            tm.orden,
+            c.id_catedra,
+            c.id_materia,
+            c.id_curso,
+            c.id_division,
+            COALESCE(mat.materia, '') AS materia,
+            COALESCE(cur.nombre_curso, '') AS curso,
+            COALESCE(divi.nombre_division, '') AS division,
+            TRIM(CONCAT(COALESCE(cur.nombre_curso, ''), ' ', COALESCE(divi.nombre_division, ''))) AS curso_materia
+        FROM talleres t
+        INNER JOIN talleres_materias tm ON tm.id_taller = t.id_taller AND tm.activo = 1
+        INNER JOIN catedras c ON c.id_catedra = tm.id_catedra AND c.activo = 1
+        LEFT JOIN materias mat ON mat.id_materia = c.id_materia
+        LEFT JOIN curso cur ON cur.id_curso = c.id_curso
+        LEFT JOIN division divi ON divi.id_division = c.id_division
+        WHERE t.activo = 1
+          AND t.id_taller IN (" . implode(',', $phTalleres) . ")
+        ORDER BY t.id_taller ASC, COALESCE(tm.orden, 999999) ASC, cur.id_curso ASC, divi.id_division ASC, mat.materia ASC
+    ";
+
+    $stComponentes = $pdo->prepare($sqlComponentes);
+    foreach ($paramsTalleres as $key => $value) {
+        $stComponentes->bindValue($key, $value, PDO::PARAM_INT);
+    }
+    $stComponentes->execute();
+
+    $componentesPorTaller = [];
+    foreach ($stComponentes->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $idTaller = (int)($row['id_taller'] ?? 0);
+        if ($idTaller <= 0) {
+            continue;
+        }
+        $componentesPorTaller[$idTaller][] = $row;
+    }
+
+    $expandido = [];
+    $vistos = [];
+
+    foreach ($materias as $materia) {
+        $triple = previas_triple_materia_key($materia['id_materia'] ?? 0, $materia['materia_id_curso'] ?? 0, $materia['materia_id_division'] ?? 0);
+        $talleres = $talleresPorTriple[$triple] ?? [];
+
+        if (count($talleres) === 0) {
+            $key = (string)($materia['permiso_key'] ?? ('previa-' . (int)($materia['id_previa'] ?? 0)));
+            if (!isset($vistos[$key])) {
+                $materia['permiso_key'] = $key;
+                $materia['es_taller'] = 0;
+                $expandido[] = $materia;
+                $vistos[$key] = true;
+            }
+            continue;
+        }
+
+        foreach ($talleres as $idTaller => $tallerInfo) {
+            foreach (($componentesPorTaller[$idTaller] ?? []) as $componente) {
+                $key = 'taller-' . $idTaller . '-catedra-' . (int)($componente['id_catedra'] ?? 0);
+                if (isset($vistos[$key])) {
+                    continue;
+                }
+
+                $item = $materia;
+                $item['permiso_key'] = $key;
+                $item['id_materia'] = (int)($componente['id_materia'] ?? 0);
+                $item['materia'] = (string)($componente['materia'] ?? '');
+                $item['materia_id_curso'] = (int)($componente['id_curso'] ?? 0);
+                $item['materia_id_division'] = (int)($componente['id_division'] ?? 0);
+                $item['materia_curso'] = (string)($componente['curso'] ?? '');
+                $item['materia_division'] = (string)($componente['division'] ?? '');
+                $item['curso_materia'] = (string)($componente['curso_materia'] ?? '');
+                $item['es_taller'] = 1;
+                $item['id_taller'] = $idTaller;
+                $item['taller'] = (string)($tallerInfo['taller'] ?? $componente['taller'] ?? '');
+                $item['materia_origen_id_previa'] = (int)($materia['id_previa'] ?? 0);
+                $item['materia_origen'] = (string)($materia['materia'] ?? '');
+
+                $expandido[] = $item;
+                $vistos[$key] = true;
+            }
+        }
+    }
+
+    return $expandido;
+}
+
+function previas_obtener_permiso_examen(): void
+{
+    $pdo = db();
+    $idPrevia = previas_int($_GET['id_previa'] ?? $_GET['id'] ?? 0);
+
+    if ($idPrevia <= 0) {
+        json_response(['exito' => false, 'mensaje' => 'La previa seleccionada no es válida.'], 422);
+    }
+
+    try {
+        $data = previas_fetch_registros_permiso_examen($pdo, $idPrevia);
+
+        if (!$data['principal']) {
+            json_response(['exito' => false, 'mensaje' => 'No se encontró la previa activa seleccionada.'], 404);
+        }
+
+        $materiasBase = $data['materias'];
+        if (count($materiasBase) === 0) {
+            json_response(['exito' => false, 'mensaje' => 'El alumno no tiene materias inscriptas para imprimir.'], 404);
+        }
+
+        $materias = previas_expandir_materias_permiso_talleres($pdo, $materiasBase);
+        $expandioTalleres = count($materias) !== count($materiasBase);
+
+        json_response([
+            'exito' => true,
+            'data' => [
+                'alumno' => (string)($data['principal']['alumno'] ?? ''),
+                'dni' => (string)($data['principal']['dni'] ?? ''),
+                'id_previa_principal' => $idPrevia,
+                'materias' => $materias,
+                'expandio_talleres' => $expandioTalleres,
+            ],
+        ]);
+    } catch (Throwable $e) {
+        log_error($e, __FUNCTION__);
+        json_response(['exito' => false, 'mensaje' => 'No se pudo preparar el permiso de examen.'], 500);
+    }
+}
+
 function previas_obtener_materias_inscripcion(): void
 {
     $pdo = db();
@@ -1357,6 +1642,88 @@ function previas_quitar_inscripcion(): void
     }
 }
 
+
+
+function previas_quitar_todas_inscripciones(): void
+{
+    if (function_exists('require_roles')) {
+        require_roles(['admin']);
+    }
+
+    $pdo = db();
+    $body = previas_body();
+    $confirmar = previas_int($body['confirmar'] ?? $body['confirmacion'] ?? 0);
+
+    if ($confirmar !== 1) {
+        json_response(['exito' => false, 'mensaje' => 'Falta la confirmación para eliminar todas las inscripciones.'], 422);
+    }
+
+    try {
+        $pdo->beginTransaction();
+
+        $stCantidad = $pdo->query("SELECT COUNT(*) FROM previas WHERE activo = 1 AND COALESCE(inscripcion, 0) = 1");
+        $totalPreviasInscriptas = (int)$stCantidad->fetchColumn();
+
+        $stPrevias = $pdo->prepare("UPDATE previas SET inscripcion = 0 WHERE activo = 1 AND COALESCE(inscripcion, 0) = 1");
+        $stPrevias->execute();
+        $previasActualizadas = $stPrevias->rowCount();
+
+        $detallesAnulados = 0;
+        $inscripcionesCanceladas = 0;
+
+        if (previas_tabla_existe($pdo, 'formulario_inscripciones_detalle') && previas_columna_existe($pdo, 'formulario_inscripciones_detalle', 'estado')) {
+            $setDetalle = "estado = 'anulada'";
+            if (previas_columna_existe($pdo, 'formulario_inscripciones_detalle', 'actualizado_en')) {
+                $setDetalle .= ", actualizado_en = NOW()";
+            }
+
+            $stDetalle = $pdo->prepare("UPDATE formulario_inscripciones_detalle SET {$setDetalle} WHERE estado <> 'anulada'");
+            $stDetalle->execute();
+            $detallesAnulados = $stDetalle->rowCount();
+        }
+
+        if (previas_tabla_existe($pdo, 'formulario_inscripciones')) {
+            $sets = [];
+            if (previas_columna_existe($pdo, 'formulario_inscripciones', 'total_materias')) {
+                $sets[] = 'total_materias = 0';
+            }
+            if (previas_columna_existe($pdo, 'formulario_inscripciones', 'estado')) {
+                $sets[] = "estado = 'cancelada'";
+            }
+            if (previas_columna_existe($pdo, 'formulario_inscripciones', 'actualizado_en')) {
+                $sets[] = 'actualizado_en = NOW()';
+            }
+
+            if (count($sets) > 0) {
+                $where = previas_columna_existe($pdo, 'formulario_inscripciones', 'estado') ? "WHERE estado <> 'cancelada'" : '';
+                $stInscripciones = $pdo->prepare('UPDATE formulario_inscripciones SET ' . implode(', ', $sets) . " {$where}");
+                $stInscripciones->execute();
+                $inscripcionesCanceladas = $stInscripciones->rowCount();
+            }
+        }
+
+        $pdo->commit();
+
+        json_response([
+            'exito' => true,
+            'mensaje' => $totalPreviasInscriptas > 0
+                ? 'Todas las inscripciones fueron eliminadas correctamente.'
+                : 'No había inscripciones activas para eliminar.',
+            'data' => [
+                'previas_encontradas' => $totalPreviasInscriptas,
+                'previas_actualizadas' => $previasActualizadas,
+                'detalles_anulados' => $detallesAnulados,
+                'inscripciones_canceladas' => $inscripcionesCanceladas,
+            ],
+        ]);
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        log_error($e, __FUNCTION__);
+        json_response(['exito' => false, 'mensaje' => 'No se pudieron eliminar todas las inscripciones.'], 500);
+    }
+}
 
 function previas_placeholders_ids(array $ids, string $prefix = ':id'): array
 {

@@ -319,6 +319,10 @@ export const obtenerExportacionHistorialMesas = ({ busqueda = "", limite_armados
   }));
 };
 
+export const eliminarTodosHistorialesMesas = () => {
+  return apiPost("mesas_historial_eliminar_todos", {});
+};
+
 
 export const listarCambiosDocenteMesasPendientes = () => {
   return apiGet("mesas_docentes_cambios_pendientes");

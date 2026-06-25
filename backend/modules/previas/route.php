@@ -28,12 +28,20 @@ function route_previas(string $action): bool
             previas_obtener_materias_inscripcion();
             return true;
 
+        case 'previas_obtener_permiso_examen':
+            previas_obtener_permiso_examen();
+            return true;
+
         case 'previas_inscribir_manual':
             previas_inscribir_manual();
             return true;
 
         case 'previas_quitar_inscripcion':
             previas_quitar_inscripcion();
+            return true;
+
+        case 'previas_quitar_todas_inscripciones':
+            previas_quitar_todas_inscripciones();
             return true;
 
         case 'previas_guardar':

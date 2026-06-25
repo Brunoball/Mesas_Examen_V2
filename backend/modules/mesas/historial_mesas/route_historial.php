@@ -22,6 +22,11 @@ function route_mesas_historial(string $action): bool
             mesas_historial_exportar();
             return true;
 
+        case 'mesas_historial_eliminar_todos':
+        case 'mesas_historial_borrar_todos':
+            mesas_historial_eliminar_todos();
+            return true;
+
         default:
             return false;
     }

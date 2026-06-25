@@ -12,6 +12,7 @@ import {
   eliminarNumeroGrupoEdicion,
   eliminarPreviaMesa,
   eliminarSlotExtraGrupo,
+  eliminarTodosHistorialesMesas,
   guardarNotaPreviaMesa,
   guardarProgramacionMesa,
   ignorarCambioDocenteMesa,
@@ -306,6 +307,7 @@ export const useMesasExamen = ({ onToast } = {}) => {
   const [errorHistorial, setErrorHistorial] = useState("");
   const [historialDetalleArmado, setHistorialDetalleArmado] = useState(null);
   const [cargandoDetalleHistorial, setCargandoDetalleHistorial] = useState(false);
+  const [eliminandoTodosHistoriales, setEliminandoTodosHistoriales] = useState(false);
   const historialCargadoRef = useRef(false);
   const historialPrimeraCargaPendienteRef = useRef(true);
 
@@ -503,6 +505,35 @@ export const useMesasExamen = ({ onToast } = {}) => {
       throw err;
     }
   }, [busqueda]);
+
+  const eliminarTodosHistoriales = useCallback(async () => {
+    if (eliminandoTodosHistoriales) return null;
+
+    setEliminandoTodosHistoriales(true);
+    setErrorHistorial("");
+
+    try {
+      const response = await eliminarTodosHistorialesMesas();
+      setHistorialResultados([]);
+      setHistorialArmados([]);
+      setHistorialResumen({
+        total_resultados: 0,
+        total_aprobadas: 0,
+        total_desaprobadas: 0,
+        total_armados: 0,
+      });
+      setHistorialDetalleArmado(null);
+      historialCargadoRef.current = true;
+      historialPrimeraCargaPendienteRef.current = false;
+      setHistorialPrimeraCargaPendiente(false);
+      return response?.data || null;
+    } catch (err) {
+      setErrorHistorial(err.message || "Error al eliminar el historial de mesas.");
+      throw err;
+    } finally {
+      setEliminandoTodosHistoriales(false);
+    }
+  }, [eliminandoTodosHistoriales]);
 
   const abrirModalCrear = useCallback(async () => {
     const data = await cargarParametrosArmado();
@@ -1782,9 +1813,11 @@ export const useMesasExamen = ({ onToast } = {}) => {
       detalleArmado: historialDetalleArmado,
       cargando: cargandoHistorial || (tab === "historial" && historialPrimeraCargaPendiente),
       cargandoDetalle: cargandoDetalleHistorial,
+      eliminandoTodos: eliminandoTodosHistoriales,
       error: errorHistorial,
       cargar: () => cargarHistorial(busqueda),
       obtenerExportacion: obtenerExportacionHistorial,
+      eliminarTodos: eliminarTodosHistoriales,
       verDetalleArmado: verDetalleHistorialArmado,
       cerrarDetalleArmado: cerrarDetalleHistorialArmado,
     },

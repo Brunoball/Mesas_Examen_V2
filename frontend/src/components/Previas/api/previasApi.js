@@ -228,6 +228,9 @@ export const previasApi = {
   obtenerMateriasInscripcion: (idPrevia) =>
     apiGet('previas_obtener_materias_inscripcion', { id_previa: idPrevia }),
 
+  obtenerPermisoExamen: (idPrevia) =>
+    apiGet('previas_obtener_permiso_examen', { id_previa: idPrevia }),
+
   inscribirManual: ({ idsPrevias, gmail }) => apiPost('previas_inscribir_manual', {
     ids_previas: idsPrevias,
     gmail,
@@ -235,6 +238,10 @@ export const previasApi = {
 
   quitarInscripcion: (idPrevia) => apiPost('previas_quitar_inscripcion', {
     id_previa: idPrevia,
+  }),
+
+  quitarTodasInscripciones: () => apiPost('previas_quitar_todas_inscripciones', {
+    confirmar: 1,
   }),
 
   guardar: (payload) => apiPost('previas_guardar', payload),

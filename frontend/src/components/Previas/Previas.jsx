@@ -18,6 +18,7 @@ import { usePaginacion } from '../_shared/hooks/usePaginacion';
 import ModalPrevia from './modales/ModalPrevia.jsx';
 import ModalImportarPrevias from './modales/ModalImportarPrevias.jsx';
 import ModalInscribirPrevia from './modales/ModalInscribirPrevia.jsx';
+import ModalPeriodoPermiso from './modales/ModalPeriodoPermiso.jsx';
 import ModalEliminarGlobal from '../Global/Modales/ModalEliminarGlobal.jsx';
 import ModalExportarGlobal from '../Global/Modales/ModalExportarGlobal.jsx';
 import BotonExportarHistorialGlobal from '../Global/Botones/BotonExportarHistorialGlobal.jsx';
@@ -38,6 +39,21 @@ const CONDICIONES_BASE = [
   { id_condicion: 4, condicion: 'P.LIB.' },
   { id_condicion: 5, condicion: 'TER.MAT.' },
   { id_condicion: 6, condicion: 'PENDIENTE' },
+];
+
+const MESES_EXAMEN = [
+  'ENERO',
+  'FEBRERO',
+  'MARZO',
+  'ABRIL',
+  'MAYO',
+  'JUNIO',
+  'JULIO',
+  'AGOSTO',
+  'SEPTIEMBRE',
+  'OCTUBRE',
+  'NOVIEMBRE',
+  'DICIEMBRE',
 ];
 
 function normalizarCurso(item = {}) {
@@ -378,6 +394,19 @@ function usePrevias() {
     }
   }
 
+  async function quitarTodasInscripciones() {
+    try {
+      const res = await previasApi.quitarTodasInscripciones();
+      await cargar();
+      mostrarMensaje('exito', res?.mensaje || 'Todas las inscripciones fueron eliminadas correctamente.');
+      return { ok: true, data: res?.data || res || {} };
+    } catch (e) {
+      const msg = mensajeErrorUsuario(e, 'No se pudieron eliminar todas las inscripciones.');
+      mostrarMensaje('error', msg, 5200);
+      return { ok: false, mensaje: msg };
+    }
+  }
+
   async function guardar(payload) {
     try {
       await previasApi.guardar(payload);
@@ -585,6 +614,7 @@ function usePrevias() {
     obtenerMateriasInscripcion,
     inscribirManual,
     quitarInscripcion,
+    quitarTodasInscripciones,
     obtenerMateriasPorCurso,
     guardar,
     darBaja,
@@ -747,15 +777,44 @@ function formatearDniPermiso(value) {
 }
 
 function fechaLargaSanFrancisco() {
-  const meses = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
   const fecha = new Date();
-  return `SAN FRANCISCO, ${fecha.getDate()} de ${meses[fecha.getMonth()]} de ${fecha.getFullYear()}.`;
+  return `SAN FRANCISCO, ${fecha.getDate()} de ${MESES_EXAMEN[fecha.getMonth()]} de ${fecha.getFullYear()}.`;
+}
+
+function periodoExamenAsignado(item = {}) {
+  const directo = String(
+    item.turno_examen ||
+    item.turno_examen_texto ||
+    item.periodo_examen ||
+    item.periodo ||
+    item.turno_mesa ||
+    item.mesa_periodo ||
+    ''
+  ).trim();
+
+  return directo ? directo.toLocaleUpperCase('es-AR') : '';
+}
+
+function crearPeriodoExamen(mes, anio) {
+  const mesNormalizado = String(mes || '').trim().toLocaleUpperCase('es-AR');
+  const anioNormalizado = String(anio || '').replace(/\D+/g, '').trim();
+  if (!mesNormalizado || !anioNormalizado) return '';
+  return `${mesNormalizado}/${anioNormalizado}`;
+}
+
+function aplicarPeriodoPermiso(items = [], periodo = '') {
+  const periodoNormalizado = String(periodo || '').trim().toLocaleUpperCase('es-AR');
+  if (!periodoNormalizado) return items;
+
+  return (Array.isArray(items) ? items : []).map((item) => ({
+    ...item,
+    turno_examen: periodoNormalizado,
+    periodo_examen: periodoNormalizado,
+  }));
 }
 
 function turnoExamenTexto(item = {}) {
-  const directo = String(item.turno_examen || item.turno || item.periodo_examen || '').trim();
-  if (directo) return directo.toLocaleUpperCase('es-AR');
-  return `JULIO/${new Date().getFullYear()}`;
+  return periodoExamenAsignado(item) || 'SIN DEFINIR';
 }
 
 function cursoLectivoTexto(item = {}) {
@@ -792,7 +851,7 @@ function agruparPermisosPorAlumno(items = []) {
 
     const grupo = grupos.get(clave);
     const claveMateria = [
-      item.id_previa,
+      item.permiso_key || item.id_previa,
       item.id_materia,
       item.materia,
       item.curso_materia,
@@ -1036,6 +1095,7 @@ export default function Previas() {
     obtenerMateriasInscripcion,
     inscribirManual,
     quitarInscripcion,
+    quitarTodasInscripciones,
     guardar,
     darBaja,
     darAlta,
@@ -1052,19 +1112,83 @@ export default function Previas() {
   const [modalImportar, setModalImportar] = useState(false);
   const [modalConfirmar, setModalConfirmar] = useState({ abierto: false, tipo: '', item: null, riesgo: null, cargandoRiesgo: false });
   const [confirmacionRiesgo, setConfirmacionRiesgo] = useState(false);
+  const [confirmacionEliminarTodos, setConfirmacionEliminarTodos] = useState(false);
   const [modalExportar, setModalExportar] = useState(false);
   const [modalInscripcion, setModalInscripcion] = useState({ abierto: false, item: null, data: null, cargando: false, guardando: false, error: '' });
+  const [modalPeriodoPermiso, setModalPeriodoPermiso] = useState({
+    abierto: false,
+    item: null,
+    mes: '',
+    anio: String(new Date().getFullYear()),
+    cargando: false,
+  });
 
   function abrirImportarDesdeExportar() {
     setModalExportar(false);
     setModalImportar(true);
   }
 
-  async function imprimirPermisoIndividual(item) {
+  function cerrarModalPeriodoPermiso() {
+    setModalPeriodoPermiso((prev) => ({
+      ...prev,
+      abierto: false,
+      item: null,
+      cargando: false,
+    }));
+  }
+
+  function abrirModalPeriodoPermiso(item) {
+    setModalPeriodoPermiso({
+      abierto: true,
+      item,
+      mes: '',
+      anio: String(new Date().getFullYear()),
+      cargando: false,
+    });
+  }
+
+  function prepararImpresionPermiso(item) {
+    const periodoAsignado = periodoExamenAsignado(item);
+
+    if (periodoAsignado) {
+      imprimirPermisoIndividual(item, periodoAsignado);
+      return;
+    }
+
+    abrirModalPeriodoPermiso(item);
+  }
+
+  async function confirmarPeriodoPermiso() {
+    const periodo = crearPeriodoExamen(modalPeriodoPermiso.mes, modalPeriodoPermiso.anio);
+
+    if (!periodo) {
+      mostrarMensaje('error', 'Seleccioná el mes y el año del turno de examen.');
+      return;
+    }
+
+    const anioNumero = Number(String(modalPeriodoPermiso.anio || '').replace(/\D+/g, ''));
+    if (!Number.isFinite(anioNumero) || anioNumero < 2000 || anioNumero > 2100) {
+      mostrarMensaje('error', 'Ingresá un año válido para el turno de examen.');
+      return;
+    }
+
+    setModalPeriodoPermiso((prev) => ({ ...prev, cargando: true }));
+    const ok = await imprimirPermisoIndividual(modalPeriodoPermiso.item, periodo);
+
+    if (ok) {
+      cerrarModalPeriodoPermiso();
+    } else {
+      setModalPeriodoPermiso((prev) => ({ ...prev, cargando: false }));
+    }
+  }
+
+  async function imprimirPermisoIndividual(item, periodoForzado = '') {
+    const periodoImpresion = String(periodoForzado || periodoExamenAsignado(item) || '').trim().toLocaleUpperCase('es-AR');
+
     const ventana = window.open('', '_blank');
     if (!ventana) {
       mostrarMensaje('error', 'No se pudo abrir la ventana de impresión. Revisá que el navegador no bloquee ventanas emergentes.');
-      return;
+      return false;
     }
 
     escribirMensajeVentanaImpresion(ventana, 'Preparando permiso de examen del alumno...');
@@ -1073,14 +1197,29 @@ export default function Previas() {
     let materiasAlumno = [];
 
     try {
-      if (dni) {
-        const res = await previasApi.listarTodos(1, { inscripcion: 1, dni });
-        materiasAlumno = (Array.isArray(res?.data) ? res.data : []).filter((registro) => (
-          Number(registro?.inscripcion || 0) === 1 && normalizarDniPermiso(registro?.dni) === dni
-        ));
+      const resPermiso = await previasApi.obtenerPermisoExamen(item?.id_previa);
+      const materiasPermiso = Array.isArray(resPermiso?.data?.materias)
+        ? resPermiso.data.materias
+        : (Array.isArray(resPermiso?.materias) ? resPermiso.materias : []);
+
+      if (materiasPermiso.length > 0) {
+        materiasAlumno = materiasPermiso;
       }
     } catch (e) {
-      console.error('No se pudieron obtener todas las materias inscriptas del alumno:', e);
+      console.error('No se pudo obtener el permiso expandido por talleres:', e);
+    }
+
+    if (materiasAlumno.length === 0) {
+      try {
+        if (dni) {
+          const res = await previasApi.listarTodos(1, { inscripcion: 1, dni });
+          materiasAlumno = (Array.isArray(res?.data) ? res.data : []).filter((registro) => (
+            Number(registro?.inscripcion || 0) === 1 && normalizarDniPermiso(registro?.dni) === dni
+          ));
+        }
+      } catch (e) {
+        console.error('No se pudieron obtener todas las materias inscriptas del alumno:', e);
+      }
     }
 
     if (materiasAlumno.length === 0 && dni) {
@@ -1093,11 +1232,15 @@ export default function Previas() {
       materiasAlumno = [item];
     }
 
-    const pudoImprimir = imprimirPermisosExamen(materiasAlumno, ventana);
+    const materiasConPeriodo = aplicarPeriodoPermiso(materiasAlumno, periodoImpresion);
+    const pudoImprimir = imprimirPermisosExamen(materiasConPeriodo, ventana);
     if (!pudoImprimir) {
       escribirMensajeVentanaImpresion(ventana, 'No se pudo preparar el permiso de examen.');
       mostrarMensaje('error', 'No se pudo preparar la impresión del permiso.');
+      return false;
     }
+
+    return true;
   }
 
   function abrirCrear() {
@@ -1141,6 +1284,7 @@ export default function Previas() {
 
   async function abrirConfirmar(tipo, item) {
     setConfirmacionRiesgo(false);
+    setConfirmacionEliminarTodos(false);
 
     if (tipo !== 'eliminar') {
       setModalConfirmar({ abierto: true, tipo, item, riesgo: null, cargandoRiesgo: false });
@@ -1171,6 +1315,7 @@ export default function Previas() {
     if (modalConfirmar.tipo === 'baja') return darBaja(modalConfirmar.item, motivo);
     if (modalConfirmar.tipo === 'alta') return darAlta(modalConfirmar.item);
     if (modalConfirmar.tipo === 'quitar_inscripcion') return quitarInscripcion(modalConfirmar.item);
+    if (modalConfirmar.tipo === 'quitar_todas_inscripciones') return quitarTodasInscripciones();
     if (modalConfirmar.tipo === 'eliminar') {
       const vinculada = Boolean(modalConfirmar.riesgo?.vinculada || modalConfirmar.riesgo?.requiere_doble_confirmacion);
       return eliminar(modalConfirmar.item, { forzar: vinculada && confirmacionRiesgo });
@@ -1230,6 +1375,26 @@ export default function Previas() {
     );
   }, [modalConfirmar.tipo, modalConfirmar.cargandoRiesgo, previaVinculada, riesgoEliminacion, confirmacionRiesgo]);
 
+  const extraEliminarTodos = useMemo(() => {
+    if (modalConfirmar.tipo !== 'quitar_todas_inscripciones') return null;
+
+    return (
+      <div className="previas-delete-risk" aria-label="Doble confirmación para eliminar inscripciones">
+        <div className="previas-delete-risk__summary">
+          <span>Las previas no se eliminan; solo se limpia la inscripción.</span>
+        </div>
+        <label className="previas-delete-risk__check">
+          <input
+            type="checkbox"
+            checked={confirmacionEliminarTodos}
+            onChange={(event) => setConfirmacionEliminarTodos(event.target.checked)}
+          />
+          <span>Confirmo que quiero eliminar todas las inscripciones.</span>
+        </label>
+      </div>
+    );
+  }, [modalConfirmar.tipo, confirmacionEliminarTodos]);
+
   const modalGlobalConfig = {
     baja: {
       operacion: 'baja',
@@ -1268,6 +1433,20 @@ export default function Previas() {
       tone: 'danger',
       showReason: false,
     },
+    quitar_todas_inscripciones: {
+      operacion: 'eliminar',
+      title: 'Eliminar todos los inscriptos',
+      message: 'Confirmá la limpieza total de la pestaña Inscriptos. Todas las previas inscriptas van a quedar como no inscriptas.',
+      warning: 'Esta acción afecta a todos los registros inscriptos.',
+      confirmLabel: 'Eliminar todos',
+      loadingLabel: 'Eliminando...',
+      successMessage: 'Todas las inscripciones fueron eliminadas correctamente.',
+      errorMessage: 'No se pudieron eliminar todas las inscripciones.',
+      tone: 'danger',
+      showReason: false,
+      extraContent: extraEliminarTodos,
+      confirmDisabled: !confirmacionEliminarTodos,
+    },
     eliminar: {
       operacion: 'eliminar',
       title: previaVinculada ? 'Eliminar previa vinculada' : 'Eliminar previa',
@@ -1295,12 +1474,17 @@ export default function Previas() {
     showReason: false,
   };
 
-  const detallesModalGlobal = [
-    { label: 'Alumno', value: safeText(modalConfirmar.item?.alumno) },
-    { label: 'DNI', value: safeText(modalConfirmar.item?.dni) },
-    { label: 'Materia', value: safeText(modalConfirmar.item?.materia) },
-    { label: 'Curso', value: safeText(modalConfirmar.item?.curso_materia) },
-  ];
+  const detallesModalGlobal = modalConfirmar.tipo === 'quitar_todas_inscripciones'
+    ? [
+      { label: 'Vista', value: 'Inscriptos' },
+      { label: 'Registros afectados', value: 'Todos los inscriptos activos' },
+    ]
+    : [
+      { label: 'Alumno', value: safeText(modalConfirmar.item?.alumno) },
+      { label: 'DNI', value: safeText(modalConfirmar.item?.dni) },
+      { label: 'Materia', value: safeText(modalConfirmar.item?.materia) },
+      { label: 'Curso', value: safeText(modalConfirmar.item?.curso_materia) },
+    ];
 
   const contenido = (
     <div className="previas-page mov-page">
@@ -1449,6 +1633,18 @@ export default function Previas() {
           </div>
 
           <div className="mov-card__actions previas-actionsHead">
+            {vista === 'inscriptos' && (
+              <button
+                type="button"
+                className="mov-btn mov-btn--secondary previas-deleteAllBtn"
+                onClick={() => abrirConfirmar('quitar_todas_inscripciones', null)}
+                disabled={loading}
+                title="Eliminar todas las inscripciones"
+              >
+                <FontAwesomeIcon icon={faTrash} /> Eliminar todos
+              </button>
+            )}
+
             <BotonExportarHistorialGlobal
               className="mov-btn mov-btn--secondary previas-headExportBtn"
               label="Exportar / importar"
@@ -1583,7 +1779,7 @@ export default function Previas() {
 
                           {vista === 'inscriptos' ? (
                             <>
-                              <button type="button" className="mov-iconBtn previas-icon-btn previas-icon-print" onClick={() => imprimirPermisoIndividual(item)} title="Imprimir permiso de examen">
+                              <button type="button" className="mov-iconBtn previas-icon-btn previas-icon-print" onClick={() => prepararImpresionPermiso(item)} title="Imprimir permiso de examen">
                                 <FontAwesomeIcon icon={faPrint} />
                               </button>
                               <button type="button" className="mov-iconBtn mov-iconBtn--danger previas-icon-btn previas-icon-danger" onClick={() => abrirConfirmar('quitar_inscripcion', item)} title="Borrar inscripción">
@@ -1725,6 +1921,20 @@ export default function Previas() {
         />
       )}
 
+      <ModalPeriodoPermiso
+        abierto={modalPeriodoPermiso.abierto}
+        item={modalPeriodoPermiso.item}
+        mes={modalPeriodoPermiso.mes}
+        anio={modalPeriodoPermiso.anio}
+        cargando={modalPeriodoPermiso.cargando}
+        meses={MESES_EXAMEN}
+        periodoPreview={crearPeriodoExamen(modalPeriodoPermiso.mes, modalPeriodoPermiso.anio) || '—'}
+        onMesChange={(mes) => setModalPeriodoPermiso((prev) => ({ ...prev, mes }))}
+        onAnioChange={(anio) => setModalPeriodoPermiso((prev) => ({ ...prev, anio }))}
+        onCerrar={cerrarModalPeriodoPermiso}
+        onConfirmar={confirmarPeriodoPermiso}
+      />
+
       {modalConfirmar.abierto && (
         <ModalEliminarGlobal
           open={modalConfirmar.abierto}
@@ -1732,6 +1942,7 @@ export default function Previas() {
           details={detallesModalGlobal}
           onClose={() => {
             setConfirmacionRiesgo(false);
+            setConfirmacionEliminarTodos(false);
             setModalConfirmar({ abierto: false, tipo: '', item: null, riesgo: null, cargandoRiesgo: false });
           }}
           onConfirm={confirmarOperacion}

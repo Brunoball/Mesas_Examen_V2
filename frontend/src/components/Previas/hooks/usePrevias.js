@@ -343,6 +343,19 @@ export function usePrevias() {
     }
   }
 
+  async function quitarTodasInscripciones() {
+    try {
+      const res = await previasApi.quitarTodasInscripciones();
+      await cargar();
+      mostrarMensaje('exito', res?.mensaje || 'Todas las inscripciones fueron eliminadas correctamente.');
+      return { ok: true, data: res?.data || res || {} };
+    } catch (e) {
+      const msg = mensajeErrorUsuario(e, 'No se pudieron eliminar todas las inscripciones.');
+      mostrarMensaje('error', msg, 5200);
+      return { ok: false, mensaje: msg };
+    }
+  }
+
   async function guardar(payload) {
     try {
       await previasApi.guardar(payload);
@@ -550,6 +563,7 @@ export function usePrevias() {
     obtenerMateriasInscripcion,
     inscribirManual,
     quitarInscripcion,
+    quitarTodasInscripciones,
     obtenerMateriasPorCurso,
     guardar,
     darBaja,

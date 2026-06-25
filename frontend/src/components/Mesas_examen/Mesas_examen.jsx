@@ -1497,6 +1497,7 @@ const MesasExamen = () => {
   const [indiceBusquedaActivo, setIndiceBusquedaActivo] = useState(0);
   const [datosInstitucionales, setDatosInstitucionales] = useState(() => obtenerDatosInstitucionalesLocales());
   const [modalNotificacionesEmailAbierto, setModalNotificacionesEmailAbierto] = useState(false);
+  const [modalEliminarHistorialAbierto, setModalEliminarHistorialAbierto] = useState(false);
 
   const abrirModalNotificacionesEmail = useCallback(() => {
     setModalNotificacionesEmailAbierto(true);
@@ -1612,6 +1613,9 @@ const MesasExamen = () => {
   const totalHistorialVisible = Array.isArray(historial?.armados) ? historial.armados.length : 0;
   const totalVisible = tab === "historial" ? totalHistorialVisible : (Array.isArray(mesasFiltradas) ? mesasFiltradas.length : 0);
   const totalReferencia = tab === "historial" ? totalHistorialVisible : tab === "no-agrupadas" ? totalNoAgrupadas : totalGrupos;
+  const totalHistorialArmados = Number(historial?.resumen?.total_armados ?? totalHistorialVisible) || 0;
+  const totalHistorialResultados = Number(historial?.resumen?.total_resultados ?? (Array.isArray(historial?.resultados) ? historial.resultados.length : 0)) || 0;
+  const hayHistorialGuardado = totalHistorialArmados > 0 || totalHistorialResultados > 0;
   const hayMesasCreadas = totalGrupos > 0 || totalNoAgrupadas > 0;
   const hayBusquedaActiva = String(busqueda || "").trim() !== "";
   const totalResultadosBusqueda = hayBusquedaActiva ? totalVisible : 0;
@@ -1897,6 +1901,26 @@ const MesasExamen = () => {
     setModalExportarHistorialAbierto(true);
   }, [historial?.armados, mostrarToastGlobal]);
 
+  const abrirModalEliminarHistorial = useCallback(() => {
+    if (!hayHistorialGuardado) {
+      mostrarToastGlobal("error", "No hay historiales guardados para eliminar.", 3200);
+      return;
+    }
+
+    setModalEliminarHistorialAbierto(true);
+  }, [hayHistorialGuardado, mostrarToastGlobal]);
+
+  const cerrarModalEliminarHistorial = useCallback(() => {
+    if (historial?.eliminandoTodos) return;
+    setModalEliminarHistorialAbierto(false);
+  }, [historial?.eliminandoTodos]);
+
+  const confirmarEliminarHistorial = useCallback(async () => {
+    await historial?.eliminarTodos?.();
+    setModalEliminarHistorialAbierto(false);
+    mostrarToastGlobal("exito", "Historial eliminado correctamente.", 3000);
+  }, [historial, mostrarToastGlobal]);
+
   const cerrarModalExportarPdf = useCallback(() => {
     if (exportandoPdf) return;
     setModalTituloPdfAbierto(false);
@@ -2167,6 +2191,23 @@ const MesasExamen = () => {
               disabled={cargando || armando || agrupando || (tab === "historial" ? historial?.cargando || exportandoHistorial || totalVisible === 0 : totalVisible === 0)}
             />
 
+            {tab === "historial" && (
+              <button
+                className="mov-btn mov-btn--danger mesas-actionBtn mesas-deleteBtn"
+                type="button"
+                onClick={abrirModalEliminarHistorial}
+                disabled={cargando || armando || agrupando || historial?.cargando || historial?.eliminandoTodos || !hayHistorialGuardado}
+                title={!hayHistorialGuardado ? "No hay historiales guardados para eliminar." : "Eliminar todos los historiales"}
+              >
+                {historial?.eliminandoTodos ? (
+                  <FontAwesomeIcon icon={faSpinner} spin />
+                ) : (
+                  <FontAwesomeIcon icon={faTrash} />
+                )}
+                Eliminar todos
+              </button>
+            )}
+
             <button
               className={`mov-btn mov-btn--primary mesas-actionBtn mesas-createBtn ${hayMesasCreadas ? "mesas-btn--displayNone" : ""}`}
               type="button"
@@ -2402,6 +2443,28 @@ const MesasExamen = () => {
         busqueda={busqueda}
         onClose={cerrarModalExportarHistorial}
         onConfirm={confirmarExportarHistorial}
+      />
+
+      <ModalEliminarGlobal
+        open={modalEliminarHistorialAbierto}
+        operacion="eliminar"
+        loading={!!historial?.eliminandoTodos}
+        tone="danger"
+        title="Eliminar todos los historiales"
+        message="¿Seguro que querés eliminar todos los historiales guardados?"
+        warning="Esta acción es irreversible. Se borrarán los armados históricos, el detalle de cada armado y las notas/resultados guardados en historial."
+        details={[
+          { label: "Armados históricos", value: totalHistorialArmados },
+          { label: "Notas/resultados", value: totalHistorialResultados },
+        ]}
+        confirmLabel="Eliminar todos"
+        loadingLabel="Eliminando..."
+        loadingMessage="Eliminando todos los historiales..."
+        successMessage="Historial eliminado correctamente."
+        errorMessage="No se pudo eliminar el historial."
+        onClose={cerrarModalEliminarHistorial}
+        onConfirm={confirmarEliminarHistorial}
+        hideLocalError
       />
 
       <ModalEliminarGlobal

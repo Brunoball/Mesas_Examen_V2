@@ -475,6 +475,54 @@ function mesas_historial_exportar(): void
     }
 }
 
+function mesas_historial_eliminar_todos(): void
+{
+    try {
+        $pdo = db();
+        mesas_historial_asegurar_tablas($pdo);
+
+        $conteos = [
+            'armados' => (int)$pdo->query('SELECT COUNT(*) FROM historial_mesas_armados')->fetchColumn(),
+            'detalle' => (int)$pdo->query('SELECT COUNT(*) FROM historial_mesas_detalle')->fetchColumn(),
+            'resultados' => (int)$pdo->query('SELECT COUNT(*) FROM historial_previas_resultados')->fetchColumn(),
+        ];
+
+        $pdo->beginTransaction();
+        $pdo->exec('DELETE FROM historial_previas_resultados');
+        $pdo->exec('DELETE FROM historial_mesas_detalle');
+        $pdo->exec('DELETE FROM historial_mesas_armados');
+        $pdo->commit();
+
+        json_response([
+            'exito' => true,
+            'mensaje' => 'Historial de mesas eliminado correctamente.',
+            'data' => [
+                'eliminados' => $conteos,
+                'resumen' => [
+                    'total_resultados' => 0,
+                    'total_aprobadas' => 0,
+                    'total_desaprobadas' => 0,
+                    'total_armados' => 0,
+                ],
+            ],
+        ]);
+    } catch (Throwable $e) {
+        if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        if (function_exists('log_error')) {
+            log_error($e, 'mesas_historial_eliminar_todos');
+        }
+
+        json_response([
+            'exito' => false,
+            'mensaje' => 'Error interno al eliminar el historial de mesas.',
+            'detalle' => defined('APP_DEBUG') && APP_DEBUG ? $e->getMessage() : null,
+        ], 500);
+    }
+}
+
 function mesas_historial_detalle_armado(): void
 {
     try {

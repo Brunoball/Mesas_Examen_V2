@@ -230,6 +230,17 @@
   align-items:center;
 }
 
+.previas-deleteAllBtn{
+  border-color:color-mix(in srgb, var(--balto-danger) 28%, #fff) !important;
+  color:color-mix(in srgb, var(--balto-danger) 72%, #000) !important;
+}
+
+.previas-deleteAllBtn:hover:not(:disabled){
+  background:color-mix(in srgb, var(--balto-danger) 10%, #fff) !important;
+  border-color:color-mix(in srgb, var(--balto-danger) 40%, #fff) !important;
+  color:var(--balto-danger) !important;
+}
+
 .cc-floatingField--search{
   width:100%;
 }
@@ -644,3 +655,198 @@
   color:#1f5f9f !important;
 }
 
+
+/* =========================
+   Modal período permiso de examen
+========================= */
+.previas-periodoOverlay{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:22px;
+  background:rgba(28,23,22,.55);
+  backdrop-filter:blur(4px);
+}
+
+.previas-periodoModal{
+  position:relative;
+  width:min(560px, 100%);
+  border-radius:22px;
+  border:1px solid color-mix(in srgb, var(--mov-border) 76%, #fff);
+  background:#fff;
+  box-shadow:0 24px 70px rgba(28,23,22,.26);
+  padding:30px 28px 22px;
+  color:var(--balto-ink);
+}
+
+.previas-periodoModal__close{
+  position:absolute;
+  top:16px;
+  right:16px;
+  width:34px;
+  height:34px;
+  border:0;
+  border-radius:10px;
+  background:transparent;
+  color:var(--mov-muted);
+  cursor:pointer;
+  font-size:16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.previas-periodoModal__close:hover:not(:disabled){
+  background:color-mix(in srgb, var(--balto-bg) 70%, #fff);
+  color:var(--balto-ink);
+}
+
+.previas-periodoModal__close:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+}
+
+.previas-periodoModal__icon{
+  width:64px;
+  height:64px;
+  margin:0 auto 14px;
+  border-radius:18px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:color-mix(in srgb, var(--balto-action) 12%, #fff);
+  color:var(--balto-action);
+  font-size:24px;
+}
+
+.previas-periodoModal h3{
+  margin:0;
+  text-align:center;
+  font-size:22px;
+  font-weight:760;
+  color:var(--balto-ink);
+}
+
+.previas-periodoModal p{
+  margin:10px auto 18px;
+  max-width:440px;
+  text-align:center;
+  color:var(--mov-muted);
+  font-size:14px;
+  line-height:1.45;
+  font-weight:520;
+}
+
+.previas-periodoModal__alumno{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  margin-bottom:16px;
+  padding:12px 14px;
+  border-radius:14px;
+  border:1px solid color-mix(in srgb, var(--mov-border) 70%, #fff);
+  background:color-mix(in srgb, var(--balto-bg) 55%, #fff);
+}
+
+.previas-periodoModal__alumno span{
+  color:var(--mov-muted);
+  font-size:12px;
+  font-weight:760;
+  text-transform:uppercase;
+  letter-spacing:.03em;
+}
+
+.previas-periodoModal__alumno strong{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:var(--balto-ink);
+  font-size:13px;
+  font-weight:760;
+  text-align:right;
+}
+
+.previas-periodoModal__fields{
+  display:grid;
+  grid-template-columns:1fr 130px;
+  gap:12px;
+}
+
+.previas-periodoModal__fields label{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+  color:var(--balto-ink);
+  font-size:12px;
+  font-weight:760;
+}
+
+.previas-periodoModal__fields select,
+.previas-periodoModal__fields input{
+  width:100%;
+  height:44px;
+  border:1.5px solid rgba(58,46,43,.14);
+  border-radius:12px;
+  background:#fff;
+  color:var(--balto-ink);
+  font-family:inherit;
+  font-size:14px;
+  font-weight:620;
+  outline:none;
+  padding:0 12px;
+}
+
+.previas-periodoModal__fields select:focus,
+.previas-periodoModal__fields input:focus{
+  border-color:rgba(196,139,59,.38);
+  box-shadow:0 0 0 3px rgba(196,139,59,.09);
+}
+
+.previas-periodoModal__preview{
+  margin-top:14px;
+  padding:12px 14px;
+  border-radius:14px;
+  background:rgba(196,139,59,.08);
+  color:var(--balto-ink);
+  font-size:13px;
+  font-weight:560;
+  text-align:center;
+}
+
+.previas-periodoModal__preview strong{
+  font-weight:800;
+}
+
+.previas-periodoModal__actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:12px;
+  margin-top:20px;
+}
+
+@media (max-width:560px){
+  .previas-periodoOverlay{
+    padding:14px;
+  }
+
+  .previas-periodoModal{
+    padding:26px 18px 18px;
+  }
+
+  .previas-periodoModal__fields{
+    grid-template-columns:1fr;
+  }
+
+  .previas-periodoModal__actions{
+    flex-direction:column-reverse;
+  }
+
+  .previas-periodoModal__actions .mov-btn{
+    width:100%;
+  }
+}
