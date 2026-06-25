@@ -668,14 +668,12 @@ const obtenerBloquesVistaPdf = (grupo) => {
 
 const FechaVerticalMesa = ({ grupo, terminosBusqueda = [] }) => {
   const partes = obtenerPartesFechaMesa(grupo);
-  const turno = obtenerTurnoMesa(grupo);
   const hora = obtenerHoraMesa(grupo);
 
   if (!partes) {
     return (
       <div className="pdf-hora-stack">
         <strong><ResaltarBusqueda value={grupo?.fecha || grupo?.fecha_mesa} terminos={terminosBusqueda} /></strong>
-        <strong><ResaltarBusqueda value={turno} terminos={terminosBusqueda} /></strong>
         <strong><ResaltarBusqueda value={hora} terminos={terminosBusqueda} /></strong>
       </div>
     );
@@ -686,7 +684,6 @@ const FechaVerticalMesa = ({ grupo, terminosBusqueda = [] }) => {
       <strong><ResaltarBusqueda value={partes.diaSemana} terminos={terminosBusqueda} /></strong>
       <strong><ResaltarBusqueda value={partes.dia} terminos={terminosBusqueda} /></strong>
       <strong><ResaltarBusqueda value={partes.mesTexto} terminos={terminosBusqueda} /></strong>
-      <strong><ResaltarBusqueda value={turno} terminos={terminosBusqueda} /></strong>
       <strong><ResaltarBusqueda value={hora} terminos={terminosBusqueda} /></strong>
     </div>
   );

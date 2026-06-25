@@ -112,14 +112,15 @@ const obtenerTurnoMesa = (item) => textoCorto(item?.turno).toUpperCase();
 
 const obtenerFechaStack = (item) => {
   const partes = obtenerPartesFechaMesa(item);
-  const turno = obtenerTurnoMesa(item);
   const hora = obtenerHoraMesa(item);
 
+  // Se elimina solo el renglón del turno (MAÑANA/TARDE),
+  // manteniendo la fecha y dejando la hora centrada.
   if (!partes) {
-    return [textoCorto(item?.fecha || item?.fecha_mesa), turno, hora];
+    return [textoCorto(item?.fecha || item?.fecha_mesa), hora];
   }
 
-  return [partes.diaSemana, String(partes.dia), partes.mesTexto, turno, hora];
+  return [partes.diaSemana, String(partes.dia), partes.mesTexto, hora];
 };
 
 
@@ -690,14 +691,19 @@ const dibujarHoraStack = (pdf, grupo, x, yTop, width, height) => {
   const lineHeight = 9.2;
   const totalHeight = stack.length * lineHeight;
   const inicioY = yTop + Math.max(TABLE.paddingY, ((height - totalHeight) / 2) + 0.4);
+  const centroColumna = x + (width / 2);
 
   stack.forEach((linea, index) => {
-    pdf.text(linea, x + TABLE.paddingX, inicioY + (index * lineHeight), {
+    // Centrado real dentro de toda la columna Hora.
+    // No usamos align:"center" porque este exportador calcula el centrado
+    // con métricas aproximadas y la línea de la hora quedaba corrida.
+    const anchoLinea = medirTextoHelveticaBold(linea, size);
+    const xLinea = centroColumna - (anchoLinea / 2);
+
+    pdf.text(linea, xLinea, inicioY + (index * lineHeight), {
       size,
       font: "F2",
       color: COLORS.textStrong,
-      maxWidth: width - (TABLE.paddingX * 2),
-      align: "center",
     });
   });
 };

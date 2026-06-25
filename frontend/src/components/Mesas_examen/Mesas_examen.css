@@ -4772,3 +4772,11 @@
     min-height:78px !important;
   }
 }
+
+/* FIX: hora centrada en la columna del PDF */
+.mesas-card-pdf-fijo .pdf-hora-stack strong,
+.mesas-shell-card.mesas-card-pdf-fijo .pdf-hora-stack strong{
+  display:block;
+  width:100%;
+  text-align:center;
+}
