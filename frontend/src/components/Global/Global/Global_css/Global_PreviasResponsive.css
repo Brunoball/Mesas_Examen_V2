@@ -8,7 +8,8 @@
 
 /* Exportación de Previas: replica el cambio de ubicación usado en Mesas. */
 @media (max-width: 1500px) {
-  .previas-headExportBtn {
+  .previas-headExportBtn,
+  .previas-actionsHead .previas-deleteAllBtn {
     display: none !important;
   }
 
@@ -361,7 +362,8 @@
     justify-content: stretch;
   }
 
-  .previas-footExportBtn.mov-btn {
+  .previas-footExportBtn.mov-btn,
+  .previas-footDeleteAllBtn.mov-btn {
     width: 100%;
     justify-content: center;
   }

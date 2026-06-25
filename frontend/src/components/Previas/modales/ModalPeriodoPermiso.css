@@ -1,0 +1,113 @@
+/* =========================================================
+   PREVIAS — Modal Turno del permiso de examen
+   Base visual: Global_Modals.css.
+   Este archivo solo ajusta rasgos propios de este modal.
+========================================================= */
+
+.gm-modal--periodo-permiso{
+  width:min(620px, 96vw);
+}
+
+.previas-periodoPermisoOverlay{
+  z-index:1000000;
+}
+
+.previas-periodoPermiso__content{
+  gap:14px;
+}
+
+.previas-periodoPermiso__notice{
+  align-items:center;
+}
+
+.previas-periodoPermiso__panel{
+  overflow:visible;
+}
+
+.previas-periodoPermiso__studentCard{
+  min-height:48px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:12px 14px;
+  border:1px solid color-mix(in srgb, var(--gm-border) 68%, #fff);
+  border-radius:14px;
+  background:linear-gradient(180deg, #fff 0%, color-mix(in srgb, var(--gm-bg) 72%, #fff) 100%);
+  box-shadow:0 8px 20px -18px rgba(58, 46, 43, .35);
+}
+
+.previas-periodoPermiso__studentCard span{
+  flex:0 0 auto;
+  color:var(--gm-muted);
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.previas-periodoPermiso__studentCard strong{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:var(--gm-ink);
+  font-size:13.5px;
+  font-weight:720;
+  text-align:right;
+}
+
+.previas-periodoPermiso__fields{
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) 150px;
+  gap:12px;
+}
+
+.previas-periodoPermiso__preview{
+  min-height:54px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:12px 14px;
+  border:1px solid rgba(196, 139, 59, .16);
+  border-radius:14px;
+  background:rgba(196, 139, 59, .07);
+  color:var(--gm-ink);
+}
+
+.previas-periodoPermiso__preview span{
+  color:color-mix(in srgb, var(--gm-text) 86%, #000);
+  font-size:12.5px;
+  font-weight:620;
+}
+
+.previas-periodoPermiso__preview strong{
+  color:color-mix(in srgb, var(--gm-action) 82%, #000);
+  font-size:13.5px;
+  font-weight:820;
+  text-align:right;
+}
+
+@media (max-width:720px){
+  .gm-modal--periodo-permiso{
+    width:100%;
+  }
+
+  .previas-periodoPermiso__fields{
+    grid-template-columns:1fr;
+  }
+
+  .previas-periodoPermiso__studentCard,
+  .previas-periodoPermiso__preview{
+    align-items:flex-start;
+    flex-direction:column;
+    gap:6px;
+  }
+
+  .previas-periodoPermiso__studentCard strong,
+  .previas-periodoPermiso__preview strong{
+    width:100%;
+    text-align:left;
+  }
+}

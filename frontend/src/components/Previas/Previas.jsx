@@ -1822,6 +1822,18 @@ export default function Previas() {
           )}
 
           <div className="previas-footerActions" aria-label="Acciones de exportación e importación">
+            {vista === 'inscriptos' && (
+              <button
+                type="button"
+                className="mov-btn mov-btn--secondary previas-deleteAllBtn previas-footDeleteAllBtn"
+                onClick={() => abrirConfirmar('quitar_todas_inscripciones', null)}
+                disabled={loading}
+                title="Eliminar todas las inscripciones"
+              >
+                <FontAwesomeIcon icon={faTrash} /> Eliminar todos
+              </button>
+            )}
+
             <BotonExportarHistorialGlobal
               className="mov-btn mov-btn--secondary previas-footExportBtn"
               label="Exportar / importar"
