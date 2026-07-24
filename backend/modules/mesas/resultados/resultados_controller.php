@@ -290,21 +290,24 @@ function mesas_resultados_guardar_nota(): void
     $idPrevia = mesas_resultados_int($body['id_previa'] ?? 0);
     $idMesa = mesas_resultados_int($body['id_mesa'] ?? 0);
     $numeroMesa = mesas_resultados_int($body['numero_mesa'] ?? 0);
-    $nota = mesas_resultados_int($body['nota'] ?? 0);
+    $tieneValorNota = array_key_exists('nota', $body);
+    $valorNota = $tieneValorNota ? strtolower(trim((string)$body['nota'])) : '';
+    $esAusente = in_array($valorNota, ['ausente', 'absent', '0'], true);
+    $nota = $esAusente ? 0 : mesas_resultados_int($body['nota'] ?? 0);
 
     if ($idPrevia <= 0) {
         json_response(['exito' => false, 'mensaje' => 'La previa seleccionada no es válida.'], 422);
         return;
     }
 
-    if ($nota < 1 || $nota > 10) {
-        json_response(['exito' => false, 'mensaje' => 'La nota debe estar entre 1 y 10.'], 422);
+    if (!$tieneValorNota || (!$esAusente && ($nota < 1 || $nota > 10))) {
+        json_response(['exito' => false, 'mensaje' => 'Seleccioná Ausente o una nota entre 1 y 10.'], 422);
         return;
     }
 
     $pdo = db();
     $fechaNota = mesas_historial_fecha_hoy();
-    $aprobado = $nota >= 7;
+    $aprobado = !$esAusente && $nota >= 7;
 
     try {
         // DDL antes de la transacción: CREATE/ALTER en MySQL hace commit implícito.
@@ -366,7 +369,21 @@ function mesas_resultados_guardar_nota(): void
                 }
             }
 
-            $idsResultados[] = mesas_resultados_guardar_historial($pdo, $ctx, $nota, $aprobado, $fechaNota, $snapshot);
+            if ($esAusente) {
+                $idsHistorialAusente = mesas_resultados_historial_ids_mismo_contexto(
+                    $pdo,
+                    (int)($ctx['id_previa'] ?? $idPreviaAfectada),
+                    isset($ctx['id_mesa']) && $ctx['id_mesa'] !== null ? (int)$ctx['id_mesa'] : null,
+                    $numeroMesaReal,
+                    $ctx['fecha_mesa'] ?? null,
+                    isset($ctx['id_turno']) && $ctx['id_turno'] !== null ? (int)$ctx['id_turno'] : null,
+                    isset($ctx['id_catedra']) && $ctx['id_catedra'] !== null ? (int)$ctx['id_catedra'] : null,
+                    isset($ctx['id_materia']) && $ctx['id_materia'] !== null ? (int)$ctx['id_materia'] : null
+                );
+                mesas_resultados_eliminar_historiales_duplicados($pdo, $idsHistorialAusente);
+            } else {
+                $idsResultados[] = mesas_resultados_guardar_historial($pdo, $ctx, $nota, $aprobado, $fechaNota, $snapshot);
+            }
         }
 
         $idsAfectadas = array_values(array_unique($idsAfectadas));
@@ -382,7 +399,24 @@ function mesas_resultados_guardar_nota(): void
             ? mesas_historial_columna_existe($pdo, 'previas', 'motivo_baja')
             : false;
 
-        if ($aprobado) {
+        if ($esAusente) {
+            $setsPrevia = [
+                'nota = NULL',
+                'fecha_nota = NULL',
+                'activo = 1',
+            ];
+
+            if ($tieneFechaBaja) {
+                $setsPrevia[] = 'fecha_baja = NULL';
+            }
+
+            if ($tieneMotivoBaja) {
+                $setsPrevia[] = 'motivo_baja = NULL';
+            }
+
+            $stmtPrevia = $pdo->prepare("\n                UPDATE previas\n                SET " . implode(', ', $setsPrevia) . "\n                WHERE id_previa IN ({$placeholders})\n            ");
+            $stmtPrevia->execute($idsAfectadas);
+        } elseif ($aprobado) {
             $setsPrevia = [
                 'nota = ?',
                 'fecha_nota = ?',
@@ -431,9 +465,11 @@ function mesas_resultados_guardar_nota(): void
 
         json_response([
             'exito' => true,
-            'mensaje' => $aprobado
-                ? 'Nota guardada. La previa fue aprobada y dada de baja, pero queda visible en la mesa actual hasta eliminar/cerrar las mesas.'
-                : 'Nota guardada. La previa queda pendiente porque no alcanzó 7.',
+            'mensaje' => $esAusente
+                ? 'Alumno marcado como ausente. La previa continúa activa y sin nota numérica.'
+                : ($aprobado
+                    ? 'Nota guardada. La previa fue aprobada y dada de baja, pero queda visible en la mesa actual hasta eliminar/cerrar las mesas.'
+                    : 'Nota guardada. La previa queda pendiente porque no alcanzó 7.'),
             'data' => [
                 'id_resultado' => $idsResultados[0] ?? null,
                 'ids_resultados' => $idsResultados,
@@ -441,9 +477,10 @@ function mesas_resultados_guardar_nota(): void
                 'ids_previas_afectadas' => $idsAfectadas,
                 'ids_mesas_afectadas' => $idsMesasAfectadas,
                 'numeros_mesa_afectados' => $numerosAfectados,
-                'nota' => $nota,
+                'nota' => $esAusente ? null : $nota,
+                'ausente' => $esAusente,
                 'aprobado' => $aprobado,
-                'fecha_nota' => $fechaNota,
+                'fecha_nota' => $esAusente ? null : $fechaNota,
                 'previa_activa' => $aprobado ? 0 : 1,
                 'replicado_taller' => count($idsAfectadas) > 1 || (string)($ctxInicial['tipo_mesa'] ?? '') === 'taller',
             ],

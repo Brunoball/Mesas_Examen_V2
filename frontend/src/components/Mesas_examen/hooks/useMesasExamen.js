@@ -1478,10 +1478,12 @@ export const useMesasExamen = ({ onToast } = {}) => {
     const idPrevia = Number(alumno?.id_previa || 0);
     const idMesa = Number(alumno?.id_mesa || 0);
     const numeroMesa = Number(alumno?.numero_mesa || 0);
-    const notaNum = Number(nota || 0);
+    const valorNota = String(nota ?? "").trim().toLowerCase();
+    const esAusente = valorNota === "ausente";
+    const notaNum = esAusente ? null : Number(nota || 0);
 
-    if (!idPrevia || notaNum < 1 || notaNum > 10) {
-      mostrarToast("error", "Seleccioná una nota válida del 1 al 10.", 3200);
+    if (!idPrevia || (!esAusente && (!Number.isInteger(notaNum) || notaNum < 1 || notaNum > 10))) {
+      mostrarToast("error", "Seleccioná Ausente o una nota válida del 1 al 10.", 3200);
       return null;
     }
 
@@ -1493,23 +1495,24 @@ export const useMesasExamen = ({ onToast } = {}) => {
         id_previa: idPrevia,
         id_mesa: idMesa || undefined,
         numero_mesa: numeroMesa || undefined,
-        nota: notaNum,
+        nota: esAusente ? "ausente" : notaNum,
       });
 
       const idsAfectadas = Array.isArray(response?.data?.ids_previas_afectadas)
         ? response.data.ids_previas_afectadas.map((id) => Number(id))
         : [idPrevia];
+      const notaLocal = esAusente ? null : notaNum;
 
       const aplicarNotaLocal = (lista = []) => lista.map((grupo) => ({
         ...grupo,
         numeros: Array.isArray(grupo.numeros) ? grupo.numeros.map((numero) => ({
           ...numero,
           alumnos: Array.isArray(numero.alumnos) ? numero.alumnos.map((item) => (
-            idsAfectadas.includes(Number(item?.id_previa || 0)) ? { ...item, nota: notaNum } : item
+            idsAfectadas.includes(Number(item?.id_previa || 0)) ? { ...item, nota: notaLocal } : item
           )) : numero.alumnos,
         })) : grupo.numeros,
         alumnos: Array.isArray(grupo.alumnos) ? grupo.alumnos.map((item) => (
-          idsAfectadas.includes(Number(item?.id_previa || 0)) ? { ...item, nota: notaNum } : item
+          idsAfectadas.includes(Number(item?.id_previa || 0)) ? { ...item, nota: notaLocal } : item
         )) : grupo.alumnos,
       }));
 
@@ -1525,11 +1528,14 @@ export const useMesasExamen = ({ onToast } = {}) => {
       }
 
       const aprobado = !!response?.data?.aprobado;
+      const ausente = !!response?.data?.ausente;
       mostrarToast(
         "exito",
-        aprobado
-          ? "Nota guardada: previa aprobada y dada de baja."
-          : "Nota guardada en historial. La previa sigue pendiente."
+        ausente
+          ? "Alumno marcado como ausente. La previa sigue pendiente."
+          : aprobado
+            ? "Nota guardada: previa aprobada y dada de baja."
+            : "Nota guardada en historial. La previa sigue pendiente."
       );
 
       return response;

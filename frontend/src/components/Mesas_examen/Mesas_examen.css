@@ -2624,11 +2624,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 64px;
+  min-width: 72px;
 }
 
 .mesas-nota-select {
-  width: 62px;
+  width: 70px;
   height: 32px;
   border: 1px solid rgba(0, 31, 91, 0.18);
   border-radius: 10px;
@@ -2652,6 +2652,12 @@
 .mesas-nota-select.is-selected {
   border-color: rgba(22, 163, 74, 0.45);
   background: #f0fdf4;
+}
+
+.mesas-nota-select.is-absent {
+  border-color: rgba(100, 116, 139, 0.32);
+  background: #f8fafc;
+  color: #475569;
 }
 
 .mesas-nota-select:disabled {
@@ -4051,15 +4057,15 @@
 
 .mesas-shell-card.mesas-card-pdf-fijo .mesas-nota-select,
 .mesas-card-pdf-fijo .mesas-nota-select{
-  width:56px;
+  width:66px;
   height:28px;
   border-radius:8px;
-  font-size:11px;
+  font-size:10px;
 }
 
 .mesas-shell-card.mesas-card-pdf-fijo .mesas-nota-selectWrap,
 .mesas-card-pdf-fijo .mesas-nota-selectWrap{
-  min-width:58px;
+  min-width:68px;
 }
 
 /* Aviso de docente cambiado después de armar mesas */

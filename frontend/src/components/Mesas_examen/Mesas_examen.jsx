@@ -579,9 +579,16 @@ const obtenerKeyNotaAlumno = (alumno) => {
   return `${idPrevia}-${idMesa}`;
 };
 
+const VALOR_NOTA_AUSENTE = "ausente";
+
 const obtenerNotaActualAlumno = (alumno) => {
   const nota = Number(alumno?.nota || 0);
-  return nota >= 1 && nota <= 10 ? String(nota) : "";
+  return nota >= 1 && nota <= 10 ? String(nota) : VALOR_NOTA_AUSENTE;
+};
+
+const formatearNotaAlumno = (valor) => {
+  const nota = Number(valor || 0);
+  return nota >= 1 && nota <= 10 ? String(nota) : "AUSENTE";
 };
 
 const SelectorNotaAlumno = ({ alumno, onGuardarNota, guardando }) => {
@@ -590,17 +597,18 @@ const SelectorNotaAlumno = ({ alumno, onGuardarNota, guardando }) => {
   }
 
   const valorActual = obtenerNotaActualAlumno(alumno);
+  const tieneNotaNumerica = valorActual !== VALOR_NOTA_AUSENTE;
 
   return (
     <div className="mesas-nota-selectWrap">
       <select
-        className={`mesas-nota-select ${valorActual ? "is-selected" : ""}`}
+        className={`mesas-nota-select ${tieneNotaNumerica ? "is-selected" : "is-absent"}`}
         value={valorActual}
         disabled={guardando}
-        title="Asignar nota de examen"
+        title="Asignar nota de examen o marcar al alumno como ausente"
         onChange={(e) => onGuardarNota?.({ alumno, nota: e.target.value })}
       >
-        <option value="">Nota</option>
+        <option value={VALOR_NOTA_AUSENTE}>Ausente</option>
         {Array.from({ length: 10 }, (_, index) => index + 1).map((nota) => (
           <option key={nota} value={nota}>{nota}</option>
         ))}
@@ -1405,7 +1413,7 @@ const HistorialMesasPanel = ({ historial, busqueda = "", terminosBusqueda = [] }
                             <div className="mov-gridCell" role="cell" data-label="Materia" title={textoCorto(item.materia)}><ResaltarBusqueda value={item.materia} terminos={terminosBusqueda} /></div>
                             <div className="mov-gridCell" role="cell" data-label="Docente" title={textoCorto(item.docente)}><ResaltarBusqueda value={item.docente} terminos={terminosBusqueda} /></div>
                             <div className="mov-gridCell is-center" role="cell" data-label="Tipo"><ResaltarBusqueda value={item.tipo_mesa} terminos={terminosBusqueda} /></div>
-                            <div className="mov-gridCell is-center" role="cell" data-label="Nota"><ResaltarBusqueda value={item.nota} terminos={terminosBusqueda} /></div>
+                            <div className="mov-gridCell is-center" role="cell" data-label="Nota"><ResaltarBusqueda value={formatearNotaAlumno(item.nota)} terminos={terminosBusqueda} /></div>
                             <div className="mov-gridCell is-center" role="cell" data-label="Activa">{Number(item.previa_activa) === 1 ? "Sí" : "No"}</div>
                           </div>
                           );
@@ -1931,7 +1939,7 @@ const MesasExamen = () => {
     setModalExportarHistorialAbierto(false);
   }, [exportandoHistorial]);
 
-  const confirmarExportarPdf = useCallback(async ({ tituloFijo, continuacion } = {}) => {
+  const confirmarExportarPdf = useCallback(async ({ tituloFijo, continuacion, formatoExportacion } = {}) => {
     if (!Array.isArray(mesasFiltradas) || mesasFiltradas.length === 0) {
       mostrarToastGlobal("error", "No hay mesas visibles para exportar.", 3200);
       return;
@@ -1950,6 +1958,7 @@ const MesasExamen = () => {
         tab,
         tituloFijo,
         continuacion,
+        formatoExportacion,
         logoUrl: datosExportacion.logoDataUrl || datosExportacion.logoUrl,
         institucionNombre: datosExportacion.nombre,
       });

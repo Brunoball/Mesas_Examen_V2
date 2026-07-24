@@ -1135,7 +1135,7 @@ function mesas_armado_docentes_calendarizar_grupos(
             '2_restriccion_docente' => 'docentes con indisponibilidades cargadas primero y elección inicial de slots no bloqueados por día/turno',
             '3_volumen' => 'mayor cantidad de alumnos y previas primero cuando la restricción docente ya fue considerada',
             '4_area_secundaria' => 'el área solo ordena de forma secundaria; no impide mezclar materias si los docentes pueden el mismo día/turno',
-            '5_compatibilidad' => 'sin choque de DNI/alumno ni correlativa posterior antes de anterior; el mismo docente solo comparte slot en casos simples compatibles de la misma área.',
+            '5_compatibilidad' => 'sin choque de DNI/alumno ni correlativa posterior antes de anterior; el mismo docente puede compartir la misma salida en mesas no taller compatibles, aunque sean de áreas distintas.',
         ],
     ];
 }
@@ -1447,26 +1447,28 @@ function mesas_armado_docentes_indices_slots_para_grupo(
         $aCargaSlot = (int)($cargaSlots[$a] ?? 0);
         $bCargaSlot = (int)($cargaSlots[$b] ?? 0);
 
-        // No satura buckets de la misma área por arriba de 4 si todavía hay slots del plan con menos carga.
+        // Disponibilidad primero; después compacta parecido al armado por área.
+        // La carga general queda después del plan/área para evitar repartir de más
+        // y dejar mesas sueltas que sí podían compartir una salida.
         $aBucketSaturado = $aCargaArea >= 4 ? 1 : 0;
         $bBucketSaturado = $bCargaArea >= 4 ? 1 : 0;
 
         return [
             $scoreDisponibilidadA[0], // primero: que todos los docentes puedan ese día/turno
             $scoreDisponibilidadA[1], // segundo: docente con reglas de indisponibilidad cargadas
-            $aCargaSlot,              // tercero: carga general del slot, no el área
-            $aEnPlan,                 // área/plan queda como criterio secundario
+            $aEnPlan,                 // tercero: respetar el plan de compactación por área como preferencia
             $aBucketSaturado,
             $aCargaArea,
+            $aCargaSlot,              // carga general solo desempata; no debe dispersar mesas compatibles
             $ordenPlan[$a] ?? 9999,
             $a,
         ] <=> [
             $scoreDisponibilidadB[0],
             $scoreDisponibilidadB[1],
-            $bCargaSlot,
             $bEnPlan,
             $bBucketSaturado,
             $bCargaArea,
+            $bCargaSlot,
             $ordenPlan[$b] ?? 9999,
             $b,
         ];

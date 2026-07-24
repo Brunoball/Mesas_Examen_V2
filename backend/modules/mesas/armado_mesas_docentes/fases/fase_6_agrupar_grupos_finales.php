@@ -210,6 +210,16 @@ function mesas_armado_docentes_grupos_finales_core(PDO $pdo, array $opciones = [
         $blindajeMaximoNumeros = mesas_armado_docentes_grupos_blindar_maximo_numeros_por_grupo($pdo, $minNumeros, $maxNumeros, $horasTurnos);
         $blindajeCobertura = mesas_armado_docentes_grupos_blindar_cobertura_salida($pdo, $horasTurnos, $disponibilidadDocentes, $fechaInicioRango, $fechaFinRango);
 
+        $rescateFinalMismoSlot = null;
+        if (function_exists('mesas_armado_docentes_reopt_agrupar_no_agrupadas_por_mismo_slot')) {
+            $rescateFinalMismoSlot = mesas_armado_docentes_reopt_agrupar_no_agrupadas_por_mismo_slot(
+                $pdo,
+                $horasTurnos,
+                $disponibilidadDocentes,
+                $confirmarGrupos ? 'validado' : 'borrador'
+            );
+        }
+
         if ($confirmarGrupos) {
             // Confirmar solo debe dejar como armadas las mesas que realmente quedaron agrupadas.
             // Tambien limpia observaciones viejas de numeros que fueron rescatados por reoptimizacion.
@@ -236,7 +246,7 @@ function mesas_armado_docentes_grupos_finales_core(PDO $pdo, array $opciones = [
             'agrupacion_final_generada' => true,
             'reoptimizacion_ejecutada' => is_array($resultadoReoptimizacion),
             'estructura' => 'simple_sin_detalle',
-            'criterio' => 'mesas_grupos guarda una fila por numero_mesa usando numero_grupo repetido. Todo numero_mesa con prioridad 1/taller queda como grupo individual. Correlativas quedan como anclas de fecha/turno. Las simples funcionan como comodines y la fase 7 puede moverlas de fecha/turno para completar grupos compatibles de 2 a 4 sin indisponibilidad docente ni choque de alumnos. El area solo suma score secundario para ordenar candidatos; no bloquea que se agrupen materias de areas distintas. Se permite compartir docente dentro de una misma salida no taller si el grupo final conserva al menos 2 docentes/personas distintas; talleres quedan como excepcion individual.',
+            'criterio' => 'mesas_grupos guarda una fila por numero_mesa usando numero_grupo repetido. Todo numero_mesa con prioridad 1/taller queda como grupo individual. Correlativas quedan como anclas de fecha/turno. Las simples funcionan como comodines y la fase 7 puede moverlas de fecha/turno para completar grupos compatibles de 2 a 4 sin indisponibilidad docente ni choque de alumnos. El area solo suma score secundario para ordenar candidatos; no bloquea que se agrupen materias de areas distintas. Se permite compartir docente dentro de una misma salida no taller, incluso cuando todos los numeros pertenecen al mismo docente; talleres quedan como excepcion individual.',
             'min_numeros_por_grupo' => $minNumeros,
             'max_numeros_por_grupo' => $maxNumeros,
             'total_numeros_leidos' => $totalNumeros,
@@ -248,6 +258,7 @@ function mesas_armado_docentes_grupos_finales_core(PDO $pdo, array $opciones = [
             'total_no_agrupadas_iniciales' => $totalNoAgrupadas,
             'blindaje_maximo_numeros_por_grupo' => $blindajeMaximoNumeros,
             'blindaje_cobertura' => $blindajeCobertura,
+            'rescate_final_mismo_slot' => $rescateFinalMismoSlot,
             'total_orfanas_detectadas_por_blindaje' => $blindajeCobertura['total_orfanas_detectadas'] ?? 0,
             'total_grupos_generados' => $totalesFinales['total_grupos'],
             'total_filas_insertadas_en_mesas_grupos' => $totalesFinales['total_filas_grupo'],
@@ -481,8 +492,8 @@ function mesas_armado_docentes_grupos_es_simple_para_compartir_docente(array $nu
     /*
      * El nombre de la función queda por compatibilidad, pero la regla ahora es más amplia:
      * se permite priorizar mismo docente para cualquier número NO taller, sin exigir misma área.
-     * La validación final sigue exigiendo mínimo 2 docentes distintos en el grupo,
-     * por lo que nunca queda un grupo de 2 números atendido por una sola persona.
+     * En el armado por docente esto es válido: varias materias del mismo docente pueden
+     * compartir la misma salida si no hay choque de alumnos ni indisponibilidad.
      */
     return empty($numero['es_taller'])
         && (int)($numero['prioridad'] ?? 0) !== 1
@@ -547,7 +558,17 @@ function mesas_armado_docentes_grupos_cumple_minimo_docentes_distintos(array $nu
         return false;
     }
 
-    return mesas_armado_docentes_grupos_cantidad_docentes_distintos($numeros) >= $minDocentes;
+    /*
+     * En el modo por docente el área no bloquea y tampoco debe bloquear que el
+     * grupo tenga un único docente distinto. Esa era la causa de varias mesas
+     * sueltas: dos números del mismo docente, en el mismo día/turno y sin choque
+     * de alumnos, se mandaban a no agrupadas por no llegar a 2 docentes distintos.
+     *
+     * La condición operativa real para una salida normal es que haya al menos un
+     * docente resuelto. Si hay docentes repetidos, se interpreta como una única
+     * salida atendida por ese mismo docente, no como choque.
+     */
+    return mesas_armado_docentes_grupos_cantidad_docentes_distintos($numeros) >= 1;
 }
 
 function mesas_armado_docentes_grupos_score_candidato_para_grupo(array $numero, array $grupo): int

@@ -100,6 +100,15 @@ function mesas_armado_docentes_fase_7_reoptimizar_no_agrupadas_core(PDO $pdo, ar
             ? mesas_armado_docentes_grupos_blindar_maximo_numeros_por_grupo($pdo, $minNumeros, $maxNumeros, $horasTurnos)
             : null;
 
+        $estadoGrupoSinPendientes = $confirmarGrupos ? 'validado' : 'borrador';
+        $rescateFinalSinPendientes = mesas_armado_docentes_reopt_agrupar_no_agrupadas_por_mismo_slot(
+            $pdo,
+            $horasTurnos,
+            $disponibilidadDocentesSinPendientes,
+            $estadoGrupoSinPendientes
+        );
+        mesas_armado_docentes_reopt_limpiar_observaciones_de_agrupadas($pdo);
+
         return [
             'fase' => 7,
             'reoptimizacion_ejecutada' => true,
@@ -108,13 +117,14 @@ function mesas_armado_docentes_fase_7_reoptimizar_no_agrupadas_core(PDO $pdo, ar
             'total_grupos_nuevos_por_reoptimizacion' => 0,
             'total_numeros_reoptimizados' => 0,
             'blindaje_maximo_numeros_por_grupo' => $blindajeMaximoSinPendientes,
+            'rescate_final_mismo_slot' => $rescateFinalSinPendientes,
             'blindaje_cobertura' => $blindajeCobertura,
             'total_orfanas_detectadas_por_blindaje' => is_array($blindajeCobertura) ? ($blindajeCobertura['total_orfanas_detectadas'] ?? 0) : 0,
             'total_grupos_sql_invalidos_por_un_solo_docente_blindados' => $statsSinPendientes['total_grupos_sql_invalidos_por_un_solo_docente_blindados'],
             'grupos_sql_invalidos_por_un_solo_docente_blindados' => $statsSinPendientes['grupos_sql_invalidos_por_un_solo_docente_blindados'],
             'total_no_agrupadas_finales' => (int)$pdo->query('SELECT COUNT(*) FROM mesas_no_agrupadas')->fetchColumn(),
             'totales_finales' => mesas_armado_docentes_grupos_totales_finales($pdo),
-            'detalle' => 'No había mesas pendientes para reoptimizar; se ejecutó igualmente el blindaje de cobertura y de docentes distintos.',
+            'detalle' => 'No había mesas pendientes para reoptimizar; se ejecutó igualmente el blindaje de cobertura. En modo docente se permite grupo no taller con un único docente distinto.',
         ];
     }
 
@@ -129,7 +139,7 @@ function mesas_armado_docentes_fase_7_reoptimizar_no_agrupadas_core(PDO $pdo, ar
     $stats = [
         'fase' => 7,
         'reoptimizacion_ejecutada' => true,
-        'criterio' => 'primero completa grupos existentes por misma fecha/turno/disponibilidad; luego usa correlativas como anclas; despues agrupa simples movibles; por ultimo ejecuta busqueda profunda con donantes, pudiendo sacar una mesa simple de un grupo de 3 o 4 para crear otro grupo valido con una no agrupada. El area solo ordena como criterio secundario; no bloquea mezclar materias de areas distintas. Nunca deja una mesa simple con un único docente/persona distinta; mínimo 2 docentes distintos, excepto talleres.',
+        'criterio' => 'primero completa grupos existentes por misma fecha/turno/disponibilidad; luego usa correlativas como anclas; despues agrupa simples movibles; por ultimo ejecuta busqueda profunda con donantes, pudiendo sacar una mesa simple de un grupo de 3 o 4 para crear otro grupo valido con una no agrupada. El area solo ordena como criterio secundario; no bloquea mezclar materias de areas distintas. Permite que una salida no taller tenga un único docente distinto cuando son numeros compatibles del mismo docente; el área solo ordena como criterio secundario y no bloquea.',
         'modo_turnos' => $modoTurnos,
         'min_numeros_por_grupo' => $minNumeros,
         'max_numeros_por_grupo' => $maxNumeros,
@@ -204,7 +214,7 @@ function mesas_armado_docentes_fase_7_reoptimizar_no_agrupadas_core(PDO $pdo, ar
     // 4) Reemplazo inteligente en grupos llenos:
     //    si una no agrupada es compatible por disponibilidad con un grupo ya completo,
     //    entra al grupo y se reubica otra mesa simple hacia otro grupo/mesa valida.
-    //    Esto evita crear el grupo invalido de 2 numeros con el mismo docente.
+    //    En modo docente el mismo profesor puede quedar agrupado en una única salida.
     mesas_armado_docentes_reopt_reemplazar_en_grupos_llenos(
         $pdo,
         $insertGrupo,
@@ -245,8 +255,8 @@ function mesas_armado_docentes_fase_7_reoptimizar_no_agrupadas_core(PDO $pdo, ar
         $stats['total_orfanas_detectadas_por_blindaje'] = $stats['blindaje_cobertura']['total_orfanas_detectadas'] ?? 0;
     }
 
-    // Blindaje final a nivel SQL: aunque una fase haya insertado algo mal,
-    // ninguna mesa simple puede quedar con un unico docente/persona distinta.
+    // Blindaje final a nivel SQL: en modo docente no se elimina un grupo por
+    // tener un unico docente distinto; solo se conserva la métrica en cero.
     mesas_armado_docentes_reopt_blindar_sql_grupos_con_un_solo_docente($pdo, $horasTurnos, $stats);
 
     // Blindaje final operativo: ningún docente/alumno puede quedar en dos salidas
@@ -265,6 +275,22 @@ function mesas_armado_docentes_fase_7_reoptimizar_no_agrupadas_core(PDO $pdo, ar
     if (function_exists('mesas_armado_docentes_grupos_blindar_maximo_numeros_por_grupo')) {
         $stats['blindaje_maximo_numeros_por_grupo'] = mesas_armado_docentes_grupos_blindar_maximo_numeros_por_grupo($pdo, $minNumeros, $maxNumeros, $horasTurnos);
     }
+
+    /*
+     * Rescate final específico del armado por disponibilidad docente.
+     * Después de todos los blindajes puede quedar alguna mesa en no agrupadas
+     * aunque ya tenga una fecha/turno viable. En este modo el área NO debe ser
+     * una traba: si las mesas comparten salida, los docentes pueden asistir, no
+     * hay alumnos repetidos y las correlativas quedan en orden, se agrupan igual.
+     * Este pase se ejecuta al final para evitar que un blindaje anterior vuelva a
+     * mandar a pendientes números que sí podían compartir la misma mesa/salida.
+     */
+    $stats['rescate_final_mismo_slot'] = mesas_armado_docentes_reopt_agrupar_no_agrupadas_por_mismo_slot(
+        $pdo,
+        $horasTurnos,
+        $disponibilidadDocentes,
+        $estadoGrupo
+    );
 
     // Limpieza final: si un numero fue rescatado y quedo en un grupo valido,
     // no debe seguir mostrando la observacion vieja de no agrupada.
@@ -515,7 +541,7 @@ function mesas_armado_docentes_reopt_area_compatible(array $numero, ?int $idArea
      * el área NO es una restricción dura. Se conserva esta función por compatibilidad
      * con llamadas existentes, pero siempre permite mezclar áreas distintas.
      * Las reglas duras son: mismo slot viable para los docentes, sin choque de alumno,
-     * sin mezclar talleres y mínimo 2 docentes/personas distintas en grupos normales.
+     * sin mezclar talleres y al menos un docente resuelto en grupos normales.
      */
     return empty($numero['es_taller']);
 }
@@ -578,7 +604,7 @@ function mesas_armado_docentes_reopt_cumple_minimo_docentes_distintos(array $num
         return false;
     }
 
-    return mesas_armado_docentes_reopt_cantidad_docentes_distintos($numeros) >= $minDocentes;
+    return mesas_armado_docentes_reopt_cantidad_docentes_distintos($numeros) >= 1;
 }
 
 function mesas_armado_docentes_reopt_score_grupo_para_pendiente(array $numero, array $grupo): int
@@ -1294,7 +1320,7 @@ function mesas_armado_docentes_reopt_buscar_mejor_movimiento_con_donante(
                 continue;
             }
 
-            if (mesas_armado_docentes_reopt_cantidad_docentes_distintos([$pendiente, $donante]) < 2) {
+            if (!mesas_armado_docentes_reopt_cumple_minimo_docentes_distintos([$pendiente, $donante])) {
                 continue;
             }
 
@@ -1809,7 +1835,7 @@ function mesas_armado_docentes_reopt_buscar_destino_para_expulsado_de_reemplazo(
             continue;
         }
 
-        if (mesas_armado_docentes_reopt_cantidad_docentes_distintos([$expulsado, $acompaniante]) < 2) {
+        if (!mesas_armado_docentes_reopt_cumple_minimo_docentes_distintos([$expulsado, $acompaniante])) {
             continue;
         }
 
@@ -1837,7 +1863,7 @@ function mesas_armado_docentes_reopt_buscar_destino_para_expulsado_de_reemplazo(
 
             $score = 50000;
             if (mesas_armado_docentes_reopt_docente_compartido_permitido($expulsadoDestino, $acompanianteDestino)) {
-                // No deberia pasar por el control de docentes distintos, pero dejamos score bajo.
+                // Misma persona: válido en modo docente, pero con menor score que mezclar docentes distintos.
                 $score += 1;
             } else {
                 $score += 1000;
@@ -1986,7 +2012,7 @@ function mesas_armado_docentes_reopt_aplicar_reemplazo_en_grupo_lleno(
         'destino_expulsada' => $destino['tipo'] ?? null,
         'fecha_grupo' => $fechaGrupo,
         'id_turno_grupo' => $idTurnoGrupo,
-        'detalle' => 'La mesa no agrupada entro a un grupo lleno donde es compatible por disponibilidad; se reubico otra mesa simple para mantener minimo 2 docentes distintos.',
+        'detalle' => 'La mesa no agrupada entro a un grupo lleno donde es compatible por disponibilidad; se reubico otra mesa simple para mantener un grupo valido por docente.',
     ];
 
     if (mesas_armado_docentes_reopt_es_simple_flexible($pendienteOriginal)) {
@@ -2003,46 +2029,14 @@ function mesas_armado_docentes_reopt_aplicar_reemplazo_en_grupo_lleno(
 
 function mesas_armado_docentes_reopt_blindar_sql_grupos_con_un_solo_docente(PDO $pdo, array $horasTurnos, array &$stats): void
 {
-    $numerosIndex = mesas_armado_docentes_reopt_indexar_numeros(mesas_armado_docentes_grupos_obtener_numeros_mesa($pdo));
-
-    $stmt = $pdo->query("\n        SELECT\n            mg.numero_grupo,\n            COUNT(DISTINCT mg.numero_mesa) AS cantidad_numeros,\n            SUM(CASE WHEN mg.tipo_mesa = 'taller' OR mg.prioridad = 1 THEN 1 ELSE 0 END) AS cantidad_talleres,\n            COUNT(DISTINCT CASE WHEN me.id_docente IS NOT NULL AND me.id_docente > 0 THEN me.id_docente END) AS docentes_distintos,\n            GROUP_CONCAT(DISTINCT mg.numero_mesa ORDER BY mg.orden ASC SEPARATOR ',') AS numeros_csv\n        FROM mesas_grupos mg\n        LEFT JOIN mesas me\n            ON me.numero_mesa = mg.numero_mesa\n           AND me.estado IN ('borrador', 'armada', 'observada')\n        GROUP BY mg.numero_grupo\n        HAVING cantidad_talleres = 0\n           AND cantidad_numeros >= 2\n           AND docentes_distintos < 2\n        ORDER BY mg.numero_grupo ASC\n    ");
-
-    $invalidos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    if (count($invalidos) === 0) {
-        return;
-    }
-
-    $insertNoAgrupada = $pdo->prepare("\n        INSERT INTO mesas_no_agrupadas (\n            numero_mesa,\n            fecha_mesa,\n            id_turno,\n            hora,\n            id_area,\n            tipo_mesa,\n            prioridad,\n            cantidad_alumnos,\n            motivo,\n            estado\n        ) VALUES (\n            ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente'\n        )\n    ");
-    $deleteGrupo = $pdo->prepare('DELETE FROM mesas_grupos WHERE numero_grupo = ?');
-
-    foreach ($invalidos as $grupo) {
-        $numeroGrupo = (int)$grupo['numero_grupo'];
-        $numerosMesa = array_map('intval', mesas_armado_docentes_grupos_csv_a_array((string)($grupo['numeros_csv'] ?? '')));
-
-        $deleteGrupo->execute([$numeroGrupo]);
-
-        foreach ($numerosMesa as $numeroMesa) {
-            if (!isset($numerosIndex[$numeroMesa])) {
-                continue;
-            }
-
-            mesas_armado_docentes_reopt_eliminar_pendientes($pdo, [$numeroMesa]);
-            mesas_armado_docentes_grupos_insertar_no_agrupada(
-                $insertNoAgrupada,
-                $numerosIndex[$numeroMesa],
-                'grupo_simple_invalido_sql_un_solo_docente_distinto_minimo_2_docentes_requeridos',
-                $horasTurnos
-            );
-        }
-
-        $stats['total_grupos_sql_invalidos_por_un_solo_docente_blindados'] = (int)($stats['total_grupos_sql_invalidos_por_un_solo_docente_blindados'] ?? 0) + 1;
-        $stats['grupos_sql_invalidos_por_un_solo_docente_blindados'][] = [
-            'numero_grupo' => $numeroGrupo,
-            'numeros_mesa' => $numerosMesa,
-            'docentes_distintos_sql' => (int)($grupo['docentes_distintos'] ?? 0),
-            'motivo' => 'Blindaje SQL final: se elimino un grupo simple con un unico docente/persona distinta.',
-        ];
-    }
+    /*
+     * Antes esta rutina eliminaba grupos no taller que tenían un único docente
+     * distinto. En el armado por indisponibilidad docente eso es válido: si el
+     * mismo profesor puede estar en ese día/turno, varias mesas compatibles del
+     * mismo docente deben consolidarse en una sola salida en vez de quedar sueltas.
+     */
+    $stats['total_grupos_sql_invalidos_por_un_solo_docente_blindados'] = 0;
+    $stats['grupos_sql_invalidos_por_un_solo_docente_blindados'] = $stats['grupos_sql_invalidos_por_un_solo_docente_blindados'] ?? [];
 }
 
 function mesas_armado_docentes_reopt_blindar_grupos_con_un_solo_docente(
@@ -2052,42 +2046,13 @@ function mesas_armado_docentes_reopt_blindar_grupos_con_un_solo_docente(
     array $horasTurnos,
     array &$stats
 ): void {
-    $insertNoAgrupada = $pdo->prepare("\n        INSERT INTO mesas_no_agrupadas (\n            numero_mesa,\n            fecha_mesa,\n            id_turno,\n            hora,\n            id_area,\n            tipo_mesa,\n            prioridad,\n            cantidad_alumnos,\n            motivo,\n            estado\n        ) VALUES (\n            ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente'\n        )\n    ");
-
-    foreach ($grupos as $numeroGrupo => $grupo) {
-        if (!empty($grupo['tiene_taller'])) {
-            continue;
-        }
-
-        $numerosGrupo = array_values($grupo['numeros'] ?? []);
-        if (mesas_armado_docentes_reopt_cumple_minimo_docentes_distintos($numerosGrupo)) {
-            continue;
-        }
-
-        $stmtDelete = $pdo->prepare('DELETE FROM mesas_grupos WHERE numero_grupo = ?');
-        $stmtDelete->execute([(int)$numeroGrupo]);
-
-        foreach ($numerosGrupo as $numero) {
-            mesas_armado_docentes_reopt_eliminar_pendientes($pdo, [(int)$numero['numero_mesa']]);
-            mesas_armado_docentes_grupos_insertar_no_agrupada(
-                $insertNoAgrupada,
-                $numero,
-                'grupo_simple_invalido_un_solo_docente_distinto_minimo_2_docentes_requeridos',
-                $horasTurnos
-            );
-            $pendientes[(int)$numero['numero_mesa']] = $numero;
-        }
-
-        $stats['total_grupos_invalidos_por_un_solo_docente_blindados']++;
-        $stats['grupos_invalidos_por_un_solo_docente_blindados'][] = [
-            'numero_grupo' => (int)$numeroGrupo,
-            'numeros_mesa' => array_map(static fn (array $n): int => (int)$n['numero_mesa'], $numerosGrupo),
-            'docentes_distintos' => mesas_armado_docentes_reopt_cantidad_docentes_distintos($numerosGrupo),
-            'motivo' => 'Mesa simple con un solo docente/persona distinta. Se envio a no agrupadas para evitar mesa con un unico evaluador.',
-        ];
-
-        unset($grupos[$numeroGrupo]);
-    }
+    /*
+     * No-op intencional. Un único docente distinto ya no invalida el grupo en
+     * este modo; la compatibilidad real se controla por alumno, taller,
+     * correlativas, disponibilidad e indisponibilidad docente.
+     */
+    $stats['total_grupos_invalidos_por_un_solo_docente_blindados'] = 0;
+    $stats['grupos_invalidos_por_un_solo_docente_blindados'] = $stats['grupos_invalidos_por_un_solo_docente_blindados'] ?? [];
 }
 
 function mesas_armado_docentes_reopt_aplicar_movimiento_con_donante(
@@ -2526,7 +2491,7 @@ function mesas_armado_docentes_reopt_numeros_forman_grupo_valido_mismo_docente_s
         }
     }
 
-    return count(array_unique($docentesPorNumero)) >= 2;
+    return count(array_unique($docentesPorNumero)) >= 1;
 }
 
 function mesas_armado_docentes_reopt_numeros_forman_grupo_valido(array $numeros): bool
@@ -2950,6 +2915,379 @@ function mesas_armado_docentes_reopt_buscar_slot_para_numero_sin_choque(
     }
 
     return null;
+}
+
+function mesas_armado_docentes_reopt_agrupar_no_agrupadas_por_mismo_slot(
+    PDO $pdo,
+    array $horasTurnos,
+    array $disponibilidadDocentes,
+    string $estadoGrupo
+): array {
+    $stats = [
+        'ejecutado' => true,
+        'criterio' => 'rescate_final_por_misma_fecha_turno_sin_bloqueo_de_area',
+        'total_no_agrupadas_leidas' => 0,
+        'total_candidatas_con_slot' => 0,
+        'total_insertadas_en_grupos_existentes' => 0,
+        'total_grupos_nuevos' => 0,
+        'total_numeros_rescatados' => 0,
+        'detalles' => [],
+    ];
+
+    $numerosIndex = mesas_armado_docentes_reopt_indexar_numeros(mesas_armado_docentes_grupos_obtener_numeros_mesa($pdo));
+    $grupos = mesas_armado_docentes_reopt_obtener_grupos_actuales($pdo, $numerosIndex);
+    $noAgrupadas = mesas_armado_docentes_reopt_obtener_no_agrupadas_actuales($pdo, $numerosIndex);
+
+    $stats['total_no_agrupadas_leidas'] = count($noAgrupadas);
+
+    if (count($noAgrupadas) === 0) {
+        return $stats;
+    }
+
+    $insertGrupo = $pdo->prepare("\n        INSERT INTO mesas_grupos (\n            numero_grupo,\n            numero_mesa,\n            fecha_mesa,\n            id_turno,\n            hora,\n            id_area,\n            orden,\n            tipo_mesa,\n            prioridad,\n            cantidad_alumnos,\n            estado,\n            observacion\n        ) VALUES (\n            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?\n        )\n    ");
+
+    $pendientesPorSlot = [];
+
+    foreach ($noAgrupadas as $idNoAgrupada => $numero) {
+        $fecha = (string)($numero['fecha_mesa'] ?? '');
+        $idTurno = (int)($numero['id_turno'] ?? 0);
+
+        if ($fecha === '' || $idTurno <= 0 || !empty($numero['es_taller'])) {
+            continue;
+        }
+
+        if (!mesas_armado_docentes_reopt_numero_valido_para_rescate_mismo_slot($pdo, $numero, $fecha, $idTurno, $disponibilidadDocentes)) {
+            continue;
+        }
+
+        $stats['total_candidatas_con_slot']++;
+        $key = $fecha . '|' . $idTurno;
+        $pendientesPorSlot[$key][(int)$idNoAgrupada] = mesas_armado_docentes_reopt_marcar_slot_en_numero($numero, $fecha, $idTurno);
+    }
+
+    if (count($pendientesPorSlot) === 0) {
+        return $stats;
+    }
+
+    foreach ($pendientesPorSlot as $slotKey => &$pendientesSlot) {
+        if (count($pendientesSlot) === 0) {
+            continue;
+        }
+
+        [$fechaSlot, $turnoSlotTexto] = explode('|', (string)$slotKey, 2);
+        $idTurnoSlot = (int)$turnoSlotTexto;
+
+        uasort($pendientesSlot, static function (array $a, array $b): int {
+            return [
+                -(int)($a['prioridad'] ?? 0),
+                -(int)($a['cantidad_alumnos'] ?? 0),
+                (int)($a['numero_mesa'] ?? 0),
+            ] <=> [
+                -(int)($b['prioridad'] ?? 0),
+                -(int)($b['cantidad_alumnos'] ?? 0),
+                (int)($b['numero_mesa'] ?? 0),
+            ];
+        });
+
+        // 1) Primero intenta meter pendientes en grupos ya existentes del mismo slot.
+        // En modo docente el área no bloquea y, si hace falta, el grupo puede pasar de 4
+        // números para que no quede una mesa compatible tirada en no agrupadas.
+        foreach (array_keys($pendientesSlot) as $idNoAgrupada) {
+            if (!isset($pendientesSlot[$idNoAgrupada])) {
+                continue;
+            }
+
+            $numero = $pendientesSlot[$idNoAgrupada];
+            $ordenGrupos = array_keys($grupos);
+            usort($ordenGrupos, static function ($a, $b) use ($numero, $grupos, $fechaSlot, $idTurnoSlot): int {
+                $grupoA = $grupos[$a] ?? [];
+                $grupoB = $grupos[$b] ?? [];
+                $scoreA = mesas_armado_docentes_reopt_score_grupo_mismo_slot_para_rescate($numero, $grupoA, $fechaSlot, $idTurnoSlot);
+                $scoreB = mesas_armado_docentes_reopt_score_grupo_mismo_slot_para_rescate($numero, $grupoB, $fechaSlot, $idTurnoSlot);
+
+                if ($scoreA !== $scoreB) {
+                    return $scoreB <=> $scoreA;
+                }
+
+                return (int)$a <=> (int)$b;
+            });
+
+            foreach ($ordenGrupos as $numeroGrupo) {
+                if (!isset($pendientesSlot[$idNoAgrupada], $grupos[$numeroGrupo])) {
+                    break;
+                }
+
+                if (!mesas_armado_docentes_reopt_puede_sumarse_a_grupo_mismo_slot(
+                    $pdo,
+                    $numero,
+                    $grupos[$numeroGrupo],
+                    $fechaSlot,
+                    $idTurnoSlot,
+                    $disponibilidadDocentes
+                )) {
+                    continue;
+                }
+
+                mesas_armado_docentes_reopt_insertar_numero_rescatado_en_grupo(
+                    $pdo,
+                    $insertGrupo,
+                    $grupos[$numeroGrupo],
+                    $numero,
+                    $fechaSlot,
+                    $idTurnoSlot,
+                    $horasTurnos,
+                    $estadoGrupo,
+                    'Rescate final: agregada por mismo día/turno en armado por disponibilidad docente.'
+                );
+
+                unset($pendientesSlot[$idNoAgrupada]);
+                $stats['total_insertadas_en_grupos_existentes']++;
+                $stats['total_numeros_rescatados']++;
+                $stats['detalles'][] = [
+                    'tipo' => 'insertada_en_grupo_existente_mismo_slot',
+                    'numero_grupo' => (int)$numeroGrupo,
+                    'numero_mesa' => (int)$numero['numero_mesa'],
+                    'fecha_mesa' => $fechaSlot,
+                    'id_turno' => $idTurnoSlot,
+                ];
+                break;
+            }
+        }
+
+        if (count($pendientesSlot) < 2) {
+            continue;
+        }
+
+        // 2) Con las que siguen sueltas, crea grupos nuevos por el mismo slot.
+        // No corta por área; solo alumno/correlativa/taller/docente disponible.
+        $proximoGrupo = mesas_armado_docentes_grupos_proximo_numero($pdo);
+
+        while (count($pendientesSlot) >= 2) {
+            $ids = array_keys($pendientesSlot);
+            $idBase = (int)$ids[0];
+            $base = $pendientesSlot[$idBase];
+            $grupoNuevo = [$base];
+            $idsUsados = [$idBase];
+
+            foreach ($pendientesSlot as $idCandidato => $candidato) {
+                $idCandidato = (int)$idCandidato;
+                if ($idCandidato === $idBase) {
+                    continue;
+                }
+
+                if (!mesas_armado_docentes_reopt_numeros_compatibles_mismo_slot_sin_area(
+                    $pdo,
+                    $candidato,
+                    $grupoNuevo,
+                    $fechaSlot,
+                    $idTurnoSlot,
+                    $disponibilidadDocentes
+                )) {
+                    continue;
+                }
+
+                $grupoNuevo[] = mesas_armado_docentes_reopt_marcar_slot_en_numero($candidato, $fechaSlot, $idTurnoSlot);
+                $idsUsados[] = $idCandidato;
+            }
+
+            if (count($grupoNuevo) < 2 || !mesas_armado_docentes_reopt_numeros_forman_grupo_valido_mismo_docente_slot($grupoNuevo)) {
+                unset($pendientesSlot[$idBase]);
+                continue;
+            }
+
+            foreach ($grupoNuevo as $numero) {
+                mesas_armado_docentes_reopt_actualizar_slot_numero($pdo, (int)$numero['numero_mesa'], $fechaSlot, $idTurnoSlot);
+            }
+
+            mesas_armado_docentes_grupos_insertar_grupo_simple(
+                $insertGrupo,
+                $proximoGrupo,
+                $grupoNuevo,
+                $estadoGrupo,
+                'Rescate final: grupo creado con no agrupadas del mismo día/turno. El área no bloquea en armado por disponibilidad docente.',
+                $horasTurnos
+            );
+
+            mesas_armado_docentes_reopt_eliminar_pendientes(
+                $pdo,
+                array_map(static fn (array $n): int => (int)$n['numero_mesa'], $grupoNuevo)
+            );
+
+            $grupos[$proximoGrupo] = [
+                'numero_grupo' => $proximoGrupo,
+                'fecha_mesa' => $fechaSlot,
+                'id_turno' => $idTurnoSlot,
+                'id_area' => $grupoNuevo[0]['id_area'] !== null ? (int)$grupoNuevo[0]['id_area'] : null,
+                'cantidad_numeros' => count($grupoNuevo),
+                'max_orden' => count($grupoNuevo),
+                'prioridad_max' => max(array_map(static fn (array $n): int => (int)($n['prioridad'] ?? 0), $grupoNuevo)),
+                'tiene_taller' => false,
+                'numeros' => $grupoNuevo,
+            ];
+
+            foreach ($idsUsados as $idUsado) {
+                unset($pendientesSlot[(int)$idUsado]);
+            }
+
+            $stats['total_grupos_nuevos']++;
+            $stats['total_numeros_rescatados'] += count($grupoNuevo);
+            $stats['detalles'][] = [
+                'tipo' => 'grupo_nuevo_mismo_slot',
+                'numero_grupo' => $proximoGrupo,
+                'numeros_mesa' => array_map(static fn (array $n): int => (int)$n['numero_mesa'], $grupoNuevo),
+                'fecha_mesa' => $fechaSlot,
+                'id_turno' => $idTurnoSlot,
+            ];
+
+            $proximoGrupo++;
+        }
+    }
+    unset($pendientesSlot);
+
+    return $stats;
+}
+
+function mesas_armado_docentes_reopt_numero_valido_para_rescate_mismo_slot(
+    PDO $pdo,
+    array $numero,
+    string $fecha,
+    int $idTurno,
+    array $disponibilidadDocentes
+): bool {
+    if (!empty($numero['es_taller']) || $fecha === '' || $idTurno <= 0) {
+        return false;
+    }
+
+    foreach (($numero['docentes'] ?? []) as $idDocente) {
+        $idDocente = (int)$idDocente;
+        if ($idDocente <= 0 || mesas_armado_docentes_docente_no_disponible($disponibilidadDocentes, $idDocente, $fecha, $idTurno)) {
+            return false;
+        }
+    }
+
+    return mesas_armado_docentes_reopt_slot_respeta_correlativas_numero($pdo, (int)$numero['numero_mesa'], $fecha, $idTurno);
+}
+
+function mesas_armado_docentes_reopt_score_grupo_mismo_slot_para_rescate(array $numero, array $grupo, string $fecha, int $idTurno): int
+{
+    if (!isset($grupo['fecha_mesa'], $grupo['id_turno'])
+        || (string)$grupo['fecha_mesa'] !== $fecha
+        || (int)$grupo['id_turno'] !== $idTurno
+        || !empty($grupo['tiene_taller'])
+    ) {
+        return -100000000;
+    }
+
+    $score = 100000;
+
+    foreach (($grupo['numeros'] ?? []) as $actual) {
+        if (count(array_intersect($numero['docentes'] ?? [], $actual['docentes'] ?? [])) > 0) {
+            $score += 50000;
+        }
+
+        if (($numero['id_area'] ?? null) !== null
+            && ($actual['id_area'] ?? null) !== null
+            && (int)$numero['id_area'] === (int)$actual['id_area']
+        ) {
+            $score += 1000;
+        }
+    }
+
+    $score += max(0, 8 - (int)($grupo['cantidad_numeros'] ?? count($grupo['numeros'] ?? []))) * 100;
+
+    return $score;
+}
+
+function mesas_armado_docentes_reopt_puede_sumarse_a_grupo_mismo_slot(
+    PDO $pdo,
+    array $numero,
+    array $grupo,
+    string $fecha,
+    int $idTurno,
+    array $disponibilidadDocentes
+): bool {
+    if (!isset($grupo['fecha_mesa'], $grupo['id_turno'])
+        || (string)$grupo['fecha_mesa'] !== $fecha
+        || (int)$grupo['id_turno'] !== $idTurno
+        || !empty($grupo['tiene_taller'])
+    ) {
+        return false;
+    }
+
+    return mesas_armado_docentes_reopt_numeros_compatibles_mismo_slot_sin_area(
+        $pdo,
+        $numero,
+        $grupo['numeros'] ?? [],
+        $fecha,
+        $idTurno,
+        $disponibilidadDocentes
+    );
+}
+
+function mesas_armado_docentes_reopt_numeros_compatibles_mismo_slot_sin_area(
+    PDO $pdo,
+    array $numero,
+    array $grupoNumeros,
+    string $fecha,
+    int $idTurno,
+    array $disponibilidadDocentes
+): bool {
+    if (!mesas_armado_docentes_reopt_numero_valido_para_rescate_mismo_slot($pdo, $numero, $fecha, $idTurno, $disponibilidadDocentes)) {
+        return false;
+    }
+
+    $todos = array_values(array_merge($grupoNumeros, [mesas_armado_docentes_reopt_marcar_slot_en_numero($numero, $fecha, $idTurno)]));
+
+    if (!mesas_armado_docentes_reopt_numeros_forman_grupo_valido_mismo_docente_slot($todos)) {
+        return false;
+    }
+
+    foreach ($todos as $actual) {
+        if (!mesas_armado_docentes_reopt_numero_valido_para_rescate_mismo_slot($pdo, $actual, $fecha, $idTurno, $disponibilidadDocentes)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function mesas_armado_docentes_reopt_insertar_numero_rescatado_en_grupo(
+    PDO $pdo,
+    PDOStatement $insertGrupo,
+    array &$grupo,
+    array $numero,
+    string $fecha,
+    int $idTurno,
+    array $horasTurnos,
+    string $estado,
+    string $observacion
+): void {
+    $orden = (int)($grupo['max_orden'] ?? count($grupo['numeros'] ?? [])) + 1;
+    $numeroMesa = (int)$numero['numero_mesa'];
+    $numero = mesas_armado_docentes_reopt_marcar_slot_en_numero($numero, $fecha, $idTurno);
+
+    mesas_armado_docentes_reopt_actualizar_slot_numero($pdo, $numeroMesa, $fecha, $idTurno);
+
+    $insertGrupo->execute([
+        (int)$grupo['numero_grupo'],
+        $numeroMesa,
+        $fecha,
+        $idTurno,
+        $horasTurnos[$idTurno] ?? null,
+        $numero['id_area'] !== null ? (int)$numero['id_area'] : null,
+        $orden,
+        (string)$numero['tipo_mesa'],
+        (int)$numero['prioridad'],
+        (int)$numero['cantidad_alumnos'],
+        $estado,
+        $observacion,
+    ]);
+
+    mesas_armado_docentes_reopt_eliminar_pendientes($pdo, [$numeroMesa]);
+
+    $grupo['max_orden'] = $orden;
+    $grupo['cantidad_numeros'] = (int)($grupo['cantidad_numeros'] ?? count($grupo['numeros'] ?? [])) + 1;
+    $grupo['numeros'][] = $numero;
 }
 
 function mesas_armado_docentes_reopt_slot_respeta_correlativas_numero(PDO $pdo, int $numeroMesa, string $fechaCandidata, int $turnoCandidato): bool

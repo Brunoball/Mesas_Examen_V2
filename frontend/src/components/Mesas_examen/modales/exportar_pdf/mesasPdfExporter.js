@@ -38,6 +38,30 @@ const MESES_ES = [
 
 const DIAS_ES = ["DOMINGO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO"];
 
+const FORMATOS_EXPORTACION = {
+  COMPLETO: "completo",
+  SIN_NOTA: "sin_nota",
+  COLEGIO: "colegio",
+};
+
+const FORMATO_ALIASES = {
+  completo: FORMATOS_EXPORTACION.COMPLETO,
+  completa: FORMATOS_EXPORTACION.COMPLETO,
+  default: FORMATOS_EXPORTACION.COMPLETO,
+  sin_nota: FORMATOS_EXPORTACION.SIN_NOTA,
+  sinnota: FORMATOS_EXPORTACION.SIN_NOTA,
+  todo_menos_nota: FORMATOS_EXPORTACION.SIN_NOTA,
+  sinNota: FORMATOS_EXPORTACION.SIN_NOTA,
+  colegio: FORMATOS_EXPORTACION.COLEGIO,
+  imprimir_colegio: FORMATOS_EXPORTACION.COLEGIO,
+  para_colegio: FORMATOS_EXPORTACION.COLEGIO,
+};
+
+const normalizarFormatoExportacion = (valor) => {
+  const key = String(valor || FORMATOS_EXPORTACION.COMPLETO).trim();
+  return FORMATO_ALIASES[key] || FORMATOS_EXPORTACION.COMPLETO;
+};
+
 export const construirTituloPdfExportacion = ({ tituloFijo = "MESAS DE EXAMEN", continuacion = "" } = {}) => {
   const fijo = String(tituloFijo || "MESAS DE EXAMEN").trim() || "MESAS DE EXAMEN";
   const extra = String(continuacion || "").trim();
@@ -47,6 +71,11 @@ export const construirTituloPdfExportacion = ({ tituloFijo = "MESAS DE EXAMEN", 
 const textoCorto = (valor, fallback = "-") => {
   const texto = String(valor || "").trim();
   return texto || fallback;
+};
+
+const formatearNotaExportacion = (valor) => {
+  const nota = Number(valor || 0);
+  return nota >= 1 && nota <= 10 ? String(nota) : "AUSENTE";
 };
 
 const textoCursoDivision = (curso, division) => {
@@ -184,14 +213,28 @@ const agruparAlumnosParaVistaPdf = (numero) => {
   return Array.from(grupos.values());
 };
 
-const construirFilasGrupo = (grupo) => {
+const construirFilasGrupo = (grupo, formatoExportacion = FORMATOS_EXPORTACION.COMPLETO) => {
   const numeros = obtenerNumerosVistaPdf(grupo);
   const filas = [];
+  const formato = normalizarFormatoExportacion(formatoExportacion);
+  const esFormatoColegio = formato === FORMATOS_EXPORTACION.COLEGIO;
 
   numeros.forEach((numero) => {
     const bloques = agruparAlumnosParaVistaPdf(numero);
 
     bloques.forEach((bloque) => {
+      if (esFormatoColegio) {
+        filas.push({
+          materia: bloque.materia,
+          docente: bloque.docente,
+          estudiante: "-",
+          dni: "-",
+          curso: "-",
+          nota: "-",
+        });
+        return;
+      }
+
       bloque.alumnos.forEach((alumno) => {
         filas.push({
           materia: bloque.materia,
@@ -199,7 +242,7 @@ const construirFilasGrupo = (grupo) => {
           estudiante: alumno ? textoCorto(alumno.estudiante || alumno.alumno, "Sin estudiante") : "Sin alumnos vinculados",
           dni: alumno ? textoCorto(alumno.dni) : "-",
           curso: alumno ? obtenerCursoAlumno(alumno) : "-",
-          nota: alumno && alumno.nota !== undefined && alumno.nota !== null && String(alumno.nota).trim() ? String(alumno.nota) : "-",
+          nota: alumno ? formatearNotaExportacion(alumno.nota) : "-",
         });
       });
     });
@@ -587,18 +630,39 @@ class PdfCanvas {
   }
 }
 
-const columnas = [
-  { key: "hora", label: "Hora", width: 62 },
-  { key: "materia", label: "Espacio Curricular", width: 116 },
-  { key: "estudiante", label: "Estudiante", width: 140 },
-  { key: "dni", label: "DNI", width: 56 },
-  { key: "curso", label: "Curso", width: 46 },
-  { key: "nota", label: "Nota", width: 35 },
-  { key: "docente", label: "Docentes", width: 83.58 },
-];
+const COLUMNAS_PDF = {
+  [FORMATOS_EXPORTACION.COMPLETO]: [
+    { key: "hora", label: "Hora", width: 62 },
+    { key: "materia", label: "Espacio Curricular", width: 116 },
+    { key: "estudiante", label: "Estudiante", width: 140 },
+    { key: "dni", label: "DNI", width: 56 },
+    { key: "curso", label: "Curso", width: 46 },
+    { key: "nota", label: "Nota", width: 35 },
+    { key: "docente", label: "Docentes", width: 83.58 },
+  ],
+  [FORMATOS_EXPORTACION.SIN_NOTA]: [
+    { key: "hora", label: "Hora", width: 62 },
+    { key: "materia", label: "Espacio Curricular", width: 126 },
+    { key: "estudiante", label: "Estudiante", width: 156 },
+    { key: "dni", label: "DNI", width: 58 },
+    { key: "curso", label: "Curso", width: 48 },
+    { key: "docente", label: "Docentes", width: 88.58 },
+  ],
+  [FORMATOS_EXPORTACION.COLEGIO]: [
+    { key: "hora", label: "Hora", width: 72 },
+    { key: "materia", label: "Espacio Curricular", width: 286 },
+    { key: "docente", label: "Docentes", width: 180.58 },
+  ],
+};
 
-const anchoTabla = columnas.reduce((total, col) => total + col.width, 0);
-const xColumna = (index) => PAGE.margin + columnas.slice(0, index).reduce((total, col) => total + col.width, 0);
+const obtenerColumnasPdf = (formatoExportacion) => (
+  COLUMNAS_PDF[normalizarFormatoExportacion(formatoExportacion)] || COLUMNAS_PDF[FORMATOS_EXPORTACION.COMPLETO]
+);
+
+const anchoTablaColumnas = (columnas) => columnas.reduce((total, col) => total + col.width, 0);
+const crearXColumna = (columnas) => (index) => PAGE.margin + columnas.slice(0, index).reduce((total, col) => total + col.width, 0);
+const obtenerIndiceColumna = (columnas, key) => columnas.findIndex((col) => col.key === key);
+const obtenerColumna = (columnas, key) => columnas.find((col) => col.key === key) || null;
 const textoMayuscula = (valor) => normalizarTextoPdf(valor).toUpperCase();
 
 const dibujarLogoHeader = (pdf, logoAsset, x, yTop, width, height) => {
@@ -637,7 +701,7 @@ const dibujarHeaderDocumento = (pdf, titulo, logoAsset, institucionNombre = "Ins
   });
 };
 
-const dibujarTablaHeader = (pdf, yTop) => {
+const dibujarTablaHeader = (pdf, yTop, columnas, xColumna) => {
   columnas.forEach((col, index) => {
     const x = xColumna(index);
     pdf.rect(x, yTop, col.width, TABLE.headerHeight, {
@@ -765,19 +829,20 @@ const ajustarAlturasPorSpan = (alturas, spans, keyWidth, size) => {
   });
 };
 
-const prepararBloqueTabla = (grupo, filas) => {
+const prepararBloqueTabla = (grupo, filas, columnas) => {
   const spansMateria = construirSpans(filas, "materia");
   const spansDocente = construirSpans(filas, "docente");
+  const columnasFila = columnas.filter((col) => !["hora", "materia", "docente"].includes(col.key));
+  const columnaMateria = obtenerColumna(columnas, "materia");
+  const columnaDocente = obtenerColumna(columnas, "docente");
+
   const alturas = filas.map((fila) => Math.max(
     TABLE.minRowHeight,
-    altoMinimoTexto(fila.estudiante, columnas[2].width, TABLE.bodySize),
-    altoMinimoTexto(fila.dni, columnas[3].width, TABLE.bodySize),
-    altoMinimoTexto(fila.curso, columnas[4].width, TABLE.bodySize),
-    altoMinimoTexto(fila.nota, columnas[5].width, TABLE.bodySize),
+    ...columnasFila.map((col) => altoMinimoTexto(fila[col.key], col.width, TABLE.bodySize)),
   ));
 
-  ajustarAlturasPorSpan(alturas, spansMateria, columnas[1].width, TABLE.strongSize);
-  ajustarAlturasPorSpan(alturas, spansDocente, columnas[6].width, TABLE.strongSize);
+  if (columnaMateria) ajustarAlturasPorSpan(alturas, spansMateria, columnaMateria.width, TABLE.strongSize);
+  if (columnaDocente) ajustarAlturasPorSpan(alturas, spansDocente, columnaDocente.width, TABLE.strongSize);
   repartirAltoFaltante(alturas, altoMinimoHoraStack(grupo));
 
   const altoCuerpo = alturas.reduce((total, item) => total + item, 0);
@@ -799,77 +864,84 @@ const obtenerAltoSpan = (bloque, span) => bloque.alturas
   .slice(span.inicio, span.inicio + span.cantidad)
   .reduce((total, height) => total + height, 0);
 
-const dibujarBloqueTabla = (pdf, bloque, yTop) => {
+const obtenerOpcionesCeldaPorKey = (key) => {
+  if (["dni", "curso", "nota"].includes(key)) {
+    return { align: "center", maxLines: 1 };
+  }
+  return {};
+};
+
+const dibujarBloqueTabla = (pdf, bloque, yTop, columnas, xColumna, anchoTabla) => {
   const bodyTop = yTop + TABLE.headerHeight;
   const bodyHeight = bloque.alturas.reduce((total, height) => total + height, 0);
+  const indiceHora = obtenerIndiceColumna(columnas, "hora");
+  const indiceMateria = obtenerIndiceColumna(columnas, "materia");
+  const indiceDocente = obtenerIndiceColumna(columnas, "docente");
 
-  dibujarTablaHeader(pdf, yTop);
+  dibujarTablaHeader(pdf, yTop, columnas, xColumna);
 
-  pdf.rect(xColumna(0), bodyTop, columnas[0].width, bodyHeight, {
-    fill: COLORS.cellBg,
-    stroke: COLORS.border,
-    lineWidth: 0.55,
-  });
-  dibujarHoraStack(pdf, bloque.grupo, xColumna(0), bodyTop, columnas[0].width, bodyHeight);
-
-  bloque.spansMateria.forEach((span) => {
-    const y = obtenerYFila(bloque, span.inicio, bodyTop);
-    const height = obtenerAltoSpan(bloque, span);
-    pdf.rect(xColumna(1), y, columnas[1].width, height, {
+  if (indiceHora >= 0) {
+    pdf.rect(xColumna(indiceHora), bodyTop, columnas[indiceHora].width, bodyHeight, {
       fill: COLORS.cellBg,
       stroke: COLORS.border,
       lineWidth: 0.55,
     });
-    dibujarCeldaTexto(pdf, span.valor, xColumna(1), y, columnas[1].width, height, {
-      size: TABLE.strongSize,
-      font: "F2",
-      color: COLORS.textStrong,
-      maxLines: 6,
+    dibujarHoraStack(pdf, bloque.grupo, xColumna(indiceHora), bodyTop, columnas[indiceHora].width, bodyHeight);
+  }
+
+  if (indiceMateria >= 0) {
+    bloque.spansMateria.forEach((span) => {
+      const y = obtenerYFila(bloque, span.inicio, bodyTop);
+      const height = obtenerAltoSpan(bloque, span);
+      pdf.rect(xColumna(indiceMateria), y, columnas[indiceMateria].width, height, {
+        fill: COLORS.cellBg,
+        stroke: COLORS.border,
+        lineWidth: 0.55,
+      });
+      dibujarCeldaTexto(pdf, span.valor, xColumna(indiceMateria), y, columnas[indiceMateria].width, height, {
+        size: TABLE.strongSize,
+        font: "F2",
+        color: COLORS.textStrong,
+        maxLines: 6,
+      });
     });
-  });
+  }
+
+  const columnasFila = columnas
+    .map((col, index) => ({ ...col, index }))
+    .filter((col) => !["hora", "materia", "docente"].includes(col.key));
 
   bloque.filas.forEach((fila, index) => {
     const y = obtenerYFila(bloque, index, bodyTop);
     const height = bloque.alturas[index];
 
-    [2, 3, 4, 5].forEach((colIndex) => {
-      pdf.rect(xColumna(colIndex), y, columnas[colIndex].width, height, {
+    columnasFila.forEach((col) => {
+      pdf.rect(xColumna(col.index), y, col.width, height, {
         fill: COLORS.cellBg,
         stroke: COLORS.border,
         lineWidth: 0.55,
       });
-    });
-
-    dibujarCeldaTexto(pdf, fila.estudiante, xColumna(2), y, columnas[2].width, height);
-    dibujarCeldaTexto(pdf, fila.dni, xColumna(3), y, columnas[3].width, height, {
-      align: "center",
-      maxLines: 1,
-    });
-    dibujarCeldaTexto(pdf, fila.curso, xColumna(4), y, columnas[4].width, height, {
-      align: "center",
-      maxLines: 1,
-    });
-    dibujarCeldaTexto(pdf, fila.nota, xColumna(5), y, columnas[5].width, height, {
-      align: "center",
-      maxLines: 1,
+      dibujarCeldaTexto(pdf, fila[col.key], xColumna(col.index), y, col.width, height, obtenerOpcionesCeldaPorKey(col.key));
     });
   });
 
-  bloque.spansDocente.forEach((span) => {
-    const y = obtenerYFila(bloque, span.inicio, bodyTop);
-    const height = obtenerAltoSpan(bloque, span);
-    pdf.rect(xColumna(6), y, columnas[6].width, height, {
-      fill: COLORS.cellBg,
-      stroke: COLORS.border,
-      lineWidth: 0.55,
+  if (indiceDocente >= 0) {
+    bloque.spansDocente.forEach((span) => {
+      const y = obtenerYFila(bloque, span.inicio, bodyTop);
+      const height = obtenerAltoSpan(bloque, span);
+      pdf.rect(xColumna(indiceDocente), y, columnas[indiceDocente].width, height, {
+        fill: COLORS.cellBg,
+        stroke: COLORS.border,
+        lineWidth: 0.55,
+      });
+      dibujarCeldaTexto(pdf, span.valor, xColumna(indiceDocente), y, columnas[indiceDocente].width, height, {
+        size: TABLE.strongSize,
+        font: "F2",
+        color: COLORS.textStrong,
+        maxLines: 8,
+      });
     });
-    dibujarCeldaTexto(pdf, span.valor, xColumna(6), y, columnas[6].width, height, {
-      size: TABLE.strongSize,
-      font: "F2",
-      color: COLORS.textStrong,
-      maxLines: 8,
-    });
-  });
+  }
 
   pdf.rect(PAGE.margin, yTop, anchoTabla, TABLE.headerHeight + bodyHeight, {
     fill: null,
@@ -878,13 +950,13 @@ const dibujarBloqueTabla = (pdf, bloque, yTop) => {
   });
 };
 
-const cortarFilasQueEntran = (grupo, filas, maxHeight) => {
+const cortarFilasQueEntran = (grupo, filas, maxHeight, columnas) => {
   if (filas.length === 0) return { visibles: [], restantes: [] };
 
   let cantidad = 1;
   let ultimoQueEntra = null;
   while (cantidad <= filas.length) {
-    const candidato = prepararBloqueTabla(grupo, filas.slice(0, cantidad));
+    const candidato = prepararBloqueTabla(grupo, filas.slice(0, cantidad), columnas);
     if (candidato.height <= maxHeight) {
       ultimoQueEntra = cantidad;
       cantidad += 1;
@@ -900,8 +972,11 @@ const cortarFilasQueEntran = (grupo, filas, maxHeight) => {
   };
 };
 
-const generarPdfMesas = ({ mesas = [], titulo = "MESAS DE EXAMEN", logoAsset = null, institucionNombre = "Institución" } = {}) => {
+const generarPdfMesas = ({ mesas = [], titulo = "MESAS DE EXAMEN", logoAsset = null, institucionNombre = "Institución", formatoExportacion = FORMATOS_EXPORTACION.COMPLETO } = {}) => {
   const pdf = new PdfCanvas();
+  const columnas = obtenerColumnasPdf(formatoExportacion);
+  const anchoTabla = anchoTablaColumnas(columnas);
+  const xColumna = crearXColumna(columnas);
   const alturaPaginaDisponible = TABLE.bottom - TABLE.top;
   let paginaIniciada = false;
   let cursorY = TABLE.top;
@@ -931,16 +1006,16 @@ const generarPdfMesas = ({ mesas = [], titulo = "MESAS DE EXAMEN", logoAsset = n
   }
 
   mesas.forEach((grupo) => {
-    let pendientes = construirFilasGrupo(grupo);
+    let pendientes = construirFilasGrupo(grupo, formatoExportacion);
 
     while (pendientes.length > 0) {
-      let bloqueCompleto = prepararBloqueTabla(grupo, pendientes);
+      let bloqueCompleto = prepararBloqueTabla(grupo, pendientes, columnas);
       const espacioNecesario = bloqueCompleto.height + (hayTablaEnPagina ? TABLE.gap : 0);
       const restanteActual = TABLE.bottom - cursorY;
 
       if (espacioNecesario <= restanteActual) {
         if (hayTablaEnPagina) cursorY += TABLE.gap;
-        dibujarBloqueTabla(pdf, bloqueCompleto, cursorY);
+        dibujarBloqueTabla(pdf, bloqueCompleto, cursorY, columnas, xColumna, anchoTabla);
         cursorY += bloqueCompleto.height;
         hayTablaEnPagina = true;
         pendientes = [];
@@ -954,9 +1029,9 @@ const generarPdfMesas = ({ mesas = [], titulo = "MESAS DE EXAMEN", logoAsset = n
 
       if (hayTablaEnPagina) iniciarPagina();
 
-      const { visibles, restantes } = cortarFilasQueEntran(grupo, pendientes, alturaPaginaDisponible);
-      bloqueCompleto = prepararBloqueTabla(grupo, visibles);
-      dibujarBloqueTabla(pdf, bloqueCompleto, cursorY);
+      const { visibles, restantes } = cortarFilasQueEntran(grupo, pendientes, alturaPaginaDisponible, columnas);
+      bloqueCompleto = prepararBloqueTabla(grupo, visibles, columnas);
+      dibujarBloqueTabla(pdf, bloqueCompleto, cursorY, columnas, xColumna, anchoTabla);
       cursorY += bloqueCompleto.height;
       hayTablaEnPagina = true;
       pendientes = restantes;
@@ -1036,7 +1111,7 @@ const limpiarNombreArchivo = (valor) => {
   return base || "mesas-de-examen";
 };
 
-export const descargarPdfMesas = async ({ mesas = [], tituloFijo, continuacion, logoUrl = "", institucionNombre = "Institución" } = {}) => {
+export const descargarPdfMesas = async ({ mesas = [], tituloFijo, continuacion, formatoExportacion = FORMATOS_EXPORTACION.COMPLETO, logoUrl = "", institucionNombre = "Institución" } = {}) => {
   const titulo = construirTituloPdfExportacion({ tituloFijo, continuacion });
   // Primero se usa el logo institucional configurado en el perfil/tenant.
   // Si no existe o no se puede cargar, queda como respaldo el escudo local.
@@ -1044,7 +1119,7 @@ export const descargarPdfMesas = async ({ mesas = [], tituloFijo, continuacion, 
   if (!logoAsset && escudoIpEtUrl) {
     logoAsset = await cargarImagenComoJpegAsset(escudoIpEtUrl);
   }
-  const bytes = generarPdfMesas({ mesas, titulo, logoAsset, institucionNombre });
+  const bytes = generarPdfMesas({ mesas, titulo, logoAsset, institucionNombre, formatoExportacion });
   const blob = new Blob([bytes], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");

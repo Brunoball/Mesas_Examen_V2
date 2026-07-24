@@ -6,3 +6,8 @@ export default BASE_URL;
 //Hostinger: https://lerna.3devsnet.com/api/routes
 //Local: http://localhost:3001/routes
 
+
+
+//local: admin 1234
+//hostinger: admin 1
+

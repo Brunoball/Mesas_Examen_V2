@@ -3,6 +3,11 @@ const textoCorto = (valor, fallback = "-") => {
   return texto || fallback;
 };
 
+const formatearNotaHistorial = (valor) => {
+  const nota = Number(valor || 0);
+  return nota >= 1 && nota <= 10 ? String(nota) : "AUSENTE";
+};
+
 const normalizarHora = (valor) => {
   const texto = String(valor || "").trim();
   if (!texto) return "";
@@ -216,7 +221,7 @@ const construirDetallePlanoHistorial = (data = {}) => {
     materia: textoCorto(fila?.materia),
     docente: textoCorto(fila?.docente),
     tipo: textoCorto(fila?.tipo_mesa),
-    nota: textoCorto(fila?.nota),
+    nota: formatearNotaHistorial(fila?.nota),
     activa: Number(fila?.previa_activa) === 1 ? "Sí" : Number(fila?.previa_activa) === 0 ? "No" : "-",
     turno: textoCorto(fila?.turno),
     condicion: textoCorto(fila?.condicion),
