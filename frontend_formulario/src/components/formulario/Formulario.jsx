@@ -2,6 +2,7 @@
 import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import "./Formulario.css";
 import Toast from "../global/Toast";
+import AvisoPermisoExamen from "./AvisoPermisoExamen";
 import BASE_URL from "../../config/config";
 
 const API_BASE = String(BASE_URL || "").replace(/\/+$/, "");
@@ -170,6 +171,8 @@ const LS = {
   GMAIL: "form_previas_gmail",
   DNI: "form_previas_dni",
 };
+
+const AVISO_PERMISO_SESSION_KEY = "form_previas_aviso_permiso_pendiente";
 
 /* ======== Util: fecha/hora linda en ES ======== */
 const fmtFechaHoraES = (iso) => {
@@ -945,6 +948,29 @@ const Formulario = () => {
   const [remember, setRemember] = useState(false);
 
   const [toast, setToast] = useState(null);
+  const [mostrarAvisoPermiso, setMostrarAvisoPermiso] = useState(() => {
+    try {
+      return sessionStorage.getItem(AVISO_PERMISO_SESSION_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  const abrirAvisoPermiso = useCallback(() => {
+    try {
+      sessionStorage.setItem(AVISO_PERMISO_SESSION_KEY, "1");
+    } catch {}
+
+    setMostrarAvisoPermiso(true);
+  }, []);
+
+  const cerrarAvisoPermiso = useCallback(() => {
+    try {
+      sessionStorage.removeItem(AVISO_PERMISO_SESSION_KEY);
+    } catch {}
+
+    setMostrarAvisoPermiso(false);
+  }, []);
 
   const showToastReplace = useCallback((tipo, mensaje, duracion = 3800) => {
     setToast(null);
@@ -1159,6 +1185,10 @@ const Formulario = () => {
         duracionExito
       );
 
+      // Aviso crítico: no se cierra solo. También queda persistido en esta
+      // pestaña para que un refresh accidental no haga que el alumno lo pierda.
+      abrirAvisoPermiso();
+
       setDataAlumno(null);
 
       if (!remember) {
@@ -1170,29 +1200,47 @@ const Formulario = () => {
     }
   };
 
+  const avisoPermisoPersistente = (
+    <AvisoPermisoExamen
+      abierto={mostrarAvisoPermiso}
+      onCerrar={cerrarAvisoPermiso}
+    />
+  );
+
   if (cargandoVentana) {
     return (
-      <div className="auth-page">
-        <div className="loading-center">
-          <div className="spinner" aria-label="Cargando configuración..." />
-          <p>Cargando…</p>
+      <>
+        <div className="auth-page">
+          <div className="loading-center">
+            <div className="spinner" aria-label="Cargando configuración..." />
+            <p>Cargando…</p>
+          </div>
         </div>
-      </div>
+        {avisoPermisoPersistente}
+      </>
     );
   }
 
   if (errorVentana) {
     return (
-      <InscripcionCerrada
-        cfg={{
-          mensaje_cerrado: "Inscripción no disponible por el momento.",
-        }}
-      />
+      <>
+        <InscripcionCerrada
+          cfg={{
+            mensaje_cerrado: "Inscripción no disponible por el momento.",
+          }}
+        />
+        {avisoPermisoPersistente}
+      </>
     );
   }
 
   if (ventana && !ventana.abierta) {
-    return <InscripcionCerrada cfg={ventana} />;
+    return (
+      <>
+        <InscripcionCerrada cfg={ventana} />
+        {avisoPermisoPersistente}
+      </>
+    );
   }
 
   const isLoginScreen = !dataAlumno;
@@ -1217,6 +1265,8 @@ const Formulario = () => {
           onClose={() => setToast(null)}
         />
       )}
+
+      {avisoPermisoPersistente}
 
       {dataAlumno ? (
         <ResumenAlumno

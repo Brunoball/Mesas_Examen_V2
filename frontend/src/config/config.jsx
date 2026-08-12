@@ -1,4 +1,4 @@
-const BASE_URL = process.env.REACT_APP_API_URL || "https://lerna.3devsnet.com/api/routes";
+const BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3001/routes";
 
 export default BASE_URL;
 
@@ -10,4 +10,6 @@ export default BASE_URL;
 
 //local: admin 1234
 //hostinger: admin 1
+
+//cd bacekend, php -S 127.0.0.1:3001 -t .
 
