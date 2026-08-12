@@ -1,7 +1,9 @@
 import React, { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import "./AvisoPermisoExamen.css";
 
 const AvisoPermisoExamen = ({ abierto, onCerrar }) => {
+  const modalRef = useRef(null);
   const botonRef = useRef(null);
 
   useEffect(() => {
@@ -13,11 +15,41 @@ const AvisoPermisoExamen = ({ abierto, onCerrar }) => {
     document.body.style.overflow = "hidden";
 
     const focusTimer = window.setTimeout(() => {
-      botonRef.current?.focus();
-    }, 80);
+      botonRef.current?.focus({ preventScroll: true });
+    }, 0);
+
+    const manejarTeclado = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCerrar?.();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const controles = modalRef.current?.querySelectorAll(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+
+      if (!controles?.length) return;
+
+      const primero = controles[0];
+      const ultimo = controles[controles.length - 1];
+
+      if (event.shiftKey && document.activeElement === primero) {
+        event.preventDefault();
+        ultimo.focus();
+      } else if (!event.shiftKey && document.activeElement === ultimo) {
+        event.preventDefault();
+        primero.focus();
+      }
+    };
+
+    document.addEventListener("keydown", manejarTeclado, true);
 
     return () => {
       window.clearTimeout(focusTimer);
+      document.removeEventListener("keydown", manejarTeclado, true);
       document.body.style.overflow = overflowAnterior;
 
       if (
@@ -27,13 +59,14 @@ const AvisoPermisoExamen = ({ abierto, onCerrar }) => {
         elementoAnterior.focus();
       }
     };
-  }, [abierto]);
+  }, [abierto, onCerrar]);
 
   if (!abierto) return null;
 
-  return (
+  return createPortal(
     <div className="aviso-permiso-overlay" role="presentation">
       <section
+        ref={modalRef}
         className="aviso-permiso-modal"
         role="alertdialog"
         aria-modal="true"
@@ -47,7 +80,9 @@ const AvisoPermisoExamen = ({ abierto, onCerrar }) => {
           aria-label="Cerrar aviso importante"
           title="Cerrar"
         >
-          ×
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6l5.6-5.6L5 6.4 6.4 5Z" />
+          </svg>
         </button>
 
         <div className="aviso-permiso-estado" aria-hidden="true">
@@ -59,6 +94,9 @@ const AvisoPermisoExamen = ({ abierto, onCerrar }) => {
         <div className="aviso-permiso-encabezado">
           <p className="aviso-permiso-kicker">Inscripción confirmada</p>
           <h2 id="aviso-permiso-titulo">Importante para rendir</h2>
+          <p className="aviso-permiso-bajada">
+            Tu inscripción se registró correctamente.
+          </p>
         </div>
 
         <div className="aviso-permiso-destacado">
@@ -68,22 +106,29 @@ const AvisoPermisoExamen = ({ abierto, onCerrar }) => {
             </svg>
           </div>
 
-          <p id="aviso-permiso-descripcion">
-            Recordá que tenés que presentarte con el <strong>permiso de examen</strong>{" "}
-            que te dieron en secretaría. Si no lo tenés, acercate a retirarlo.
-          </p>
+          <div className="aviso-permiso-mensaje">
+            <strong>Antes de rendir</strong>
+            <p id="aviso-permiso-descripcion">
+              Recordá que tenés que presentarte con el{" "}
+              <strong>permiso de examen</strong> que te dieron en secretaría. Si
+              no lo tenés, acercate a retirarlo.
+            </p>
+          </div>
         </div>
-        
-        <button
-          ref={botonRef}
-          type="button"
-          className="aviso-permiso-entendido"
-          onClick={onCerrar}
-        >
-          Entendido, cerrar aviso
-        </button>
+
+        <div className="aviso-permiso-acciones">
+          <button
+            ref={botonRef}
+            type="button"
+            className="aviso-permiso-entendido"
+            onClick={onCerrar}
+          >
+            Entendido, cerrar aviso
+          </button>
+        </div>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 };
 

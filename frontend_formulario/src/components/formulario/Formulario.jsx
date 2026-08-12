@@ -1173,19 +1173,8 @@ const Formulario = () => {
         return;
       }
 
-      const insertados = Number(json.insertados || 0);
-      const duracionExito = insertados === 1 ? 3000 : 3800;
-
-      showToastReplace(
-        "exito",
-        json?.mensaje ||
-          cfgActual?.mensaje_confirmacion ||
-          ventana?.mensaje_confirmacion ||
-          `Inscripción registrada (${insertados} materia/s).`,
-        duracionExito
-      );
-
-      // Aviso crítico: no se cierra solo. También queda persistido en esta
+      // El modal confirma el éxito de la inscripción y no se cierra solo.
+      // También queda persistido en esta
       // pestaña para que un refresh accidental no haga que el alumno lo pierda.
       abrirAvisoPermiso();
 

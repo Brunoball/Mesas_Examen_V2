@@ -1,186 +1,214 @@
+.aviso-permiso-overlay,
+.aviso-permiso-overlay * {
+  box-sizing: border-box;
+}
+
 .aviso-permiso-overlay {
-  position: fixed !important;
+  position: fixed;
   inset: 0;
-  z-index: 9000 !important;
+  z-index: 999999;
+  width: 100vw;
+  height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
-  background: rgba(15, 23, 42, 0.68);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  animation: avisoPermisoOverlayIn 180ms ease-out;
+  overflow: hidden;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.45);
+  overscroll-behavior: none;
+  animation: avisoPermisoOverlayIn 140ms ease-out;
   font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
 .aviso-permiso-modal {
   position: relative;
-  width: min(640px, 100%);
-  max-height: calc(100dvh - 40px);
+  width: min(520px, 100%);
+  max-height: calc(100dvh - 32px);
   overflow-y: auto;
-  padding: 34px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 22px;
+  overscroll-behavior: contain;
+  padding: 22px 20px 18px;
+  border: 0;
+  border-top: 3px solid #16a34a;
+  border-radius: 16px;
   background: #ffffff;
-  color: #0f172a;
-  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.34);
-  animation: avisoPermisoModalIn 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  color: #1f2937;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  animation: avisoPermisoModalIn 140ms ease-out;
 }
 
 .aviso-permiso-cerrar {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 14px;
+  right: 14px;
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   padding: 0;
-  border: 1px solid #e2e8f0;
-  border-radius: 999px;
+  border: 0;
+  border-radius: 10px;
   background: #ffffff;
-  color: #475569;
-  font: inherit;
-  font-size: 26px;
-  line-height: 1;
+  color: #374151;
   cursor: pointer;
-  transition: background 160ms ease, color 160ms ease, border-color 160ms ease,
-    transform 160ms ease;
+  transition: background 150ms ease, color 150ms ease, transform 150ms ease;
+}
+
+.aviso-permiso-cerrar svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
 }
 
 .aviso-permiso-cerrar:hover {
-  border-color: #cbd5e1;
-  background: #f8fafc;
-  color: #0f172a;
-  transform: scale(1.04);
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.aviso-permiso-cerrar:active {
+  transform: translateY(1px);
 }
 
 .aviso-permiso-cerrar:focus-visible,
 .aviso-permiso-entendido:focus-visible {
-  outline: 3px solid rgba(34, 197, 94, 0.28);
-  outline-offset: 3px;
+  outline: 3px solid rgba(34, 197, 94, 0.25);
+  outline-offset: 2px;
 }
 
 .aviso-permiso-estado {
   display: grid;
   place-items: center;
-  width: 58px;
-  height: 58px;
-  margin-bottom: 18px;
-  border-radius: 18px;
+  width: 56px;
+  height: 56px;
+  margin: 4px auto 10px;
+  border-radius: 16px;
   background: #dcfce7;
   color: #16a34a;
 }
 
 .aviso-permiso-estado svg {
-  width: 34px;
-  height: 34px;
+  width: 31px;
+  height: 31px;
   fill: currentColor;
 }
 
 .aviso-permiso-encabezado {
-  padding-right: 42px;
+  padding: 0 38px;
+  text-align: center;
 }
 
 .aviso-permiso-kicker {
-  margin: 0 0 5px;
+  margin: 0 0 4px;
   color: #16a34a;
-  font-size: 13px;
-  font-weight: 750;
+  font-size: 11px;
+  font-weight: 800;
   letter-spacing: 0.055em;
   text-transform: uppercase;
 }
 
 .aviso-permiso-encabezado h2 {
   margin: 0;
-  color: #0f172a;
-  font-size: clamp(27px, 4vw, 36px);
-  font-weight: 780;
-  line-height: 1.1;
-  letter-spacing: -0.035em;
+  color: #15803d;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.aviso-permiso-bajada {
+  margin: 8px 0 0;
+  color: #4b5563;
+  font-size: 14px;
+  line-height: 1.4;
 }
 
 .aviso-permiso-destacado {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
-  gap: 15px;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 12px;
   align-items: start;
-  margin-top: 24px;
-  padding: 20px 22px;
-  border: 1px solid #86efac;
-  border-left: 6px solid #22c55e;
-  border-radius: 15px;
+  margin-top: 16px;
+  padding: 13px 14px;
+  border: 1px solid #bbf7d0;
+  border-left: 4px solid #22c55e;
+  border-radius: 14px;
   background: #f0fdf4;
 }
 
 .aviso-permiso-icono {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
   background: #dcfce7;
   color: #15803d;
 }
 
 .aviso-permiso-icono svg {
-  width: 24px;
-  height: 24px;
+  width: 21px;
+  height: 21px;
   fill: currentColor;
+}
+
+.aviso-permiso-mensaje {
+  min-width: 0;
+}
+
+.aviso-permiso-mensaje > strong {
+  display: block;
+  margin: 1px 0 3px;
+  color: #14532d;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.4;
 }
 
 .aviso-permiso-destacado p {
   margin: 0;
-  color: #334155;
-  font-size: 17px;
-  font-weight: 500;
-  line-height: 1.62;
-  letter-spacing: -0.012em;
-}
-
-.aviso-permiso-destacado strong {
-  color: #14532d;
-  font-weight: 760;
-}
-
-.aviso-permiso-ayuda {
-  margin: 18px 0 0;
-  color: #64748b;
+  color: #4b5563;
   font-size: 13px;
+  font-weight: 400;
   line-height: 1.5;
 }
 
+.aviso-permiso-destacado p strong {
+  color: #14532d;
+  font-weight: 700;
+}
+
+.aviso-permiso-acciones {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
 .aviso-permiso-entendido {
-  width: 100%;
-  min-height: 50px;
-  margin-top: 22px;
-  padding: 13px 20px;
+  min-height: 40px;
+  padding: 0 18px;
   border: 0;
   border-radius: 12px;
   background: #16a34a;
   color: #ffffff;
   font: inherit;
-  font-size: 15px;
-  font-weight: 720;
+  font-size: 12.5px;
+  font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 10px 22px rgba(22, 163, 74, 0.22);
-  transition: background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+  transition: background 120ms ease, transform 120ms ease;
 }
 
 .aviso-permiso-entendido:hover {
   background: #15803d;
-  transform: translateY(-1px);
-  box-shadow: 0 13px 26px rgba(22, 163, 74, 0.25);
 }
 
 .aviso-permiso-entendido:active {
-  transform: translateY(0);
+  transform: translateY(1px);
 }
 
 @keyframes avisoPermisoOverlayIn {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -188,65 +216,75 @@
 
 @keyframes avisoPermisoModalIn {
   from {
-    opacity: 0;
-    transform: translateY(16px) scale(0.985);
+    opacity: 0.7;
+    transform: translateY(8px);
   }
+
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 560px) {
   .aviso-permiso-overlay {
-    align-items: flex-end;
-    padding: 12px;
+    min-height: 100dvh;
+    padding: 8px;
   }
 
   .aviso-permiso-modal {
     width: 100%;
-    max-height: calc(100dvh - 24px);
-    padding: 27px 20px 20px;
-    border-radius: 20px;
+    max-height: calc(100dvh - 16px);
+    padding: 20px 14px 14px;
+    border-radius: 14px;
   }
 
   .aviso-permiso-cerrar {
-    top: 12px;
-    right: 12px;
-    width: 36px;
-    height: 36px;
+    top: 10px;
+    right: 10px;
+    width: 32px;
+    height: 32px;
   }
 
   .aviso-permiso-estado {
-    width: 52px;
-    height: 52px;
-    margin-bottom: 16px;
-    border-radius: 15px;
+    width: 50px;
+    height: 50px;
+    margin-bottom: 9px;
+    border-radius: 14px;
   }
 
   .aviso-permiso-encabezado {
-    padding-right: 32px;
+    padding: 0 34px;
   }
 
   .aviso-permiso-encabezado h2 {
-    font-size: clamp(25px, 8vw, 32px);
+    font-size: 18px;
+  }
+
+  .aviso-permiso-bajada {
+    margin-top: 6px;
+    font-size: 13px;
   }
 
   .aviso-permiso-destacado {
-    grid-template-columns: 1fr;
-    gap: 12px;
-    margin-top: 20px;
-    padding: 17px;
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 10px;
+    margin-top: 14px;
+    padding: 12px;
   }
 
-  .aviso-permiso-destacado p {
-    font-size: 16px;
-    line-height: 1.55;
+  .aviso-permiso-icono {
+    width: 34px;
+    height: 34px;
+  }
+
+  .aviso-permiso-acciones {
+    margin-top: 14px;
   }
 
   .aviso-permiso-entendido {
-    min-height: 52px;
-    margin-top: 18px;
+    width: 100%;
+    min-height: 40px;
   }
 }
 
