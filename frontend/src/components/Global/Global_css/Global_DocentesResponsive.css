@@ -4,6 +4,22 @@
    Docentes.css sin modificaciones de layout.
    ========================================================= */
 
+/* En resoluciones medias, las acciones principales bajan al pie de la tabla. */
+@media (max-width: 1500px) {
+  .docentes-headExportBtn,
+  .docentes-headAddBtn {
+    display: none !important;
+  }
+
+  .docentes-footerActions {
+    display: inline-flex;
+  }
+
+  .docentes-pagination {
+    margin-left: 0;
+  }
+}
+
 @media (max-width: 1200px) {
   .docentes-card__head {
     align-items: stretch;
@@ -102,6 +118,17 @@
 }
 
 @media (max-width: 820px) {
+  .docentes-footerActions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: stretch;
+  }
+
+  .docentes-footerActions .mov-btn {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
   .docentes-page.mov-page {
     height: calc(100dvh - 70px);
     min-height: 0;

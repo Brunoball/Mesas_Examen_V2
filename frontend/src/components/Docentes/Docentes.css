@@ -135,14 +135,62 @@ background:rgba(196,139,59,.07);
   font-size:13px;
   font-weight:650;
   cursor:pointer;
+  transition:border-color var(--mov-trans), background var(--mov-trans), box-shadow var(--mov-trans);
+}
+
+.docentes-cleanAvailabilityConfirm label:hover{
+  border-color:color-mix(in srgb, var(--balto-danger) 42%, #fff);
+  background:color-mix(in srgb, var(--balto-danger) 9%, #fff);
+}
+
+.docentes-cleanAvailabilityConfirm label:focus-within{
+  border-color:color-mix(in srgb, var(--balto-danger) 55%, #fff);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--balto-danger) 14%, transparent);
 }
 
 .docentes-cleanAvailabilityConfirm input{
-  width:16px;
-  height:16px;
-  margin:1px 0 0;
-  accent-color:var(--balto-danger);
+  appearance:none;
+  width:19px;
+  height:19px;
+  margin:0;
   flex:0 0 auto;
+  display:grid;
+  place-content:center;
+  border:1.5px solid color-mix(in srgb, var(--balto-danger) 45%, #fff);
+  border-radius:6px;
+  background:#fff;
+  cursor:pointer;
+  transition:background var(--mov-trans), border-color var(--mov-trans), box-shadow var(--mov-trans);
+}
+
+.docentes-cleanAvailabilityConfirm input::before{
+  content:'';
+  width:9px;
+  height:5px;
+  border-left:2px solid #fff;
+  border-bottom:2px solid #fff;
+  transform:translateY(-1px) rotate(-45deg) scale(0);
+  transform-origin:center;
+  transition:transform var(--mov-trans);
+}
+
+.docentes-cleanAvailabilityConfirm input:checked{
+  border-color:var(--balto-danger);
+  background:var(--balto-danger);
+  box-shadow:0 3px 9px color-mix(in srgb, var(--balto-danger) 22%, transparent);
+}
+
+.docentes-cleanAvailabilityConfirm input:checked::before{
+  transform:translateY(-1px) rotate(-45deg) scale(1);
+}
+
+.docentes-cleanAvailabilityConfirm input:focus-visible{
+  outline:3px solid color-mix(in srgb, var(--balto-danger) 20%, transparent);
+  outline-offset:2px;
+}
+
+.docentes-cleanAvailabilityConfirm span{
+  line-height:1.4;
 }
 
 
@@ -282,6 +330,23 @@ background:rgba(196,139,59,.07);
 .docentes-footer strong{
   color:var(--balto-ink);
   font-weight:620;
+}
+
+.docentes-footerActions{
+  display:none;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+  margin-left:auto;
+}
+
+.docentes-footActionBtn.mov-btn{
+  height:34px;
+  min-height:34px;
+  padding:0 13px;
+  border-radius:10px;
+  font-size:12px;
+  white-space:nowrap;
 }
 
 .docentes-pagination{

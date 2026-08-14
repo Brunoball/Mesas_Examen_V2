@@ -1421,9 +1421,18 @@ export default function Previas() {
     return (
       <div className="previas-delete-risk" aria-label="Indicadores de vinculación">
         <div className="previas-delete-risk__summary">
-          <span>Mesas actuales: <b>{Number(resumen.mesas_actuales || 0)}</b></span>
-          <span>Historial de mesas: <b>{Number(resumen.historial_mesas || 0)}</b></span>
-          <span>Historial de resultados: <b>{Number(resumen.historial_resultados || 0)}</b></span>
+          <div className="previas-delete-risk__stat">
+            <span>Mesas actuales</span>
+            <b>{Number(resumen.mesas_actuales || 0)}</b>
+          </div>
+          <div className="previas-delete-risk__stat">
+            <span>Historial de mesas</span>
+            <b>{Number(resumen.historial_mesas || 0)}</b>
+          </div>
+          <div className="previas-delete-risk__stat">
+            <span>Historial de resultados</span>
+            <b>{Number(resumen.historial_resultados || 0)}</b>
+          </div>
         </div>
         <label className="previas-delete-risk__check">
           <input

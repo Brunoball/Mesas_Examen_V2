@@ -402,14 +402,14 @@ export default function Docentes() {
             </button>
 
             <BotonExportarHistorialGlobal
-              className="mov-btn mov-btn--secondary"
+              className="mov-btn mov-btn--secondary docentes-headExportBtn"
               label="Exportar"
               icon="excel"
               disabled={loading || totalVisible === 0}
               onClick={() => setModalExportar(true)}
             />
 
-            <button type="button" className="mov-btn mov-btn--primary" onClick={abrirCrear}>
+            <button type="button" className="mov-btn mov-btn--primary docentes-headAddBtn" onClick={abrirCrear}>
               <FontAwesomeIcon icon={faPlus} /> Agregar docente
             </button>
           </div>
@@ -529,6 +529,24 @@ export default function Docentes() {
               Coincidencias encontradas: <strong>{conteo.totalFiltrados}</strong>
             </span>
           )}
+
+          <div className="docentes-footerActions" aria-label="Acciones de docentes">
+            <BotonExportarHistorialGlobal
+              className="mov-btn mov-btn--secondary docentes-footActionBtn"
+              label="Exportar"
+              icon="excel"
+              disabled={loading || totalVisible === 0}
+              onClick={() => setModalExportar(true)}
+            />
+
+            <button
+              type="button"
+              className="mov-btn mov-btn--primary docentes-footActionBtn"
+              onClick={abrirCrear}
+            >
+              <FontAwesomeIcon icon={faPlus} /> Agregar docente
+            </button>
+          </div>
 
           <div className="docentes-pagination">
             <button
