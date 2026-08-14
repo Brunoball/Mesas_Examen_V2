@@ -1,0 +1,19 @@
+EJECUTAR TODO EL FORMULARIO
+===========================
+cd C:\Users\USER\Desktop\LERNA\frontend_formulario
+.\tests\run-formulario.cmd
+
+Alternativa directa:
+npx playwright test --project=chromium --workers=1 --reporter=list
+
+Ver navegador:
+npx playwright test --project=chromium --workers=1 --headed
+
+Solo interfaz con API simulada:
+npx playwright test tests/01-formulario-acceso-ui.spec.js tests/02-formulario-inscripcion-ui.spec.js --project=chromium
+
+Solo integración real local:
+npx playwright test tests/03-formulario-api-real.spec.js --project=chromium --workers=1
+
+Abrir informe después de ejecutar:
+npx playwright show-report

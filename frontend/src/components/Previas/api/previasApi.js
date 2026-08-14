@@ -103,6 +103,8 @@ function limpiarFiltros(filtros = {}) {
 }
 
 export const previasApi = {
+  obtenerConfiguracionFormulario: () => apiGet('form_obtener_config_inscripcion'),
+
   async catalogos() {
     const normalizarRespuestaCatalogos = (respuesta) => {
       const data = obtenerDataCatalogo(respuesta);

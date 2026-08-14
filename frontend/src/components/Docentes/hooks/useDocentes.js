@@ -203,6 +203,19 @@ export function useDocentes() {
     }
   }
 
+  async function limpiarIndisponibilidades(opciones = {}) {
+    try {
+      const res = await docentesApi.limpiarIndisponibilidades();
+      await cargar();
+      if (!opciones?.silent) mostrarMensaje('exito', 'Se eliminaron todas las indisponibilidades docentes.');
+      return { ok: true, data: res?.data || {} };
+    } catch (e) {
+      const msg = e.message || 'No se pudieron limpiar las indisponibilidades docentes.';
+      if (!opciones?.silent) mostrarMensaje('error', msg);
+      return { ok: false, mensaje: msg };
+    }
+  }
+
   return {
     docentes: docentesPaginados,
     docentesBase,
@@ -225,5 +238,6 @@ export function useDocentes() {
     darBaja,
     darAlta,
     eliminar,
+    limpiarIndisponibilidades,
   };
 }

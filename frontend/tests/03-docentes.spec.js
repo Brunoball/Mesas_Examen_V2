@@ -3,7 +3,7 @@ const { unique } = require('./helpers/env.helper');
 const { apiGet, apiPost, login, expectOk, expectFail, listAll } = require('./helpers/api.helper');
 const { loginPageByApi } = require('./helpers/auth.helper');
 const { attachRuntimeGuards } = require('./helpers/diagnostics.helper');
-const { cleanupAll } = require('./helpers/cleanup.helper');
+const { cleanupAll, snapshotDocentesDisponibilidad } = require('./helpers/cleanup.helper');
 
 const PASS = 'PwTest123!';
 
@@ -29,6 +29,7 @@ test.describe('03 · Docentes', () => {
   test.afterEach(() => cleanupAll({ silent: true }));
 
   test('API: catálogos, listado, obtener, validaciones, CRUD, disponibilidad y permisos', async ({ request }) => {
+    snapshotDocentesDisponibilidad();
     const admin = await login(request);
 
     const catalogs = expectOk(await apiGet(request, 'docentes_catalogos', {}, admin), 'docentes_catalogos');
@@ -123,6 +124,29 @@ test.describe('03 · Docentes', () => {
       /permisos/i,
       'vista no puede guardar docente'
     );
+    expectFail(
+      await apiPost(request, 'disponibilidad_docentes_limpiar_todas', { confirmar: 1 }, vista),
+      403,
+      /permisos/i,
+      'vista no puede limpiar indisponibilidades'
+    );
+
+    expectFail(
+      await apiPost(request, 'disponibilidad_docentes_limpiar_todas', {}, admin),
+      422,
+      /confirmar/i,
+      'la limpieza global exige confirmación explícita'
+    );
+    const cleanupResult = expectOk(
+      await apiPost(request, 'disponibilidad_docentes_limpiar_todas', { confirmar: 1 }, admin),
+      'limpiar todas las indisponibilidades'
+    );
+    expect(Number(cleanupResult.data?.eliminados || 0)).toBeGreaterThan(0);
+    const afterCleanup = expectOk(
+      await apiGet(request, 'docentes_obtener', { id_docente: created.id }, admin),
+      'docente después de limpiar indisponibilidades'
+    );
+    expect(afterCleanup.data.indisponibilidades || afterCleanup.data.disponibilidades || []).toHaveLength(0);
 
     expectOk(await apiPost(request, 'docentes_eliminar', { ids_docentes: [created.id] }, admin), 'eliminar docente');
     expectFail(
@@ -131,6 +155,43 @@ test.describe('03 · Docentes', () => {
       /no existe|no encontrado/i,
       'docente eliminado no debe existir'
     );
+  });
+
+  test('UI: limpieza global de indisponibilidades exige check y conserva docentes', async ({ page, request }) => {
+    snapshotDocentesDisponibilidad();
+    const guard = attachRuntimeGuards(page);
+    const admin = await login(request);
+    const created = await createDocente(request, admin, {
+      docente: `${unique('DOCCLEAN')} DOCENTE LIMPIEZA`,
+      indisponibilidades: [{ id_dia_semana: 3, id_turno: null, fecha: null }],
+    });
+
+    await loginPageByApi(page);
+    await page.goto('/docentes');
+    await expect(page.getByRole('table', { name: 'Listado de docentes' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Limpiar indisponibilidades' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Limpiar indisponibilidades' });
+    await expect(dialog).toBeVisible();
+
+    const confirmButton = dialog.getByRole('button', { name: 'Limpiar todas' });
+    await expect(confirmButton).toBeDisabled();
+    const confirmation = dialog.getByLabel('Confirmo que quiero eliminar todas las indisponibilidades.');
+    await dialog.locator('label').filter({ hasText: /Confirmo que quiero eliminar todas las indisponibilidades/i }).click();
+    await expect(confirmation).toBeChecked();
+    await expect(confirmButton).toBeEnabled();
+    await confirmButton.click();
+    await expect(dialog).toBeHidden();
+    await expect(page.getByText('Se eliminaron todas las indisponibilidades docentes.').last()).toBeVisible();
+
+    const persisted = expectOk(
+      await apiGet(request, 'docentes_obtener', { id_docente: created.id }, admin),
+      'docente conservado tras limpieza global'
+    );
+    expect(Number(persisted.data.id_docente)).toBe(created.id);
+    expect(persisted.data.indisponibilidades || persisted.data.disponibilidades || []).toHaveLength(0);
+
+    guard.assertClean('Docentes limpieza global de indisponibilidades');
   });
 
   test('UI: alta, restricciones de campos, indisponibilidad, persistencia, info, edición, baja/alta y eliminación', async ({ page }) => {

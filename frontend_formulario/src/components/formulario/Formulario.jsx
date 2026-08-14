@@ -335,6 +335,11 @@ const ResumenAlumno = ({
   const mountedRef = useRef(true);
 
   useEffect(() => {
+    // React.StrictMode ejecuta setup/cleanup dos veces en desarrollo.
+    // Restablecer la marca evita que un rechazo de la API deje el botón
+    // permanentemente en "Inscribiendo..." durante testing o desarrollo local.
+    mountedRef.current = true;
+
     return () => {
       mountedRef.current = false;
     };
@@ -1057,6 +1062,9 @@ const Formulario = () => {
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    // Cada intento comienza limpio: no conservar un error/advertencia
+    // correspondiente a los datos ingresados anteriormente.
+    setToast(null);
     const cfgActual = await refetchVentana();
 
     if (cfgActual && cfgActual.hay_config !== false && !cfgActual.abierta) {
@@ -1109,6 +1117,9 @@ const Formulario = () => {
         );
         return;
       }
+
+      // La consulta correcta reemplaza cualquier toast de un intento anterior.
+      setToast(null);
 
       if (json.ya_inscripto) {
         showToastReplace(

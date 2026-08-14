@@ -50,6 +50,10 @@ function snapshotPreviasInscripciones() {
   return runCleaner(['--snapshot-previas-inscripciones'], { silent: true });
 }
 
+function snapshotDocentesDisponibilidad() {
+  return runCleaner(['--snapshot-docentes-disponibilidad'], { silent: true });
+}
+
 function disableFormConfirmationEmail() {
   return runCleaner(['--disable-form-confirmation-email'], { silent: true });
 }
@@ -90,6 +94,7 @@ module.exports = {
   snapshotCatedra,
   snapshotFormConfig,
   snapshotPreviasInscripciones,
+  snapshotDocentesDisponibilidad,
   disableFormConfirmationEmail,
   linkPreviaMesa,
   snapshotMesas,

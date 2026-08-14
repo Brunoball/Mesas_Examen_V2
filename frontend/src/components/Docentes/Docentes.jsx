@@ -150,12 +150,15 @@ export default function Docentes() {
     darBaja,
     darAlta,
     eliminar,
+    limpiarIndisponibilidades,
   } = useDocentes();
 
   const [modalDocente, setModalDocente] = useState({ abierto: false, modo: 'crear', item: null });
   const [modalInfo, setModalInfo] = useState({ abierto: false, item: null, cargando: false });
   const [modalConfirmar, setModalConfirmar] = useState({ abierto: false, tipo: '', item: null });
   const [modalExportar, setModalExportar] = useState(false);
+  const [modalLimpiarIndisponibilidades, setModalLimpiarIndisponibilidades] = useState(false);
+  const [confirmacionLimpiarIndisponibilidades, setConfirmacionLimpiarIndisponibilidades] = useState(false);
 
   function abrirCrear() {
     setModalDocente({ abierto: true, modo: 'crear', item: null });
@@ -180,6 +183,15 @@ export default function Docentes() {
 
   function abrirConfirmar(tipo, item) {
     setModalConfirmar({ abierto: true, tipo, item });
+  }
+
+  function cerrarModalLimpiarIndisponibilidades() {
+    setModalLimpiarIndisponibilidades(false);
+    setConfirmacionLimpiarIndisponibilidades(false);
+  }
+
+  async function confirmarLimpiezaIndisponibilidades() {
+    return limpiarIndisponibilidades({ silent: true });
   }
 
   function mostrarToastCarga(texto) {
@@ -377,6 +389,18 @@ export default function Docentes() {
           </div>
 
           <div className="mov-card__actions docentes-actionsHead">
+            <button
+              type="button"
+              className="mov-btn mov-btn--secondary docentes-cleanAvailabilityButton"
+              onClick={() => {
+                setConfirmacionLimpiarIndisponibilidades(false);
+                setModalLimpiarIndisponibilidades(true);
+              }}
+              disabled={loading}
+            >
+              <FontAwesomeIcon icon={faTrash} /> Limpiar indisponibilidades
+            </button>
+
             <BotonExportarHistorialGlobal
               className="mov-btn mov-btn--secondary"
               label="Exportar"
@@ -583,6 +607,36 @@ export default function Docentes() {
           {...obtenerConfigModalConfirmar()}
         />
       )}
+
+      <ModalEliminarGlobal
+        open={modalLimpiarIndisponibilidades}
+        operacion="eliminar"
+        title="Limpiar indisponibilidades"
+        message="Se eliminarán las indisponibilidades cargadas de todos los docentes."
+        warning="Los docentes y sus cátedras no se modifican. Esta acción no se puede deshacer."
+        confirmLabel="Limpiar todas"
+        loadingLabel="Limpiando..."
+        loadingMessage="Limpiando indisponibilidades docentes…"
+        successMessage="Se eliminaron todas las indisponibilidades docentes."
+        errorMessage="No se pudieron limpiar las indisponibilidades docentes."
+        hideDefaultCard
+        confirmDisabled={!confirmacionLimpiarIndisponibilidades}
+        extraContent={(
+          <div className="docentes-cleanAvailabilityConfirm" aria-label="Confirmación para limpiar indisponibilidades">
+            <label>
+              <input
+                type="checkbox"
+                checked={confirmacionLimpiarIndisponibilidades}
+                onChange={(event) => setConfirmacionLimpiarIndisponibilidades(event.target.checked)}
+              />
+              <span>Confirmo que quiero eliminar todas las indisponibilidades.</span>
+            </label>
+          </div>
+        )}
+        onConfirm={confirmarLimpiezaIndisponibilidades}
+        onClose={cerrarModalLimpiarIndisponibilidades}
+        onToast={mostrarMensaje}
+      />
     </div>
   );
 

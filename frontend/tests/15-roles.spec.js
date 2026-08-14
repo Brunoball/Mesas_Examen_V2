@@ -156,6 +156,13 @@ test.describe('15 · Roles admin y vista', () => {
         `vista solo puede usar GET en ${action}`
       );
     }
+
+    expectFail(
+      await apiPost(request, 'disponibilidad_docentes_limpiar_todas', { confirmar: 1 }, vista),
+      403,
+      /permisos/i,
+      'vista no puede limpiar indisponibilidades docentes'
+    );
   });
 
   test('UI oculta el menú restringido a vista, protege URLs directas y conserva todo para admin', async ({ page, request }) => {

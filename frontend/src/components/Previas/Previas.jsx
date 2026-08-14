@@ -805,6 +805,34 @@ function crearPeriodoExamen(mes, anio) {
   return `${mesNormalizado}/${anioNormalizado}`;
 }
 
+function periodoDesdeConfiguracionFormulario(config = {}) {
+  const formularioAbierto = config?.abierta === true || Number(config?.abierta) === 1;
+  if (!formularioAbierto) return { mes: '', anio: '' };
+
+  const titulo = String(config?.titulo || config?.nombre || '').trim();
+  const palabrasTitulo = titulo
+    .toLocaleUpperCase('es-AR')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .split(/[^A-Z0-9]+/)
+    .filter(Boolean);
+
+  if (palabrasTitulo.includes('SETIEMBRE') && !palabrasTitulo.includes('SEPTIEMBRE')) {
+    palabrasTitulo.push('SEPTIEMBRE');
+  }
+
+  const mes = MESES_EXAMEN.find((nombreMes) => palabrasTitulo.includes(nombreMes)) || '';
+  if (!mes) return { mes: '', anio: '' };
+
+  const anioTitulo = palabrasTitulo.find((palabra) => /^(?:20\d{2}|2100)$/.test(palabra));
+  const anioConfig = String(config?.ciclo_lectivo || '').match(/^(?:20\d{2}|2100)$/)?.[0] || '';
+
+  return {
+    mes,
+    anio: anioTitulo || anioConfig,
+  };
+}
+
 function aplicarPeriodoPermiso(items = [], periodo = '') {
   const periodoNormalizado = String(periodo || '').trim().toLocaleUpperCase('es-AR');
   if (!periodoNormalizado) return items;
@@ -1149,6 +1177,30 @@ export default function Previas() {
       anio: String(new Date().getFullYear()),
       cargando: false,
     });
+
+    // La configuración pública conoce si la inscripción está abierta y el título
+    // vigente. Si ese título contiene un mes, lo proponemos sin bloquear la
+    // impresión ni reemplazar una selección que el usuario ya haya hecho.
+    previasApi.obtenerConfiguracionFormulario()
+      .then((config) => {
+        const periodoSugerido = periodoDesdeConfiguracionFormulario(config);
+        if (!periodoSugerido.mes) return;
+
+        setModalPeriodoPermiso((prev) => {
+          const mismoRegistro = String(prev.item?.id_previa || '') === String(item?.id_previa || '');
+          if (!prev.abierto || !mismoRegistro || prev.mes) return prev;
+
+          return {
+            ...prev,
+            mes: periodoSugerido.mes,
+            anio: periodoSugerido.anio || prev.anio,
+          };
+        });
+      })
+      .catch(() => {
+        // Es una ayuda opcional: ante una falla de configuración se conserva el
+        // flujo manual que ya funcionaba.
+      });
   }
 
   function prepararImpresionPermiso(item) {

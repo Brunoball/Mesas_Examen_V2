@@ -229,6 +229,7 @@ const VISTA_MUTATIONS = [
   'docentes_dar_baja',
   'docentes_dar_alta',
   'docentes_eliminar',
+  'disponibilidad_docentes_limpiar_todas',
   'catedras_asignar_docente',
   'catedras_asignar_docentes',
   'materias_guardar',
@@ -449,7 +450,7 @@ test.describe('99 · Release gate · módulos cubiertos', () => {
       backendPath('routes/api.php'),
       ...phpFiles(backendPath('core')),
       ...phpFiles(backendPath('config')),
-      ...['login', 'dashbord', 'docentes', 'catedras', 'materias', 'estadisticas', 'previas', 'mesas', 'configuracion', 'formulario', 'global']
+      ...['login', 'dashbord', 'docentes', 'disponibilidad_docentes', 'catedras', 'materias', 'estadisticas', 'previas', 'mesas', 'configuracion', 'formulario', 'global']
         .flatMap((module) => phpFiles(backendPath(`modules/${module}`))),
       backendPath('testing/cleanup_playwright.php'),
     ];

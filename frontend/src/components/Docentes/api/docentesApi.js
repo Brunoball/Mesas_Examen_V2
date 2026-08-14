@@ -69,4 +69,9 @@ export const docentesApi = {
     apiPost('docentes_eliminar', {
       ids_docentes: Array.isArray(idsDocentes) ? idsDocentes : [idsDocentes],
     }),
+
+  limpiarIndisponibilidades: () =>
+    apiPost('disponibilidad_docentes_limpiar_todas', {
+      confirmar: 1,
+    }),
 };

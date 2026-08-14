@@ -42,6 +42,10 @@ function route_disponibilidad_docentes(string $action): bool
         case 'disponibilidad_docentes_limpiar_docente':
             disponibilidad_docentes_limpiar_docente();
             return true;
+
+        case 'disponibilidad_docentes_limpiar_todas':
+            disponibilidad_docentes_limpiar_todas();
+            return true;
     }
 
     return false;
@@ -729,5 +733,59 @@ function disponibilidad_docentes_limpiar_docente(): void
     } catch (Throwable $e) {
         log_error($e, 'disponibilidad_docentes_limpiar_docente');
         json_response(['exito' => false, 'mensaje' => 'Error interno al limpiar disponibilidad docente.'], 500);
+    }
+}
+
+function disponibilidad_docentes_limpiar_todas(): void
+{
+    $pdo = null;
+
+    try {
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+            json_response(['exito' => false, 'mensaje' => 'Método no permitido.'], 405);
+        }
+
+        // Defensa en profundidad: el router central ya exige admin para cualquier
+        // acción que no esté en la lista positiva del rol vista.
+        if (function_exists('require_roles')) {
+            require_roles(['admin']);
+        }
+
+        $input = disponibilidad_docentes_input();
+        $confirmado = in_array($input['confirmar'] ?? null, [1, '1', true], true);
+        if (!$confirmado) {
+            throw new InvalidArgumentException('Tenés que confirmar la limpieza de todas las indisponibilidades.');
+        }
+
+        $pdo = db();
+        disponibilidad_docentes_asegurar_tabla($pdo);
+        $pdo->beginTransaction();
+
+        $totalAntes = (int)$pdo->query('SELECT COUNT(*) FROM docentes_disponibilidad')->fetchColumn();
+        $stmt = $pdo->prepare('DELETE FROM docentes_disponibilidad');
+        $stmt->execute();
+        $eliminados = $stmt->rowCount();
+
+        $pdo->commit();
+
+        json_response([
+            'exito' => true,
+            'mensaje' => 'Se eliminaron todas las indisponibilidades docentes.',
+            'data' => [
+                'eliminados' => $eliminados,
+                'total_antes' => $totalAntes,
+            ],
+        ]);
+    } catch (InvalidArgumentException $e) {
+        if ($pdo instanceof PDO && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        json_response(['exito' => false, 'mensaje' => $e->getMessage()], 422);
+    } catch (Throwable $e) {
+        if ($pdo instanceof PDO && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        log_error($e, 'disponibilidad_docentes_limpiar_todas');
+        json_response(['exito' => false, 'mensaje' => 'Error interno al limpiar todas las indisponibilidades docentes.'], 500);
     }
 }

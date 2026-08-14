@@ -537,6 +537,28 @@ test.describe('07 · Previas', () => {
     const ctx = await safeContext(request, admin);
     const created = await createPrevia(request, admin, ctx, { anio: 2100 });
 
+    await page.route('**/api.php?*', async (route) => {
+      const url = new URL(route.request().url());
+      if (url.searchParams.get('action') !== 'form_obtener_config_inscripcion') {
+        await route.continue();
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          exito: true,
+          hay_config: true,
+          abierta: true,
+          activo: 1,
+          titulo: 'MESAS DE EXAMEN AGOSTO 2099',
+          nombre: 'MESAS DE EXAMEN AGOSTO 2099',
+          ciclo_lectivo: 2099,
+        }),
+      });
+    });
+
     await loginPageByApi(page);
     await page.goto('/previas');
     let row = await searchRow(page, created.payload.dni, created.payload.apellido);
@@ -559,6 +581,9 @@ test.describe('07 · Previas', () => {
     await row.getByTitle('Imprimir permiso de examen').click();
     dialog = page.getByRole('dialog', { name: 'Turno del permiso de examen' });
     await expect(dialog).toBeVisible();
+    await expect(modalSelect(dialog, 'Mes / turno')).toHaveValue('AGOSTO');
+    await expect(modalInput(dialog, 'Año')).toHaveValue('2099');
+    await modalSelect(dialog, 'Mes / turno').selectOption('');
     await dialog.getByRole('button', { name: 'Imprimir permiso' }).click();
     await expectToast(page, /mes|turno/i);
     await modalSelect(dialog, 'Mes / turno').selectOption('DICIEMBRE');

@@ -18,6 +18,7 @@ declare(strict_types=1);
  *   php testing/cleanup_playwright.php --find-safe-catedra --tenant=1 --json
  *   php testing/cleanup_playwright.php --snapshot-catedra=123 --tenant=1 --json
  *   php testing/cleanup_playwright.php --snapshot-form-config --tenant=1 --json
+ *   php testing/cleanup_playwright.php --snapshot-docentes-disponibilidad --tenant=1 --json
  *   php testing/cleanup_playwright.php --snapshot-mesas --tenant=1 --json
  *   php testing/cleanup_playwright.php --prepare-mesas-fixture --tenant=1 --prefix=PWTEST --json
  *   php testing/cleanup_playwright.php --mesas-state --tenant=1 --json
@@ -113,12 +114,13 @@ function pw_insert_row(PDO $pdo, string $table, array $row): void
 
 function pw_snapshot_load(): array
 {
-    if (!is_file(SNAPSHOT_FILE)) return ['catedras' => [], 'form_config' => null, 'previas_inscripciones' => null, 'mesas' => null];
+    if (!is_file(SNAPSHOT_FILE)) return ['catedras' => [], 'form_config' => null, 'previas_inscripciones' => null, 'docentes_disponibilidad' => null, 'mesas' => null];
     $decoded = json_decode((string)file_get_contents(SNAPSHOT_FILE), true);
-    if (!is_array($decoded)) return ['catedras' => [], 'form_config' => null, 'previas_inscripciones' => null, 'mesas' => null];
+    if (!is_array($decoded)) return ['catedras' => [], 'form_config' => null, 'previas_inscripciones' => null, 'docentes_disponibilidad' => null, 'mesas' => null];
     $decoded['catedras'] = is_array($decoded['catedras'] ?? null) ? $decoded['catedras'] : [];
     $decoded['form_config'] = $decoded['form_config'] ?? null;
     $decoded['previas_inscripciones'] = $decoded['previas_inscripciones'] ?? null;
+    $decoded['docentes_disponibilidad'] = $decoded['docentes_disponibilidad'] ?? null;
     $decoded['mesas'] = $decoded['mesas'] ?? null;
     return $decoded;
 }
@@ -234,6 +236,23 @@ function pw_snapshot_previas_inscripciones(PDO $tenantDb): void
             'formulario_inscripciones' => pw_table_auto_increment($tenantDb, 'formulario_inscripciones'),
             'formulario_inscripciones_detalle' => pw_table_auto_increment($tenantDb, 'formulario_inscripciones_detalle'),
         ],
+    ];
+    pw_snapshot_save($snap);
+}
+
+function pw_snapshot_docentes_disponibilidad(PDO $tenantDb): void
+{
+    if (!pw_table_exists($tenantDb, 'docentes_disponibilidad')) {
+        throw new RuntimeException('No existe la tabla docentes_disponibilidad para snapshot.');
+    }
+
+    $snap = pw_snapshot_load();
+    if (is_array($snap['docentes_disponibilidad'] ?? null)) return;
+
+    $rows = $tenantDb->query('SELECT * FROM docentes_disponibilidad ORDER BY id_disponibilidad ASC')->fetchAll(PDO::FETCH_ASSOC);
+    $snap['docentes_disponibilidad'] = [
+        'rows' => $rows,
+        'auto_increment' => pw_table_auto_increment($tenantDb, 'docentes_disponibilidad'),
     ];
     pw_snapshot_save($snap);
 }
@@ -670,6 +689,7 @@ function pw_restore_snapshots(PDO $tenantDb): array
     $restoredCatedras = 0;
     $restoredForm = false;
     $restoredPreviasInscripciones = false;
+    $restoredDocentesDisponibilidad = false;
     $restoredMesas = false;
 
     if (is_array($snap['mesas'] ?? null)) {
@@ -776,11 +796,33 @@ function pw_restore_snapshots(PDO $tenantDb): array
         }
     }
 
+    if (is_array($snap['docentes_disponibilidad'] ?? null) && pw_table_exists($tenantDb, 'docentes_disponibilidad')) {
+        $data = $snap['docentes_disponibilidad'];
+        $tenantDb->beginTransaction();
+        try {
+            $tenantDb->exec('DELETE FROM docentes_disponibilidad');
+            foreach (($data['rows'] ?? []) as $row) {
+                if (is_array($row)) pw_insert_row($tenantDb, 'docentes_disponibilidad', $row);
+            }
+            $tenantDb->commit();
+
+            $autoIncrement = (int)($data['auto_increment'] ?? 0);
+            if ($autoIncrement > 0) {
+                $tenantDb->exec('ALTER TABLE docentes_disponibilidad AUTO_INCREMENT = ' . $autoIncrement);
+            }
+            $restoredDocentesDisponibilidad = true;
+        } catch (Throwable $e) {
+            if ($tenantDb->inTransaction()) $tenantDb->rollBack();
+            throw $e;
+        }
+    }
+
     if (is_file(SNAPSHOT_FILE)) @unlink(SNAPSHOT_FILE);
     return [
         'catedras' => $restoredCatedras,
         'form_config' => $restoredForm,
         'previas_inscripciones' => $restoredPreviasInscripciones,
+        'docentes_disponibilidad' => $restoredDocentesDisponibilidad,
         'mesas' => $restoredMesas,
     ];
 }
@@ -1149,6 +1191,11 @@ try {
         pw_output(['ok' => true, 'message' => 'Snapshot de inscripciones de previas guardado.']);
     }
 
+    if (pw_has('snapshot-docentes-disponibilidad')) {
+        pw_snapshot_docentes_disponibilidad($tenantDb);
+        pw_output(['ok' => true, 'message' => 'Snapshot de indisponibilidades docentes guardado.']);
+    }
+
     if (pw_has('snapshot-mesas')) {
         pw_snapshot_mesas($tenantDb);
         pw_output(['ok' => true, 'message' => 'Snapshot completo de Mesas guardado.']);
@@ -1180,7 +1227,7 @@ try {
         pw_output(['ok' => true, 'message' => 'Previa PWTEST vinculada a una mesa sintética.', 'vinculo' => $vinculo]);
     }
 
-    $restored = ['catedras' => 0, 'form_config' => false, 'previas_inscripciones' => false, 'mesas' => false];
+    $restored = ['catedras' => 0, 'form_config' => false, 'previas_inscripciones' => false, 'docentes_disponibilidad' => false, 'mesas' => false];
     if (pw_has('restore-snapshots')) {
         $restored = pw_restore_snapshots($tenantDb);
     }
