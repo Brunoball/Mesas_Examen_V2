@@ -6,3 +6,5 @@ export default BASE_URL;
 //Hostinger: https://lerna.3devsnet.com/api/routes
 //Local: http://localhost:3001/routes
 
+//php -S 127.0.0.1:3001 -t .
+

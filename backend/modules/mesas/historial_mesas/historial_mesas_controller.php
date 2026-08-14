@@ -11,7 +11,15 @@ function mesas_historial_like_sql(array $expresiones, string $prefijo, string $b
 
     foreach ($expresiones as $i => $expresion) {
         $placeholder = ':' . $prefijo . $i;
-        $partes[] = $expresion . ' LIKE ' . $placeholder;
+
+        // Hostinger/MariaDB puede mezclar utf8mb4_unicode_ci y utf8mb4_general_ci
+        // en expresiones derivadas (COALESCE, CAST, DATE_FORMAT) y parámetros PDO.
+        // Normalizamos ambos lados del LIKE para que la búsqueda sea independiente
+        // de la collation de cada tabla/columna y de la conexión actual.
+        $expresionNormalizada = "CONVERT(({$expresion}) USING utf8mb4) COLLATE utf8mb4_unicode_ci";
+        $placeholderNormalizado = "CONVERT({$placeholder} USING utf8mb4) COLLATE utf8mb4_unicode_ci";
+
+        $partes[] = $expresionNormalizada . ' LIKE ' . $placeholderNormalizado;
         $params[$placeholder] = $valor;
     }
 
@@ -71,7 +79,6 @@ function mesas_historial_listar(): void
 {
     try {
         $pdo = db();
-        mesas_historial_asegurar_tablas($pdo);
 
         $busqueda = trim((string)($_GET['busqueda'] ?? ''));
         $limiteResultados = mesas_historial_limite($_GET['limite_resultados'] ?? null, 250, 1000);
@@ -527,7 +534,6 @@ function mesas_historial_detalle_armado(): void
 {
     try {
         $pdo = db();
-        mesas_historial_asegurar_tablas($pdo);
 
         $idArmado = is_numeric($_GET['id_armado_historial'] ?? null) ? (int)$_GET['id_armado_historial'] : 0;
         if ($idArmado <= 0) {

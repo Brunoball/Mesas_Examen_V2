@@ -46,6 +46,7 @@ import {
   descargarPdfHistorialMesas,
 } from "./modales/exportar_historial/historialMesasExporter";
 import { obtenerLogoInstitucionalMesas, obtenerPerfilInstitucional } from "./api/mesasExamenApi";
+import { usuarioLocalEsVista } from "../_shared/auth/roles";
 
 const textoCorto = (valor, fallback = "-") => {
   const texto = String(valor || "").trim();
@@ -84,6 +85,52 @@ const obtenerTerminosBusqueda = (valor) => {
   // esa coincidencia completa. Así, "GAMBOGGI, BENJAMIN ALEXANDER" no pinta
   // todos los "BENJAMIN" sueltos de la misma mesa.
   return [{ tipo: "frase", valor: palabras.join(" ") }];
+};
+
+const coincideBusquedaFlexibleEnValores = (valores = [], busqueda = "") => {
+  const termino = normalizarTextoBusquedaFlexible(busqueda);
+  if (!termino) return false;
+
+  return valores.some((valor) => normalizarTextoBusquedaFlexible(valor).includes(termino));
+};
+
+const historialArmadoCoincideBusqueda = (item, busqueda = "") => {
+  if (!item) return false;
+
+  return coincideBusquedaFlexibleEnValores([
+    item.codigo_armado,
+    item.descripcion,
+    item.motivo,
+    item.total_mesas,
+    item.total_previas,
+    item.total_grupos,
+    item.total_no_agrupadas,
+    item.creado_en_texto,
+    item.creado_en,
+  ], busqueda);
+};
+
+const historialDetalleCoincideBusqueda = (item, busqueda = "") => {
+  if (!item) return false;
+
+  return coincideBusquedaFlexibleEnValores([
+    item.alumno,
+    item.dni,
+    item.materia,
+    item.docente,
+    item.condicion,
+    item.tipo_mesa,
+    item.estado,
+    item.observacion,
+    item.turno,
+    item.nota,
+    item.fecha_nota_texto,
+    item.fecha_nota,
+    item.numero_mesa,
+    item.numero_grupo,
+    item.fecha_mesa_texto,
+    item.fecha_mesa,
+  ], busqueda);
 };
 
 const crearIndiceBusquedaFlexible = (texto) => {
@@ -591,13 +638,17 @@ const formatearNotaAlumno = (valor) => {
   return nota >= 1 && nota <= 10 ? String(nota) : "AUSENTE";
 };
 
-const SelectorNotaAlumno = ({ alumno, onGuardarNota, guardando }) => {
+const SelectorNotaAlumno = ({ alumno, onGuardarNota, guardando, soloLectura = false }) => {
   if (!alumno?.id_previa) {
     return <span className="mesas-nota-placeholder">-</span>;
   }
 
   const valorActual = obtenerNotaActualAlumno(alumno);
   const tieneNotaNumerica = valorActual !== VALOR_NOTA_AUSENTE;
+
+  if (soloLectura) {
+    return <span className="mesas-nota-readonly">{formatearNotaAlumno(alumno?.nota)}</span>;
+  }
 
   return (
     <div className="mesas-nota-selectWrap">
@@ -882,6 +933,7 @@ const MesaPdfCard = ({
   cardRef = null,
   logoInstitucionalUrl = "",
   institucionNombre = "Institución",
+  soloLectura = false,
 }) => {
   const bloques = obtenerBloquesVistaPdf(grupo);
   const totalFilas = Math.max(
@@ -994,6 +1046,7 @@ const MesaPdfCard = ({
                         alumno={alumno}
                         guardando={alumno ? !!guardandoNotas[obtenerKeyNotaAlumno(alumno)] : false}
                         onGuardarNota={onGuardarNota}
+                        soloLectura={soloLectura}
                       />
                     </div>
 
@@ -1015,7 +1068,7 @@ const MesaPdfCard = ({
         </div>
       </div>
 
-      <footer className="mesas-pdf-actions" aria-label="Acciones de mesa">
+      {!soloLectura && <footer className="mesas-pdf-actions" aria-label="Acciones de mesa">
         <div className="mov-actionsInline mesas-pdf-actionsInline">
           <button type="button" className="mov-iconBtn materias-icon-btn mesas-pdf-iconBtn" onClick={onEdit} title="Editar" aria-label="Editar">
             <FontAwesomeIcon icon={faEdit} />
@@ -1024,7 +1077,7 @@ const MesaPdfCard = ({
             <FontAwesomeIcon icon={faTrash} />
           </button>
         </div>
-      </footer>
+      </footer>}
     </article>
   );
 };
@@ -1084,39 +1137,13 @@ const HistorialMesasPanel = ({ historial, busqueda = "", terminosBusqueda = [] }
     return nota !== "" && Number(item?.nota) > 0;
   });
   const historialEstaCargando = !!historial?.cargando;
-  const filasHistorialRefs = useRef({});
   const hayBusquedaHistorial = String(busqueda || "").trim() !== "";
-
-  const registrarFilaHistorial = useCallback((clave, node) => {
-    if (!clave) return;
-
-    if (node) {
-      filasHistorialRefs.current[clave] = node;
-    } else {
-      delete filasHistorialRefs.current[clave];
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!hayBusquedaHistorial || historialEstaCargando) return undefined;
-
-    const clavePrimerResultado = armados[0]?.id_armado_historial
-      ? `armado-${armados[0].id_armado_historial}`
-      : detalleFilas[0]?.id_historial_detalle
-        ? `detalle-${detalleFilas[0].id_historial_detalle}`
-        : "";
-
-    if (!clavePrimerResultado) return undefined;
-
-    const timer = window.setTimeout(() => {
-      const nodo = filasHistorialRefs.current[clavePrimerResultado];
-      if (!nodo) return;
-
-      scrollHastaCoincidenciaBusqueda(nodo);
-    }, 140);
-
-    return () => window.clearTimeout(timer);
-  }, [armados, detalleFilas, hayBusquedaHistorial, historialEstaCargando, resultados]);
+  const idDetalleAbierto = Number(detalle?.armado?.id_armado_historial || 0);
+  const detallePerteneceAResultados = !hayBusquedaHistorial
+    || armados.some((item) => Number(item?.id_armado_historial || 0) === idDetalleAbierto);
+  const coincidenciasDetalleAbierto = hayBusquedaHistorial && detallePerteneceAResultados
+    ? detalleFilas.filter((item) => historialDetalleCoincideBusqueda(item, busqueda)).length
+    : 0;
 
   const totalAprobadas = resumen.total_aprobadas ?? resultados.filter((item) => Number(item.aprobado) === 1).length;
   const totalDesaprobadas = resumen.total_desaprobadas ?? resultados.filter((item) => Number(item.aprobado) !== 1).length;
@@ -1204,15 +1231,22 @@ const HistorialMesasPanel = ({ historial, busqueda = "", terminosBusqueda = [] }
                     <div className="mov-gridBody global-divTable__body mesas-historial-gridBody">
                       {armados.map((item) => {
                         const claveFila = `armado-${item.id_armado_historial}`;
+                        const esDetalleAbierto = Number(item.id_armado_historial || 0) === idDetalleAbierto;
+                        const coincideDirectamente = hayBusquedaHistorial
+                          && historialArmadoCoincideBusqueda(item, busqueda);
+                        const usarArmadoComoResultado = hayBusquedaHistorial && (
+                          !esDetalleAbierto
+                          || coincideDirectamente
+                          || coincidenciasDetalleAbierto === 0
+                        );
 
                         return (
                         <div
                           key={claveFila}
-                          ref={(node) => registrarFilaHistorial(claveFila, node)}
                           className="mov-gridTable mov-gridTable--row global-divTable__row mesas-historial-gridRow"
                           style={{ gridTemplateColumns: HISTORIAL_ARMADOS_GRID_COLS }}
                           role="row"
-                          data-mesas-search-result={terminosBusqueda.length > 0 ? "true" : undefined}
+                          data-mesas-search-result={usarArmadoComoResultado ? "true" : undefined}
                         >
                           <div className="mov-gridCell" role="cell" data-label="Guardado">
                             <ResaltarBusqueda value={item.creado_en_texto || item.creado_en} terminos={terminosBusqueda} />
@@ -1320,6 +1354,9 @@ const HistorialMesasPanel = ({ historial, busqueda = "", terminosBusqueda = [] }
                                 const notaNumerica = Number(item.nota || 0);
                                 const aprobado = notaNumerica >= 7;
                                 const claveFila = `nota-${item.id_historial_detalle}`;
+                                const coincideNota = hayBusquedaHistorial
+                                  && detallePerteneceAResultados
+                                  && historialDetalleCoincideBusqueda(item, busqueda);
                                 const motivoNota = aprobado
                                   ? "Aprobada en mesa de examen."
                                   : "Se presentó a rendir, pero no aprobó la previa.";
@@ -1327,7 +1364,6 @@ const HistorialMesasPanel = ({ historial, busqueda = "", terminosBusqueda = [] }
                                 return (
                                   <div
                                     key={claveFila}
-                                    ref={(node) => registrarFilaHistorial(claveFila, node)}
                                     className={[
                                       "mov-gridTable",
                                       "mov-gridTable--row",
@@ -1338,7 +1374,7 @@ const HistorialMesasPanel = ({ historial, busqueda = "", terminosBusqueda = [] }
                                      ].join(" ")}
                                     style={{ gridTemplateColumns: HISTORIAL_RESULTADOS_GRID_COLS }}
                                     role="row"
-                                    data-mesas-search-result={terminosBusqueda.length > 0 ? "true" : undefined}
+                                    data-mesas-search-result={coincideNota ? "true" : undefined}
                                   >
                                     <div className="mov-gridCell" role="cell" data-label="Fecha nota">
                                       <ResaltarBusqueda value={item.fecha_nota_texto || item.fecha_nota || item.fecha_mesa_texto || item.fecha_mesa} terminos={terminosBusqueda} />
@@ -1396,14 +1432,19 @@ const HistorialMesasPanel = ({ historial, busqueda = "", terminosBusqueda = [] }
                       <div className="mov-gridBody global-divTable__body mesas-historial-gridBody">
                         {detalleFilas.map((item) => {
                           const claveFila = `detalle-${item.id_historial_detalle}`;
+                          const coincideDetalle = hayBusquedaHistorial
+                            && detallePerteneceAResultados
+                            && historialDetalleCoincideBusqueda(item, busqueda);
+                          const tieneNotaRegistrada = String(item?.nota ?? "").trim() !== ""
+                            && Number(item?.nota) > 0;
 
                           return (
                           <div
                             key={claveFila}
-                            ref={(node) => registrarFilaHistorial(claveFila, node)}
                             className="mov-gridTable mov-gridTable--row global-divTable__row mesas-historial-gridRow"
                             style={{ gridTemplateColumns: HISTORIAL_DETALLE_GRID_COLS }}
                             role="row"
+                            data-mesas-search-result={coincideDetalle && !tieneNotaRegistrada ? "true" : undefined}
                           >
                             <div className="mov-gridCell" role="cell" data-label="Fecha"><ResaltarBusqueda value={item.fecha_mesa_texto || item.fecha_mesa} terminos={terminosBusqueda} /></div>
                             <div className="mov-gridCell is-center" role="cell" data-label="Grupo"><ResaltarBusqueda value={item.numero_grupo} terminos={terminosBusqueda} /></div>
@@ -1439,6 +1480,7 @@ const HistorialMesasPanel = ({ historial, busqueda = "", terminosBusqueda = [] }
 
 const MesasExamen = () => {
   const dentroDeShell = useContext(MesasShellContext);
+  const soloLectura = usuarioLocalEsVista();
   const [toastGlobal, setToastGlobal] = useState(null);
   const erroresToastRef = useRef({});
 
@@ -1500,7 +1542,7 @@ const MesasExamen = () => {
     armando,
     agrupando,
     error,
-  } = useMesasExamen({ onToast: mostrarToastGlobal });
+  } = useMesasExamen({ onToast: mostrarToastGlobal, soloLectura });
 
   const [indiceBusquedaActivo, setIndiceBusquedaActivo] = useState(0);
   const [datosInstitucionales, setDatosInstitucionales] = useState(() => obtenerDatosInstitucionalesLocales());
@@ -1618,7 +1660,8 @@ const MesasExamen = () => {
     setFiltroTurnoMesa("");
   }, []);
 
-  const totalHistorialVisible = Array.isArray(historial?.armados) ? historial.armados.length : 0;
+  const armadosHistorial = Array.isArray(historial?.armados) ? historial.armados : [];
+  const totalHistorialVisible = armadosHistorial.length;
   const totalVisible = tab === "historial" ? totalHistorialVisible : (Array.isArray(mesasFiltradas) ? mesasFiltradas.length : 0);
   const totalReferencia = tab === "historial" ? totalHistorialVisible : tab === "no-agrupadas" ? totalNoAgrupadas : totalGrupos;
   const totalHistorialArmados = Number(historial?.resumen?.total_armados ?? totalHistorialVisible) || 0;
@@ -1626,8 +1669,61 @@ const MesasExamen = () => {
   const hayHistorialGuardado = totalHistorialArmados > 0 || totalHistorialResultados > 0;
   const hayMesasCreadas = totalGrupos > 0 || totalNoAgrupadas > 0;
   const hayBusquedaActiva = String(busqueda || "").trim() !== "";
-  const totalResultadosBusqueda = hayBusquedaActiva ? totalVisible : 0;
-  const hayResultadosBusqueda = hayBusquedaActiva && totalResultadosBusqueda > 0;
+  const busquedaHistorialSincronizada = tab !== "historial"
+    || normalizarTextoBusquedaFlexible(historial?.busquedaAplicada) === normalizarTextoBusquedaFlexible(busqueda);
+  const buscandoHistorialBusqueda = tab === "historial"
+    && hayBusquedaActiva
+    && (!busquedaHistorialSincronizada || !!historial?.buscando);
+  const idDetalleHistorialAbierto = Number(historial?.detalleArmado?.armado?.id_armado_historial || 0);
+  const detalleHistorialFilas = Array.isArray(historial?.detalleArmado?.detalle) ? historial.detalleArmado.detalle : [];
+  const detalleHistorialPerteneceAResultados = idDetalleHistorialAbierto > 0
+    && armadosHistorial.some((item) => Number(item?.id_armado_historial || 0) === idDetalleHistorialAbierto);
+  const coincidenciasDetalleHistorial = useMemo(() => {
+    if (tab !== "historial" || !hayBusquedaActiva || !busquedaHistorialSincronizada || !detalleHistorialPerteneceAResultados) {
+      return [];
+    }
+
+    return detalleHistorialFilas.filter((item) => historialDetalleCoincideBusqueda(item, busqueda));
+  }, [
+    busqueda,
+    busquedaHistorialSincronizada,
+    detalleHistorialFilas,
+    detalleHistorialPerteneceAResultados,
+    hayBusquedaActiva,
+    tab,
+  ]);
+  const totalResultadosHistorialNavegables = useMemo(() => {
+    if (tab !== "historial" || !hayBusquedaActiva || !busquedaHistorialSincronizada) return 0;
+
+    return armadosHistorial.reduce((total, item) => {
+      const idArmado = Number(item?.id_armado_historial || 0);
+
+      if (idArmado !== idDetalleHistorialAbierto) {
+        // Para armados cuyo detalle no está abierto, la fila del armado funciona
+        // como resultado navegable. El backend ya confirmó que ese armado coincide.
+        return total + 1;
+      }
+
+      const coincideDirectamente = historialArmadoCoincideBusqueda(item, busqueda);
+      if (coincidenciasDetalleHistorial.length === 0) {
+        return total + 1;
+      }
+
+      return total + coincidenciasDetalleHistorial.length + (coincideDirectamente ? 1 : 0);
+    }, 0);
+  }, [
+    armadosHistorial,
+    busqueda,
+    busquedaHistorialSincronizada,
+    coincidenciasDetalleHistorial.length,
+    hayBusquedaActiva,
+    idDetalleHistorialAbierto,
+    tab,
+  ]);
+  const totalResultadosBusqueda = hayBusquedaActiva
+    ? (tab === "historial" ? totalResultadosHistorialNavegables : totalVisible)
+    : 0;
+  const hayResultadosBusqueda = hayBusquedaActiva && !buscandoHistorialBusqueda && totalResultadosBusqueda > 0;
   const puedeNavegarBusqueda = hayResultadosBusqueda && totalResultadosBusqueda > 1;
   const indiceBusquedaVisible = hayResultadosBusqueda ? Math.min(indiceBusquedaActivo + 1, totalResultadosBusqueda) : 0;
   const terminosBusqueda = useMemo(() => obtenerTerminosBusqueda(busqueda), [busqueda]);
@@ -1754,6 +1850,43 @@ const MesasExamen = () => {
     setConfirmarSinHistorialArmado(false);
   }, [eliminarArmado?.modalAbierto]);
 
+  const primerArmadoBusquedaHistorial = tab === "historial" && armadosHistorial.length === 1
+    ? armadosHistorial[0]
+    : null;
+  const idPrimerArmadoBusquedaHistorial = Number(primerArmadoBusquedaHistorial?.id_armado_historial || 0);
+  const primerArmadoCoincideDirectamente = primerArmadoBusquedaHistorial
+    ? historialArmadoCoincideBusqueda(primerArmadoBusquedaHistorial, busqueda)
+    : false;
+  const debeAbrirDetalleBusquedaHistorial = tab === "historial"
+    && hayBusquedaActiva
+    && busquedaHistorialSincronizada
+    && !buscandoHistorialBusqueda
+    && idPrimerArmadoBusquedaHistorial > 0
+    && !primerArmadoCoincideDirectamente
+    && idDetalleHistorialAbierto !== idPrimerArmadoBusquedaHistorial
+    && !historial?.error;
+
+  useEffect(() => {
+    if (!debeAbrirDetalleBusquedaHistorial || historial?.cargandoDetalle) return;
+
+    historial?.verDetalleArmado?.(idPrimerArmadoBusquedaHistorial);
+  }, [
+    debeAbrirDetalleBusquedaHistorial,
+    historial?.cargandoDetalle,
+    historial?.verDetalleArmado,
+    idPrimerArmadoBusquedaHistorial,
+  ]);
+
+  const esperandoDetalleBusquedaHistorial = debeAbrirDetalleBusquedaHistorial || (
+    tab === "historial"
+    && hayBusquedaActiva
+    && busquedaHistorialSincronizada
+    && !primerArmadoCoincideDirectamente
+    && idPrimerArmadoBusquedaHistorial > 0
+    && idDetalleHistorialAbierto !== idPrimerArmadoBusquedaHistorial
+    && !!historial?.cargandoDetalle
+  );
+
   const obtenerNodosResultadosBusqueda = useCallback(() => {
     if (typeof document === "undefined") return [];
 
@@ -1789,13 +1922,31 @@ const MesasExamen = () => {
     setIndiceBusquedaActivo(0);
 
     if (!hayResultadosBusqueda) return undefined;
+    if (tab === "historial" && (
+      !busquedaHistorialSincronizada
+      || buscandoHistorialBusqueda
+      || esperandoDetalleBusquedaHistorial
+      || !!historial?.cargandoDetalle
+    )) {
+      return undefined;
+    }
 
     const timer = window.setTimeout(() => {
       desplazarAResultadoBusqueda(0);
     }, 140);
 
     return () => window.clearTimeout(timer);
-  }, [busqueda, desplazarAResultadoBusqueda, hayResultadosBusqueda, tab, totalResultadosBusqueda]);
+  }, [
+    busqueda,
+    busquedaHistorialSincronizada,
+    buscandoHistorialBusqueda,
+    desplazarAResultadoBusqueda,
+    esperandoDetalleBusquedaHistorial,
+    hayResultadosBusqueda,
+    historial?.cargandoDetalle,
+    tab,
+    totalResultadosBusqueda,
+  ]);
 
   const cambiarGuardarHistorialArmado = useCallback((event) => {
     const checked = !!event.target.checked;
@@ -2096,6 +2247,7 @@ const MesasExamen = () => {
                         <button
                           type="button"
                           className="cc-clearSearch cc-clearSearch--inside mesas-clearSearch"
+                          aria-label="Limpiar búsqueda"
                           title="Limpiar búsqueda"
                           onClick={() => setBusqueda("")}
                         >
@@ -2107,9 +2259,11 @@ const MesasExamen = () => {
                     {hayBusquedaActiva && (
                       <div className="mesas-searchNavigator" aria-label="Resultados de la búsqueda">
                         <span className="mesas-searchNavigator__count">
-                          {hayResultadosBusqueda
-                            ? `${indiceBusquedaVisible} de ${totalResultadosBusqueda} resultados`
-                            : "0 resultados"}
+                          {buscandoHistorialBusqueda
+                            ? "Buscando..."
+                            : hayResultadosBusqueda
+                              ? `${indiceBusquedaVisible} de ${totalResultadosBusqueda} resultados`
+                              : "0 resultados"}
                         </span>
                         <div className="mesas-searchNavigator__buttons">
                           <button
@@ -2191,7 +2345,7 @@ const MesasExamen = () => {
             </div>
           </div>
 
-          <div className="mov-card__actions mesas-actionsHead">
+          {!soloLectura && <div className="mov-card__actions mesas-actionsHead">
             <BotonExportarHistorialGlobal
               className={`mov-btn mov-btn--secondary mesas-actionBtn mesas-exportBtn ${tab !== "historial" ? "mesas-headPdfBtn" : ""}`}
               icon={tab === "historial" ? "excel" : "pdf"}
@@ -2258,7 +2412,7 @@ const MesasExamen = () => {
               </>
             )}
 
-          </div>
+          </div>}
         </div>
 
         {resumenArmado && (
@@ -2291,7 +2445,7 @@ const MesasExamen = () => {
           </div>
         )}
 
-        {tab !== "historial" && totalCambiosDocentePendientes > 0 && (
+        {!soloLectura && tab !== "historial" && totalCambiosDocentePendientes > 0 && (
           <div className="mesas-docenteCambioAlert">
             <div className="mesas-docenteCambioAlert__icon">
               <FontAwesomeIcon icon={faTriangleExclamation} />
@@ -2339,6 +2493,7 @@ const MesasExamen = () => {
                 terminosBusqueda={terminosBusqueda}
                 logoInstitucionalUrl={datosInstitucionales.logoDataUrl || datosInstitucionales.logoUrl}
                 institucionNombre={datosInstitucionales.nombre}
+                soloLectura={soloLectura}
               />
               );
             })
@@ -2351,7 +2506,7 @@ const MesasExamen = () => {
               Mostrando <b>{totalVisible}</b> de <b>{totalReferencia}</b> registros
             </div>
 
-            <div className="mesas-recordsFoot__actions" aria-label="Acciones del armado de mesas">
+            {!soloLectura && <div className="mesas-recordsFoot__actions" aria-label="Acciones del armado de mesas">
               <BotonExportarHistorialGlobal
                 className="mov-btn mov-btn--secondary mesas-footActionBtn mesas-footPdfBtn"
                 icon="pdf"
@@ -2381,11 +2536,12 @@ const MesasExamen = () => {
                 <FontAwesomeIcon icon={faTrash} />
                 Eliminar mesas
               </button>
-            </div>
+            </div>}
           </div>
         )}
       </section>
 
+      {!soloLectura && <>
       <ModalCrearMesa
         abierto={modalCrearAbierto}
         parametros={parametrosArmado}
@@ -2531,6 +2687,7 @@ const MesasExamen = () => {
         onConfirm={eliminarEdicion?.confirmar}
         hideLocalError
       />
+      </>}
 
       {toastGlobal && (typeof document !== "undefined"
         ? createPortal(

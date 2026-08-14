@@ -73,16 +73,32 @@ function previas_tabla_existe(PDO $pdo, string $tabla): bool
 function previas_columna_existe(PDO $pdo, string $tabla, string $columna): bool
 {
     static $cache = [];
+
+    $tabla = preg_replace('/[^a-zA-Z0-9_]/', '', $tabla) ?? '';
+    $columna = preg_replace('/[^a-zA-Z0-9_]/', '', $columna) ?? '';
     $key = $tabla . '.' . $columna;
+
+    if ($tabla === '' || $columna === '') {
+        return false;
+    }
 
     if (array_key_exists($key, $cache)) {
         return $cache[$key];
     }
 
     try {
-        $stmt = $pdo->prepare("SHOW COLUMNS FROM `{$tabla}` LIKE :columna");
-        $stmt->execute([':columna' => $columna]);
-        $cache[$key] = (bool)$stmt->fetch(PDO::FETCH_ASSOC);
+        $stmt = $pdo->prepare(
+            'SELECT COUNT(*)
+             FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = :tabla
+               AND COLUMN_NAME = :columna'
+        );
+        $stmt->execute([
+            ':tabla' => $tabla,
+            ':columna' => $columna,
+        ]);
+        $cache[$key] = ((int)$stmt->fetchColumn()) > 0;
     } catch (Throwable $e) {
         $cache[$key] = false;
     }
@@ -2027,12 +2043,14 @@ function previas_verificar_eliminacion(): void
     }
 }
 
-function previas_cambiar_estado(): void
+function previas_cambiar_estado(?int $activoForzado = null): void
 {
     $pdo = db();
     $body = previas_body();
     $ids = previas_ids_desde_body($body);
-    $activo = previas_int($body['activo'] ?? 1) === 1 ? 1 : 0;
+    $activo = $activoForzado === null
+        ? (previas_int($body['activo'] ?? 1) === 1 ? 1 : 0)
+        : ($activoForzado === 1 ? 1 : 0);
     $motivo = previas_mayuscula($body['motivo'] ?? $body['motivo_baja'] ?? '');
 
     if (count($ids) === 0) {

@@ -24,9 +24,15 @@ function route_docentes(string $action): bool
             return true;
 
         case 'docentes_cambiar_estado':
-        case 'docentes_dar_baja':
-        case 'docentes_dar_alta':
             docentes_cambiar_estado();
+            return true;
+
+        case 'docentes_dar_baja':
+            docentes_cambiar_estado(0);
+            return true;
+
+        case 'docentes_dar_alta':
+            docentes_cambiar_estado(1);
             return true;
 
         case 'docentes_eliminar':

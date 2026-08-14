@@ -49,9 +49,15 @@ function route_previas(string $action): bool
             return true;
 
         case 'previas_cambiar_estado':
-        case 'previas_dar_baja':
-        case 'previas_dar_alta':
             previas_cambiar_estado();
+            return true;
+
+        case 'previas_dar_baja':
+            previas_cambiar_estado(0);
+            return true;
+
+        case 'previas_dar_alta':
+            previas_cambiar_estado(1);
             return true;
 
         case 'previas_verificar_eliminacion':

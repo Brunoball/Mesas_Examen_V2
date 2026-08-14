@@ -30,6 +30,7 @@ import logoLernaBlanco from "../../imagenes/lerna_grande.png";
 import Dashbord from "../Dashbord/Dashbord";
 import ModalPerfil from "../Perfil/Perfil";
 import BASE_URL from "../../config/config";
+import { esRolVista, obtenerRolUsuarioLocal } from "../_shared/auth/roles";
 
 export const MesasShellContext = createContext(false);
 
@@ -443,6 +444,14 @@ const Principal = ({ children = null }) => {
     return extraerLogoTenant(usuario);
   }, [usuario, apiPrincipalEsLocal]);
 
+  const soloLectura = esRolVista(usuario?.rol || obtenerRolUsuarioLocal());
+  const navItemsVisibles = useMemo(
+    () => soloLectura
+      ? NAV_ITEMS.filter((item) => ["dashbord", "mesas", "previas", "estadisticas"].includes(item.key))
+      : NAV_ITEMS,
+    [soloLectura]
+  );
+
   useEffect(() => {
     setLogoTenantError(false);
   }, [logoTenantUrl]);
@@ -744,15 +753,17 @@ const Principal = ({ children = null }) => {
               )}
             </button>
 
-            <button
-              className={`pp-topbarConfig ${activeKey === "configuracion" ? "is-active" : ""}`}
-              type="button"
-              onClick={() => handleNavigate("/configuracion")}
-              title="Configuración"
-              aria-label="Ir a Configuración"
-            >
-              <FontAwesomeIcon icon={faGear} />
-            </button>
+            {!soloLectura && (
+              <button
+                className={`pp-topbarConfig ${activeKey === "configuracion" ? "is-active" : ""}`}
+                type="button"
+                onClick={() => handleNavigate("/configuracion")}
+                title="Configuración"
+                aria-label="Ir a Configuración"
+              >
+                <FontAwesomeIcon icon={faGear} />
+              </button>
+            )}
 
             <button
               className="pp-topbarLogout"
@@ -823,7 +834,7 @@ const Principal = ({ children = null }) => {
           </div>
 
           <nav className="pp-nav" aria-label="Navegación principal">
-            {NAV_ITEMS.map((item) => {
+            {navItemsVisibles.map((item) => {
               const hasSub = Array.isArray(item.children) && item.children.length > 0;
               const isActive = activeKey === item.key;
               const isOpen = openSubmenuKey === item.key;

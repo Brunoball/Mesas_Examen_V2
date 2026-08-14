@@ -173,34 +173,51 @@ function action_requiere_admin(string $action): bool
         return false;
     }
 
-    // Secciones sensibles: configuración de usuarios y auditoría solo admin.
-    foreach (['configuracion_usuarios_', 'auditoria_'] as $prefijoAdmin) {
-        if (strpos($a, $prefijoAdmin) === 0) {
-            return true;
-        }
+    if (usuario_rol_actual() === 'admin') {
+        return false;
     }
 
-    // Configuración del formulario público: lectura pública/admin permitida; escritura solo admin.
-    if (in_array($a, ['form_guardar_config_inscripcion', 'guardar_config_inscripcion', 'formulario_guardar_config_inscripcion'], true)) {
+    // Lista positiva para el rol vista: una acción nueva queda bloqueada por
+    // defecto, aunque su nombre no contenga guardar/editar/eliminar.
+    $accionesVistaPermitidas = [
+        'auth_usuario_actual',
+        'perfil_obtener',
+        'perfil_logo_institucional',
+        'obtener_listas',
+        'global_obtener_listas',
+
+        'dashbord_resumen',
+        'dashboard_resumen',
+
+        'estadisticas_mesas_opciones',
+        'estadisticas_historial_mesas_opciones',
+        'estadisticas_mesas_resumen',
+        'estadisticas_historial_mesas_resumen',
+        'estadisticas_mesas_detalle',
+        'estadisticas_historial_mesas_detalle',
+
+        'previas_catalogos',
+        'previas_condiciones',
+        'previas_listar',
+        'previas_obtener_permiso_examen',
+
+        'mesas_examen_listar',
+        'mesas_grupos_listar',
+        'mesas_armado_grupos_listar',
+        'mesas_no_agrupadas_listar',
+        'mesas_armado_no_agrupadas_listar',
+        'mesas_historial_listar',
+        'mesas_historial_resultados_listar',
+        'mesas_historial_detalle_armado',
+        'mesas_historial_armado_detalle',
+    ];
+
+    if (!in_array($a, $accionesVistaPermitidas, true)) {
         return true;
     }
 
-    // Acciones claramente mutables. Un usuario vista puede leer, pero no modificar datos.
-    $palabrasMutables = [
-        'guardar', 'crear', 'agregar', 'editar', 'actualizar', 'modificar',
-        'eliminar', 'baja', 'alta', 'cambiar_estado', 'estado', 'asignar',
-        'autogenerar', 'generar', 'registrar', 'numerar', 'reparar', 'armado',
-        'fase_', 'confirmar', 'importar', 'mover', 'quitar', 'habilitar',
-        'limpiar', 'nota',
-    ];
-
-    foreach ($palabrasMutables as $palabra) {
-        if (strpos($a, $palabra) !== false) {
-            return true;
-        }
-    }
-
-    return false;
+    // Todas las operaciones permitidas al rol vista son consultas.
+    return strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'GET';
 }
 
 function require_action_permission(string $action): void
@@ -209,4 +226,3 @@ function require_action_permission(string $action): void
         require_roles(['admin']);
     }
 }
-

@@ -51,41 +51,91 @@ function estadisticas_detalle_actual_sql(): string
 {
     return "
         SELECT
-            CAST(p.id_previa AS CHAR) AS clave_previa,
+            CAST(p.id_previa AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci AS clave_previa,
             p.id_previa,
-            p.dni,
-            p.alumno,
+            CONVERT(p.dni USING utf8mb4) COLLATE utf8mb4_unicode_ci AS dni,
+            CONVERT(p.alumno USING utf8mb4) COLLATE utf8mb4_unicode_ci AS alumno,
             p.cursando_id_curso,
             p.cursando_id_division,
-            COALESCE(ccur.nombre_curso, CAST(p.cursando_id_curso AS CHAR), '') AS cursando_curso,
-            COALESCE(dcur.nombre_division, CAST(p.cursando_id_division AS CHAR), '') AS cursando_division,
+            COALESCE(
+                CONVERT(ccur.nombre_curso USING utf8mb4) COLLATE utf8mb4_unicode_ci,
+                CAST(p.cursando_id_curso AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci,
+                _utf8mb4'' COLLATE utf8mb4_unicode_ci
+            ) AS cursando_curso,
+            COALESCE(
+                CONVERT(dcur.nombre_division USING utf8mb4) COLLATE utf8mb4_unicode_ci,
+                CAST(p.cursando_id_division AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci,
+                _utf8mb4'' COLLATE utf8mb4_unicode_ci
+            ) AS cursando_division,
             p.id_materia,
-            COALESCE(mat.materia, '') AS materia,
+            COALESCE(
+                CONVERT(mat.materia USING utf8mb4) COLLATE utf8mb4_unicode_ci,
+                _utf8mb4'' COLLATE utf8mb4_unicode_ci
+            ) AS materia,
             p.materia_id_curso,
             p.materia_id_division,
-            COALESCE(cmat.nombre_curso, CAST(p.materia_id_curso AS CHAR), '') AS materia_curso,
-            COALESCE(dmat.nombre_division, CAST(p.materia_id_division AS CHAR), '') AS materia_division,
+            COALESCE(
+                CONVERT(cmat.nombre_curso USING utf8mb4) COLLATE utf8mb4_unicode_ci,
+                CAST(p.materia_id_curso AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci,
+                _utf8mb4'' COLLATE utf8mb4_unicode_ci
+            ) AS materia_curso,
+            COALESCE(
+                CONVERT(dmat.nombre_division USING utf8mb4) COLLATE utf8mb4_unicode_ci,
+                CAST(p.materia_id_division AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci,
+                _utf8mb4'' COLLATE utf8mb4_unicode_ci
+            ) AS materia_division,
             p.id_condicion,
-            COALESCE(cond.condicion, '') AS condicion,
+            COALESCE(
+                CONVERT(cond.condicion USING utf8mb4) COLLATE utf8mb4_unicode_ci,
+                _utf8mb4'' COLLATE utf8mb4_unicode_ci
+            ) AS condicion,
             MAX(p.nota) AS nota,
             DATE_FORMAT(MAX(p.fecha_nota), '%d/%m/%Y') AS fecha_nota_texto,
             p.anio,
-            LOWER(COALESCE(NULLIF(MIN(CAST(m.tipo_mesa AS CHAR)), ''), 'simple')) AS tipo_mesa,
+            LOWER(
+                COALESCE(
+                    NULLIF(
+                        MIN(CONVERT(m.tipo_mesa USING utf8mb4) COLLATE utf8mb4_unicode_ci),
+                        _utf8mb4'' COLLATE utf8mb4_unicode_ci
+                    ),
+                    _utf8mb4'simple' COLLATE utf8mb4_unicode_ci
+                )
+            ) AS tipo_mesa,
             MIN(m.fecha_mesa) AS fecha_mesa,
             DATE_FORMAT(MIN(m.fecha_mesa), '%d/%m/%Y') AS fecha_mesa_texto,
             MIN(m.id_turno) AS id_turno,
-            GROUP_CONCAT(DISTINCT t.turno ORDER BY t.turno SEPARATOR ' · ') AS turno,
+            GROUP_CONCAT(
+                DISTINCT CONVERT(t.turno USING utf8mb4) COLLATE utf8mb4_unicode_ci
+                ORDER BY CONVERT(t.turno USING utf8mb4) COLLATE utf8mb4_unicode_ci
+                SEPARATOR ' · '
+            ) AS turno,
             MIN(m.numero_mesa) AS numero_mesa,
             NULLIF(MIN(COALESCE(g.numero_grupo, 0)), 0) AS numero_grupo,
-            GROUP_CONCAT(DISTINCT doc.docente ORDER BY doc.docente SEPARATOR ' · ') AS docentes,
+            GROUP_CONCAT(
+                DISTINCT CONVERT(doc.docente USING utf8mb4) COLLATE utf8mb4_unicode_ci
+                ORDER BY CONVERT(doc.docente USING utf8mb4) COLLATE utf8mb4_unicode_ci
+                SEPARATOR ' · '
+            ) AS docentes,
             COALESCE(
-                NULLIF(GROUP_CONCAT(DISTINCT mat_cat.materia ORDER BY mat_cat.materia SEPARATOR ' · '), ''),
-                COALESCE(mat.materia, '')
+                NULLIF(
+                    GROUP_CONCAT(
+                        DISTINCT CONVERT(mat_cat.materia USING utf8mb4) COLLATE utf8mb4_unicode_ci
+                        ORDER BY CONVERT(mat_cat.materia USING utf8mb4) COLLATE utf8mb4_unicode_ci
+                        SEPARATOR ' · '
+                    ),
+                    _utf8mb4'' COLLATE utf8mb4_unicode_ci
+                ),
+                COALESCE(
+                    CONVERT(mat.materia USING utf8mb4) COLLATE utf8mb4_unicode_ci,
+                    _utf8mb4'' COLLATE utf8mb4_unicode_ci
+                )
             ) AS materias_taller,
             CASE
-                WHEN MAX(CASE WHEN p.nota IS NOT NULL AND p.nota >= 7 THEN 1 ELSE 0 END) = 1 THEN 'aprobados'
-                WHEN MAX(CASE WHEN p.nota IS NOT NULL AND p.nota > 0 AND p.nota < 7 THEN 1 ELSE 0 END) = 1 THEN 'desaprobados'
-                ELSE 'ausentes'
+                WHEN MAX(CASE WHEN p.nota IS NOT NULL AND p.nota >= 7 THEN 1 ELSE 0 END) = 1
+                    THEN _utf8mb4'aprobados' COLLATE utf8mb4_unicode_ci
+                WHEN MAX(CASE WHEN p.nota IS NOT NULL AND p.nota > 0 AND p.nota < 7 THEN 1 ELSE 0 END) = 1
+                    THEN _utf8mb4'desaprobados' COLLATE utf8mb4_unicode_ci
+                ELSE _utf8mb4'ausentes' COLLATE utf8mb4_unicode_ci
             END AS estado_resultado
         FROM mesas m
         INNER JOIN previas p ON p.id_previa = m.id_previa
@@ -127,41 +177,126 @@ function estadisticas_detalle_historial_sql(): string
 {
     return "
         SELECT
-            COALESCE(CAST(d.id_previa_original AS CHAR), CONCAT('DET-', MIN(d.id_historial_detalle))) AS clave_previa,
+            CASE
+                WHEN MIN(d.id_previa_original) IS NOT NULL THEN
+                    CAST(MIN(d.id_previa_original) AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci
+                ELSE
+                    CONCAT(
+                        _utf8mb4'DET-' COLLATE utf8mb4_unicode_ci,
+                        CAST(MIN(d.id_historial_detalle) AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci
+                    )
+            END AS clave_previa,
             MIN(d.id_previa_original) AS id_previa,
-            MIN(d.dni) AS dni,
-            MIN(d.alumno) AS alumno,
+            MIN(CONVERT(d.dni USING utf8mb4) COLLATE utf8mb4_unicode_ci) AS dni,
+            MIN(CONVERT(d.alumno USING utf8mb4) COLLATE utf8mb4_unicode_ci) AS alumno,
             MIN(d.cursando_id_curso) AS cursando_id_curso,
             MIN(d.cursando_id_division) AS cursando_id_division,
-            COALESCE(MIN(ccur.nombre_curso), CAST(MIN(d.cursando_id_curso) AS CHAR), '') AS cursando_curso,
-            COALESCE(MIN(dcur.nombre_division), CAST(MIN(d.cursando_id_division) AS CHAR), '') AS cursando_division,
+            COALESCE(
+                MIN(CONVERT(ccur.nombre_curso USING utf8mb4) COLLATE utf8mb4_unicode_ci),
+                CAST(MIN(d.cursando_id_curso) AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci,
+                _utf8mb4'' COLLATE utf8mb4_unicode_ci
+            ) AS cursando_curso,
+            COALESCE(
+                MIN(CONVERT(dcur.nombre_division USING utf8mb4) COLLATE utf8mb4_unicode_ci),
+                CAST(MIN(d.cursando_id_division) AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci,
+                _utf8mb4'' COLLATE utf8mb4_unicode_ci
+            ) AS cursando_division,
             MIN(d.id_materia) AS id_materia,
-            COALESCE(MIN(NULLIF(TRIM(d.materia), '')), '') AS materia,
+            COALESCE(
+                MIN(
+                    NULLIF(
+                        TRIM(CONVERT(d.materia USING utf8mb4) COLLATE utf8mb4_unicode_ci),
+                        _utf8mb4'' COLLATE utf8mb4_unicode_ci
+                    )
+                ),
+                _utf8mb4'' COLLATE utf8mb4_unicode_ci
+            ) AS materia,
             MIN(d.materia_id_curso) AS materia_id_curso,
             MIN(d.materia_id_division) AS materia_id_division,
-            COALESCE(MIN(cmat.nombre_curso), CAST(MIN(d.materia_id_curso) AS CHAR), '') AS materia_curso,
-            COALESCE(MIN(dmat.nombre_division), CAST(MIN(d.materia_id_division) AS CHAR), '') AS materia_division,
+            COALESCE(
+                MIN(CONVERT(cmat.nombre_curso USING utf8mb4) COLLATE utf8mb4_unicode_ci),
+                CAST(MIN(d.materia_id_curso) AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci,
+                _utf8mb4'' COLLATE utf8mb4_unicode_ci
+            ) AS materia_curso,
+            COALESCE(
+                MIN(CONVERT(dmat.nombre_division USING utf8mb4) COLLATE utf8mb4_unicode_ci),
+                CAST(MIN(d.materia_id_division) AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci,
+                _utf8mb4'' COLLATE utf8mb4_unicode_ci
+            ) AS materia_division,
             MIN(d.id_condicion) AS id_condicion,
-            COALESCE(MIN(NULLIF(TRIM(d.condicion), '')), '') AS condicion,
+            COALESCE(
+                MIN(
+                    NULLIF(
+                        TRIM(CONVERT(d.condicion USING utf8mb4) COLLATE utf8mb4_unicode_ci),
+                        _utf8mb4'' COLLATE utf8mb4_unicode_ci
+                    )
+                ),
+                _utf8mb4'' COLLATE utf8mb4_unicode_ci
+            ) AS condicion,
             MAX(d.nota) AS nota,
             DATE_FORMAT(MAX(d.fecha_nota), '%d/%m/%Y') AS fecha_nota_texto,
             MIN(d.anio) AS anio,
-            LOWER(COALESCE(NULLIF(MIN(TRIM(d.tipo_mesa)), ''), 'simple')) AS tipo_mesa,
+            LOWER(
+                COALESCE(
+                    NULLIF(
+                        MIN(TRIM(CONVERT(d.tipo_mesa USING utf8mb4) COLLATE utf8mb4_unicode_ci)),
+                        _utf8mb4'' COLLATE utf8mb4_unicode_ci
+                    ),
+                    _utf8mb4'simple' COLLATE utf8mb4_unicode_ci
+                )
+            ) AS tipo_mesa,
             MIN(d.fecha_mesa) AS fecha_mesa,
             DATE_FORMAT(MIN(d.fecha_mesa), '%d/%m/%Y') AS fecha_mesa_texto,
             MIN(d.id_turno) AS id_turno,
-            GROUP_CONCAT(DISTINCT t.turno ORDER BY t.turno SEPARATOR ' · ') AS turno,
+            GROUP_CONCAT(
+                DISTINCT CONVERT(t.turno USING utf8mb4) COLLATE utf8mb4_unicode_ci
+                ORDER BY CONVERT(t.turno USING utf8mb4) COLLATE utf8mb4_unicode_ci
+                SEPARATOR ' · '
+            ) AS turno,
             MIN(d.numero_mesa) AS numero_mesa,
             NULLIF(MIN(COALESCE(d.numero_grupo, 0)), 0) AS numero_grupo,
-            GROUP_CONCAT(DISTINCT NULLIF(TRIM(d.docente), '') ORDER BY NULLIF(TRIM(d.docente), '') SEPARATOR ' · ') AS docentes,
+            GROUP_CONCAT(
+                DISTINCT NULLIF(
+                    TRIM(CONVERT(d.docente USING utf8mb4) COLLATE utf8mb4_unicode_ci),
+                    _utf8mb4'' COLLATE utf8mb4_unicode_ci
+                )
+                ORDER BY NULLIF(
+                    TRIM(CONVERT(d.docente USING utf8mb4) COLLATE utf8mb4_unicode_ci),
+                    _utf8mb4'' COLLATE utf8mb4_unicode_ci
+                )
+                SEPARATOR ' · '
+            ) AS docentes,
             COALESCE(
-                NULLIF(GROUP_CONCAT(DISTINCT NULLIF(TRIM(d.materia), '') ORDER BY NULLIF(TRIM(d.materia), '') SEPARATOR ' · '), ''),
-                COALESCE(MIN(NULLIF(TRIM(d.materia), '')), '')
+                NULLIF(
+                    GROUP_CONCAT(
+                        DISTINCT NULLIF(
+                            TRIM(CONVERT(d.materia USING utf8mb4) COLLATE utf8mb4_unicode_ci),
+                            _utf8mb4'' COLLATE utf8mb4_unicode_ci
+                        )
+                        ORDER BY NULLIF(
+                            TRIM(CONVERT(d.materia USING utf8mb4) COLLATE utf8mb4_unicode_ci),
+                            _utf8mb4'' COLLATE utf8mb4_unicode_ci
+                        )
+                        SEPARATOR ' · '
+                    ),
+                    _utf8mb4'' COLLATE utf8mb4_unicode_ci
+                ),
+                COALESCE(
+                    MIN(
+                        NULLIF(
+                            TRIM(CONVERT(d.materia USING utf8mb4) COLLATE utf8mb4_unicode_ci),
+                            _utf8mb4'' COLLATE utf8mb4_unicode_ci
+                        )
+                    ),
+                    _utf8mb4'' COLLATE utf8mb4_unicode_ci
+                )
             ) AS materias_taller,
             CASE
-                WHEN MAX(CASE WHEN d.nota IS NOT NULL AND d.nota >= 7 THEN 1 ELSE 0 END) = 1 THEN 'aprobados'
-                WHEN MAX(CASE WHEN d.nota IS NOT NULL AND d.nota > 0 AND d.nota < 7 THEN 1 ELSE 0 END) = 1 THEN 'desaprobados'
-                ELSE 'ausentes'
+                WHEN MAX(CASE WHEN d.nota IS NOT NULL AND d.nota >= 7 THEN 1 ELSE 0 END) = 1
+                    THEN _utf8mb4'aprobados' COLLATE utf8mb4_unicode_ci
+                WHEN MAX(CASE WHEN d.nota IS NOT NULL AND d.nota > 0 AND d.nota < 7 THEN 1 ELSE 0 END) = 1
+                    THEN _utf8mb4'desaprobados' COLLATE utf8mb4_unicode_ci
+                ELSE _utf8mb4'ausentes' COLLATE utf8mb4_unicode_ci
             END AS estado_resultado
         FROM historial_mesas_detalle d
         LEFT JOIN curso ccur ON ccur.id_curso = d.cursando_id_curso
@@ -172,7 +307,8 @@ function estadisticas_detalle_historial_sql(): string
         WHERE d.id_armado_historial = :id_armado
         GROUP BY
             d.id_armado_historial,
-            COALESCE(CAST(d.id_previa_original AS CHAR), CONCAT('DET-', d.id_historial_detalle))
+            d.id_previa_original,
+            CASE WHEN d.id_previa_original IS NULL THEN d.id_historial_detalle ELSE 0 END
     ";
 }
 
@@ -186,7 +322,7 @@ function estadisticas_preparar_filtro_detalle(string $dimension, string $value, 
     if ($dimension === 'tipo') {
         $tipo = estadisticas_normalizar_tipo_detalle($value);
         $params[':filtro_tipo'] = $tipo;
-        $where[] = 'x.tipo_mesa = :filtro_tipo';
+        $where[] = "x.tipo_mesa = (CONVERT(:filtro_tipo USING utf8mb4) COLLATE utf8mb4_unicode_ci)";
         $label = 'Previas de tipo ' . estadisticas_label_tipo_detalle($tipo);
         return [$where, ['dimension' => 'tipo', 'value' => $tipo, 'label' => $label]];
     }
@@ -195,7 +331,7 @@ function estadisticas_preparar_filtro_detalle(string $dimension, string $value, 
         $estado = estadisticas_normalizar_estado_detalle($value);
         if ($estado !== 'inscriptos') {
             $params[':filtro_estado'] = $estado;
-            $where[] = 'x.estado_resultado = :filtro_estado';
+            $where[] = "x.estado_resultado = (CONVERT(:filtro_estado USING utf8mb4) COLLATE utf8mb4_unicode_ci)";
         }
         $label = 'Previas ' . strtolower(estadisticas_label_estado_detalle($estado));
         return [$where, ['dimension' => 'estado', 'value' => $estado, 'label' => $label]];
@@ -297,7 +433,12 @@ function estadisticas_mesas_detalle(): void
 {
     try {
         $pdo = db();
-        mesas_historial_asegurar_tablas($pdo);
+
+        // Hostinger puede tener tablas heredadas en utf8mb4_general_ci mientras que
+        // las tablas nuevas de historial usan utf8mb4_unicode_ci. Unificamos la
+        // collation de expresiones, literales y parámetros de esta consulta para
+        // evitar errores 1267 (Illegal mix of collations) en los modales de detalle.
+        $pdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
 
         $idParam = trim((string)($_GET['id_armado_historial'] ?? ''));
         if ($idParam === '') {
@@ -370,4 +511,3 @@ function estadisticas_mesas_detalle(): void
         ], 500);
     }
 }
-

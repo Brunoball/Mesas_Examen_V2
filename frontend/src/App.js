@@ -14,6 +14,7 @@ import Docentes from "./components/Docentes/Docentes";
 import Previas from "./components/Previas/Previas.jsx";
 import Configuracion from "./components/Configuracion/Configuracion";
 import Estadisticas from "./components/Estadisticas/Estadisticas";
+import { obtenerRolUsuarioLocal, ROL_ADMIN } from "./components/_shared/auth/roles";
 
 const SESSION_IDLE_TIMEOUT_MS = 60 * 60 * 1000;
 const SESSION_CHECK_INTERVAL_MS = 30 * 1000;
@@ -136,8 +137,16 @@ function isAuthenticated() {
   }
 }
 
-function RutaProtegida({ children }) {
-  return isAuthenticated() ? children : <Navigate to="/" replace />;
+function RutaProtegida({ children, rolesPermitidos = null }) {
+  if (!isAuthenticated()) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (Array.isArray(rolesPermitidos) && !rolesPermitidos.includes(obtenerRolUsuarioLocal())) {
+    return <Navigate to="/panel" replace />;
+  }
+
+  return children;
 }
 
 function useControlSesionInactiva() {
@@ -221,7 +230,7 @@ export default function App() {
         <Route
           path="/materias"
           element={
-            <RutaProtegida>
+            <RutaProtegida rolesPermitidos={[ROL_ADMIN]}>
               <Materias />
             </RutaProtegida>
           }
@@ -230,7 +239,7 @@ export default function App() {
         <Route
           path="/catedras"
           element={
-            <RutaProtegida>
+            <RutaProtegida rolesPermitidos={[ROL_ADMIN]}>
               <Catedras />
             </RutaProtegida>
           }
@@ -239,7 +248,7 @@ export default function App() {
         <Route
           path="/docentes"
           element={
-            <RutaProtegida>
+            <RutaProtegida rolesPermitidos={[ROL_ADMIN]}>
               <Docentes />
             </RutaProtegida>
           }
@@ -266,7 +275,7 @@ export default function App() {
         <Route
           path="/configuracion"
           element={
-            <RutaProtegida>
+            <RutaProtegida rolesPermitidos={[ROL_ADMIN]}>
               <Principal>
                 <Configuracion />
               </Principal>

@@ -1205,7 +1205,6 @@ function mesas_grupos_listar(): void
 {
     try {
         $pdo = db();
-        mesas_armado_grupos_asegurar_tablas($pdo);
 
         $busqueda = trim((string)($_GET['busqueda'] ?? ''));
 
@@ -1243,7 +1242,6 @@ function mesas_no_agrupadas_listar(): void
 {
     try {
         $pdo = db();
-        mesas_armado_grupos_asegurar_tablas($pdo);
 
         $busqueda = trim((string)($_GET['busqueda'] ?? ''));
 

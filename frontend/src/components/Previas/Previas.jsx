@@ -29,6 +29,7 @@ import '../Global/Global_css/Global_DivTable.css';
 import './Previas.css';
 import '../Global/Global_css/Global_PreviasResponsive.css';
 import Principal, { MesasShellContext } from '../Principal/Principal';
+import { usuarioLocalEsVista } from '../_shared/auth/roles';
 
 
 // Hook integrado en este mismo archivo para evitar problemas de resolución de ruta en Windows/Webpack.
@@ -630,6 +631,8 @@ function usePrevias() {
 
 const PREVIAS_GRID_COLS = '1.28fr .55fr 1.55fr 1.05fr .48fr .48fr .48fr .95fr';
 const PREVIAS_BAJAS_GRID_COLS = '1.12fr .58fr 1.35fr .95fr .48fr .48fr .56fr 1fr .8fr';
+const PREVIAS_GRID_COLS_SIN_ACCIONES = '1.28fr .55fr 1.55fr 1.05fr .48fr .48fr .48fr';
+const PREVIAS_BAJAS_GRID_COLS_SIN_ACCIONES = '1.12fr .58fr 1.35fr .95fr .48fr .48fr .56fr 1fr';
 const SKELETON_ROWS = 8;
 
 const PREVIAS_COLUMNS = [
@@ -1071,6 +1074,7 @@ function renderSkeletonRow(index, columns = PREVIAS_COLUMNS, gridCols = PREVIAS_
 
 export default function Previas() {
   const dentroDeShell = useContext(MesasShellContext);
+  const soloLectura = usuarioLocalEsVista();
 
   const {
     previas,
@@ -1332,8 +1336,14 @@ export default function Previas() {
   const riesgoEliminacion = modalConfirmar.tipo === 'eliminar' ? modalConfirmar.riesgo : null;
   const previaVinculada = Boolean(riesgoEliminacion?.vinculada || riesgoEliminacion?.requiere_doble_confirmacion);
   const nombreVista = vista === 'bajas' ? 'previas dadas de baja' : (vista === 'inscriptos' ? 'previas inscriptas' : 'previas activas');
-  const columnasTabla = vista === 'bajas' ? PREVIAS_BAJAS_COLUMNS : PREVIAS_COLUMNS;
-  const gridColsTabla = vista === 'bajas' ? PREVIAS_BAJAS_GRID_COLS : PREVIAS_GRID_COLS;
+  const mostrarAccionesTabla = !soloLectura || vista === 'inscriptos';
+  const columnasTablaBase = vista === 'bajas' ? PREVIAS_BAJAS_COLUMNS : PREVIAS_COLUMNS;
+  const columnasTabla = mostrarAccionesTabla
+    ? columnasTablaBase
+    : columnasTablaBase.filter((column) => !column.actions);
+  const gridColsTabla = vista === 'bajas'
+    ? (mostrarAccionesTabla ? PREVIAS_BAJAS_GRID_COLS : PREVIAS_BAJAS_GRID_COLS_SIN_ACCIONES)
+    : (mostrarAccionesTabla ? PREVIAS_GRID_COLS : PREVIAS_GRID_COLS_SIN_ACCIONES);
   const columnasExportacion = vista === 'bajas' ? PREVIAS_BAJAS_EXPORT_COLUMNS : PREVIAS_EXPORT_COLUMNS;
 
   function puedeInscribirManual(item) {
@@ -1632,7 +1642,7 @@ export default function Previas() {
             </div>
           </div>
 
-          <div className="mov-card__actions previas-actionsHead">
+          {!soloLectura && <div className="mov-card__actions previas-actionsHead">
             {vista === 'inscriptos' && (
               <button
                 type="button"
@@ -1657,7 +1667,7 @@ export default function Previas() {
             <button type="button" className="mov-btn mov-btn--primary" onClick={abrirCrear}>
               <FontAwesomeIcon icon={faPlus} /> Agregar previa
             </button>
-          </div>
+          </div>}
         </div>
 
         <div className="previas-divTable global-divTable" role="table" aria-label="Listado de previas">
@@ -1751,27 +1761,27 @@ export default function Previas() {
                         </div>
                       )}
 
-                      <div className="mov-gridCell mov-gridCell--actions is-center" role="cell" data-label="Acciones">
+                      {mostrarAccionesTabla && <div className="mov-gridCell mov-gridCell--actions is-center" role="cell" data-label="Acciones">
                         <div className="mov-actionsInline">
-                          {vista === 'activas' && (
+                          {!soloLectura && vista === 'activas' && (
                             <button type="button" className="mov-iconBtn previas-icon-btn" onClick={() => abrirEditar(item)} title="Editar previa">
                               <FontAwesomeIcon icon={faEdit} />
                             </button>
                           )}
 
-                          {puedeInscribirManual(item) && (
+                          {!soloLectura && puedeInscribirManual(item) && (
                             <button type="button" className="mov-iconBtn previas-icon-btn previas-icon-inscribir" onClick={() => abrirInscripcionManual(item)} title="Inscribir manualmente">
                               <FontAwesomeIcon icon={faCheckCircle} />
                             </button>
                           )}
 
-                          {vista === 'activas' && (
+                          {!soloLectura && vista === 'activas' && (
                             <button type="button" className="mov-iconBtn previas-icon-btn previas-icon-warning" onClick={() => abrirConfirmar('baja', item)} title="Dar de baja previa">
                               <FontAwesomeIcon icon={faUserSlash} />
                             </button>
                           )}
 
-                          {vista === 'bajas' && (
+                          {!soloLectura && vista === 'bajas' && (
                             <button type="button" className="mov-iconBtn previas-icon-btn previas-icon-success" onClick={() => abrirConfirmar('alta', item)} title="Dar de alta">
                               <FontAwesomeIcon icon={faUserCheck} />
                             </button>
@@ -1782,17 +1792,19 @@ export default function Previas() {
                               <button type="button" className="mov-iconBtn previas-icon-btn previas-icon-print" onClick={() => prepararImpresionPermiso(item)} title="Imprimir permiso de examen">
                                 <FontAwesomeIcon icon={faPrint} />
                               </button>
-                              <button type="button" className="mov-iconBtn mov-iconBtn--danger previas-icon-btn previas-icon-danger" onClick={() => abrirConfirmar('quitar_inscripcion', item)} title="Borrar inscripción">
-                                <FontAwesomeIcon icon={faTrash} />
-                              </button>
+                              {!soloLectura && (
+                                <button type="button" className="mov-iconBtn mov-iconBtn--danger previas-icon-btn previas-icon-danger" onClick={() => abrirConfirmar('quitar_inscripcion', item)} title="Borrar inscripción">
+                                  <FontAwesomeIcon icon={faTrash} />
+                                </button>
+                              )}
                             </>
-                          ) : (
+                          ) : !soloLectura ? (
                             <button type="button" className="mov-iconBtn mov-iconBtn--danger previas-icon-btn previas-icon-danger" onClick={() => abrirConfirmar('eliminar', item)} title="Eliminar previa">
                               <FontAwesomeIcon icon={faTrash} />
                             </button>
-                          )}
+                          ) : null}
                         </div>
-                      </div>
+                      </div>}
                     </div>
                   ))}
 
@@ -1821,7 +1833,7 @@ export default function Previas() {
             </span>
           )}
 
-          <div className="previas-footerActions" aria-label="Acciones de exportación e importación">
+          {!soloLectura && <div className="previas-footerActions" aria-label="Acciones de exportación e importación">
             {vista === 'inscriptos' && (
               <button
                 type="button"
@@ -1841,7 +1853,7 @@ export default function Previas() {
               disabled={loading}
               onClick={() => setModalExportar(true)}
             />
-          </div>
+          </div>}
 
           <div className="previas-pagination">
             <button
@@ -1870,7 +1882,7 @@ export default function Previas() {
         </div>
       </section>
 
-      <ModalExportarGlobal
+      {!soloLectura && <ModalExportarGlobal
         abierto={modalExportar}
         title="Exportar previas"
         subtitle="Elegí cómo exportar las previas o abrí la importación desde este mismo modal."
@@ -1895,9 +1907,9 @@ export default function Previas() {
         onClose={() => setModalExportar(false)}
         onSuccess={(texto) => mostrarMensaje('exito', texto)}
         onError={(texto) => mostrarMensaje('error', texto)}
-      />
+      />}
 
-      {modalPrevia.abierto && !modalPrevia.cargando && (
+      {!soloLectura && modalPrevia.abierto && !modalPrevia.cargando && (
         <ModalPrevia
           modo={modalPrevia.modo}
           item={modalPrevia.item}
@@ -1909,7 +1921,7 @@ export default function Previas() {
         />
       )}
 
-      {modalImportar && (
+      {!soloLectura && modalImportar && (
         <ModalImportarPrevias
           open={modalImportar}
           onClose={() => setModalImportar(false)}
@@ -1920,7 +1932,7 @@ export default function Previas() {
         />
       )}
 
-      {modalInscripcion.abierto && (
+      {!soloLectura && modalInscripcion.abierto && (
         <ModalInscribirPrevia
           open={modalInscripcion.abierto}
           data={modalInscripcion.data}
@@ -1947,7 +1959,7 @@ export default function Previas() {
         onConfirmar={confirmarPeriodoPermiso}
       />
 
-      {modalConfirmar.abierto && (
+      {!soloLectura && modalConfirmar.abierto && (
         <ModalEliminarGlobal
           open={modalConfirmar.abierto}
           row={modalConfirmar.item}

@@ -18,18 +18,18 @@ function mesas_armado_crear(): void
     $pdo = db();
     $body = request_body();
 
-    $fechaInicio = mesas_armado_leer_fecha_parametro($body, ['fecha_inicio', 'fechaInicio', 'inicio', 'desde']);
-    $fechaFin = mesas_armado_leer_fecha_parametro($body, ['fecha_fin', 'fechaFin', 'fin', 'hasta']);
-    $modoTurnos = mesas_armado_normalizar_modo_turnos($body['modo_turnos'] ?? $body['modoTurnos'] ?? $body['turno_modo'] ?? $body['turnoModo'] ?? 'combinado');
-    $debeCalendarizar = $fechaInicio !== null && $fechaFin !== null;
-    // Por defecto, si se calendariza correctamente, también se genera la mesa final agrupada.
-    // Se puede desactivar enviando generar_grupos=false.
-    $generarGruposFinales = filter_var($body['generar_grupos'] ?? true, FILTER_VALIDATE_BOOLEAN);
-
-    // Por defecto se limpia todo el armado operativo anterior para que no queden restos.
-    $limpiarBorrador = filter_var($body['limpiar_borrador'] ?? true, FILTER_VALIDATE_BOOLEAN);
-
     try {
+        $fechaInicio = mesas_armado_leer_fecha_parametro($body, ['fecha_inicio', 'fechaInicio', 'inicio', 'desde']);
+        $fechaFin = mesas_armado_leer_fecha_parametro($body, ['fecha_fin', 'fechaFin', 'fin', 'hasta']);
+        $modoTurnos = mesas_armado_normalizar_modo_turnos($body['modo_turnos'] ?? $body['modoTurnos'] ?? $body['turno_modo'] ?? $body['turnoModo'] ?? 'combinado');
+        $debeCalendarizar = $fechaInicio !== null && $fechaFin !== null;
+        // Por defecto, si se calendariza correctamente, también se genera la mesa final agrupada.
+        // Se puede desactivar enviando generar_grupos=false.
+        $generarGruposFinales = filter_var($body['generar_grupos'] ?? true, FILTER_VALIDATE_BOOLEAN);
+
+        // Por defecto se limpia todo el armado operativo anterior para que no queden restos.
+        $limpiarBorrador = filter_var($body['limpiar_borrador'] ?? true, FILTER_VALIDATE_BOOLEAN);
+
         $previas = mesas_armado_obtener_previas_para_armar($pdo);
 
         if (count($previas) === 0) {
@@ -337,6 +337,15 @@ function mesas_armado_crear(): void
                 'detalle' => 'Esta fase cruza previas con cátedras/docentes, numera, asigna fecha/turno y genera mesas_grupos cuando se enviaron fechas.',
             ],
         ]);
+    } catch (InvalidArgumentException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        json_response([
+            'exito' => false,
+            'mensaje' => $e->getMessage(),
+        ], 422);
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();

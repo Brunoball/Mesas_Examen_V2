@@ -1,0 +1,74 @@
+# Entrar al frontend
+cd frontend
+
+
+# Cobertura / preflight general
+npx playwright test tests/00-cobertura-total.spec.js
+
+
+# Login
+npx playwright test tests/01-login.spec.js
+
+
+# Dashboard
+npx playwright test tests/02-dashboard.spec.js
+
+
+# Docentes
+npx playwright test tests/03-docentes.spec.js
+
+
+# Cátedras
+npx playwright test tests/04-catedras.spec.js
+
+
+# Materias / Áreas / Correlativas / Talleres
+npx playwright test tests/05-materias.spec.js
+
+
+# Estadísticas
+npx playwright test tests/06-estadisticas.spec.js
+
+
+# Configuración
+npx playwright test tests/14-configuracion.spec.js
+
+
+
+# ============================================
+# TODO EL TESTING
+# ============================================
+
+npx playwright test
+
+
+
+# ============================================
+# EJECUTAR VIENDO EL NAVEGADOR
+# ============================================
+
+# Ejemplo Docentes
+npx playwright test tests/03-docentes.spec.js --headed
+
+# Ejemplo Materias
+npx playwright test tests/05-materias.spec.js --headed
+
+# Ejemplo Dashboard
+npx playwright test tests/02-dashboard.spec.js --headed
+
+# Ejemplo Estadísticas
+npx playwright test tests/06-estadisticas.spec.js --headed
+
+# Ejemplo Previas
+npx playwright test tests/07-previas.spec.js
+
+
+# Ejemplo de Mesas de Examen
+.\tests\run-module.cmd mesas
+
+
+# Todo el testing 
+npx playwright test --project=chromium --workers=1 --reporter=list
+
+# Todo viendo el navegador
+npx playwright test --headed

@@ -11,5 +11,6 @@ export default BASE_URL;
 //local: admin 1234
 //hostinger: admin 1
 
-//cd bacekend, php -S 127.0.0.1:3001 -t .
+//cd backend, php -S 127.0.0.1:3001 -t .
 
+// npx playwright test --project=chromium --workers=1 --reporter=list

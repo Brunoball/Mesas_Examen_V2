@@ -840,13 +840,15 @@ function docentes_guardar(): void
     }
 }
 
-function docentes_cambiar_estado(): void
+function docentes_cambiar_estado(?int $activoForzado = null): void
 {
     $pdo = db();
     $body = docentes_body();
 
     $idsDocentes = docentes_ids_desde_body($body);
-    $activo = docentes_int($body['activo'] ?? 1) === 0 ? 0 : 1;
+    $activo = $activoForzado === null
+        ? (docentes_int($body['activo'] ?? 1) === 0 ? 0 : 1)
+        : ($activoForzado === 0 ? 0 : 1);
     $motivo = trim((string)($body['motivo'] ?? $body['observacion'] ?? ''));
 
     if (empty($idsDocentes)) {

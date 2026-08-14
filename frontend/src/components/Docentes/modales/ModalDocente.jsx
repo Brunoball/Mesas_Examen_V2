@@ -431,7 +431,7 @@ export default function ModalDocente({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="gm-modal__form">
+        <form onSubmit={handleSubmit} className="gm-modal__form" noValidate>
           <div className="gm-modal__content">
 
             {/* INDICADORES */}

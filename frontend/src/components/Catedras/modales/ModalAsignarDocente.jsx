@@ -660,6 +660,7 @@ export default function ModalAsignarDocente({ item, docentes = [], cargos = [], 
                 <label className="gm-field catedras-modal-selectField">
                   <select
                     className="gm-input catedras-modal-select"
+                    aria-label="Docente"
                     value={idDocente}
                     onChange={(e) => setIdDocente(e.target.value)}
                     disabled={guardando}
@@ -685,6 +686,7 @@ export default function ModalAsignarDocente({ item, docentes = [], cargos = [], 
                 <label className="gm-field catedras-modal-selectField">
                   <select
                     className="gm-input catedras-modal-select"
+                    aria-label="Cargo en esta cátedra"
                     value={idCargo}
                     onChange={(e) => setIdCargo(e.target.value)}
                     disabled={guardando}

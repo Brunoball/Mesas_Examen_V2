@@ -372,7 +372,6 @@ function estadisticas_mesas_opciones(): void
 {
     try {
         $pdo = db();
-        mesas_historial_asegurar_tablas($pdo);
 
         $opciones = [];
         $armadoActual = estadisticas_obtener_opcion_armado_actual($pdo);
@@ -444,7 +443,6 @@ function estadisticas_mesas_resumen(): void
 {
     try {
         $pdo = db();
-        mesas_historial_asegurar_tablas($pdo);
 
         $idParam = trim((string)($_GET['id_armado_historial'] ?? ''));
         if ($idParam === '') {

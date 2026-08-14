@@ -217,7 +217,7 @@ const grupoCoincideConBusqueda = (grupo, filtro) => {
   });
 };
 
-export const useMesasExamen = ({ onToast } = {}) => {
+export const useMesasExamen = ({ onToast, soloLectura = false } = {}) => {
   const [busqueda, setBusqueda] = useState("");
   const [tab, setTab] = useState("grupos-finales");
 
@@ -308,8 +308,11 @@ export const useMesasExamen = ({ onToast } = {}) => {
   const [historialDetalleArmado, setHistorialDetalleArmado] = useState(null);
   const [cargandoDetalleHistorial, setCargandoDetalleHistorial] = useState(false);
   const [eliminandoTodosHistoriales, setEliminandoTodosHistoriales] = useState(false);
+  const [historialBusquedaAplicada, setHistorialBusquedaAplicada] = useState("");
+  const [buscandoHistorial, setBuscandoHistorial] = useState(false);
   const historialCargadoRef = useRef(false);
   const historialPrimeraCargaPendienteRef = useRef(true);
+  const historialRequestIdRef = useRef(0);
 
   const resumenArmadoTimerRef = useRef(null);
 
@@ -394,11 +397,16 @@ export const useMesasExamen = ({ onToast } = {}) => {
     setError("");
 
     try {
-      const [responseGrupos, responseNoAgrupadas, responseCambiosDocente] = await Promise.all([
+      const solicitudes = [
         listarMesasGruposFinales({ busqueda: "" }),
         listarMesasNoAgrupadas({ busqueda: "" }),
-        listarCambiosDocenteMesasPendientes().catch(() => ({ data: [] })),
-      ]);
+      ];
+
+      if (!soloLectura) {
+        solicitudes.push(listarCambiosDocenteMesasPendientes().catch(() => ({ data: [] })));
+      }
+
+      const [responseGrupos, responseNoAgrupadas, responseCambiosDocente = { data: [] }] = await Promise.all(solicitudes);
 
       setGruposFinales(responseGrupos.data || []);
       setNoAgrupadas(responseNoAgrupadas.data || []);
@@ -417,7 +425,7 @@ export const useMesasExamen = ({ onToast } = {}) => {
         setCargando(false);
       }
     }
-  }, []);
+  }, [soloLectura]);
 
   const cargarParametrosArmado = useCallback(async () => {
     setError("");
@@ -433,23 +441,41 @@ export const useMesasExamen = ({ onToast } = {}) => {
   }, []);
 
   const cargarHistorial = useCallback(async (busquedaHistorial = "", { mostrarSkeleton = true } = {}) => {
+    const consulta = String(busquedaHistorial || "").trim();
+    const requestId = historialRequestIdRef.current + 1;
+    historialRequestIdRef.current = requestId;
+
     const debeMostrarSkeleton = mostrarSkeleton && !historialCargadoRef.current && historialPrimeraCargaPendienteRef.current;
 
     if (debeMostrarSkeleton) {
       setCargandoHistorial(true);
     }
 
+    setBuscandoHistorial(true);
     setErrorHistorial("");
 
     try {
-      const response = await listarHistorialMesas({ busqueda: busquedaHistorial });
+      const response = await listarHistorialMesas({ busqueda: consulta });
+
+      // Si una búsqueda anterior termina después que una más nueva, no debe pisar
+      // los resultados actuales ni provocar saltos de scroll con datos obsoletos.
+      if (requestId !== historialRequestIdRef.current) {
+        return null;
+      }
+
       const data = response?.data || {};
       setHistorialResultados(Array.isArray(data.resultados) ? data.resultados : []);
       setHistorialArmados(Array.isArray(data.armados) ? data.armados : []);
       setHistorialResumen(data.resumen || null);
+      setHistorialBusquedaAplicada(consulta);
       historialCargadoRef.current = true;
       return data;
     } catch (err) {
+      if (requestId !== historialRequestIdRef.current) {
+        return null;
+      }
+
+      setHistorialBusquedaAplicada(consulta);
       setErrorHistorial(err.message || "Error al cargar el historial de mesas.");
 
       if (!historialCargadoRef.current) {
@@ -460,13 +486,17 @@ export const useMesasExamen = ({ onToast } = {}) => {
 
       return null;
     } finally {
-      if (historialPrimeraCargaPendienteRef.current) {
-        historialPrimeraCargaPendienteRef.current = false;
-        setHistorialPrimeraCargaPendiente(false);
-      }
+      if (requestId === historialRequestIdRef.current) {
+        setBuscandoHistorial(false);
 
-      if (debeMostrarSkeleton) {
-        setCargandoHistorial(false);
+        if (historialPrimeraCargaPendienteRef.current) {
+          historialPrimeraCargaPendienteRef.current = false;
+          setHistorialPrimeraCargaPendiente(false);
+        }
+
+        if (debeMostrarSkeleton) {
+          setCargandoHistorial(false);
+        }
       }
     }
   }, []);
@@ -523,6 +553,7 @@ export const useMesasExamen = ({ onToast } = {}) => {
         total_armados: 0,
       });
       setHistorialDetalleArmado(null);
+      setHistorialBusquedaAplicada("");
       historialCargadoRef.current = true;
       historialPrimeraCargaPendienteRef.current = false;
       setHistorialPrimeraCargaPendiente(false);
@@ -1642,9 +1673,11 @@ export const useMesasExamen = ({ onToast } = {}) => {
 
   useEffect(() => {
     cargarMesas();
-    cargarParametrosArmado();
-    cargarCambiosDocentePendientes({ abrirModal: true });
-  }, [cargarMesas, cargarParametrosArmado, cargarCambiosDocentePendientes]);
+    if (!soloLectura) {
+      cargarParametrosArmado();
+      cargarCambiosDocentePendientes({ abrirModal: true });
+    }
+  }, [soloLectura, cargarMesas, cargarParametrosArmado, cargarCambiosDocentePendientes]);
 
   useEffect(() => {
     if (tab !== "historial") return;
@@ -1819,6 +1852,8 @@ export const useMesasExamen = ({ onToast } = {}) => {
       detalleArmado: historialDetalleArmado,
       cargando: cargandoHistorial || (tab === "historial" && historialPrimeraCargaPendiente),
       cargandoDetalle: cargandoDetalleHistorial,
+      buscando: buscandoHistorial,
+      busquedaAplicada: historialBusquedaAplicada,
       eliminandoTodos: eliminandoTodosHistoriales,
       error: errorHistorial,
       cargar: () => cargarHistorial(busqueda),
