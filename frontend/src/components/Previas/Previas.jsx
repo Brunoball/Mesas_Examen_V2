@@ -4,6 +4,7 @@ import {
   faBoxOpen,
   faCheckCircle,
   faEdit,
+  faInfoCircle,
   faSpinner,
   faPlus,
   faPrint,
@@ -1451,8 +1452,11 @@ export default function Previas() {
 
     return (
       <div className="previas-delete-risk" aria-label="Doble confirmación para eliminar inscripciones">
-        <div className="previas-delete-risk__summary">
-          <span>Las previas no se eliminan; solo se limpia la inscripción.</span>
+        <div className="previas-delete-risk__summary previas-delete-risk__summary--notice">
+          <div className="previas-delete-risk__notice" role="note">
+            <FontAwesomeIcon icon={faInfoCircle} aria-hidden="true" />
+            <span>Las previas no se eliminan; solo se limpia la inscripción.</span>
+          </div>
         </div>
         <label className="previas-delete-risk__check">
           <input
