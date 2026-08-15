@@ -4,7 +4,6 @@ import {
   faBoxOpen,
   faCheckCircle,
   faEdit,
-  faInfoCircle,
   faSpinner,
   faPlus,
   faPrint,
@@ -1451,14 +1450,8 @@ export default function Previas() {
     if (modalConfirmar.tipo !== 'quitar_todas_inscripciones') return null;
 
     return (
-      <div className="previas-delete-risk" aria-label="Doble confirmación para eliminar inscripciones">
-        <div className="previas-delete-risk__summary previas-delete-risk__summary--notice">
-          <div className="previas-delete-risk__notice" role="note">
-            <FontAwesomeIcon icon={faInfoCircle} aria-hidden="true" />
-            <span>Las previas no se eliminan; solo se limpia la inscripción.</span>
-          </div>
-        </div>
-        <label className="previas-delete-risk__check">
+      <div className="previas-cleanEnrollmentConfirm" aria-label="Confirmación para eliminar inscripciones">
+        <label>
           <input
             type="checkbox"
             checked={confirmacionEliminarTodos}
@@ -1519,6 +1512,7 @@ export default function Previas() {
       errorMessage: 'No se pudieron eliminar todas las inscripciones.',
       tone: 'danger',
       showReason: false,
+      hideDefaultCard: true,
       extraContent: extraEliminarTodos,
       confirmDisabled: !confirmacionEliminarTodos,
     },
