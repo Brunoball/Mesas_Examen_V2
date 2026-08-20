@@ -269,6 +269,35 @@ const NAV_ITEMS = [
 
 
 /* =========================================================
+   Continuidad visual de la navegación
+   RH deriva el grupo abierto desde la URL en el primer render.
+   En Mesas además conservamos brevemente la expansión cuando
+   una ruta recrea el shell, evitando el cierre/reapertura visual.
+========================================================= */
+const getSubmenuKeyForPath = (pathname) => {
+  const path = String(pathname || "").replace(/\/+$/, "") || "/";
+
+  return (
+    NAV_ITEMS.find((item) => {
+      if (!Array.isArray(item.children) || item.children.length === 0) return false;
+
+      const itemPath = String(item.ruta || "").split("?")[0].replace(/\/+$/, "") || "/";
+      return path === itemPath || path.startsWith(`${itemPath}/`);
+    })?.key || ""
+  );
+};
+
+const SIDEBAR_ROUTE_HOLD_MS = 420;
+let sidebarRouteHoldUntil = 0;
+
+const sidebarRouteHoldActivo = () => Date.now() < sidebarRouteHoldUntil;
+
+const recordarExpansionDuranteNavegacion = () => {
+  sidebarRouteHoldUntil = Date.now() + SIDEBAR_ROUTE_HOLD_MS;
+};
+
+
+/* =========================================================
    Logo del tenant / cliente
 ========================================================= */
 const parseStoredJson = (key) => {
@@ -430,9 +459,15 @@ const Principal = ({ children = null }) => {
   const [closingUI, setClosingUI] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [openSubmenuKey, setOpenSubmenuKey] = useState("");
+  const [openSubmenuKey, setOpenSubmenuKey] = useState(() =>
+    getSubmenuKeyForPath(location.pathname)
+  );
+  const [keepSidebarExpanded, setKeepSidebarExpanded] = useState(() =>
+    sidebarRouteHoldActivo()
+  );
   const [logoTenantError, setLogoTenantError] = useState(false);
   const lastResponsiveTapRef = useRef({ key: "", time: 0 });
+  const sidebarHoldTimerRef = useRef(null);
 
   const apiPrincipalUrl = useMemo(() => resolverApiPrincipalUrl(), []);
   const apiPrincipalEsLocal = useMemo(() => esUrlLocal(apiPrincipalUrl), [apiPrincipalUrl]);
@@ -540,6 +575,33 @@ const Principal = ({ children = null }) => {
   }, [location.pathname, location.search]);
 
   useEffect(() => {
+    if (sidebarHoldTimerRef.current) {
+      window.clearTimeout(sidebarHoldTimerRef.current);
+      sidebarHoldTimerRef.current = null;
+    }
+
+    const restante = sidebarRouteHoldUntil - Date.now();
+
+    if (restante <= 0) {
+      setKeepSidebarExpanded(false);
+      return undefined;
+    }
+
+    setKeepSidebarExpanded(true);
+    sidebarHoldTimerRef.current = window.setTimeout(() => {
+      setKeepSidebarExpanded(false);
+      sidebarHoldTimerRef.current = null;
+    }, restante);
+
+    return () => {
+      if (sidebarHoldTimerRef.current) {
+        window.clearTimeout(sidebarHoldTimerRef.current);
+        sidebarHoldTimerRef.current = null;
+      }
+    };
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
     if (!drawerOpen) return;
 
     const onKeyDown = (e) => {
@@ -610,11 +672,8 @@ const Principal = ({ children = null }) => {
   }, [activeKey]);
 
   useEffect(() => {
-    const activeItem = NAV_ITEMS.find((item) => item.key === activeKey);
-    if (activeItem?.children?.length) {
-      setOpenSubmenuKey(activeItem.key);
-    }
-  }, [activeKey]);
+    setOpenSubmenuKey(getSubmenuKeyForPath(location.pathname));
+  }, [location.pathname]);
 
   const hasChildren = React.Children.count(children) > 0;
 
@@ -631,9 +690,34 @@ const Principal = ({ children = null }) => {
     [navigate]
   );
 
+  const handleSidebarNavigate = useCallback(
+    (ruta) => {
+      const puedeMantenerExpandida =
+        typeof window !== "undefined" &&
+        window.matchMedia?.("(min-width: 721px) and (hover: hover) and (pointer: fine)")?.matches;
+
+      if (puedeMantenerExpandida) {
+        recordarExpansionDuranteNavegacion();
+        setKeepSidebarExpanded(true);
+
+        if (sidebarHoldTimerRef.current) {
+          window.clearTimeout(sidebarHoldTimerRef.current);
+        }
+
+        sidebarHoldTimerRef.current = window.setTimeout(() => {
+          setKeepSidebarExpanded(false);
+          sidebarHoldTimerRef.current = null;
+        }, SIDEBAR_ROUTE_HOLD_MS);
+      }
+
+      handleNavigate(ruta);
+    },
+    [handleNavigate]
+  );
+
   const handleLogoClick = useCallback(() => {
-    handleNavigate("/panel");
-  }, [handleNavigate]);
+    handleSidebarNavigate("/panel");
+  }, [handleSidebarNavigate]);
 
   const toggleSubmenu = useCallback((itemKey) => {
     setOpenSubmenuKey((prev) => (prev === itemKey ? "" : itemKey));
@@ -647,7 +731,7 @@ const Principal = ({ children = null }) => {
   const handleNavItemClick = useCallback(
     (item, hasSub) => {
       if (!hasSub) {
-        handleNavigate(item.ruta);
+        handleSidebarNavigate(item.ruta);
         return;
       }
 
@@ -660,7 +744,7 @@ const Principal = ({ children = null }) => {
 
         if (isDoubleTap) {
           lastResponsiveTapRef.current = { key: "", time: 0 };
-          handleNavigate(item.ruta);
+          handleSidebarNavigate(item.ruta);
           return;
         }
 
@@ -670,7 +754,7 @@ const Principal = ({ children = null }) => {
 
       toggleSubmenu(item.key);
     },
-    [handleNavigate, isResponsiveNavigation, toggleSubmenu]
+    [handleSidebarNavigate, isResponsiveNavigation, toggleSubmenu]
   );
 
   const confirmarCierreSesion = useCallback(() => {
@@ -782,7 +866,11 @@ const Principal = ({ children = null }) => {
           onMouseDown={() => setDrawerOpen(false)}
         />
 
-        <aside className={`pp-sidebar ${drawerOpen ? "is-drawerOpen" : ""}`}>
+        <aside
+          className={`pp-sidebar ${drawerOpen ? "is-drawerOpen" : ""} ${
+            keepSidebarExpanded ? "is-routeHold" : ""
+          }`}
+        >
           <div className="pp-drawerHeader">
             <div
               className="pp-drawerBrand"
@@ -851,7 +939,7 @@ const Principal = ({ children = null }) => {
                     className={`pp-nav__item ${isActive ? "is-active" : ""}`}
                     onClick={() => handleNavItemClick(item, hasSub)}
                     onDoubleClick={() => {
-                      if (hasSub) handleNavigate(item.ruta);
+                      if (hasSub) handleSidebarNavigate(item.ruta);
                     }}
                     title={item.description || item.label}
                     aria-expanded={hasSub ? isOpen : undefined}
@@ -875,7 +963,7 @@ const Principal = ({ children = null }) => {
                             key={subitem.key}
                             type="button"
                             className={`pp-navSub__item ${isSubActive ? "is-active" : ""}`}
-                            onClick={() => handleNavigate(subitem.ruta)}
+                            onClick={() => handleSidebarNavigate(subitem.ruta)}
                             title={subitem.label}
                           >
                             <span className="pp-navSub__dot" aria-hidden="true" />

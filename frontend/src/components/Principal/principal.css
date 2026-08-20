@@ -379,6 +379,37 @@ body.pp-lockScroll{ overflow:hidden !important; }
   width:var(--pp-side-expanded);
 }
 
+/* Mantiene la barra visualmente estable durante un cambio de ruta.
+   Si el router recrea Principal, la nueva instancia arranca expandida
+   y el :hover toma el control sin pasar por el ancho colapsado. */
+@media (min-width:721px) and (hover:hover) and (pointer:fine){
+  .pp-sidebar.is-routeHold{
+    width:var(--pp-side-expanded);
+  }
+
+  .pp-sidebar.is-routeHold .pp-brand__text,
+  .pp-sidebar.is-routeHold .pp-nav__label,
+  .pp-sidebar.is-routeHold .pp-sidebarAction__label,
+  .pp-sidebar.is-routeHold .pp-logout__label{
+    opacity:1;
+    transform:translate3d(0,0,0);
+  }
+
+  .pp-sidebar.is-routeHold .pp-nav{
+    overflow-y:auto;
+    overflow-x:hidden;
+  }
+
+  .pp-sidebar.is-routeHold:not(:hover) .pp-navGroup.has-sub.is-open .pp-navSub{
+    max-height:var(--sub-open-h) !important;
+    opacity:1 !important;
+    visibility:visible !important;
+    pointer-events:auto !important;
+    transform:translate3d(0,0,0) !important;
+    padding-top:5px !important;
+  }
+}
+
 .pp-drawerHeader{
   display:none;
   align-items:center;
