@@ -171,6 +171,10 @@ function usePrevias() {
   const [busqueda, setBusquedaState] = useState('');
   const [busquedaDebounced, setBusquedaDebounced] = useState('');
   const [vista, setVista] = useState('activas');
+  const [mesPermisos, setMesPermisosState] = useState(MESES_EXAMEN[new Date().getMonth()]);
+  const [anioPermisos, setAnioPermisosState] = useState(String(new Date().getFullYear()));
+  const [estadoPermisos, setEstadoPermisosState] = useState('');
+  const periodoPermisos = `${mesPermisos}/${anioPermisos}`;
   const [filtrosPrevias, setFiltrosPrevias] = useState({
     idCondicion: '',
     idCurso: '',
@@ -248,7 +252,11 @@ function usePrevias() {
       const filtros = { activo };
       // La pestaña Previas debe mostrar TODAS las previas activas, estén inscriptas o no.
       // Solo la pestaña Inscriptos filtra por inscripción = 1.
-      if (vista === 'inscriptos') filtros.inscripcion = 1;
+      if (vista === 'inscriptos') {
+        filtros.inscripcion = 1;
+        filtros.periodo_permiso = periodoPermisos;
+        if (estadoPermisos) filtros.estado_permiso = estadoPermisos;
+      }
       const busquedaLimpia = busquedaDebounced.trim();
       const idCondicion = Number(filtrosPrevias.idCondicion || 0);
       const idCurso = Number(filtrosPrevias.idCurso || 0);
@@ -279,7 +287,7 @@ function usePrevias() {
     } finally {
       setLoading(false);
     }
-  }, [vista, busquedaDebounced, filtrosPrevias, paginacion.pagina, paginacion.porPagina, mostrarMensaje]);
+  }, [vista, periodoPermisos, estadoPermisos, busquedaDebounced, filtrosPrevias, paginacion.pagina, paginacion.porPagina, mostrarMensaje]);
 
   useEffect(() => {
     cargarCatalogos();
@@ -319,6 +327,24 @@ function usePrevias() {
       idCurso: '',
       idDivision: '',
     });
+  }
+
+  function cambiarMesPermisos(mes) {
+    if (!MESES_EXAMEN.includes(mes)) return;
+    paginacion.setPagina(1);
+    setMesPermisosState(mes);
+  }
+
+  function cambiarAnioPermisos(anio) {
+    if (!/^(?:20\d{2}|2100)$/.test(String(anio))) return;
+    paginacion.setPagina(1);
+    setAnioPermisosState(String(anio));
+  }
+
+  function cambiarEstadoPermisos(estado) {
+    if (!['', 'pendiente', 'impreso', 'entregado'].includes(estado)) return;
+    paginacion.setPagina(1);
+    setEstadoPermisosState(estado);
   }
 
   function cambiarVista(nuevaVista) {
@@ -574,7 +600,11 @@ function usePrevias() {
     const activo = vista === 'bajas' ? 0 : 1;
     const filtros = {};
     // La exportación de Previas también debe traer todas las activas, sin filtrar por inscripción.
-    if (vista === 'inscriptos') filtros.inscripcion = 1;
+    if (vista === 'inscriptos') {
+      filtros.inscripcion = 1;
+      filtros.periodo_permiso = periodoPermisos;
+      if (estadoPermisos) filtros.estado_permiso = estadoPermisos;
+    }
     const busquedaLimpia = busquedaDebounced.trim();
     const idCondicion = Number(filtrosPrevias.idCondicion || 0);
     const idCurso = Number(filtrosPrevias.idCurso || 0);
@@ -608,6 +638,13 @@ function usePrevias() {
     hayFiltrosPrevias,
     vista,
     cambiarVista,
+    mesPermisos,
+    anioPermisos,
+    periodoPermisos,
+    estadoPermisos,
+    cambiarMesPermisos,
+    cambiarAnioPermisos,
+    cambiarEstadoPermisos,
     conteo,
     paginacion,
     reload: cargar,
@@ -629,6 +666,8 @@ function usePrevias() {
   };
 }
 
+const PREVIAS_INSCRIPTOS_GRID_COLS = '1.2fr .55fr 1.4fr 1fr .5fr .5fr .45fr 1.15fr .95fr';
+const PREVIAS_INSCRIPTOS_GRID_COLS_SIN_ACCIONES = '1.2fr .55fr 1.4fr 1fr .5fr .5fr .45fr 1.15fr';
 const PREVIAS_GRID_COLS = '1.28fr .55fr 1.55fr 1.05fr .48fr .48fr .48fr .95fr';
 const PREVIAS_BAJAS_GRID_COLS = '1.12fr .58fr 1.35fr .95fr .48fr .48fr .56fr 1fr .8fr';
 const PREVIAS_GRID_COLS_SIN_ACCIONES = '1.28fr .55fr 1.55fr 1.05fr .48fr .48fr .48fr';
@@ -644,6 +683,12 @@ const PREVIAS_COLUMNS = [
   { key: 'curso', label: 'Curso', align: 'center' },
   { key: 'inscripcion', label: 'Inscripción', align: 'center' },
   { key: 'acciones', label: 'Acciones', align: 'center', actions: true },
+];
+
+const PREVIAS_INSCRIPTOS_COLUMNS = [
+  ...PREVIAS_COLUMNS.filter((column) => !column.actions),
+  { key: 'permiso', label: 'Permiso de examen', align: 'center' },
+  PREVIAS_COLUMNS.find((column) => column.actions),
 ];
 
 const PREVIAS_BAJAS_COLUMNS = [
@@ -671,6 +716,13 @@ const PREVIAS_EXPORT_COLUMNS = [
   { label: 'Curso actual', value: (item) => safeText(item.curso_cursando) },
   { label: 'Año', value: (item) => safeText(item.anio) },
   { label: 'Inscripción', value: (item) => safeText(item.inscripcion_texto || (Number(item.inscripcion) === 1 ? 'Sí' : 'No')) },
+];
+
+const PREVIAS_INSCRIPTOS_EXPORT_COLUMNS = [
+  ...PREVIAS_EXPORT_COLUMNS,
+  { label: 'Permiso de examen', value: (item) => ({ pendiente: 'Pendiente', impreso: 'Impreso', entregado: 'Entregado' }[item.permiso_estado] || 'Pendiente') },
+  { label: 'Fecha impresión', value: (item) => safeText(item.permiso_impreso_en) },
+  { label: 'Fecha entrega', value: (item) => safeText(item.permiso_entregado_en) },
 ];
 
 const PREVIAS_BAJAS_EXPORT_COLUMNS = [
@@ -1121,6 +1173,14 @@ export default function Previas() {
     hayFiltrosPrevias,
     vista,
     cambiarVista,
+    mesPermisos,
+    anioPermisos,
+    periodoPermisos,
+    estadoPermisos,
+    cambiarMesPermisos,
+    cambiarAnioPermisos,
+    cambiarEstadoPermisos,
+    reload,
     conteo,
     paginacion,
     obtener,
@@ -1139,6 +1199,43 @@ export default function Previas() {
     obtenerTodasParaExportar,
     obtenerMateriasPorCurso,
   } = usePrevias();
+
+  const [guardandoPermisoDni, setGuardandoPermisoDni] = useState('');
+
+  useEffect(() => {
+    let activo = true;
+    previasApi.obtenerConfiguracionFormulario()
+      .then((config) => {
+        const sugerido = periodoDesdeConfiguracionFormulario(config);
+        if (!activo || !sugerido.mes) return;
+        cambiarMesPermisos(sugerido.mes);
+        if (sugerido.anio) cambiarAnioPermisos(sugerido.anio);
+      })
+      .catch(() => {}); // La configuración sugerida es opcional.
+    return () => { activo = false; };
+    // El turno para asociar las constancias se obtiene de la configuración actual.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function actualizarEstadoPermiso(item, nuevoEstado) {
+    const dni = normalizarDniPermiso(item?.dni);
+    if (!dni || guardandoPermisoDni) return;
+    const actual = String(item?.permiso_estado || 'pendiente');
+    if (actual === nuevoEstado) return;
+    if (actual === 'entregado' && nuevoEstado !== 'entregado'
+      && !window.confirm(`¿Querés retirar la constancia de entrega de ${item.alumno}?`)) return;
+
+    setGuardandoPermisoDni(dni);
+    try {
+      await previasApi.actualizarEstadoPermiso({ idPrevia: item.id_previa, periodo: periodoPermisos, estado: nuevoEstado });
+      await reload();
+      mostrarMensaje('exito', `Permiso de ${item.alumno}: ${nuevoEstado}.`);
+    } catch (e) {
+      mostrarMensaje('error', e?.data?.mensaje || e?.message || 'No se pudo guardar el estado del permiso.');
+    } finally {
+      setGuardandoPermisoDni('');
+    }
+  }
 
   const [modalPrevia, setModalPrevia] = useState({ abierto: false, modo: 'crear', item: null, cargando: false });
   const [modalImportar, setModalImportar] = useState(false);
@@ -1173,8 +1270,8 @@ export default function Previas() {
     setModalPeriodoPermiso({
       abierto: true,
       item,
-      mes: '',
-      anio: String(new Date().getFullYear()),
+      mes: mesPermisos,
+      anio: anioPermisos,
       cargando: false,
     });
 
@@ -1381,7 +1478,7 @@ export default function Previas() {
 
   const totalVisible = Array.isArray(previas) ? previas.length : 0;
   const hayBusqueda = busqueda.trim() !== '';
-  const hayFiltrosAplicados = Boolean(hayBusqueda || hayFiltrosPrevias);
+  const hayFiltrosAplicados = Boolean(hayBusqueda || hayFiltrosPrevias || (vista === 'inscriptos' && estadoPermisos));
   const condicionesFiltro = Array.isArray(catalogos?.condiciones) ? catalogos.condiciones : [];
   const cursosFiltro = Array.isArray(catalogos?.cursos) ? catalogos.cursos.filter((curso) => !esCursoEgresado(curso)) : [];
   const divisionesFiltro = Array.isArray(catalogos?.divisiones) ? catalogos.divisiones : [];
@@ -1389,14 +1486,16 @@ export default function Previas() {
   const previaVinculada = Boolean(riesgoEliminacion?.vinculada || riesgoEliminacion?.requiere_doble_confirmacion);
   const nombreVista = vista === 'bajas' ? 'previas dadas de baja' : (vista === 'inscriptos' ? 'previas inscriptas' : 'previas activas');
   const mostrarAccionesTabla = !soloLectura || vista === 'inscriptos';
-  const columnasTablaBase = vista === 'bajas' ? PREVIAS_BAJAS_COLUMNS : PREVIAS_COLUMNS;
+  const columnasTablaBase = vista === 'bajas' ? PREVIAS_BAJAS_COLUMNS : (vista === 'inscriptos' ? PREVIAS_INSCRIPTOS_COLUMNS : PREVIAS_COLUMNS);
   const columnasTabla = mostrarAccionesTabla
     ? columnasTablaBase
     : columnasTablaBase.filter((column) => !column.actions);
   const gridColsTabla = vista === 'bajas'
     ? (mostrarAccionesTabla ? PREVIAS_BAJAS_GRID_COLS : PREVIAS_BAJAS_GRID_COLS_SIN_ACCIONES)
-    : (mostrarAccionesTabla ? PREVIAS_GRID_COLS : PREVIAS_GRID_COLS_SIN_ACCIONES);
-  const columnasExportacion = vista === 'bajas' ? PREVIAS_BAJAS_EXPORT_COLUMNS : PREVIAS_EXPORT_COLUMNS;
+    : vista === 'inscriptos'
+      ? (mostrarAccionesTabla ? PREVIAS_INSCRIPTOS_GRID_COLS : PREVIAS_INSCRIPTOS_GRID_COLS_SIN_ACCIONES)
+      : (mostrarAccionesTabla ? PREVIAS_GRID_COLS : PREVIAS_GRID_COLS_SIN_ACCIONES);
+  const columnasExportacion = vista === 'bajas' ? PREVIAS_BAJAS_EXPORT_COLUMNS : (vista === 'inscriptos' ? PREVIAS_INSCRIPTOS_EXPORT_COLUMNS : PREVIAS_EXPORT_COLUMNS);
 
   function puedeInscribirManual(item) {
     const condicion = String(item?.condicion || '').trim().toUpperCase();
@@ -1687,6 +1786,23 @@ export default function Previas() {
                   <span className="previas-filterTabs__label">División</span>
                 </label>
 
+                {vista === 'inscriptos' && (
+                  <label className={`previas-selectWrap previas-selecwit ${estadoPermisos ? 'is-active' : ''}`}>
+                    <select
+                      className="previas-select"
+                      aria-label="Filtrar permisos por estado"
+                      value={estadoPermisos}
+                      onChange={(e) => cambiarEstadoPermisos(e.target.value)}
+                    >
+                      <option value="">Todos</option>
+                      <option value="pendiente">PENDIENTE</option>
+                      <option value="impreso">IMPRESO</option>
+                      <option value="entregado">ENTREGADO</option>
+                    </select>
+                    <span className="previas-filterTabs__label">PERMISO</span>
+                  </label>
+                )}
+
                 {hayFiltrosPrevias && (
                   <button
                     type="button"
@@ -1820,6 +1936,30 @@ export default function Previas() {
                         </div>
                       )}
 
+                      {vista === 'inscriptos' && (
+                        <div className="mov-gridCell is-center previas-permiso-cell" role="cell" data-label="Permiso de examen">
+                          {soloLectura ? (
+                            <span className={`previas-permiso-status is-${item.permiso_estado || 'pendiente'}`}>
+                              {({ pendiente: 'PENDIENTE', impreso: 'IMPRESO', entregado: 'ENTREGADO' }[item.permiso_estado] || 'PENDIENTE')}
+                            </span>
+                          ) : (
+                            <select
+                              className={`previas-permiso-select is-${item.permiso_estado || 'pendiente'}`}
+                              aria-label={`Estado del permiso de ${item.alumno}, DNI ${item.dni}`}
+                              title={`Impreso: ${item.permiso_impreso_en || 'No'} · Entregado: ${item.permiso_entregado_en || 'No'}`}
+                              value={item.permiso_estado || 'pendiente'}
+                              disabled={Boolean(guardandoPermisoDni) || loading}
+                              onChange={(e) => actualizarEstadoPermiso(item, e.target.value)}
+                            >
+                              <option value="pendiente">PENDIENTE</option>
+                              <option value="impreso">IMPRESO</option>
+                              <option value="entregado">ENTREGADO</option>
+                            </select>
+                          )}
+                          {item.permiso_entregado_en && <small title={`Registrado por usuario ${item.permiso_entregado_por || '—'}`}>Entregado: {String(item.permiso_entregado_en).slice(0, 10).split('-').reverse().join('/')}</small>}
+                        </div>
+                      )}
+
                       {mostrarAccionesTabla && <div className="mov-gridCell mov-gridCell--actions is-center" role="cell" data-label="Acciones">
                         <div className="mov-actionsInline">
                           {!soloLectura && vista === 'activas' && (
@@ -1871,7 +2011,7 @@ export default function Previas() {
                     <div className="cc-emptyState previas-emptyState">
                       <FontAwesomeIcon icon={faBoxOpen} className="cc-emptyIcon" />
                       <div className="cc-emptyText">
-                        {vista === 'bajas' ? 'No hay previas dadas de baja.' : (vista === 'inscriptos' ? 'No hay previas inscriptas.' : 'No se encontraron previas activas.')}
+                        {vista === 'bajas' ? 'No hay previas dadas de baja.' : (vista === 'inscriptos' ? (estadoPermisos ? 'No hay permisos con ese estado.' : 'No hay previas inscriptas.') : 'No se encontraron previas activas.')}
                       </div>
                     </div>
                   )}

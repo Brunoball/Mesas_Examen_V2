@@ -934,6 +934,7 @@ function pw_cleanup_tenant(PDO $pdo, string $prefix): array
         'docentes' => 0,
         'cambios_pendientes' => 0,
         'previas' => 0,
+        'previas_permisos' => 0,
         'formulario_inscripciones' => 0,
         'formulario_inscripciones_detalle' => 0,
         'mesas_previas_test' => 0,
@@ -1069,6 +1070,29 @@ function pw_cleanup_tenant(PDO $pdo, string $prefix): array
             $paramsHist = array_merge($idsPrevias, [$like]);
             $st->execute($paramsHist);
             $deleted['historial_previas_resultados'] += $st->rowCount();
+        }
+
+        // Se limpian únicamente permisos de DNI de alumnos de prueba y nunca de
+        // un DNI compartido con alguna previa real (sin prefijo PWTEST).
+        if (pw_table_exists($pdo, 'previas_permisos')) {
+            // La tabla previas_permisos usa utf8mb4_unicode_ci. CAST AS CHAR puede
+            // heredar la collation de la conexion (p.ej. utf8mb4_general_ci),
+            // generando MySQL 1267 al comparar el DNI durante la limpieza.
+            // Aplicar explicitamente la misma collation que la migracion.
+            $dniTest = "CONVERT(REPLACE(REPLACE(REPLACE(CAST(p.dni AS CHAR), '.', ''), '-', ''), ' ', '') USING utf8mb4) COLLATE utf8mb4_unicode_ci";
+            $dniReal = "CONVERT(REPLACE(REPLACE(REPLACE(CAST(p2.dni AS CHAR), '.', ''), '-', ''), ' ', '') USING utf8mb4) COLLATE utf8mb4_unicode_ci";
+            $st = $pdo->prepare("
+                DELETE pp FROM previas_permisos pp
+                INNER JOIN previas p ON pp.dni = {$dniTest}
+                WHERE p.id_previa IN ({$phPrevias})
+                  AND NOT EXISTS (
+                    SELECT 1 FROM previas p2
+                    WHERE {$dniReal} = pp.dni
+                      AND UPPER(p2.alumno) NOT LIKE UPPER(?)
+                  )
+            ");
+            $st->execute(array_merge($idsPrevias, [$like]));
+            $deleted['previas_permisos'] += $st->rowCount();
         }
 
         $st = $pdo->prepare("DELETE FROM previas WHERE id_previa IN ({$phPrevias})");

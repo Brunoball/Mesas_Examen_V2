@@ -11,11 +11,32 @@ function cleanupScript() {
 
 function runCleaner(args = [], { silent = false } = {}) {
   const common = [cleanupScript(), `--tenant=${env.tenantId}`, `--prefix=${env.prefix}`, '--json', ...args];
-  const stdout = execFileSync('php', common, {
-    cwd: env.backendDir,
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  }).trim();
+  let stdout;
+  try {
+    stdout = execFileSync('php', common, {
+      cwd: env.backendDir,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }).trim();
+  } catch (error) {
+    // PHP imprime {ok:false,error:...} en stdout y termina con exit(1).
+    // execFileSync lanza antes de que podamos leerlo: conservar el motivo
+    // real (MySQL/PHP) para no mostrar solamente "Command failed".
+    const output = String(error.stdout || '').trim();
+    const detailLine = output.split(/\r?\n/).filter(Boolean).pop() || '';
+    let detail = detailLine;
+    if (detailLine) {
+      try {
+        const response = JSON.parse(detailLine);
+        detail = response.error || response.message || detailLine;
+      } catch (_) {
+        // Mantener la salida textual cuando PHP no responda JSON.
+      }
+    }
+    const stderr = String(error.stderr || '').trim();
+    const reason = detail || stderr || error.message;
+    throw new Error(`cleanup_playwright.php fallo (codigo ${error.status ?? 'desconocido'}): ${reason}`);
+  }
   const lines = stdout.split(/\r?\n/).filter(Boolean);
   const raw = lines[lines.length - 1] || '{}';
   const data = JSON.parse(raw);

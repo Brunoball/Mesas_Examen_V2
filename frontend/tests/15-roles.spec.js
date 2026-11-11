@@ -17,6 +17,7 @@ function normalize(value) {
 }
 
 function roleActionParams(action, fixture = {}) {
+  if (action === 'previas_permisos_resumen') return { periodo: 'NOVIEMBRE/2026' };
   if (action === 'previas_obtener_permiso_examen') {
     return { id_previa: fixture.idPrevia || 0 };
   }
@@ -125,6 +126,7 @@ test.describe('15 · Roles admin y vista', () => {
       'previas_condiciones',
       'previas_listar',
       'previas_obtener_permiso_examen',
+      'previas_permisos_resumen',
       'mesas_examen_listar',
       'mesas_grupos_listar',
       'mesas_armado_grupos_listar',

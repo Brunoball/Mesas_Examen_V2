@@ -310,7 +310,7 @@ function previas_profesor_busqueda_sql(PDO $pdo): string
     )";
 }
 
-function previas_base_select(PDO $pdo): string
+function previas_base_select(PDO $pdo, bool $incluirPermisos = false): string
 {
     $nota = previas_select_columna($pdo, 'previas', 'p', 'nota', 'nota', 'NULL');
     $fechaNota = previas_select_columna($pdo, 'previas', 'p', 'fecha_nota', 'fecha_nota', 'NULL');
@@ -318,6 +318,18 @@ function previas_base_select(PDO $pdo): string
     $motivoBaja = previas_select_columna($pdo, 'previas', 'p', 'motivo_baja', 'motivo_baja', 'NULL');
     $fechaCarga = previas_select_columna($pdo, 'previas', 'p', 'fecha_carga', 'fecha_carga', 'NULL');
     $profesor = previas_profesor_select_y_joins($pdo);
+    $camposPermiso = $incluirPermisos
+        ? ", 
+            " . previas_permisos_estado_sql() . " AS permiso_estado,
+            pp.impreso_en AS permiso_impreso_en,
+            pp.entregado_en AS permiso_entregado_en,
+            pp.impreso_por AS permiso_impreso_por,
+            pp.entregado_por AS permiso_entregado_por
+          "
+        : '';
+    $joinPermiso = $incluirPermisos
+        ? 'LEFT JOIN previas_permisos pp ON pp.dni = ' . previas_permisos_dni_sql() . ' AND pp.periodo = :periodo_permiso'
+        : '';
 
     return "
         SELECT
@@ -342,7 +354,7 @@ function previas_base_select(PDO $pdo): string
             p.inscripcion,
             CASE WHEN p.inscripcion = 1 THEN 'Sí' ELSE 'No' END AS inscripcion_texto,
             p.activo,
-            p.anio,
+            p.anio{$camposPermiso},
             {$fechaCarga},
             {$fechaBaja},
             {$motivoBaja},
@@ -356,6 +368,7 @@ function previas_base_select(PDO $pdo): string
         LEFT JOIN curso cur_materia ON cur_materia.id_curso = p.materia_id_curso
         LEFT JOIN division div_materia ON div_materia.id_division = p.materia_id_division
         {$profesor['joins']}
+        {$joinPermiso}
     ";
 }
 
@@ -501,9 +514,18 @@ function previas_listar(): void
     $anio = previas_int($_GET['anio'] ?? 0);
     $dniExacto = preg_replace('/\D+/', '', (string)($_GET['dni'] ?? '')) ?? '';
     $filtroInscripcion = array_key_exists('inscripcion', $_GET) ? previas_int($_GET['inscripcion']) : null;
+    $periodoRaw = trim((string)($_GET['periodo_permiso'] ?? ''));
+    $periodoPermiso = $periodoRaw !== '' ? previas_permisos_periodo($periodoRaw) : null;
+    $filtroPermiso = strtolower(trim((string)($_GET['estado_permiso'] ?? '')));
+    if (($periodoRaw !== '' && $periodoPermiso === null)
+        || ($filtroPermiso !== '' && (!in_array($filtroPermiso, ['pendiente', 'impreso', 'entregado', 'sin_entregar'], true) || $periodoPermiso === null))) {
+        json_response(['exito' => false, 'mensaje' => 'Turno o filtro de entrega de permiso inválido.'], 422);
+    }
+    $incluirPermisos = $filtroInscripcion === 1 && $periodoPermiso !== null;
 
     $where = ['p.activo = :activo'];
     $params = [':activo' => $activo];
+    if ($incluirPermisos) $params[':periodo_permiso'] = $periodoPermiso;
 
     if ($idCursoMateria > 0) {
         $where[] = 'p.materia_id_curso = :materia_id_curso';
@@ -578,6 +600,9 @@ function previas_listar(): void
         $where[] = '(' . implode(' OR ', $orBusqueda) . ')';
     }
 
+    if ($incluirPermisos && $filtroPermiso !== '') {
+        $where[] = previas_permisos_filtrar_sql($filtroPermiso);
+    }
     $whereSql = implode(' AND ', $where);
 
     try {
@@ -593,10 +618,14 @@ function previas_listar(): void
             ";
         }
 
+        $joinPermisoCount = $incluirPermisos
+            ? 'LEFT JOIN previas_permisos pp ON pp.dni = ' . previas_permisos_dni_sql() . ' AND pp.periodo = :periodo_permiso'
+            : '';
         $countSql = "
             SELECT COUNT(*)
             FROM previas p
             {$joinsBusqueda}
+            {$joinPermisoCount}
             WHERE {$whereSql}
         ";
 
@@ -607,7 +636,7 @@ function previas_listar(): void
         $stmtCount->execute();
         $total = (int)$stmtCount->fetchColumn();
 
-        $sql = previas_base_select($pdo) . "
+        $sql = previas_base_select($pdo, $incluirPermisos) . "
             WHERE {$whereSql}
             ORDER BY p.alumno ASC, p.dni ASC, cur_materia.id_curso ASC, div_materia.id_division ASC, mat.materia ASC
         ";

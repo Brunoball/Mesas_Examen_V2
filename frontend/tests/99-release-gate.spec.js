@@ -27,6 +27,7 @@ const CURRENT_SPECS = [
   '13-mesas-contratos.spec.js',
   '14-configuracion.spec.js',
   '15-roles.spec.js',
+  '16-previas-permisos.spec.js',
 ];
 
 const ROUTE_CONTRACTS = [
@@ -152,6 +153,8 @@ const ROUTE_CONTRACTS = [
       'previas_obtener',
       'previas_obtener_materias_inscripcion',
       'previas_obtener_permiso_examen',
+      'previas_permisos_resumen',
+      'previas_permisos_actualizar',
       'previas_inscribir_manual',
       'previas_quitar_inscripcion',
       'previas_quitar_todas_inscripciones',
@@ -249,6 +252,7 @@ const VISTA_MUTATIONS = [
   'previas_inscribir_manual',
   'previas_quitar_inscripcion',
   'previas_quitar_todas_inscripciones',
+  'previas_permisos_actualizar',
   'previas_guardar',
   'previas_cambiar_estado',
   'previas_dar_baja',

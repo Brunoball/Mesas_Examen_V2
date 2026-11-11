@@ -233,6 +233,13 @@ export const previasApi = {
   obtenerPermisoExamen: (idPrevia) =>
     apiGet('previas_obtener_permiso_examen', { id_previa: idPrevia }),
 
+  actualizarEstadoPermiso: ({ idPrevia, periodo, estado }) =>
+    apiPost('previas_permisos_actualizar', {
+      id_previa: idPrevia,
+      periodo,
+      estado,
+    }),
+
   inscribirManual: ({ idsPrevias, gmail }) => apiPost('previas_inscribir_manual', {
     ids_previas: idsPrevias,
     gmail,

@@ -128,6 +128,12 @@ test.describe('07 · Previas', () => {
     const admin = await login(request);
     const ctx = await safeContext(request, admin);
 
+    // Contratos básicos del seguimiento; su flujo integral está en 16-previas-permisos.spec.js.
+    expectOk(await apiGet(request, 'previas_permisos_resumen', { periodo: 'MARZO/2099' }, admin));
+    expectFail(await apiPost(request, 'previas_permisos_actualizar', {
+      id_previa: 0, periodo: 'MARZO/2099', estado: 'pendiente',
+    }, admin), 422, /inválido/i, 'permiso con previa inválida');
+
     expectFail(await apiGet(request, 'previas_obtener', { id_previa: 0 }, admin), 422, /previa.*no es válida/i, 'obtener id inválido');
     expectFail(await apiGet(request, 'previas_obtener', { id_previa: 2147483647 }, admin), 404, /no se encontró/i, 'obtener inexistente');
     expectFail(await apiPost(request, 'previas_guardar', createPayload(ctx, { dni: '123' }), admin), 422, /DNI/i, 'DNI inválido');

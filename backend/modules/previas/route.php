@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/previas_controller.php';
+require_once __DIR__ . '/permisos_controller.php';
 require_once __DIR__ . '/previas_importacion_controller.php';
 
 function route_previas(string $action): bool
@@ -30,6 +31,14 @@ function route_previas(string $action): bool
 
         case 'previas_obtener_permiso_examen':
             previas_obtener_permiso_examen();
+            return true;
+
+        case 'previas_permisos_resumen':
+            previas_permisos_resumen();
+            return true;
+
+        case 'previas_permisos_actualizar':
+            previas_permisos_actualizar();
             return true;
 
         case 'previas_inscribir_manual':

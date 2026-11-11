@@ -200,6 +200,7 @@ function action_requiere_admin(string $action): bool
         'previas_condiciones',
         'previas_listar',
         'previas_obtener_permiso_examen',
+        'previas_permisos_resumen',
 
         'mesas_examen_listar',
         'mesas_grupos_listar',
