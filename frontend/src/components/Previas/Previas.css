@@ -142,8 +142,9 @@
   cursor:pointer;
   transition:border-color var(--mov-trans), box-shadow var(--mov-trans), background var(--mov-trans);
 }
+/* El ancho lo define la opción más larga, sin reservar espacio vacío. */
 .previas-selecwit{
-  min-width: 115px;
+  min-width:0;
 }
 
 .previas-select:hover,
@@ -806,4 +807,9 @@
   width: auto;
   min-width: 0;
   max-width: 100%;
+}
+
+/* Filtros Condición y Permiso de Inscriptos. */
+.previas-filterSelects .previas-selectWrap--sinPaddingDerecho .previas-select {
+  padding-right: 0;
 }

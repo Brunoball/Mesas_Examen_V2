@@ -57,6 +57,22 @@ const MESES_EXAMEN = [
   'DICIEMBRE',
 ];
 
+// Mide con el mismo texto y fuente de las opciones, sin el ancho extra nativo.
+function FiltroSelectAjustado({ children, ...props }) {
+  return (
+    <>
+      <span className="previas-selectMeasure" aria-hidden="true">
+        {React.Children.toArray(children).map((option, index) => (
+          <span key={option.key || index}>{option.props.children}</span>
+        ))}
+      </span>
+      <select {...props} className={`${props.className || ''} previas-select--medido`}>
+        {children}
+      </select>
+    </>
+  );
+}
+
 function normalizarCurso(item = {}) {
   return {
     ...item,
@@ -1727,12 +1743,17 @@ export default function Previas() {
                       <span className="previas-filterTabs__label">
                         <FontAwesomeIcon icon={faSearch} /> Búsqueda
                       </span>
-                      {hayBusqueda && (
+                      {hayFiltrosAplicados && (
                         <button
                           type="button"
                           className="cc-clearSearch cc-clearSearch--inside previas-clearSearch"
-                          title="Limpiar búsqueda"
-                          onClick={() => setBusqueda('')}
+                          title="Limpiar búsqueda y todos los filtros"
+                          aria-label="Limpiar búsqueda y todos los filtros"
+                          onClick={() => {
+                            setBusqueda('');
+                            limpiarFiltrosPrevias();
+                            cambiarEstadoPermisos('');
+                          }}
                         >
                           <FontAwesomeIcon icon={faTimes} />
                         </button>
@@ -1743,8 +1764,8 @@ export default function Previas() {
               </div>
 
               <div className="previas-filterSelects" aria-label="Filtros de previas">
-                <label className={`previas-selectWrap previas-selecwit ${filtrosPrevias.idCondicion ? 'is-active' : ''}`}>
-                  <select
+                <label className={`previas-selectWrap previas-selecwit ${vista === 'inscriptos' ? 'previas-selectWrap--contenido previas-selectWrap--sinPaddingDerecho' : ''} ${filtrosPrevias.idCondicion ? 'is-active' : ''}`}>
+                  <FiltroSelectAjustado
                     className="previas-select"
                     value={filtrosPrevias.idCondicion}
                     onChange={(e) => setFiltroPrevia('idCondicion', e.target.value)}
@@ -1755,7 +1776,7 @@ export default function Previas() {
                         {safeText(condicion.condicion)}
                       </option>
                     ))}
-                  </select>
+                  </FiltroSelectAjustado>
                   <span className="previas-filterTabs__label">Condición</span>
                 </label>
 
@@ -1792,8 +1813,8 @@ export default function Previas() {
                 </label>
 
                 {vista === 'inscriptos' && (
-                  <label className={`previas-selectWrap previas-selectWrap--contenido ${estadoPermisos ? 'is-active' : ''}`}>
-                    <select
+                  <label className={`previas-selectWrap previas-selectWrap--contenido previas-selectWrap--sinPaddingDerecho ${estadoPermisos ? 'is-active' : ''}`}>
+                    <FiltroSelectAjustado
                       className="previas-select"
                       aria-label="Filtrar permisos por estado"
                       value={estadoPermisos}
@@ -1803,21 +1824,11 @@ export default function Previas() {
                       <option value="pendiente">PENDIENTE</option>
                       <option value="impreso">IMPRESO</option>
                       <option value="entregado">ENTREGADO</option>
-                    </select>
+                    </FiltroSelectAjustado>
                     <span className="previas-filterTabs__label">PERMISO</span>
                   </label>
                 )}
 
-                {hayFiltrosPrevias && (
-                  <button
-                    type="button"
-                    className="previas-filterClearBtn"
-                    onClick={limpiarFiltrosPrevias}
-                    title="Limpiar filtros de condición, curso y división"
-                  >
-                    <FontAwesomeIcon icon={faTimes} /> 
-                  </button>
-                )}
               </div>
             </div>
           </div>
@@ -2037,7 +2048,7 @@ export default function Previas() {
             </span>
           )}
 
-          {!soloLectura && <div className="previas-footerActions" aria-label="Acciones de exportación e importación">
+          {!soloLectura && <div className={`previas-footerActions ${vista === 'inscriptos' ? 'previas-footerActions--inscriptos' : ''}`} aria-label="Acciones de exportación e importación">
             {vista === 'inscriptos' && (
               <button
                 type="button"

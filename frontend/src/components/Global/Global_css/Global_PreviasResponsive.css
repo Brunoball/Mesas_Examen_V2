@@ -6,10 +6,9 @@
    ========================================================= */
 
 
-/* Exportación de Previas: replica el cambio de ubicación usado en Mesas. */
+/* Exportar / importar mantiene el corte original de 1500px. */
 @media (max-width: 1500px) {
-  .previas-headExportBtn,
-  .previas-actionsHead .previas-deleteAllBtn {
+  .previas-headExportBtn {
     display: none !important;
   }
 
@@ -18,6 +17,28 @@
   }
 
   .previas-pagination {
+    margin-left: 0;
+  }
+}
+
+/* Eliminar todos: abajo hasta 1649px y arriba desde 1650px. */
+@media (max-width: 1649px) {
+  .previas-actionsHead .previas-deleteAllBtn {
+    display: none !important;
+  }
+}
+
+/* Entre 1501 y 1649px solo baja Eliminar todos, no Exportar. */
+@media (min-width: 1501px) and (max-width: 1649px) {
+  .previas-footerActions--inscriptos {
+    display: inline-flex;
+  }
+
+  .previas-footExportBtn {
+    display: none !important;
+  }
+
+  .previas-footerActions--inscriptos + .previas-pagination {
     margin-left: 0;
   }
 }
@@ -526,4 +547,105 @@
   .previas-gridRow.global-divTable__row {
     border-radius: 12px;
   }
+}
+
+/* La navegación resta espacio al buscador, no a los selectores. */
+.previas-page .previas-headFilters {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) max-content;
+  flex: 1 1 0;
+  min-width: 0;
+}
+.previas-page .previas-searchFilter {
+  width: 100%;
+  min-width: 0;
+}
+.previas-page .previas-searchInput {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.previas-page .previas-filterSelects {
+  display: flex;
+  flex: 0 0 auto;
+  width: max-content;
+  min-width: max-content;
+}
+.previas-page .previas-filterSelects .previas-selectWrap {
+  width: max-content;
+  max-width: none;
+  flex: 0 0 auto;
+}
+.previas-page .previas-filterSelects .previas-select {
+  width: auto;
+  max-width: none;
+}
+.previas-page .previas-filterClearBtn {
+  width: auto;
+  flex: 0 0 auto;
+}
+@media (max-width: 820px) {
+  .previas-page .previas-headFilters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .previas-page .previas-filterSelects {
+    width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+}
+
+/* Buscador compacto con espacio reservado para limpiar todos los filtros. */
+.previas-page .previas-searchFilter {
+  max-width: 320px;
+}
+.previas-page .previas-searchInput {
+  padding-right: 40px;
+}
+
+/* Grupo anclado a la derecha; el buscador es el único campo flexible. */
+.previas-page .previas-headFilters {
+  justify-content: end;
+  margin-left: auto;
+}
+.previas-page .previas-searchFilter {
+  justify-self: end;
+}
+.previas-page .previas-filterSelects {
+  justify-content: flex-end;
+  justify-self: end;
+}
+/* Todas las opciones comparten celda: la más ancha determina el tamaño. */
+.previas-page .previas-filterSelects .previas-selectWrap:has(.previas-select--medido) {
+  min-width: 0;
+  width: max-content;
+}
+.previas-selectMeasure {
+  display: grid;
+  visibility: hidden;
+  pointer-events: none;
+  white-space: nowrap;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 560;
+  line-height: normal;
+  padding: 0 16px 0 8px;
+  border: 1.5px solid transparent;
+}
+.previas-selectMeasure > span {
+  grid-area: 1 / 1;
+}
+.previas-page .previas-filterSelects .previas-select--medido {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-left: 8px;
+  padding-right: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cpath d='m2 3 2 2 2-2' fill='none' stroke='%23667386' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 4px center;
 }
