@@ -1201,6 +1201,7 @@ export default function Previas() {
   } = usePrevias();
 
   const [guardandoPermisoDni, setGuardandoPermisoDni] = useState('');
+  const [modalRetirarPermiso, setModalRetirarPermiso] = useState(null);
 
   useEffect(() => {
     let activo = true;
@@ -1217,21 +1218,25 @@ export default function Previas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function actualizarEstadoPermiso(item, nuevoEstado) {
+  async function actualizarEstadoPermiso(item, nuevoEstado, confirmado = false, periodo = periodoPermisos) {
     const dni = normalizarDniPermiso(item?.dni);
     if (!dni || guardandoPermisoDni) return;
     const actual = String(item?.permiso_estado || 'pendiente');
     if (actual === nuevoEstado) return;
-    if (actual === 'entregado' && nuevoEstado !== 'entregado'
-      && !window.confirm(`¿Querés retirar la constancia de entrega de ${item.alumno}?`)) return;
+    if (actual === 'entregado' && nuevoEstado !== 'entregado' && !confirmado) {
+      setModalRetirarPermiso({ item, nuevoEstado, periodo });
+      return;
+    }
 
     setGuardandoPermisoDni(dni);
     try {
-      await previasApi.actualizarEstadoPermiso({ idPrevia: item.id_previa, periodo: periodoPermisos, estado: nuevoEstado });
+      await previasApi.actualizarEstadoPermiso({ idPrevia: item.id_previa, periodo, estado: nuevoEstado });
       await reload();
-      mostrarMensaje('exito', `Permiso de ${item.alumno}: ${nuevoEstado}.`);
+      if (!confirmado) mostrarMensaje('exito', `Permiso de ${item.alumno}: ${nuevoEstado}.`);
     } catch (e) {
-      mostrarMensaje('error', e?.data?.mensaje || e?.message || 'No se pudo guardar el estado del permiso.');
+      const mensaje = e?.data?.mensaje || e?.message || 'No se pudo guardar el estado del permiso.';
+      if (confirmado) throw new Error(mensaje);
+      mostrarMensaje('error', mensaje);
     } finally {
       setGuardandoPermisoDni('');
     }
@@ -1754,7 +1759,7 @@ export default function Previas() {
                   <span className="previas-filterTabs__label">Condición</span>
                 </label>
 
-                <label className={`previas-selectWrap previas-selecwit ${filtrosPrevias.idCurso ? 'is-active' : ''}`}>
+                <label className={`previas-selectWrap previas-selecwit ${vista === 'inscriptos' ? 'previas-selectWrap--contenido' : ''} ${filtrosPrevias.idCurso ? 'is-active' : ''}`}>
                   <select
                     className="previas-select"
                     value={filtrosPrevias.idCurso}
@@ -1787,7 +1792,7 @@ export default function Previas() {
                 </label>
 
                 {vista === 'inscriptos' && (
-                  <label className={`previas-selectWrap previas-selecwit ${estadoPermisos ? 'is-active' : ''}`}>
+                  <label className={`previas-selectWrap previas-selectWrap--contenido ${estadoPermisos ? 'is-active' : ''}`}>
                     <select
                       className="previas-select"
                       aria-label="Filtrar permisos por estado"
@@ -2157,6 +2162,34 @@ export default function Previas() {
         onCerrar={cerrarModalPeriodoPermiso}
         onConfirmar={confirmarPeriodoPermiso}
       />
+
+      {!soloLectura && modalRetirarPermiso && (
+        <ModalEliminarGlobal
+          open
+          operacion="baja"
+          title="Retirar constancia de entrega"
+          message={`¿Querés retirar la constancia de entrega de ${modalRetirarPermiso.item.alumno}?`}
+          warning=""
+          confirmLabel="Retirar constancia"
+          loadingLabel="Guardando..."
+          loadingMessage="Actualizando el permiso de examen..."
+          successMessage="Constancia de entrega retirada correctamente."
+          errorMessage="No se pudo guardar el estado del permiso."
+          details={[
+            { label: 'Alumno', value: modalRetirarPermiso.item.alumno },
+            { label: 'DNI', value: modalRetirarPermiso.item.dni },
+            { label: 'Nuevo estado', value: modalRetirarPermiso.nuevoEstado === 'pendiente' ? 'PENDIENTE' : 'IMPRESO' },
+          ]}
+          onToast={mostrarMensaje}
+          onClose={() => setModalRetirarPermiso(null)}
+          onConfirm={() => actualizarEstadoPermiso(
+            modalRetirarPermiso.item,
+            modalRetirarPermiso.nuevoEstado,
+            true,
+            modalRetirarPermiso.periodo
+          )}
+        />
+      )}
 
       {!soloLectura && modalConfirmar.abierto && (
         <ModalEliminarGlobal
